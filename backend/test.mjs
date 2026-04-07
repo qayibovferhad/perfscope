@@ -6,7 +6,7 @@ if (!url) {
   process.exit(1);
 }
 
-const socket = io('http://localhost:3001');
+const socket = io('http://localhost:3101');
 
 socket.on('connect', () => {
   console.log(`\nAnalyzing: ${url}\n`);

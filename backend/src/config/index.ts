@@ -11,7 +11,7 @@ function optionalEnv(key: string, fallback: string): string {
 }
 
 export const config = {
-  port: parseInt(optionalEnv('PORT', '3001'), 10),
+  port: parseInt(optionalEnv('PORT', '3101'), 10),
   clientUrl: optionalEnv('CLIENT_URL', 'http://localhost:5173'),
   nodeEnv: optionalEnv('NODE_ENV', 'development'),
   geminiApiKey: process.env['GEMINI_API_KEY'],
