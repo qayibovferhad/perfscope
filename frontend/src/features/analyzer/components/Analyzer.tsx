@@ -69,7 +69,7 @@ export function Analyzer() {
           </form>
 
           <AnimatePresence>
-            {isPending && progress && (
+            {isPending && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -77,7 +77,7 @@ export function Analyzer() {
                 transition={{ duration: 0.3 }}
                 className="mt-5 overflow-hidden"
               >
-                <ProgressStepper progress={progress} />
+                <ProgressStepper progress={progress ?? { analysisId: '', stage: 'launching', progress: 0, message: 'Connecting...' }} />
               </motion.div>
             )}
           </AnimatePresence>
