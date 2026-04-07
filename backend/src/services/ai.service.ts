@@ -10,7 +10,7 @@ export class AiService {
   private static getModel() {
     if (!config.geminiApiKey) throw new Error('GEMINI_API_KEY is not configured');
     const client = new GoogleGenerativeAI(config.geminiApiKey);
-    return client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    return client.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
   }
 
   static async getInsights(result: AnalysisResult): Promise<string> {
@@ -21,25 +21,10 @@ export class AiService {
       .map((a) => `- ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}`)
       .join('\n');
 
-    const prompt = `You are a web performance expert. Analyze the following Lighthouse results and give exactly 3 concise, actionable recommendations in plain language. Be specific and avoid generic advice.
+    const prompt = `Web performance expert. Give exactly 3 numbered actionable fixes for this Lighthouse result. Be specific, max 1 sentence each.
 
-Scores:
-- Performance: ${result.scores.performance}/100
-- Accessibility: ${result.scores.accessibility}/100
-- Best Practices: ${result.scores.bestPractices}/100
-- SEO: ${result.scores.seo}/100
-
-Core Web Vitals:
-- FCP: ${(result.metrics.fcp / 1000).toFixed(1)}s
-- LCP: ${(result.metrics.lcp / 1000).toFixed(1)}s
-- TBT: ${Math.round(result.metrics.tbt)}ms
-- CLS: ${result.metrics.cls.toFixed(3)}
-- TTI: ${(result.metrics.tti / 1000).toFixed(1)}s
-
-Top failing audits:
-${failingAudits || 'None'}
-
-Respond with exactly 3 numbered recommendations. Each should start with a clear action verb. Keep each recommendation under 2 sentences.`;
+Performance:${result.scores.performance} LCP:${(result.metrics.lcp / 1000).toFixed(1)}s TBT:${Math.round(result.metrics.tbt)}ms CLS:${result.metrics.cls.toFixed(2)}
+Issues: ${failingAudits || 'none'}`;
 
     const response = await model.generateContent(prompt);
     return response.response.text();

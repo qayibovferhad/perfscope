@@ -7,6 +7,7 @@ import type {
   AnalysisProgress,
 } from '../types/index.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
+import { AnalyzerService } from '../services/analyzer.service.js';
 
 type TypedServer = Server<
   ClientToServerEvents,
@@ -59,7 +60,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
       lighthouseService.on('progress', onProgress);
 
       try {
-        const result = await lighthouseService.analyze(url);
+        const result = await AnalyzerService.analyze(url);
         socket.emit('analysis:complete', result);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Analysis failed';

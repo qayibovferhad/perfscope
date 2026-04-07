@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Loader2, Search, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -8,6 +9,7 @@ import { ScoreCard, type ScoreLabel } from './ScoreCard';
 import { MetricsGrid } from './MetricsGrid';
 import { AuditList } from './AuditList';
 import { AiInsights } from './AiInsights';
+import { ProgressStepper } from './ProgressStepper';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -61,16 +63,24 @@ export function Analyzer() {
               className="flex-1"
             />
             <Button type="submit" disabled={isPending || !url.trim()} className="min-w-[130px]">
-              {isPending
-                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Analyzing...</>
-                : <><Search className="w-4 h-4 mr-2" />Analyze</>}
+              <Search className="w-4 h-4 mr-2" />
+              {isPending ? 'Analyzing...' : 'Analyze'}
             </Button>
           </form>
-          {isPending && (
-            <p className="text-xs text-muted-foreground mt-3">
-              This may take 15–30 seconds depending on the website...
-            </p>
-          )}
+
+          <AnimatePresence>
+            {isPending && progress && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mt-5 overflow-hidden"
+              >
+                <ProgressStepper progress={progress} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </CardContent>
       </Card>
 
@@ -85,8 +95,14 @@ export function Analyzer() {
       )}
 
       {/* Results */}
+      <AnimatePresence>
       {data && (
-        <div className="space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="space-y-8"
+        >
           <p className="text-xs text-muted-foreground -mb-4">
             Results for{' '}
             <a href={data.url} target="_blank" rel="noreferrer"
@@ -123,8 +139,9 @@ export function Analyzer() {
               <AuditList audits={data.audits} />
             </section>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
