@@ -10,11 +10,21 @@ export type AnalysisStage =
 
 export type AuditImpact = 'critical' | 'high' | 'medium' | 'low';
 
+export type AnalysisCategory = 'performance' | 'accessibility' | 'best-practices' | 'seo';
+
 export interface AnalysisProgress {
   analysisId: string;
   stage: AnalysisStage;
   progress: number; // 0–100
   message: string;
+}
+
+export interface CategoryPartial {
+  analysisId: string;
+  category: AnalysisCategory;
+  score: number;
+  metrics?: CoreWebVitals; // only for 'performance'
+  audits: AuditItem[];
 }
 
 export interface AuditItem {
@@ -34,17 +44,11 @@ export interface PerformanceScores {
 }
 
 export interface CoreWebVitals {
-  /** First Contentful Paint (ms) */
   fcp: number;
-  /** Largest Contentful Paint (ms) */
   lcp: number;
-  /** Total Blocking Time (ms) */
   tbt: number;
-  /** Cumulative Layout Shift */
   cls: number;
-  /** Speed Index */
   si: number;
-  /** Time to Interactive (ms) */
   tti: number;
 }
 
@@ -79,6 +83,7 @@ export interface StartAnalysisResponse {
 
 export interface ServerToClientEvents {
   'analysis:progress': (data: AnalysisProgress) => void;
+  'analysis:partial': (data: CategoryPartial) => void;
   'analysis:complete': (result: AnalysisResult) => void;
   'analysis:error': (data: { analysisId: string; message: string }) => void;
 }

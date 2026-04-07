@@ -5,25 +5,13 @@ import type {
   InterServerEvents,
   SocketData,
   AnalysisProgress,
+  CategoryPartial,
 } from '../types/index.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
-import { AnalyzerService } from '../services/analyzer.service.js';
+import { AiService } from '../services/ai.service.js';
 
-type TypedServer = Server<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
-
-type TypedSocket = Socket<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->;
-
-// ─── URL Validation ───────────────────────────────────────────────────────────
+type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 function isValidUrl(raw: string): boolean {
   try {
@@ -34,8 +22,6 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
-// ─── Socket Handler ───────────────────────────────────────────────────────────
-
 export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
@@ -44,23 +30,29 @@ export function registerAnalysisSocket(io: TypedServer): void {
       const { url } = payload;
 
       if (!isValidUrl(url)) {
-        socket.emit('analysis:error', {
-          analysisId: '',
-          message: 'Invalid URL format. Must start with http:// or https://',
-        });
+        socket.emit('analysis:error', { analysisId: '', message: 'Invalid URL format.' });
         return;
       }
 
-      console.log(`[Socket] Analysis started: ${url} (${socket.id})`);
+      console.log(`[Socket] Analysis started: ${url}`);
 
-      const onProgress = (data: AnalysisProgress): void => {
-        socket.emit('analysis:progress', data);
-      };
+      const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
+      const onPartial  = (data: CategoryPartial)  => socket.emit('analysis:partial', data);
 
       lighthouseService.on('progress', onProgress);
 
       try {
-        const result = await AnalyzerService.analyze(url);
+        const result = await lighthouseService.analyzeStreaming(url, onPartial);
+
+        // AI insights after all categories done
+        if (AiService.isAvailable()) {
+          const insights = await AiService.getInsights(result).catch((err: unknown) => {
+            console.error('[AI] Failed:', err);
+            return null;
+          });
+          if (insights) result.aiInsights = insights;
+        }
+
         socket.emit('analysis:complete', result);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Analysis failed';
@@ -71,9 +63,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('analysis:cancel', (payload: { analysisId: string }) => {
-      const { analysisId } = payload;
-      const cancelled = lighthouseService.cancelAnalysis(analysisId);
-      console.log(`[Socket] Cancel: ${analysisId} — ${cancelled ? 'success' : 'not found'}`);
+      lighthouseService.cancelAnalysis(payload.analysisId);
     });
 
     socket.on('disconnect', (reason: string) => {

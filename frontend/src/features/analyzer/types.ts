@@ -1,5 +1,14 @@
 export type AuditImpact = 'critical' | 'high' | 'medium' | 'low';
 export type AnalysisStage = 'launching' | 'navigating' | 'auditing' | 'processing' | 'complete' | 'error';
+export type AnalysisCategory = 'performance' | 'accessibility' | 'best-practices' | 'seo';
+
+export interface CategoryPartial {
+  analysisId: string;
+  category: AnalysisCategory;
+  score: number;
+  metrics?: CoreWebVitals;
+  audits: AuditItem[];
+}
 
 export interface AuditItem {
   id: string;

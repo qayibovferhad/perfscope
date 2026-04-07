@@ -4,12 +4,16 @@ import { Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { useAnalysis } from '../hooks/useAnalysis';
-import { ScoreCard, type ScoreLabel } from './ScoreCard';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useAnalysis, type PartialMap } from '../hooks/useAnalysis';
+import { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ScoreCard';
 import { MetricsGrid } from './MetricsGrid';
 import { AuditList } from './AuditList';
 import { AiInsights } from './AiInsights';
 import { ProgressStepper } from './ProgressStepper';
+import type { AnalysisResult } from '../types';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -19,16 +23,65 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-const SCORE_LABELS: { key: 'performance' | 'accessibility' | 'bestPractices' | 'seo'; label: ScoreLabel }[] = [
-  { key: 'performance',   label: 'Performance'     },
-  { key: 'accessibility', label: 'Accessibility'   },
-  { key: 'bestPractices', label: 'Best Practices'  },
-  { key: 'seo',           label: 'SEO'             },
+const SCORE_ITEMS: { categoryKey: string; label: ScoreLabel; scoreKey: keyof AnalysisResult['scores'] }[] = [
+  { categoryKey: 'performance',    label: 'Performance',     scoreKey: 'performance'   },
+  { categoryKey: 'accessibility',  label: 'Accessibility',   scoreKey: 'accessibility' },
+  { categoryKey: 'best-practices', label: 'Best Practices',  scoreKey: 'bestPractices' },
+  { categoryKey: 'seo',            label: 'SEO',             scoreKey: 'seo'           },
 ];
+
+// ─── Streaming Scores Section ─────────────────────────────────────────────────
+
+function StreamingScores({ partials }: { partials: PartialMap }) {
+  return (
+    <section>
+      <SectionTitle>Scores</SectionTitle>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {SCORE_ITEMS.map(({ categoryKey, label }) => {
+          const partial = partials[categoryKey as keyof PartialMap];
+          return partial
+            ? <ScoreCard key={categoryKey} label={label} score={partial.score} />
+            : <ScoreCardSkeleton key={categoryKey} label={label} />;
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ─── Streaming Metrics Section ────────────────────────────────────────────────
+
+function StreamingMetrics({ partials }: { partials: PartialMap }) {
+  const metrics = partials['performance']?.metrics;
+  return (
+    <section>
+      <SectionTitle>Core Web Vitals</SectionTitle>
+      {metrics
+        ? <MetricsGrid metrics={metrics} />
+        : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="border-border">
+                <CardContent className="pt-4 pb-4 space-y-2">
+                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-3 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      }
+    </section>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Analyzer() {
   const [url, setUrl] = useState('');
-  const { analyze, data, isPending, isError, error, reset } = useAnalysis();
+  const { analyze, data, progress, partials, isPending, isError, error, reset } = useAnalysis();
+
+  const hasPartials = Object.keys(partials).length > 0;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -89,58 +142,62 @@ export function Analyzer() {
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="flex items-center gap-2 pt-4 pb-4 text-destructive">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <p className="text-sm">{error instanceof Error ? error.message : 'Analysis failed'}</p>
+            <p className="text-sm">{error ?? 'Analysis failed'}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Results */}
-      <AnimatePresence>
-      {data && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="space-y-8"
-        >
-          <p className="text-xs text-muted-foreground -mb-4">
-            Results for{' '}
-            <a href={data.url} target="_blank" rel="noreferrer"
-              className="font-medium text-foreground underline underline-offset-2">
-              {data.url}
-            </a>
-          </p>
-
-          {/* Scores */}
-          <section>
-            <SectionTitle>Scores</SectionTitle>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {SCORE_LABELS.map(({ key, label }) => (
-                <ScoreCard key={key} label={label} score={data.scores[key]} />
-              ))}
-            </div>
-          </section>
-
-          {/* AI Insights */}
-          {data.aiInsights && <AiInsights insights={data.aiInsights} />}
-
-          {/* Metrics */}
-          <section>
-            <SectionTitle>Core Web Vitals</SectionTitle>
-            <MetricsGrid metrics={data.metrics} />
-          </section>
-
-          {/* Audits */}
-          {data.audits.length > 0 && (
-            <section>
-              <SectionTitle>
-                Critical Issues ({data.audits.filter((a) => a.impact === 'critical').length}) · Other ({data.audits.filter((a) => a.impact !== 'critical').length})
-              </SectionTitle>
-              <AuditList audits={data.audits} />
-            </section>
-          )}
-        </motion.div>
+      {/* Streaming skeleton + partial results */}
+      {isPending && (
+        <div className="space-y-8">
+          <StreamingScores partials={partials} />
+          <StreamingMetrics partials={partials} />
+        </div>
       )}
+
+      {/* Final complete results */}
+      <AnimatePresence>
+        {data && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="space-y-8"
+          >
+            <p className="text-xs text-muted-foreground -mb-4">
+              Results for{' '}
+              <a href={data.url} target="_blank" rel="noreferrer"
+                className="font-medium text-foreground underline underline-offset-2">
+                {data.url}
+              </a>
+            </p>
+
+            <section>
+              <SectionTitle>Scores</SectionTitle>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {SCORE_ITEMS.map(({ label, scoreKey }) => (
+                  <ScoreCard key={label} label={label} score={data.scores[scoreKey]} />
+                ))}
+              </div>
+            </section>
+
+            {data.aiInsights && <AiInsights insights={data.aiInsights} />}
+
+            <section>
+              <SectionTitle>Core Web Vitals</SectionTitle>
+              <MetricsGrid metrics={data.metrics} />
+            </section>
+
+            {data.audits.length > 0 && (
+              <section>
+                <SectionTitle>
+                  Critical ({data.audits.filter((a) => a.impact === 'critical').length}) · Other ({data.audits.filter((a) => a.impact !== 'critical').length})
+                </SectionTitle>
+                <AuditList audits={data.audits} />
+              </section>
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
