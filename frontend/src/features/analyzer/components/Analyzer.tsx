@@ -28,7 +28,7 @@ const SCORE_LABELS: { key: 'performance' | 'accessibility' | 'bestPractices' | '
 
 export function Analyzer() {
   const [url, setUrl] = useState('');
-  const { mutate, data, isPending, isError, error, reset } = useAnalysis();
+  const { analyze, data, isPending, isError, error, reset } = useAnalysis();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export function Analyzer() {
     if (!trimmed) return;
     const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
     reset();
-    mutate(normalized);
+    analyze(normalized);
   };
 
   return (
