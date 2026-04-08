@@ -1,4 +1,51 @@
 export type AuditImpact = 'critical' | 'high' | 'medium' | 'low';
+export type ResourceType = 'script' | 'stylesheet' | 'image' | 'font' | 'document' | 'media' | 'other';
+
+export interface ResourceTypeSummary {
+  requestCount: number;
+  transferSize: number;
+  resourceSize: number;
+}
+
+export interface ResourceSummary {
+  script: ResourceTypeSummary;
+  stylesheet: ResourceTypeSummary;
+  image: ResourceTypeSummary;
+  font: ResourceTypeSummary;
+  document: ResourceTypeSummary;
+  media: ResourceTypeSummary;
+  other: ResourceTypeSummary;
+  total: ResourceTypeSummary;
+}
+
+export interface NetworkRequest {
+  url: string;
+  resourceType: ResourceType;
+  transferSize: number;
+  resourceSize: number;
+  statusCode: number;
+  mimeType: string;
+  isThirdParty: boolean;
+  detectedLibrary: string | null;
+  isCritical: boolean;
+  advice?: string;
+}
+
+export interface DetectedLibrary {
+  name: string;
+  url: string;
+  transferSize: number;
+  isThirdParty: boolean;
+  isCritical: boolean;
+}
+
+export interface ParsedResources {
+  requests: NetworkRequest[];
+  summary: ResourceSummary;
+  thirdPartyRequests: NetworkRequest[];
+  jsFiles: NetworkRequest[];
+  detectedLibraries: DetectedLibrary[];
+}
 export type AnalysisStage = 'launching' | 'navigating' | 'auditing' | 'processing' | 'complete' | 'error';
 export type AnalysisCategory = 'performance' | 'accessibility' | 'best-practices' | 'seo';
 
@@ -42,6 +89,7 @@ export interface AnalysisResult {
   scores: PerformanceScores;
   metrics: CoreWebVitals;
   audits: AuditItem[];
+  resources?: ParsedResources;
   aiInsights?: string;
 }
 

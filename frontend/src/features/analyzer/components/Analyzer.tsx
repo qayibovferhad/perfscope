@@ -11,6 +11,9 @@ import { MetricsGrid } from './MetricsGrid';
 import { AuditList } from './AuditList';
 import { AiInsights } from './AiInsights';
 import { ProgressStepper } from './ProgressStepper';
+import { ResourceBreakdown } from './ResourceBreakdown';
+import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,7 +44,7 @@ function StreamingScores({ partials }: { partials: PartialMap }) {
           const partial = partials[categoryKey as keyof PartialMap];
           return partial
             ? <ScoreCard key={categoryKey} label={label} score={partial.score} />
-            : <ScoreCardSkeleton key={categoryKey} label={label} />;
+            : <ScoreCardSkeleton   key={categoryKey} label={label} />;
         })}
       </div>
     </section>
@@ -80,8 +83,6 @@ function StreamingMetrics({ partials }: { partials: PartialMap }) {
 export function Analyzer() {
   const [url, setUrl] = useState('');
   const { analyze, data, progress, partials, isPending, isError, error, reset } = useAnalysis();
-
-  const hasPartials = Object.keys(partials).length > 0;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -187,6 +188,33 @@ export function Analyzer() {
               <SectionTitle>Core Web Vitals</SectionTitle>
               <MetricsGrid metrics={data.metrics} />
             </section>
+
+            {data.resources && (
+              <section className="space-y-3">
+                <SectionTitle>Resources</SectionTitle>
+                {(() => {
+                  const criticalCount = data.resources!.requests.filter((r) => r.isCritical).length;
+                  const hasAdvice = data.resources!.requests.some((r) => r.isCritical && r.advice);
+                  if (criticalCount === 0) return null;
+                  return (
+                    <Alert variant="warning">
+                      <AlertTriangle className="w-4 h-4" />
+                      <AlertTitle>
+                        {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
+                      </AlertTitle>
+                      <AlertDescription>
+                        {criticalCount === 1
+                          ? 'One resource exceeds the recommended size limit.'
+                          : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
+                        {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
+                    For accurate results, analyze your production URL — dev builds serve unminified assets.
+                      </AlertDescription>
+                    </Alert>
+                  );
+                })()}
+                <ResourceBreakdown resources={data.resources} />
+              </section>
+            )}
 
             {data.audits.length > 0 && (
               <section>

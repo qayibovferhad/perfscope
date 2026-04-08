@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import puppeteer, { type Browser } from 'puppeteer';
 import lighthouse, { type RunnerResult } from 'lighthouse';
 import { v4 as uuidv4 } from 'uuid';
+import { parseResources } from './resource-parser.js';
 import type {
   AnalysisResult,
   AnalysisProgress,
@@ -48,8 +49,8 @@ export class LighthouseService extends EventEmitter {
   }
 
   // ─── Streaming (WebSocket path) ───────────────────────────────────────────
-  // Single Lighthouse run (same speed as before). After completion, emits
-  // each category as a separate partial with a small stagger for skeleton UX.
+  // Two sequential Lighthouse runs so lightweight categories (seo, best-practices)
+  // genuinely arrive before the heavier performance/accessibility audit.
 
   async analyzeStreaming(
     url: string,
@@ -60,20 +61,23 @@ export class LighthouseService extends EventEmitter {
 
     try {
       browser = await this.launchBrowser(analysisId);
-      const runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES);
-      const categoryResults = [runnerResult];
 
-      // Emit partials staggered so skeleton cards fill in one by one
-      const orderedCategories: AnalysisCategory[] = [
-        'seo', 'best-practices', 'accessibility', 'performance',
-      ];
-      for (const category of orderedCategories) {
-        onPartial(this.buildPartial(analysisId, category, runnerResult));
-        await new Promise((r) => setTimeout(r, 350));
+      // ── Run 1: lightweight categories (arrive first) ──────────────────────
+      this.emitProgress(analysisId, 'auditing', 40, 'Auditing SEO & Best Practices...');
+      const run1 = await this.runLighthouse(url, analysisId, browser, ['seo', 'best-practices']);
+      for (const category of ['seo', 'best-practices'] as AnalysisCategory[]) {
+        onPartial(this.buildPartial(analysisId, category, run1));
+      }
+
+      // ── Run 2: heavier categories ─────────────────────────────────────────
+      this.emitProgress(analysisId, 'auditing', 60, 'Auditing Performance & Accessibility...');
+      const run2 = await this.runLighthouse(url, analysisId, browser, ['performance', 'accessibility']);
+      for (const category of ['accessibility', 'performance'] as AnalysisCategory[]) {
+        onPartial(this.buildPartial(analysisId, category, run2));
       }
 
       this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
-      const full = this.buildFullResult(analysisId, url, categoryResults);
+      const full = this.buildFullResult(analysisId, url, [run1, run2]);
       this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
       return full;
     } finally {
@@ -106,7 +110,6 @@ export class LighthouseService extends EventEmitter {
     browser: Browser,
     categories: AnalysisCategory[],
   ): Promise<RunnerResult> {
-    this.emitProgress(analysisId, 'auditing', 45, 'Running Lighthouse audit...');
     const port = Number(new URL(browser.wsEndpoint()).port);
 
     const result = await lighthouse(url, {
@@ -118,7 +121,6 @@ export class LighthouseService extends EventEmitter {
     });
 
     if (!result) throw new Error('Lighthouse returned no result');
-    this.emitProgress(analysisId, 'processing', 80, 'Processing results...');
     return result;
   }
 
@@ -159,6 +161,7 @@ export class LighthouseService extends EventEmitter {
     const scores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 };
     const metrics = { fcp: 0, lcp: 0, tbt: 0, cls: 0, si: 0, tti: 0 };
     const allAudits: AuditItem[] = [];
+    let performanceLhr: RunnerResult['lhr'] | null = null;
 
     for (const { lhr } of results) {
       scores.performance   = Math.max(scores.performance,   this.toScore(lhr.categories['performance']?.score));
@@ -173,6 +176,7 @@ export class LighthouseService extends EventEmitter {
         metrics.cls = lhr.audits['cumulative-layout-shift']?.numericValue ?? 0;
         metrics.si  = lhr.audits['speed-index']?.numericValue ?? 0;
         metrics.tti = lhr.audits['interactive']?.numericValue ?? 0;
+        performanceLhr = lhr;
       }
 
       allAudits.push(...this.extractFailingAudits(lhr.audits));
@@ -180,9 +184,14 @@ export class LighthouseService extends EventEmitter {
 
     // Deduplicate audits by id
     const seen = new Set<string>();
-    const uniqueAudits = allAudits.filter(({ id }) => seen.has(id) ? false : (seen.add(id), true));
+    const uniqueAudits = allAudits.filter(({ id: auditId }) =>
+      seen.has(auditId) ? false : (seen.add(auditId), true),
+    );
 
-    return { id, url, timestamp: new Date().toISOString(), scores, metrics, audits: uniqueAudits };
+    // Parse resources from the performance LHR (contains network-requests & resource-summary)
+    const result: AnalysisResult = { id, url, timestamp: new Date().toISOString(), scores, metrics, audits: uniqueAudits };
+    if (performanceLhr) result.resources = parseResources(performanceLhr, url);
+    return result;
   }
 
   private extractFailingAudits(

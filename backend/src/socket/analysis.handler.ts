@@ -44,13 +44,35 @@ export function registerAnalysisSocket(io: TypedServer): void {
       try {
         const result = await lighthouseService.analyzeStreaming(url, onPartial);
 
-        // AI insights after all categories done
+        console.log(result,'result');
+        
+        // AI insights + resource advice (parallel when both available)
         if (AiService.isAvailable()) {
-          const insights = await AiService.getInsights(result).catch((err: unknown) => {
-            console.error('[AI] Failed:', err);
-            return null;
-          });
+          const criticals = (result.resources?.requests ?? [])
+            .filter((r) => r.isCritical)
+            .slice(0, 6);
+
+          const [insights, adviceMap] = await Promise.all([
+            AiService.getInsights(result).catch((err: unknown) => {
+              console.error('[AI] Insights failed:', err);
+              return null;
+            }),
+            criticals.length > 0
+              ? AiService.getResourceAdvice(criticals).catch((err: unknown) => {
+                  console.error('[AI] Resource advice failed:', err);
+                  return new Map<string, string>();
+                })
+              : Promise.resolve(new Map<string, string>()),
+          ]);
+
           if (insights) result.aiInsights = insights;
+
+          if (adviceMap.size > 0 && result.resources) {
+            for (const req of result.resources.requests) {
+              const advice = adviceMap.get(req.url);
+              if (advice) req.advice = advice;
+            }
+          }
         }
 
         socket.emit('analysis:complete', result);

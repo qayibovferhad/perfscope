@@ -59,7 +59,68 @@ export interface AnalysisResult {
   scores: PerformanceScores;
   metrics: CoreWebVitals;
   audits: AuditItem[];
+  resources?: ParsedResources;
   aiInsights?: string;
+}
+
+// ─── Resource Analysis Types ─────────────────────────────────────────────────
+
+export type ResourceType = 'script' | 'stylesheet' | 'image' | 'font' | 'document' | 'media' | 'other';
+
+export interface NetworkRequest {
+  url: string;
+  resourceType: ResourceType;
+  /** Compressed size over the wire (bytes) */
+  transferSize: number;
+  /** Uncompressed decoded size (bytes) */
+  resourceSize: number;
+  statusCode: number;
+  mimeType: string;
+  isThirdParty: boolean;
+  /** Library name detected from URL, e.g. "react", "lodash" */
+  detectedLibrary: string | null;
+  /** JS > 500 KB or image > 1 MB */
+  isCritical: boolean;
+  /** Gemini-generated optimization advice for critical resources */
+  advice?: string;
+}
+
+export interface ResourceTypeSummary {
+  requestCount: number;
+  transferSize: number;
+  resourceSize: number;
+}
+
+export interface ResourceSummary {
+  script: ResourceTypeSummary;
+  stylesheet: ResourceTypeSummary;
+  image: ResourceTypeSummary;
+  font: ResourceTypeSummary;
+  document: ResourceTypeSummary;
+  media: ResourceTypeSummary;
+  other: ResourceTypeSummary;
+  total: ResourceTypeSummary;
+}
+
+export interface DetectedLibrary {
+  name: string;
+  url: string;
+  transferSize: number;
+  isThirdParty: boolean;
+  isCritical: boolean;
+}
+
+export interface ParsedResources {
+  /** All network requests */
+  requests: NetworkRequest[];
+  /** Aggregated sizes per resource type (from resource-summary audit) */
+  summary: ResourceSummary;
+  /** Only third-party requests */
+  thirdPartyRequests: NetworkRequest[];
+  /** Only JS/CSS files with size info */
+  jsFiles: NetworkRequest[];
+  /** Deduplicated list of detected libraries */
+  detectedLibraries: DetectedLibrary[];
 }
 
 // ─── API Request / Response Types ───────────────────────────────────────────
