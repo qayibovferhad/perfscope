@@ -52,6 +52,23 @@ export interface CoreWebVitals {
   tti: number;
 }
 
+export interface TimelineFrame {
+  /** Milliseconds from page load start */
+  timing: number;
+  /** Data URL (data:image/jpeg;base64,...) */
+  data: string;
+}
+
+export interface TimelineData {
+  frames: TimelineFrame[];
+  metrics: {
+    fcp: number;
+    lcp: number;
+    tti: number;
+    tbt: number;
+  };
+}
+
 export interface AnalysisResult {
   id: string;
   url: string;
@@ -61,6 +78,7 @@ export interface AnalysisResult {
   audits: AuditItem[];
   resources?: ParsedResources;
   aiInsights?: string;
+  timelineData?: TimelineData;
 }
 
 // ─── Resource Analysis Types ─────────────────────────────────────────────────

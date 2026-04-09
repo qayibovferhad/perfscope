@@ -82,6 +82,21 @@ export interface CoreWebVitals {
   tti: number;
 }
 
+export interface TimelineFrame {
+  timing: number;
+  data: string;
+}
+
+export interface TimelineData {
+  frames: TimelineFrame[];
+  metrics: {
+    fcp: number;
+    lcp: number;
+    tti: number;
+    tbt: number;
+  };
+}
+
 export interface AnalysisResult {
   id: string;
   url: string;
@@ -91,6 +106,7 @@ export interface AnalysisResult {
   audits: AuditItem[];
   resources?: ParsedResources;
   aiInsights?: string;
+  timelineData?: TimelineData;
 }
 
 export interface AnalysisProgress {

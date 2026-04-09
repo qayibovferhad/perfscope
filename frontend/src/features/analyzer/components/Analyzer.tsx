@@ -12,6 +12,7 @@ import { AuditList } from './AuditList';
 import { AiInsights } from './AiInsights';
 import { ProgressStepper } from './ProgressStepper';
 import { ResourceBreakdown } from './ResourceBreakdown';
+import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult } from '../types';
@@ -153,6 +154,10 @@ export function Analyzer() {
         <div className="space-y-8">
           <StreamingScores partials={partials} />
           <StreamingMetrics partials={partials} />
+          <section>
+            <SectionTitle>Performance Timeline</SectionTitle>
+            <PerformanceTimelineSkeleton />
+          </section>
         </div>
       )}
 
@@ -188,6 +193,13 @@ export function Analyzer() {
               <SectionTitle>Core Web Vitals</SectionTitle>
               <MetricsGrid metrics={data.metrics} />
             </section>
+
+            {data.timelineData && (
+              <section>
+                <SectionTitle>Performance Timeline</SectionTitle>
+                <PerformanceTimeline timelineData={data.timelineData} />
+              </section>
+            )}
 
             {data.resources && (
               <section className="space-y-3">
