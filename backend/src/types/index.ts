@@ -67,6 +67,14 @@ export interface TimelineData {
     tti: number;
     tbt: number;
   };
+  /**
+   * Milliseconds between navigationStart and the earliest network request.
+   * Lighthouse normalizes all request times so the first request = 0ms,
+   * but frame timings use navigationStart as 0ms.
+   * Apply: adjustedRequestMs = sliderMs (frame-time) - networkOffsetMs
+   * to compare slider position against request start/end times.
+   */
+  networkOffsetMs: number;
 }
 
 export interface AnalysisResult {
@@ -101,6 +109,14 @@ export interface NetworkRequest {
   isCritical: boolean;
   /** Gemini-generated optimization advice for critical resources */
   advice?: string;
+  /** Milliseconds from navigation start (Lighthouse network-requests audit) */
+  startTime: number;
+  /** Milliseconds from navigation start */
+  endTime: number;
+  /** Time to First Byte — ms from startTime until first byte received */
+  ttfb: number;
+  /** Content download duration — ms from first byte to response end */
+  contentDownloadTime: number;
 }
 
 export interface ResourceTypeSummary {

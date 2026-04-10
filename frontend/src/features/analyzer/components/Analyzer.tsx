@@ -12,7 +12,9 @@ import { AuditList } from './AuditList';
 import { AiInsights } from './AiInsights';
 import { ProgressStepper } from './ProgressStepper';
 import { ResourceBreakdown } from './ResourceBreakdown';
+import { ResourceWaterfall } from './ResourceWaterfall';
 import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
+import { TimelineProvider } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult } from '../types';
@@ -194,38 +196,46 @@ export function Analyzer() {
               <MetricsGrid metrics={data.metrics} />
             </section>
 
-            {data.timelineData && (
-              <section>
-                <SectionTitle>Performance Timeline</SectionTitle>
-                <PerformanceTimeline timelineData={data.timelineData} />
-              </section>
-            )}
+            {(data.timelineData || data.resources) && (
+              <TimelineProvider>
+                {data.timelineData && (
+                  <section>
+                    <SectionTitle>Performance Timeline</SectionTitle>
+                    <PerformanceTimeline timelineData={data.timelineData} />
+                  </section>
+                )}
 
-            {data.resources && (
-              <section className="space-y-3">
-                <SectionTitle>Resources</SectionTitle>
-                {(() => {
-                  const criticalCount = data.resources!.requests.filter((r) => r.isCritical).length;
-                  const hasAdvice = data.resources!.requests.some((r) => r.isCritical && r.advice);
-                  if (criticalCount === 0) return null;
-                  return (
-                    <Alert variant="warning">
-                      <AlertTriangle className="w-4 h-4" />
-                      <AlertTitle>
-                        {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
-                      </AlertTitle>
-                      <AlertDescription>
-                        {criticalCount === 1
-                          ? 'One resource exceeds the recommended size limit.'
-                          : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
-                        {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
-                    For accurate results, analyze your production URL — dev builds serve unminified assets.
-                      </AlertDescription>
-                    </Alert>
-                  );
-                })()}
-                <ResourceBreakdown resources={data.resources} />
-              </section>
+                {data.resources && (
+                  <section className="space-y-3">
+                    <SectionTitle>Resources</SectionTitle>
+                    {(() => {
+                      const criticalCount = data.resources!.requests.filter((r) => r.isCritical).length;
+                      const hasAdvice = data.resources!.requests.some((r) => r.isCritical && r.advice);
+                      if (criticalCount === 0) return null;
+                      return (
+                        <Alert variant="warning">
+                          <AlertTriangle className="w-4 h-4" />
+                          <AlertTitle>
+                            {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
+                          </AlertTitle>
+                          <AlertDescription>
+                            {criticalCount === 1
+                              ? 'One resource exceeds the recommended size limit.'
+                              : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
+                            {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
+                        For accurate results, analyze your production URL — dev builds serve unminified assets.
+                          </AlertDescription>
+                        </Alert>
+                      );
+                    })()}
+                    <ResourceWaterfall
+                      resources={data.resources}
+                      timelineDuration={data.timelineData?.frames.at(-1)?.timing}
+                    />
+                    <ResourceBreakdown resources={data.resources} />
+                  </section>
+                )}
+              </TimelineProvider>
             )}
 
             {data.audits.length > 0 && (

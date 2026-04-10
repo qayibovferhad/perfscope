@@ -29,6 +29,14 @@ export interface NetworkRequest {
   detectedLibrary: string | null;
   isCritical: boolean;
   advice?: string;
+  /** Milliseconds from navigation start */
+  startTime: number;
+  /** Milliseconds from navigation start */
+  endTime: number;
+  /** Time to First Byte in ms */
+  ttfb: number;
+  /** Content download duration in ms */
+  contentDownloadTime: number;
 }
 
 export interface DetectedLibrary {
@@ -95,6 +103,8 @@ export interface TimelineData {
     tti: number;
     tbt: number;
   };
+  /** ms from navigationStart to the earliest network request (global clock offset) */
+  networkOffsetMs: number;
 }
 
 export interface AnalysisResult {

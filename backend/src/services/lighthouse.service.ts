@@ -303,7 +303,6 @@ export class LighthouseService extends EventEmitter {
       const frames: TimelineFrame[] = filmstrip.items
         .filter((item) => !!item.data)
         .map((item) => ({
-          // `timing` is ms from navigation start; fall back to raw timestamp (µs → ms)
           timing: item.timing ?? (item.timestamp !== undefined ? Math.round(item.timestamp / 1000) : 0),
           data:   item.data as string,
         }));
@@ -316,12 +315,22 @@ export class LighthouseService extends EventEmitter {
       };
       const m = metricsDetails?.items?.[0] ?? {};
 
-      // If a timeline-point metric exceeds the last captured frame, clamp it
-      // to that frame's timing. This prevents 40s+ throttled values from
-      // appearing far outside the visible filmstrip range.
+      let networkOffsetMs = 0;
+      try {
+        const netAudit     = lhr.audits['network-requests'];
+        const debugData    = (netAudit?.details as Record<string, unknown> | undefined)?.debugData as Record<string, unknown> | undefined;
+        const networkStartTs = debugData?.networkStartTimeTs as number | undefined;
+        const firstRaw     = filmstrip.items.find(i => !!i.data);
+        if (networkStartTs !== undefined && firstRaw?.timestamp !== undefined) {
+          const navStartTs = firstRaw.timestamp - (firstRaw.timing ?? 0) * 1000;
+          networkOffsetMs  = Math.max(0, Math.min((networkStartTs - navStartTs) / 1000, 2000));
+        }
+      } catch {
+        networkOffsetMs = 0;
+      }
+
       const lastFrameMs = frames.at(-1)!.timing;
-      const clampToFilmstrip = (val: number) =>
-        val > 0 && val > lastFrameMs ? lastFrameMs : val;
+      const clampToFilmstrip = (val: number) => val > 0 && val > lastFrameMs ? lastFrameMs : val;
 
       return {
         frames,
@@ -329,9 +338,9 @@ export class LighthouseService extends EventEmitter {
           fcp: clampToFilmstrip(m.firstContentfulPaint   ?? 0),
           lcp: clampToFilmstrip(m.largestContentfulPaint ?? 0),
           tti: clampToFilmstrip(m.interactive            ?? 0),
-          // TBT is a duration, not a point on the timeline — do not clamp
           tbt: m.totalBlockingTime ?? 0,
         },
+        networkOffsetMs,
       };
     } catch {
       return null;

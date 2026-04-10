@@ -157,8 +157,6 @@ function emptyResourceSummary(): ResourceSummary {
   };
 }
 
-// ─── LHR Audit Item shapes (Lighthouse details are loosely typed) ─────────────
-
 interface LhrNetworkItem {
   url?: string;
   resourceType?: string;
@@ -166,13 +164,16 @@ interface LhrNetworkItem {
   resourceSize?: number;
   statusCode?: number;
   mimeType?: string;
+  rendererStartTime?: number;
+  networkRequestTime?: number;
+  networkEndTime?: number;
 }
 
 interface LhrSummaryItem {
   resourceType?: string;
   requestCount?: number;
   transferSize?: number;
-  size?: number;          // resourceSize in older LH versions
+  size?: number;
   resourceSize?: number;
 }
 
@@ -195,7 +196,6 @@ export function parseResources(lhr: LhrResult, pageUrl: string): ParsedResources
   const networkItems = getTableItems<LhrNetworkItem>(lhr, 'network-requests');
   const summaryItems = getTableItems<LhrSummaryItem>(lhr, 'resource-summary');
 
-  // ── Parse network requests ──────────────────────────────────────────────
   const requests: NetworkRequest[] = networkItems
     .filter((item) => Boolean(item.url))
     .map((item): NetworkRequest => {
@@ -212,15 +212,20 @@ export function parseResources(lhr: LhrResult, pageUrl: string): ParsedResources
         isThirdParty:    isThirdParty(url, pageUrl),
         detectedLibrary: detectLibrary(url),
         isCritical:      checkCritical(resourceType, transferSize),
+        startTime: Math.round(item.rendererStartTime ?? 0),
+        endTime: (() => {
+          const raw = item.networkEndTime ?? 0;
+          return (raw > 0 && raw < 600_000) ? Math.round(raw) : 0;
+        })(),
+        ttfb:                Math.max(0, Math.round((item.networkRequestTime ?? item.rendererStartTime ?? 0) - (item.rendererStartTime ?? 0))),
+        contentDownloadTime: Math.max(0, Math.round((item.networkEndTime ?? 0) - (item.networkRequestTime ?? item.networkEndTime ?? 0))),
       };
     });
 
-  // ── Build summary from resource-summary audit (prefer LH's own aggregates) ─
   const summary = emptyResourceSummary();
 
   if (summaryItems.length > 0) {
     for (const item of summaryItems) {
-      // LH resource-summary includes a 'total' row — skip it, we recompute below
       if ((item.resourceType ?? '').toLowerCase() === 'total') continue;
       const type = normalizeResourceType(item.resourceType ?? 'other');
       const bucket = summary[type] ?? summary.other;
@@ -230,7 +235,6 @@ export function parseResources(lhr: LhrResult, pageUrl: string): ParsedResources
       bucket.resourceSize  += (item.resourceSize ?? item.size ?? 0);
     }
   } else {
-    // Fallback: aggregate from network requests
     for (const req of requests) {
       const bucket = summary[req.resourceType];
       bucket.requestCount++;
@@ -251,11 +255,9 @@ export function parseResources(lhr: LhrResult, pageUrl: string): ParsedResources
     emptyTypeSummary(),
   );
 
-  // ── Derived views ────────────────────────────────────────────────────────
   const thirdPartyRequests = requests.filter((r) => r.isThirdParty);
   const jsFiles = requests.filter((r) => r.resourceType === 'script');
 
-  // Deduplicate detected libraries, keep the largest transfer size per name
   const libraryMap = new Map<string, DetectedLibrary>();
   for (const req of requests) {
     if (!req.detectedLibrary) continue;

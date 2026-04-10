@@ -2,9 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo, forwardRef } f
 import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useTimelineContext } from '../context/TimelineContext';
 import type { TimelineData, TimelineFrame } from '../types';
-
-// ─── Config ───────────────────────────────────────────────────────────────────
 
 const METRICS = [
   { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    border: 'border-blue-500',    hex: '#3b82f6' },
@@ -18,8 +17,6 @@ const THUMB_W = 192;
 const THUMB_H = 140;
 const TICK_MS = 50;
 const EMPTY_DOTS: MetricEntry[] = [];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): number {
   let lo = 0, hi = frames.length - 1;
@@ -36,21 +33,11 @@ function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): numbe
 
 const fmt = (ms: number) => (ms / 1000).toFixed(2) + 's';
 
-// ─── LiveTime — subscribes to a MotionValue, re-renders only itself ───────────
-
-const LiveTime = memo(function LiveTime({
-  value,
-  className,
-}: {
-  value: MotionValue<number>;
-  className?: string;
-}) {
+const LiveTime = memo(function LiveTime({ value, className }: { value: MotionValue<number>; className?: string }) {
   const [display, setDisplay] = useState(() => fmt(value.get()));
   useEffect(() => value.on('change', v => setDisplay(fmt(v))), [value]);
   return <span className={className}>{display}</span>;
 });
-
-// ─── TimelineHeader — memo; only re-renders on isPlaying / playSpeed ──────────
 
 interface HeaderProps {
   isPlaying:    boolean;
@@ -69,13 +56,9 @@ const TimelineHeader = memo(function TimelineHeader({
     <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/60">
       <Film className="w-4 h-4 text-slate-400 flex-shrink-0" />
       <span className="text-sm font-semibold text-slate-200 tracking-tight">Performance Timeline</span>
-
-      {/* Current time — updates without re-rendering this component */}
       <LiveTime value={motionMs} className="ml-1 font-mono text-sm font-bold text-white tabular-nums" />
       <span className="text-slate-600 text-xs font-mono">/ {fmt(maxTiming)}</span>
-
       <div className="ml-auto flex items-center gap-2 flex-wrap">
-        {/* Metric legend */}
         {METRICS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
@@ -87,8 +70,6 @@ const TimelineHeader = memo(function TimelineHeader({
             </div>
           );
         })}
-
-        {/* Play / Pause */}
         <button
           onClick={onTogglePlay}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-semibold transition-colors"
@@ -96,8 +77,6 @@ const TimelineHeader = memo(function TimelineHeader({
           {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           {isPlaying ? 'Pause' : 'Play'}
         </button>
-
-        {/* Speed */}
         <div className="flex rounded-md overflow-hidden border border-slate-700 text-xs font-mono">
           {([0.5, 1] as const).map(s => (
             <button
@@ -116,21 +95,10 @@ const TimelineHeader = memo(function TimelineHeader({
   );
 });
 
-// ─── MainViewer — memo; re-renders only when activeIndex changes ───────────────
-
-interface ViewerProps {
-  frame:         TimelineFrame;
-  activeMetrics: MetricEntry[];
-}
-
-const MainViewer = memo(function MainViewer({ frame, activeMetrics }: ViewerProps) {
+const MainViewer = memo(function MainViewer({ frame, activeMetrics }: { frame: TimelineFrame; activeMetrics: MetricEntry[] }) {
   return (
-    <div
-      className="relative w-full rounded-lg overflow-hidden bg-slate-950 border border-slate-700/50"
-      style={{ aspectRatio: '16/9' }}
-    >
+    <div className="relative w-full rounded-lg overflow-hidden bg-slate-950 border border-slate-700/50" style={{ aspectRatio: '16/9' }}>
       <img src={frame.data} alt="" className="w-full h-full object-contain" draggable={false} />
-
       {activeMetrics.length > 0 && (
         <div className="absolute top-3 left-3 flex gap-1.5">
           {activeMetrics.map(m => (
@@ -140,15 +108,12 @@ const MainViewer = memo(function MainViewer({ frame, activeMetrics }: ViewerProp
           ))}
         </div>
       )}
-
       <div className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm border border-slate-700/60 text-slate-100 text-xs font-mono px-2.5 py-1 rounded-md tabular-nums">
         {fmt(frame.timing)}
       </div>
     </div>
   );
 });
-
-// ─── ScrubberSection — memo; motion.div drives DOM directly, never re-renders ──
 
 interface ScrubberProps {
   maxTiming: number;
@@ -158,15 +123,12 @@ interface ScrubberProps {
   onScrub:   (ms: number) => void;
 }
 
-const ScrubberSection = memo(function ScrubberSection({
-  maxTiming, metrics, motionMs, rangeRef, onScrub,
-}: ScrubberProps) {
+const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, motionMs, rangeRef, onScrub }: ScrubberProps) {
   const progressWidth = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
   const playheadLeft  = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
 
   return (
     <div className="space-y-1">
-      {/* Metric labels above the track */}
       <div className="relative h-7">
         {METRICS.map(m => {
           const val = metrics[m.key];
@@ -188,18 +150,9 @@ const ScrubberSection = memo(function ScrubberSection({
         })}
       </div>
 
-      {/* Track */}
       <div className="relative h-5 flex items-center">
-        {/* Background */}
         <div className="absolute inset-x-0 h-1.5 rounded-full bg-slate-700" />
-
-        {/* Progress fill — GPU driven */}
-        <motion.div
-          className="absolute left-0 h-1.5 rounded-full bg-slate-400"
-          style={{ width: progressWidth }}
-        />
-
-        {/* Metric tick marks */}
+        <motion.div className="absolute left-0 h-1.5 rounded-full bg-slate-400" style={{ width: progressWidth }} />
         {METRICS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
@@ -211,14 +164,10 @@ const ScrubberSection = memo(function ScrubberSection({
             />
           );
         })}
-
-        {/* Playhead — GPU driven */}
         <motion.div
           className="absolute w-4 h-4 rounded-full bg-white shadow-lg border-2 border-slate-300 -translate-x-1/2 z-20"
           style={{ left: playheadLeft }}
         />
-
-        {/* Invisible range input — uncontrolled, value updated via ref */}
         <input
           ref={rangeRef}
           type="range"
@@ -231,7 +180,6 @@ const ScrubberSection = memo(function ScrubberSection({
         />
       </div>
 
-      {/* Time axis */}
       <div className="flex justify-between text-[10px] font-mono text-slate-500 tabular-nums px-0.5">
         <span>0s</span>
         <span>{fmt(maxTiming)}</span>
@@ -239,8 +187,6 @@ const ScrubberSection = memo(function ScrubberSection({
     </div>
   );
 });
-
-// ─── FilmstripItem — memo + forwardRef; re-renders only when isActive flips ───
 
 interface FilmstripItemProps {
   frame:      TimelineFrame;
@@ -250,10 +196,7 @@ interface FilmstripItemProps {
 }
 
 const FilmstripItem = memo(
-  forwardRef<HTMLDivElement, FilmstripItemProps>(function FilmstripItem(
-    { frame, isActive, metricDots, onClick },
-    ref,
-  ) {
+  forwardRef<HTMLDivElement, FilmstripItemProps>(function FilmstripItem({ frame, isActive, metricDots, onClick }, ref) {
     return (
       <div ref={ref} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-2 cursor-pointer group">
         <div
@@ -265,7 +208,6 @@ const FilmstripItem = memo(
           style={{ width: THUMB_W, height: THUMB_H }}
         >
           <img src={frame.data} alt="" className="w-full h-full object-cover" draggable={false} />
-
           {metricDots.length > 0 && (
             <div className="absolute top-1.5 right-1.5 flex gap-1">
               {metricDots.map(m => (
@@ -274,7 +216,6 @@ const FilmstripItem = memo(
             </div>
           )}
         </div>
-
         <span className={`text-xs font-mono tabular-nums transition-colors duration-75 ${
           isActive ? 'text-white font-semibold' : 'text-slate-500 group-hover:text-slate-400'
         }`}>
@@ -284,8 +225,6 @@ const FilmstripItem = memo(
     );
   }),
 );
-
-// ─── Skeleton ────────────────────────────────────────────────────────────────
 
 export function PerformanceTimelineSkeleton() {
   return (
@@ -308,21 +247,25 @@ export function PerformanceTimelineSkeleton() {
   );
 }
 
-// ─── Root Component ───────────────────────────────────────────────────────────
-
 export function PerformanceTimeline({ timelineData }: { timelineData: TimelineData }) {
-  const { frames, metrics } = timelineData;
+  const { frames, metrics, networkOffsetMs } = timelineData;
   const maxTiming = frames.at(-1)!.timing;
 
-  // ── State (minimal — drives only structural changes) ─────────────────────
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying,   setIsPlaying]   = useState(false);
   const [playSpeed,   setPlaySpeed]   = useState<0.5 | 1>(1);
 
-  // ── MotionValue — drives scrubber DOM directly, zero React renders ────────
+  const timelineCtx = useTimelineContext();
+
+  useEffect(() => {
+    if (timelineCtx) {
+      timelineCtx.maxTiming.current     = maxTiming;
+      timelineCtx.networkOffset.current = networkOffsetMs;
+    }
+  }, [timelineCtx, maxTiming, networkOffsetMs]);
+
   const motionMs = useMotionValue(0);
 
-  // ── Refs ─────────────────────────────────────────────────────────────────
   const rangeRef     = useRef<HTMLInputElement>(null);
   const thumbRefs    = useRef<(HTMLDivElement | null)[]>([]);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -354,17 +297,13 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
   }, [frames]);
 
   useEffect(() => {
-    thumbRefs.current[activeIndex]?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center',
-    });
+    thumbRefs.current[activeIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [activeIndex]);
 
   function handleScrubInternal(ms: number) {
     motionMs.set(ms);
+    timelineCtx?.motionMs.set(ms);
     if (rangeRef.current) rangeRef.current.value = String(ms);
-
     const newIdx = findClosestFrameIndex(frames, ms);
     if (newIdx !== prevIdxRef.current) {
       prevIdxRef.current = newIdx;
@@ -384,7 +323,6 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
       handleScrubInternal(0);
     }
     setIsPlaying(true);
-
     intervalRef.current = setInterval(() => {
       playTimeRef.current = Math.min(playTimeRef.current + TICK_MS * playSpeedRef.current, maxTiming);
       handleScrubInternal(playTimeRef.current);
@@ -408,12 +346,6 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
     handleScrubInternal(ms);
   }, [stopPlayback]);
 
-  const activeFrame   = frames[activeIndex];
-  const activeMetrics = frameMetricDots[activeIndex];
-
-
-  console.log('render');
-  
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-900 overflow-hidden select-none">
       <TimelineHeader
@@ -425,10 +357,8 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
         onTogglePlay={togglePlay}
         onSpeedChange={setPlaySpeed}
       />
-
       <div className="p-4 space-y-4">
-        <MainViewer frame={activeFrame} activeMetrics={activeMetrics} />
-
+        <MainViewer frame={frames[activeIndex]} activeMetrics={frameMetricDots[activeIndex]} />
         <ScrubberSection
           maxTiming={maxTiming}
           metrics={metrics}
@@ -436,12 +366,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
           rangeRef={rangeRef}
           onScrub={handleScrub}
         />
-
-        {/* Filmstrip */}
-        <div
-          className="flex gap-2.5 overflow-x-auto pb-2"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}
-        >
+        <div className="flex gap-2.5 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}>
           {frames.map((frame, i) => (
             <FilmstripItem
               key={i}
