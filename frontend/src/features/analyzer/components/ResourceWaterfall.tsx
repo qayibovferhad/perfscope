@@ -194,21 +194,25 @@ const WaterfallRow = memo(function WaterfallRow({
 
 function TimeAxis({ axisMs }: { axisMs: number }) {
   return (
-    <div className="flex" style={{ paddingLeft: LEFT_W }}>
-      <div className="flex-1 relative h-6">
-        {Array.from({ length: TICK_COUNT + 1 }, (_, i) => (
-          <div
-            key={i}
-            className="absolute flex flex-col items-center -translate-x-1/2"
-            style={{ left: `${(i / TICK_COUNT) * 100}%` }}
-          >
-            <div className="h-2 w-px bg-slate-700" />
-            <span className="text-[9px] font-mono text-slate-500 tabular-nums mt-0.5">
-              {fmtMs((i / TICK_COUNT) * axisMs)}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="relative h-6">
+      {Array.from({ length: TICK_COUNT + 1 }, (_, i) => (
+        <div
+          key={i}
+          className={`absolute flex flex-col ${
+            i === 0
+              ? 'items-start translate-x-0'
+              : i === TICK_COUNT
+              ? 'items-end -translate-x-full'
+              : 'items-center -translate-x-1/2'
+          }`}
+          style={{ left: `${(i / TICK_COUNT) * 100}%` }}
+        >
+          <div className="h-2 w-px bg-slate-700" />
+          <span className="text-[9px] font-mono text-slate-500 tabular-nums mt-0.5">
+            {fmtMs((i / TICK_COUNT) * axisMs)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

@@ -13,8 +13,8 @@ const METRICS = [
 
 type MetricEntry = (typeof METRICS)[number];
 
-const THUMB_W = 192;
-const THUMB_H = 140;
+const THUMB_W = 148;
+const THUMB_H = 108;
 const TICK_MS = 50;
 const EMPTY_DOTS: MetricEntry[] = [];
 

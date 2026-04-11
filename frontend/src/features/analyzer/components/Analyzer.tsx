@@ -14,10 +14,11 @@ import { ProgressStepper } from './ProgressStepper';
 import { ResourceBreakdown } from './ResourceBreakdown';
 import { ResourceWaterfall } from './ResourceWaterfall';
 import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
+import { TimelineWaterfall } from './TimelineWaterfall';
 import { TimelineProvider } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import type { AnalysisResult } from '../types';
+import type { AnalysisResult, ParsedResources } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,29 @@ function StreamingMetrics({ partials }: { partials: PartialMap }) {
   );
 }
 
+// ─── Resources Alert ─────────────────────────────────────────────────────────
+
+function ResourcesAlert({ resources }: { resources: ParsedResources }) {
+  const criticalCount = resources.requests.filter(r => r.isCritical).length;
+  const hasAdvice = resources.requests.some(r => r.isCritical && r.advice);
+  if (criticalCount === 0) return null;
+  return (
+    <Alert variant="warning">
+      <AlertTriangle className="w-4 h-4" />
+      <AlertTitle>
+        {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
+      </AlertTitle>
+      <AlertDescription>
+        {criticalCount === 1
+          ? 'One resource exceeds the recommended size limit.'
+          : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
+        {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
+        For accurate results, analyze your production URL — dev builds serve unminified assets.
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Analyzer() {
@@ -97,7 +121,7 @@ export function Analyzer() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">PerfScope</h1>
@@ -198,42 +222,35 @@ export function Analyzer() {
 
             {(data.timelineData || data.resources) && (
               <TimelineProvider>
-                {data.timelineData && (
+                {data.timelineData && data.resources ? (
+                  /* Unified component when both are available */
                   <section>
-                    <SectionTitle>Performance Timeline</SectionTitle>
-                    <PerformanceTimeline timelineData={data.timelineData} />
-                  </section>
-                )}
-
-                {data.resources && (
-                  <section className="space-y-3">
-                    <SectionTitle>Resources</SectionTitle>
-                    {(() => {
-                      const criticalCount = data.resources!.requests.filter((r) => r.isCritical).length;
-                      const hasAdvice = data.resources!.requests.some((r) => r.isCritical && r.advice);
-                      if (criticalCount === 0) return null;
-                      return (
-                        <Alert variant="warning">
-                          <AlertTriangle className="w-4 h-4" />
-                          <AlertTitle>
-                            {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
-                          </AlertTitle>
-                          <AlertDescription>
-                            {criticalCount === 1
-                              ? 'One resource exceeds the recommended size limit.'
-                              : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
-                            {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
-                        For accurate results, analyze your production URL — dev builds serve unminified assets.
-                          </AlertDescription>
-                        </Alert>
-                      );
-                    })()}
-                    <ResourceWaterfall
+                    <TimelineWaterfall
+                      timelineData={data.timelineData}
                       resources={data.resources}
-                      timelineDuration={data.timelineData?.frames.at(-1)?.timing}
                     />
-                    <ResourceBreakdown resources={data.resources} />
+                    <div className="mt-3">
+                      <ResourceBreakdown resources={data.resources} />
+                    </div>
                   </section>
+                ) : (
+                  /* Fallback: only one is available */
+                  <div className="space-y-8">
+                    {data.timelineData && (
+                      <section>
+                        <SectionTitle>Performance Timeline</SectionTitle>
+                        <PerformanceTimeline timelineData={data.timelineData} />
+                      </section>
+                    )}
+                    {data.resources && (
+                      <section className="space-y-3">
+                        <SectionTitle>Resources</SectionTitle>
+                        <ResourcesAlert resources={data.resources} />
+                        <ResourceWaterfall resources={data.resources} />
+                        <ResourceBreakdown resources={data.resources} />
+                      </section>
+                    )}
+                  </div>
                 )}
               </TimelineProvider>
             )}
