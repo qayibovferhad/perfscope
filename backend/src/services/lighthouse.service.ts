@@ -9,6 +9,7 @@ const workerExt = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
 const WORKER_URL = new URL(`./lighthouse.worker${workerExt}`, import.meta.url);
 import { v4 as uuidv4 } from 'uuid';
 import { parseResources } from './resource-parser.js';
+import { parseFlameChart } from './flame-chart-parser.js';
 import type {
   AnalysisResult,
   AnalysisProgress,
@@ -18,6 +19,7 @@ import type {
   CategoryPartial,
   TimelineData,
   TimelineFrame,
+  FlameChartData,
 } from '../types/index.js';
 
 type ActiveAnalysis =
@@ -47,7 +49,14 @@ export class LighthouseService extends EventEmitter {
     try {
       browser = await this.launchBrowser(analysisId);
       const runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES);
-      return this.buildFullResult(analysisId, url, [runnerResult.lhr]);
+      const maxMs    = runnerResult.lhr.audits?.['interactive']?.numericValue ?? 15000;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyResult = runnerResult as any;
+      const traces = anyResult?.artifacts?.Trace    // Lighthouse v12
+        ?? anyResult?.artifacts?.traces             // Lighthouse v10/v11
+        ?? anyResult?.artifacts?.defaultPass;
+      const flameChartData = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
+      return this.buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
       this.emitProgress(analysisId, 'error', 0, `Error: ${message}`);
@@ -84,27 +93,29 @@ export class LighthouseService extends EventEmitter {
       this.emitProgress(analysisId, stage, progress, msg);
     };
 
-    const run1 = this.runLighthouseInWorker(url, ['seo', 'best-practices'], workers).then((lhr) => {
+    const run1 = this.runLighthouseInWorker(url, ['seo', 'best-practices'], workers).then((res): typeof res => {
       for (const cat of ['seo', 'best-practices'] as AnalysisCategory[]) {
-        onPartial(this.buildPartial(analysisId, cat, lhr));
+        onPartial(this.buildPartial(analysisId, cat, res.lhr));
       }
       advance(27, 'auditing', 'SEO & Best Practices complete');
-      return lhr;
+      return res;
     });
 
-    const run2 = this.runLighthouseInWorker(url, ['performance', 'accessibility'], workers).then((lhr) => {
+    const run2 = this.runLighthouseInWorker(url, ['performance', 'accessibility'], workers).then((res): typeof res => {
       for (const cat of ['performance', 'accessibility'] as AnalysisCategory[]) {
-        onPartial(this.buildPartial(analysisId, cat, lhr));
+        onPartial(this.buildPartial(analysisId, cat, res.lhr));
       }
       advance(27, 'auditing', 'Performance & Accessibility complete');
-      return lhr;
+      return res;
     });
 
-    const [lhr1, lhr2] = await Promise.all([run1, run2]);
+    const [res1, res2] = await Promise.all([run1, run2]);
 
     this.activeAnalyses.delete(analysisId);
     this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
-    const full = this.buildFullResult(analysisId, url, [lhr1, lhr2]);
+    // performance worker is run2; flame chart data comes from there
+    const flameData = res2.flameChartData ?? res1.flameChartData;
+    const full = this.buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData);
     this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
     return full;
   }
@@ -113,7 +124,7 @@ export class LighthouseService extends EventEmitter {
     url: string,
     categories: string[],
     workerRegistry: Worker[],
-  ): Promise<RunnerResult['lhr']> {
+  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData }> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
         workerData: { url, categories },
@@ -123,9 +134,17 @@ export class LighthouseService extends EventEmitter {
       // Register immediately so cancelAnalysis can terminate this worker
       workerRegistry.push(worker);
 
-      worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; message?: string }) => {
-        if (msg.type === 'result' && msg.lhr) resolve(msg.lhr);
-        else reject(new Error(msg.message ?? 'Worker returned no result'));
+      worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; compactTrace?: unknown; traceMaxMs?: number; message?: string }) => {
+        if (msg.type === 'result' && msg.lhr) {
+          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData } = { lhr: msg.lhr };
+          if (msg.compactTrace && msg.traceMaxMs != null) {
+            const fc = parseFlameChart(msg.compactTrace, msg.traceMaxMs);
+            if (fc) r.flameChartData = fc;
+          }
+          resolve(r);
+        } else {
+          reject(new Error(msg.message ?? 'Worker returned no result'));
+        }
       });
       worker.once('error', reject);
       worker.once('exit', (code) => {
@@ -216,6 +235,7 @@ export class LighthouseService extends EventEmitter {
     id: string,
     url: string,
     lhrs: RunnerResult['lhr'][],
+    flameChartData?: FlameChartData,
   ): AnalysisResult {
     // Merge all category LHRs into one result
     const scores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 };
@@ -255,6 +275,7 @@ export class LighthouseService extends EventEmitter {
       const timeline = this.parseTimeline(performanceLhr);
       if (timeline) result.timelineData = timeline;
     }
+    if (flameChartData) result.flameChartData = flameChartData;
     return result;
   }
 

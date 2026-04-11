@@ -107,6 +107,24 @@ export interface TimelineData {
   networkOffsetMs: number;
 }
 
+export type FlameCategory = 'scripting' | 'rendering' | 'painting' | 'other';
+
+export interface FlameChartEvent {
+  name: string;
+  category: FlameCategory;
+  startMs: number;
+  durationMs: number;
+  depth: number;
+  url?: string;
+  isLongTask: boolean;
+}
+
+export interface FlameChartData {
+  events: FlameChartEvent[];
+  maxDepth: number;
+  durationMs: number;
+}
+
 export interface AnalysisResult {
   id: string;
   url: string;
@@ -117,6 +135,7 @@ export interface AnalysisResult {
   resources?: ParsedResources;
   aiInsights?: string;
   timelineData?: TimelineData;
+  flameChartData?: FlameChartData;
 }
 
 export interface AnalysisProgress {

@@ -19,8 +19,10 @@ import {
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useTimelineContext } from '../context/TimelineContext';
+import { FlameChart } from './FlameChart';
 import type {
   ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
+  FlameChartData,
 } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -242,9 +244,11 @@ const WaterfallRow = memo(function WaterfallRow({
 export function TimelineWaterfall({
   resources,
   timelineData,
+  flameChartData,
 }: {
-  resources:    ParsedResources;
-  timelineData: TimelineData;
+  resources:       ParsedResources;
+  timelineData:    TimelineData;
+  flameChartData?: FlameChartData;
 }) {
   const ctx = useTimelineContext();
   const { frames, metrics, networkOffsetMs } = timelineData;
@@ -676,6 +680,27 @@ export function TimelineWaterfall({
             </button>
           )}
         </div>
+
+        {/* ── CPU FLAME CHART ────────────────────────────────────────────── */}
+        {flameChartData && flameChartData.events.length > 0 && (
+          <div className="border-t border-slate-700/60">
+            {/* Section header */}
+            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800/60 bg-slate-900/60">
+              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="text-sm font-semibold text-slate-200 tracking-tight">CPU Main Thread</span>
+              <span className="text-[11px] text-slate-500 font-mono tabular-nums">
+                {flameChartData.events.length} events ·{' '}
+                {flameChartData.events.filter(e => e.isLongTask).length} long tasks ·{' '}
+                {flameChartData.maxDepth} call stack levels
+              </span>
+            </div>
+            <FlameChart
+              data={flameChartData}
+              axisMs={axisMs}
+              leftW={LEFT_W}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

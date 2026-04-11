@@ -223,18 +223,17 @@ export function Analyzer() {
             {(data.timelineData || data.resources) && (
               <TimelineProvider>
                 {data.timelineData && data.resources ? (
-                  /* Unified component when both are available */
                   <section>
                     <TimelineWaterfall
                       timelineData={data.timelineData}
                       resources={data.resources}
+                      flameChartData={data.flameChartData}
                     />
                     <div className="mt-3">
                       <ResourceBreakdown resources={data.resources} />
                     </div>
                   </section>
                 ) : (
-                  /* Fallback: only one is available */
                   <div className="space-y-8">
                     {data.timelineData && (
                       <section>
