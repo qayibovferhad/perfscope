@@ -44,7 +44,6 @@ export function registerAnalysisSocket(io: TypedServer): void {
       try {
         const result = await lighthouseService.analyzeStreaming(url, onPartial);
 
-        console.log(result,'result');
         
         // AI insights + resource advice (parallel when both available)
         if (AiService.isAvailable()) {

@@ -189,6 +189,35 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
     });
   }, [ctx]);
 
+  // ── Waterfall hover → highlight matching flame events (imperative D3) ────────
+  useEffect(() => {
+    
+    if (!ctx) return;
+    return ctx.hoveredUrl.on('change', (url: string) => {
+      console.log(url,'url');
+      
+      if (!svgRef.current) return;
+      d3.select(svgRef.current)
+        .selectAll<SVGRectElement, FlameChartEvent>('rect.fc-event')
+        .attr('opacity', d => {
+          if (!url) return 0.88;
+          console.log( d.url === url);
+          
+          return d.url === url ? 1 : 0.12;
+        })
+        .attr('stroke', d => {
+          if (!url) return d.isLongTask ? '#ef4444' : 'none';
+          if (d.url === url) return '#e2e8f0';
+          return d.isLongTask ? '#ef4444' : 'none';
+        })
+        .attr('stroke-width', d => {
+          if (!url) return d.isLongTask ? 1.5 : 0;
+          if (d.url === url) return 2;
+          return d.isLongTask ? 1.5 : 0;
+        });
+    });
+  }, [ctx]);
+
   return (
     <div ref={wrapRef} className="relative select-none">
       <svg ref={svgRef} style={{ display: 'block', width: '100%', height: svgH }} />
