@@ -177,6 +177,7 @@ const WaterfallRow = memo(function WaterfallRow({
   req, index, axisMs, isSelected, onSelect, onDeselect,
   rowRef, ttfbRef, dlRef, shimRef,
 }: RowProps) {
+  const ctx  = useTimelineContext();
   const cfg  = TYPE_CFG[req.resourceType];
   const Icon = cfg.icon;
   const name = resourceFilename(req.url);
@@ -192,6 +193,8 @@ const WaterfallRow = memo(function WaterfallRow({
         ref={rowRef}
         data-state="loaded"
         onClick={onSelect}
+        onMouseEnter={() => ctx?.hoveredUrl.set(req.url)}
+        onMouseLeave={() => ctx?.hoveredUrl.set('')}
         className={cn(
           'flex items-center border-b border-slate-800/60 cursor-pointer select-none',
           'transition-[opacity,filter] duration-200 ease-in-out',
@@ -430,6 +433,9 @@ export function TimelineWaterfall({
     );
   }
 
+
+  console.log(rows,'rows');
+  
   // axis row height: thumbnail + tick mark + label + top padding
   const AXIS_ROW_H = 8 + THUMB_H + 6 + 16 + 8; // 83px
 
