@@ -15,10 +15,11 @@ import { ResourceBreakdown } from './ResourceBreakdown';
 import { ResourceWaterfall } from './ResourceWaterfall';
 import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
 import { TimelineWaterfall } from './TimelineWaterfall';
-import { TimelineProvider } from '../context/TimelineContext';
+import { ChordDiagram } from './ChordDiagram';
+import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import type { AnalysisResult, ParsedResources } from '../types';
+import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,15 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       {children}
     </h2>
   );
+}
+
+/** Connects ChordDiagram hover to TimelineContext.hoveredUrl */
+function ChordDiagramWithContext({ graph }: { graph: DependencyGraph }) {
+  const ctx = useTimelineContext();
+  const handleHover = ctx
+    ? (url: string) => ctx.hoveredUrl.set(url)
+    : undefined;
+  return <ChordDiagram graph={graph} onResourceHover={handleHover} />;
 }
 
 const SCORE_ITEMS: { categoryKey: string; label: ScoreLabel; scoreKey: keyof AnalysisResult['scores'] }[] = [
@@ -220,7 +230,7 @@ export function Analyzer() {
               <MetricsGrid metrics={data.metrics} />
             </section>
 
-            {(data.timelineData || data.resources) && (
+            {(data.timelineData || data.resources || data.dependencyGraph) && (
               <TimelineProvider>
                 {data.timelineData && data.resources ? (
                   <section>
@@ -250,6 +260,17 @@ export function Analyzer() {
                       </section>
                     )}
                   </div>
+                )}
+
+                {data.dependencyGraph && data.dependencyGraph.links.length > 0 && (
+                  <section className="mt-8">
+                    <SectionTitle>Resource Dependency Chain</SectionTitle>
+                    <Card>
+                      <CardContent className="pt-4 pb-2 px-2">
+                        <ChordDiagramWithContext graph={data.dependencyGraph} />
+                      </CardContent>
+                    </Card>
+                  </section>
                 )}
               </TimelineProvider>
             )}

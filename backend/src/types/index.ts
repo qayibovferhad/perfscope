@@ -108,6 +108,7 @@ export interface AnalysisResult {
   aiInsights?: string;
   timelineData?: TimelineData;
   flameChartData?: FlameChartData;
+  dependencyGraph?: DependencyGraph;
 }
 
 // ─── Resource Analysis Types ─────────────────────────────────────────────────
@@ -176,6 +177,30 @@ export interface ParsedResources {
   jsFiles: NetworkRequest[];
   /** Deduplicated list of detected libraries */
   detectedLibraries: DetectedLibrary[];
+}
+
+// ─── Dependency Graph Types ──────────────────────────────────────────────────
+
+export interface DependencyNode {
+  url: string;
+  /** Short filename label, e.g. "jquery.min.js" */
+  label: string;
+  resourceType: ResourceType;
+  transferSize: number;
+}
+
+export interface DependencyLink {
+  /** URL of the initiating resource */
+  source: string;
+  /** URL of the loaded resource */
+  target: string;
+  /** transferSize of the target resource in bytes */
+  transferSize: number;
+}
+
+export interface DependencyGraph {
+  nodes: DependencyNode[];
+  links: DependencyLink[];
 }
 
 // ─── API Request / Response Types ───────────────────────────────────────────

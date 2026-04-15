@@ -125,6 +125,24 @@ export interface FlameChartData {
   durationMs: number;
 }
 
+export interface DependencyNode {
+  url: string;
+  label: string;
+  resourceType: ResourceType;
+  transferSize: number;
+}
+
+export interface DependencyLink {
+  source: string;
+  target: string;
+  transferSize: number;
+}
+
+export interface DependencyGraph {
+  nodes: DependencyNode[];
+  links: DependencyLink[];
+}
+
 export interface AnalysisResult {
   id: string;
   url: string;
@@ -136,6 +154,7 @@ export interface AnalysisResult {
   aiInsights?: string;
   timelineData?: TimelineData;
   flameChartData?: FlameChartData;
+  dependencyGraph?: DependencyGraph;
 }
 
 export interface AnalysisProgress {

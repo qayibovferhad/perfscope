@@ -19,8 +19,24 @@ interface WorkerInput { url: string; categories: string[] }
 // (avoids worker-thread module-resolution issues with tsx's .js→.ts remapping)
 type CompactTrace = { defaultPass: { traceEvents: unknown[] } };
 
+interface InitiatorData {
+  type: string;
+  url?: string;
+  stack?: {
+    callFrames?: Array<{ url?: string }>;
+    parent?: { callFrames?: Array<{ url?: string }> };
+  };
+}
+type CompactNetworkEvent = { url: string; initiator: InitiatorData };
+
 type WorkerMessage =
-  | { type: 'result'; lhr: RunnerResult['lhr']; compactTrace?: CompactTrace; traceMaxMs?: number }
+  | {
+      type: 'result';
+      lhr: RunnerResult['lhr'];
+      compactTrace?: CompactTrace;
+      traceMaxMs?: number;
+      networkEvents?: CompactNetworkEvent[];
+    }
   | { type: 'error'; message: string };
 
 /** Resolve traceEvents from whatever shape Lighthouse provides.
@@ -87,6 +103,37 @@ function extractCompactTrace(traces: unknown): CompactTrace | undefined {
   }
 }
 
+/** Extract Network.requestWillBeSent events from Lighthouse artifacts (inside worker). */
+function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] | undefined {
+  try {
+    if (!artifacts || typeof artifacts !== 'object') return undefined;
+    const obj = artifacts as Record<string, unknown>;
+
+    let log: unknown[] | undefined;
+    if (Array.isArray(obj['DevtoolsLog'])) {
+      log = obj['DevtoolsLog'] as unknown[];
+    } else {
+      const logs = obj['devtoolsLogs'] as Record<string, unknown> | undefined;
+      if (logs && Array.isArray(logs['defaultPass'])) {
+        log = logs['defaultPass'] as unknown[];
+      }
+    }
+    if (!log || log.length === 0) return undefined;
+
+    type CdpEntry = { method: string; params?: { request?: { url?: string }; initiator?: InitiatorData } };
+    const events: CompactNetworkEvent[] = [];
+    for (const entry of log as CdpEntry[]) {
+      if (entry.method !== 'Network.requestWillBeSent') continue;
+      const url = entry.params?.request?.url;
+      const initiator = entry.params?.initiator;
+      if (url && initiator) events.push({ url, initiator });
+    }
+    return events.length > 0 ? events : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function run(): Promise<void> {
   const { url, categories } = workerData as WorkerInput;
   const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
@@ -104,12 +151,13 @@ async function run(): Promise<void> {
 
     if (!result) throw new Error('Lighthouse returned no result');
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const arts = (result as any)?.artifacts;
+
     // Extract a compact trace when running the performance categories
     let compactTrace: CompactTrace | undefined;
     let traceMaxMs: number | undefined;
     if (categories.includes('performance')) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const arts = (result as any)?.artifacts;
       // Lighthouse v12: artifacts.Trace (capital T, direct trace object)
       // Lighthouse v10/11: artifacts.traces (lowercase, nested by pass name)
       const traces = arts?.Trace ?? arts?.traces ?? arts?.defaultPass;
@@ -119,9 +167,15 @@ async function run(): Promise<void> {
       }
     }
 
-    const msg: WorkerMessage = (compactTrace && traceMaxMs != null)
-      ? { type: 'result', lhr: result.lhr, compactTrace, traceMaxMs }
-      : { type: 'result', lhr: result.lhr };
+    // Extract compact devtools network events for dependency graph (all categories)
+    const networkEvents = extractCompactNetworkEvents(arts);
+
+    const msg: WorkerMessage = {
+      type: 'result',
+      lhr: result.lhr,
+      ...(compactTrace && traceMaxMs != null ? { compactTrace, traceMaxMs } : {}),
+      ...(networkEvents ? { networkEvents } : {}),
+    };
     parentPort!.postMessage(msg);
   } finally {
     await browser.close().catch(() => void 0);
