@@ -10,6 +10,7 @@ const WORKER_URL = new URL(`./lighthouse.worker${workerExt}`, import.meta.url);
 import { v4 as uuidv4 } from 'uuid';
 import { parseResources } from './resource-parser.js';
 import { parseFlameChart } from './flame-chart-parser.js';
+import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkEvent } from './dependency-parser.js';
 import type {
   AnalysisResult,
   AnalysisProgress,
@@ -56,7 +57,7 @@ export class LighthouseService extends EventEmitter {
         ?? anyResult?.artifacts?.traces             // Lighthouse v10/v11
         ?? anyResult?.artifacts?.defaultPass;
       const flameChartData = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
-      return this.buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData);
+      return this.buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, undefined, anyResult?.artifacts);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
       this.emitProgress(analysisId, 'error', 0, `Error: ${message}`);
@@ -115,7 +116,9 @@ export class LighthouseService extends EventEmitter {
     this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
     // performance worker is run2; flame chart data comes from there
     const flameData = res2.flameChartData ?? res1.flameChartData;
-    const full = this.buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData);
+    // Use network events from whichever worker captured them (prefer run2 for performance)
+    const networkEvents = res2.networkEvents ?? res1.networkEvents;
+    const full = this.buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData, networkEvents);
     this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
     return full;
   }
@@ -124,7 +127,7 @@ export class LighthouseService extends EventEmitter {
     url: string,
     categories: string[],
     workerRegistry: Worker[],
-  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData }> {
+  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; networkEvents?: CompactNetworkEvent[] }> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
         workerData: { url, categories },
@@ -134,13 +137,14 @@ export class LighthouseService extends EventEmitter {
       // Register immediately so cancelAnalysis can terminate this worker
       workerRegistry.push(worker);
 
-      worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; compactTrace?: unknown; traceMaxMs?: number; message?: string }) => {
+      worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; compactTrace?: unknown; traceMaxMs?: number; networkEvents?: CompactNetworkEvent[]; message?: string }) => {
         if (msg.type === 'result' && msg.lhr) {
-          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData } = { lhr: msg.lhr };
+          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; networkEvents?: CompactNetworkEvent[] } = { lhr: msg.lhr };
           if (msg.compactTrace && msg.traceMaxMs != null) {
             const fc = parseFlameChart(msg.compactTrace, msg.traceMaxMs);
             if (fc) r.flameChartData = fc;
           }
+          if (msg.networkEvents) r.networkEvents = msg.networkEvents;
           resolve(r);
         } else {
           reject(new Error(msg.message ?? 'Worker returned no result'));
@@ -236,6 +240,8 @@ export class LighthouseService extends EventEmitter {
     url: string,
     lhrs: RunnerResult['lhr'][],
     flameChartData?: FlameChartData,
+    networkEvents?: CompactNetworkEvent[],
+    artifacts?: unknown,
   ): AnalysisResult {
     // Merge all category LHRs into one result
     const scores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 };
@@ -274,6 +280,16 @@ export class LighthouseService extends EventEmitter {
       result.resources = parseResources(performanceLhr, url);
       const timeline = this.parseTimeline(performanceLhr);
       if (timeline) result.timelineData = timeline;
+
+      // Build dependency graph — prefer worker-extracted events, fall back to raw artifacts
+      const requests = result.resources?.requests ?? [];
+      if (networkEvents && networkEvents.length > 0) {
+        const graph = parseDependencies(networkEvents, requests);
+        if (graph) result.dependencyGraph = graph;
+      } else if (artifacts) {
+        const graph = parseDependenciesFromArtifacts(artifacts, requests);
+        if (graph) result.dependencyGraph = graph;
+      }
     }
     if (flameChartData) result.flameChartData = flameChartData;
     return result;
