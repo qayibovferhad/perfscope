@@ -88,12 +88,13 @@ function extractCompactTrace(traces: unknown): CompactTrace | undefined {
     if (!top) return undefined;
     const pid = top[0];
 
-    // Keep only events relevant to parseFlameChart
+    // Keep events relevant to parseFlameChart AND parseHeapMemory
     const filtered = (raw as E[]).filter(e =>
       e.pid === pid && (
-        (e.ph === 'X' && e.dur && e.dur >= 100) ||  // complete events ≥ 0.1ms
+        (e.ph === 'X' && e.dur && e.dur >= 100) ||  // complete events ≥ 0.1ms (flame chart)
         e.name === 'navigationStart' ||
-        e.name === 'thread_name'
+        e.name === 'thread_name' ||
+        e.name === 'UpdateCounters'                  // heap memory tracking (ph='I')
       ),
     );
 

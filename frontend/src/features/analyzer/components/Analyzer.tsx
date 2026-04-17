@@ -16,6 +16,7 @@ import { ResourceWaterfall } from './ResourceWaterfall';
 import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
 import { TimelineWaterfall } from './TimelineWaterfall';
 import { ChordDiagram } from './ChordDiagram';
+import { HeapMemoryChart } from './HeapMemoryChart';
 import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -273,6 +274,17 @@ export function Analyzer() {
                   </section>
                 )}
               </TimelineProvider>
+            )}
+
+            {data.heapMemoryData && (
+              <section>
+                <SectionTitle>JS Heap Memory</SectionTitle>
+                <Card>
+                  <CardContent className="pt-4 pb-4 px-4">
+                    <HeapMemoryChart data={data.heapMemoryData} />
+                  </CardContent>
+                </Card>
+              </section>
             )}
 
             {data.audits.length > 0 && (
