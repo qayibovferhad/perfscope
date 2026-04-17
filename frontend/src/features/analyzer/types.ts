@@ -107,6 +107,18 @@ export interface TimelineData {
   networkOffsetMs: number;
 }
 
+export interface HeapMemoryPoint {
+  timeMs: number;
+  heapMb: number;
+  isGC:   boolean;
+}
+
+export interface HeapMemoryData {
+  points:    HeapMemoryPoint[];
+  averageMb: number;
+  peakMb:    number;
+}
+
 export type FlameCategory = 'scripting' | 'rendering' | 'painting' | 'other';
 
 export interface FlameChartEvent {
@@ -153,8 +165,9 @@ export interface AnalysisResult {
   resources?: ParsedResources;
   aiInsights?: string;
   timelineData?: TimelineData;
-  flameChartData?: FlameChartData;
+  flameChartData?:  FlameChartData;
   dependencyGraph?: DependencyGraph;
+  heapMemoryData?:  HeapMemoryData;
 }
 
 export interface AnalysisProgress {

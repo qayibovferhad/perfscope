@@ -10,6 +10,7 @@ const WORKER_URL = new URL(`./lighthouse.worker${workerExt}`, import.meta.url);
 import { v4 as uuidv4 } from 'uuid';
 import { parseResources } from './resource-parser.js';
 import { parseFlameChart } from './flame-chart-parser.js';
+import { parseHeapMemory } from './heap-memory-parser.js';
 import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkEvent } from './dependency-parser.js';
 import type {
   AnalysisResult,
@@ -21,6 +22,7 @@ import type {
   TimelineData,
   TimelineFrame,
   FlameChartData,
+  HeapMemoryData,
 } from '../types/index.js';
 
 type ActiveAnalysis =
@@ -56,8 +58,9 @@ export class LighthouseService extends EventEmitter {
       const traces = anyResult?.artifacts?.Trace    // Lighthouse v12
         ?? anyResult?.artifacts?.traces             // Lighthouse v10/v11
         ?? anyResult?.artifacts?.defaultPass;
-      const flameChartData = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
-      return this.buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, undefined, anyResult?.artifacts);
+      const flameChartData  = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
+      const heapMemoryData  = traces ? (parseHeapMemory(traces) ?? undefined)        : undefined;
+      return this.buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, heapMemoryData, undefined, anyResult?.artifacts);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
       this.emitProgress(analysisId, 'error', 0, `Error: ${message}`);
@@ -114,11 +117,12 @@ export class LighthouseService extends EventEmitter {
 
     this.activeAnalyses.delete(analysisId);
     this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
-    // performance worker is run2; flame chart data comes from there
-    const flameData = res2.flameChartData ?? res1.flameChartData;
+    // performance worker is run2; flame chart and heap data come from there
+    const flameData    = res2.flameChartData  ?? res1.flameChartData;
+    const heapData     = res2.heapMemoryData  ?? res1.heapMemoryData;
     // Use network events from whichever worker captured them (prefer run2 for performance)
     const networkEvents = res2.networkEvents ?? res1.networkEvents;
-    const full = this.buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData, networkEvents);
+    const full = this.buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData, heapData, networkEvents);
     this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
     return full;
   }
@@ -127,7 +131,7 @@ export class LighthouseService extends EventEmitter {
     url: string,
     categories: string[],
     workerRegistry: Worker[],
-  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; networkEvents?: CompactNetworkEvent[] }> {
+  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; heapMemoryData?: HeapMemoryData; networkEvents?: CompactNetworkEvent[] }> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
         workerData: { url, categories },
@@ -139,10 +143,12 @@ export class LighthouseService extends EventEmitter {
 
       worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; compactTrace?: unknown; traceMaxMs?: number; networkEvents?: CompactNetworkEvent[]; message?: string }) => {
         if (msg.type === 'result' && msg.lhr) {
-          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; networkEvents?: CompactNetworkEvent[] } = { lhr: msg.lhr };
+          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; heapMemoryData?: HeapMemoryData; networkEvents?: CompactNetworkEvent[] } = { lhr: msg.lhr };
           if (msg.compactTrace && msg.traceMaxMs != null) {
             const fc = parseFlameChart(msg.compactTrace, msg.traceMaxMs);
             if (fc) r.flameChartData = fc;
+            const hm = parseHeapMemory(msg.compactTrace);
+            if (hm) r.heapMemoryData = hm;
           }
           if (msg.networkEvents) r.networkEvents = msg.networkEvents;
           resolve(r);
@@ -240,6 +246,7 @@ export class LighthouseService extends EventEmitter {
     url: string,
     lhrs: RunnerResult['lhr'][],
     flameChartData?: FlameChartData,
+    heapMemoryData?: HeapMemoryData,
     networkEvents?: CompactNetworkEvent[],
     artifacts?: unknown,
   ): AnalysisResult {
@@ -291,7 +298,8 @@ export class LighthouseService extends EventEmitter {
         if (graph) result.dependencyGraph = graph;
       }
     }
-    if (flameChartData) result.flameChartData = flameChartData;
+    if (flameChartData)  result.flameChartData  = flameChartData;
+    if (heapMemoryData)  result.heapMemoryData  = heapMemoryData;
     return result;
   }
 

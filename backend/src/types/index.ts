@@ -77,6 +77,23 @@ export interface TimelineData {
   networkOffsetMs: number;
 }
 
+// ─── Heap Memory Types ───────────────────────────────────────────────────────
+
+export interface HeapMemoryPoint {
+  /** Milliseconds from navigationStart */
+  timeMs: number;
+  /** JS heap used size in megabytes */
+  heapMb: number;
+  /** True when a sharp memory drop (GC) was detected at this point */
+  isGC: boolean;
+}
+
+export interface HeapMemoryData {
+  points:    HeapMemoryPoint[];
+  averageMb: number;
+  peakMb:    number;
+}
+
 // ─── Flame Chart Types ───────────────────────────────────────────────────────
 
 export type FlameCategory = 'scripting' | 'rendering' | 'painting' | 'other';
@@ -109,6 +126,7 @@ export interface AnalysisResult {
   timelineData?: TimelineData;
   flameChartData?: FlameChartData;
   dependencyGraph?: DependencyGraph;
+  heapMemoryData?: HeapMemoryData;
 }
 
 // ─── Resource Analysis Types ─────────────────────────────────────────────────
