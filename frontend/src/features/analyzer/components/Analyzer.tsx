@@ -231,7 +231,7 @@ export function Analyzer() {
               <MetricsGrid metrics={data.metrics} />
             </section>
 
-            {(data.timelineData || data.resources || data.dependencyGraph) && (
+            {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData) && (
               <TimelineProvider>
                 {data.timelineData && data.resources ? (
                   <section>
@@ -273,18 +273,17 @@ export function Analyzer() {
                     </Card>
                   </section>
                 )}
+                {data.heapMemoryData && (
+                  <section className="mt-8">
+                    <SectionTitle>JS Heap Memory</SectionTitle>
+                    <Card>
+                      <CardContent className="pt-4 pb-4 px-4">
+                        <HeapMemoryChart data={data.heapMemoryData} />
+                      </CardContent>
+                    </Card>
+                  </section>
+                )}
               </TimelineProvider>
-            )}
-
-            {data.heapMemoryData && (
-              <section>
-                <SectionTitle>JS Heap Memory</SectionTitle>
-                <Card>
-                  <CardContent className="pt-4 pb-4 px-4">
-                    <HeapMemoryChart data={data.heapMemoryData} />
-                  </CardContent>
-                </Card>
-              </section>
             )}
 
             {data.audits.length > 0 && (
