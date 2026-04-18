@@ -108,9 +108,10 @@ export interface TimelineData {
 }
 
 export interface HeapMemoryPoint {
-  timeMs: number;
-  heapMb: number;
-  isGC:   boolean;
+  timeMs:    number;
+  heapMb:    number;
+  isGC:      boolean;
+  domNodes?: number;
 }
 
 export interface HeapMemoryData {
