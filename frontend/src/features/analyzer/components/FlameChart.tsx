@@ -6,7 +6,6 @@ import type { FlameChartData, FlameChartEvent } from '../types';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ROW_H = 16;
-const LONG_TASK_MS = 50;
 
 const COLORS: Record<FlameChartEvent['category'], string> = {
   scripting: '#FFCD42',
