@@ -115,6 +115,7 @@ export interface InteractionEvent {
   startMs: number;
   inputDelayMs: number;
   processingTimeMs: number;
+  presentationDelayMs: number;
   totalDurationMs: number;
   targetElement: string;
   blockingFunctionName: string | null;
@@ -122,8 +123,15 @@ export interface InteractionEvent {
   isINP: boolean;
 }
 
+export interface LongTaskSegment {
+  startMs: number;
+  durationMs: number;
+  topFunctionName?: string;
+}
+
 export interface InteractionData {
   events: InteractionEvent[];
+  longTasks: LongTaskSegment[];
   inpMs: number;
   avgInputDelayMs: number;
   totalBlockingTimeMs: number;

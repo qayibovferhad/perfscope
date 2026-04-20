@@ -7,6 +7,8 @@ interface TimelineContextValue {
   hoveredUrl:    MotionValue<string>;
   maxTiming:     React.MutableRefObject<number>;
   networkOffset: React.MutableRefObject<number>;
+  /** Registered by FlameChart; call to programmatically zoom to a time range */
+  zoomFnRef:     React.MutableRefObject<((startMs: number, endMs: number) => void) | null>;
 }
 
 const TimelineCtx = createContext<TimelineContextValue | null>(null);
@@ -16,8 +18,9 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const hoveredUrl    = useMotionValue('');
   const maxTiming     = useRef(0);
   const networkOffset = useRef(0);
+  const zoomFnRef     = useRef<((startMs: number, endMs: number) => void) | null>(null);
   return (
-    <TimelineCtx.Provider value={{ motionMs, hoveredUrl, maxTiming, networkOffset }}>
+    <TimelineCtx.Provider value={{ motionMs, hoveredUrl, maxTiming, networkOffset, zoomFnRef }}>
       {children}
     </TimelineCtx.Provider>
   );
