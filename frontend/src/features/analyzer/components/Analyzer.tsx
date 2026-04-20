@@ -17,6 +17,7 @@ import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceT
 import { TimelineWaterfall } from './TimelineWaterfall';
 import { ChordDiagram } from './ChordDiagram';
 import { HeapMemoryChart } from './HeapMemoryChart';
+import { InteractionTimeline } from './InteractionTimeline';
 import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -131,6 +132,9 @@ export function Analyzer() {
     analyze(normalized);
   };
 
+
+  console.log(data,'data');
+  
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
@@ -231,7 +235,7 @@ export function Analyzer() {
               <MetricsGrid metrics={data.metrics} />
             </section>
 
-            {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData) && (
+            {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData || data.interactionData) && (
               <TimelineProvider>
                 {data.timelineData && data.resources ? (
                   <section>
@@ -281,6 +285,12 @@ export function Analyzer() {
                         <HeapMemoryChart data={data.heapMemoryData} />
                       </CardContent>
                     </Card>
+                  </section>
+                )}
+                {data.interactionData && (
+                  <section className="mt-8">
+                    <SectionTitle>Interaction Responsiveness (FID / INP)</SectionTitle>
+                    <InteractionTimeline data={data.interactionData} />
                   </section>
                 )}
               </TimelineProvider>
