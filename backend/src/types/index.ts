@@ -77,6 +77,40 @@ export interface TimelineData {
   networkOffsetMs: number;
 }
 
+// ─── Interaction / INP Types ─────────────────────────────────────────────────
+
+export interface InteractionEvent {
+  id: string;
+  /** Event type: 'click', 'keydown', 'pointerdown', etc. */
+  type: string;
+  /** Milliseconds from navigationStart when the event was dispatched */
+  startMs: number;
+  /** Estimated time the main thread was blocked before handling this input */
+  inputDelayMs: number;
+  /** Duration of the EventDispatch handler on the main thread */
+  processingTimeMs: number;
+  /** inputDelayMs + processingTimeMs */
+  totalDurationMs: number;
+  /** CSS-like selector of the target element, e.g. 'BUTTON#submit-btn' */
+  targetElement: string;
+  /** Name of the JS function / script that caused the most blocking, if identifiable */
+  blockingFunctionName: string | null;
+  /** True when the event type is a direct user input (click, keydown, pointer…) */
+  isUserInput: boolean;
+  /** True for the interaction with the highest totalDurationMs (INP candidate) */
+  isINP: boolean;
+}
+
+export interface InteractionData {
+  events: InteractionEvent[];
+  /** Max totalDurationMs across all interactions (INP value) */
+  inpMs: number;
+  /** Average inputDelayMs across all interactions */
+  avgInputDelayMs: number;
+  /** Sum of all long-task blocking time beyond 50ms threshold */
+  totalBlockingTimeMs: number;
+}
+
 // ─── Heap Memory Types ───────────────────────────────────────────────────────
 
 export interface HeapMemoryPoint {
@@ -127,6 +161,7 @@ export interface AnalysisResult {
   flameChartData?: FlameChartData;
   dependencyGraph?: DependencyGraph;
   heapMemoryData?: HeapMemoryData;
+  interactionData?: InteractionData;
 }
 
 // ─── Resource Analysis Types ─────────────────────────────────────────────────

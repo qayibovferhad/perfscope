@@ -107,6 +107,28 @@ export interface TimelineData {
   networkOffsetMs: number;
 }
 
+// ─── Interaction / INP Types ─────────────────────────────────────────────────
+
+export interface InteractionEvent {
+  id: string;
+  type: string;
+  startMs: number;
+  inputDelayMs: number;
+  processingTimeMs: number;
+  totalDurationMs: number;
+  targetElement: string;
+  blockingFunctionName: string | null;
+  isUserInput: boolean;
+  isINP: boolean;
+}
+
+export interface InteractionData {
+  events: InteractionEvent[];
+  inpMs: number;
+  avgInputDelayMs: number;
+  totalBlockingTimeMs: number;
+}
+
 export interface HeapMemoryPoint {
   timeMs:    number;
   heapMb:    number;
@@ -169,6 +191,7 @@ export interface AnalysisResult {
   flameChartData?:  FlameChartData;
   dependencyGraph?: DependencyGraph;
   heapMemoryData?:  HeapMemoryData;
+  interactionData?: InteractionData;
 }
 
 export interface AnalysisProgress {
