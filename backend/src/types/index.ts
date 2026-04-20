@@ -81,7 +81,7 @@ export interface TimelineData {
 
 export interface InteractionEvent {
   id: string;
-  /** Event type: 'click', 'keydown', 'pointerdown', etc. */
+  /** Event type: 'click', 'keydown', 'load', etc. */
   type: string;
   /** Milliseconds from navigationStart when the event was dispatched */
   startMs: number;
@@ -89,7 +89,9 @@ export interface InteractionEvent {
   inputDelayMs: number;
   /** Duration of the EventDispatch handler on the main thread */
   processingTimeMs: number;
-  /** inputDelayMs + processingTimeMs */
+  /** Time from processing end to the next frame paint */
+  presentationDelayMs: number;
+  /** inputDelayMs + processingTimeMs + presentationDelayMs */
   totalDurationMs: number;
   /** CSS-like selector of the target element, e.g. 'BUTTON#submit-btn' */
   targetElement: string;
@@ -101,8 +103,19 @@ export interface InteractionEvent {
   isINP: boolean;
 }
 
+export interface LongTaskSegment {
+  /** Milliseconds from navigationStart */
+  startMs: number;
+  /** Duration in milliseconds */
+  durationMs: number;
+  /** Longest-running function / event name found inside this task */
+  topFunctionName?: string;
+}
+
 export interface InteractionData {
   events: InteractionEvent[];
+  /** Long tasks (≥ 50ms) on the main thread — used to draw blocking zones */
+  longTasks: LongTaskSegment[];
   /** Max totalDurationMs across all interactions (INP value) */
   inpMs: number;
   /** Average inputDelayMs across all interactions */

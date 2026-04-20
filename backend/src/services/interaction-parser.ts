@@ -88,6 +88,11 @@ export function parseInteractions(traces: unknown): InteractionData | null {
       .filter(e => (e.dur ?? 0) >= 50_000)
       .map(e => ({ startTs: e.ts, endTs: e.ts + (e.dur ?? 0), durationMs: (e.dur ?? 0) / 1000 }));
 
+    // Paint events for presentation delay (next frame after event ends)
+    const paintEvents = mainEvents
+      .filter(e => e.name === 'Paint' || e.name === 'CompositeLayers' || e.name === 'Commit')
+      .sort((a, b) => a.ts - b.ts);
+
     // ── 3. Collect ALL EventDispatch events with meaningful duration ────────────
     // Lighthouse traces rarely have real user clicks — page lifecycle events
     // (load, DOMContentLoaded, scroll, readystatechange…) are captured instead.
@@ -135,8 +140,7 @@ export function parseInteractions(traces: unknown): InteractionData | null {
         firstClass  ? `.${firstClass}`  : '',
       ].filter(Boolean).join('') || 'unknown';
 
-      // Blocking function: find the deepest (longest-running) FunctionCall or script
-      // evaluation that ran entirely within this EventDispatch window
+      // Blocking function: find the longest-running FunctionCall inside this EventDispatch
       const eventEndTs = e.ts + (e.dur ?? 0);
       let blockingFunctionName: string | null = null;
       let bestDur = 0;
@@ -159,7 +163,6 @@ export function parseInteractions(traces: unknown): InteractionData | null {
 
         if (fnName && fnName !== 'undefined') {
           bestDur = dur;
-          // Strip full URL; keep only basename + function
           try {
             const url = new URL(fnName);
             blockingFunctionName = url.pathname.split('/').at(-1) ?? fnName;
@@ -169,17 +172,24 @@ export function parseInteractions(traces: unknown): InteractionData | null {
         }
       }
 
+      // Presentation Delay: time from end of processing to the next paint
+      const nextPaint  = paintEvents.find(p => p.ts >= eventEndTs);
+      const presentationDelayMs = nextPaint
+        ? Math.min(Math.max(0, (nextPaint.ts - eventEndTs) / 1000), 100)
+        : 16;  // fallback: one frame at 60fps
+
       return {
-        id:                 `interaction-${i}`,
+        id:                   `interaction-${i}`,
         type,
         startMs,
         inputDelayMs,
-        processingTimeMs:   processingMs,
-        totalDurationMs:    inputDelayMs + processingMs,
+        processingTimeMs:     processingMs,
+        presentationDelayMs,
+        totalDurationMs:      inputDelayMs + processingMs + presentationDelayMs,
         targetElement,
         blockingFunctionName,
-        isUserInput:        USER_INPUT_TYPES.has(type),
-        isINP:              false,
+        isUserInput:          USER_INPUT_TYPES.has(type),
+        isINP:                false,
       };
     });
 
@@ -197,7 +207,35 @@ export function parseInteractions(traces: unknown): InteractionData | null {
 
     const avgInputDelayMs = interactions.reduce((s, ev) => s + ev.inputDelayMs, 0) / interactions.length;
 
-    return { events: interactions, inpMs, avgInputDelayMs, totalBlockingTimeMs };
+    // Annotate each long task with the heaviest function running inside it
+    const TASK_WRAPPERS = new Set(['RunTask', 'Task', 'TaskQueueManager::ProcessTaskFromWorkQueue', 'ThreadControllerImpl::RunTask']);
+    const longTaskSegments = longTasks.map(lt => {
+      let topFunctionName: string | undefined;
+      let bestDur = 0;
+      for (const ev of mainEvents) {
+        if (ev.ts < lt.startTs || ev.ts >= lt.endTs) continue;
+        if (TASK_WRAPPERS.has(ev.name)) continue;
+        const dur = ev.dur ?? 0;
+        if (dur <= bestDur) continue;
+        const evArgs = ev.args as Record<string, unknown> | undefined;
+        const evData = evArgs?.data as Record<string, unknown> | undefined;
+        const raw = String(evData?.functionName ?? evData?.url ?? evData?.scriptName ?? evArgs?.url ?? ev.name).trim();
+        if (!raw || raw === 'undefined') continue;
+        bestDur = dur;
+        try {
+          topFunctionName = new URL(raw).pathname.split('/').at(-1) ?? raw;
+        } catch {
+          topFunctionName = raw;
+        }
+      }
+      return {
+        startMs:    Math.max(0, (lt.startTs - navStartTs) / 1000),
+        durationMs: lt.durationMs,
+        ...(topFunctionName ? { topFunctionName } : {}),
+      };
+    });
+
+    return { events: interactions, longTasks: longTaskSegments, inpMs, avgInputDelayMs, totalBlockingTimeMs };
   } catch {
     return null;
   }

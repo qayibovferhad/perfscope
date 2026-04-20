@@ -63,8 +63,9 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
   const svgRef       = useRef<SVGSVGElement>(null);
   const tooltipRef   = useRef<HTMLDivElement>(null);
   const ghostRef     = useRef<SVGLineElement | null>(null);
-  const zoomRef      = useRef<d3.ZoomTransform>(d3.zoomIdentity);
-  const xScaleRef    = useRef<d3.ScaleLinear<number, number>>(d3.scaleLinear());
+  const zoomRef         = useRef<d3.ZoomTransform>(d3.zoomIdentity);
+  const xScaleRef       = useRef<d3.ScaleLinear<number, number>>(d3.scaleLinear());
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const ctx          = useTimelineContext();
 
   const maxDisplayDepth = Math.min(data.maxDepth, 20);
@@ -169,11 +170,30 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
       });
 
     svg.call(zoom);
+    zoomBehaviorRef.current = zoom;
 
     // Double-click resets zoom
     svg.on('dblclick.zoom', () => {
       svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
     });
+
+    // Register programmatic zoom-to-range for external callers (e.g. InteractionTimeline)
+    if (ctx?.zoomFnRef) {
+      ctx.zoomFnRef.current = (startMs: number, endMs: number) => {
+        const svgEl = svgRef.current;
+        const zoomB = zoomBehaviorRef.current;
+        if (!svgEl || !zoomB) return;
+        const cW = svgEl.clientWidth - leftW;
+        if (cW <= 0) return;
+        const xs = xScaleRef.current;
+        const spanPx = xs(endMs) - xs(startMs);
+        if (spanPx <= 0) return;
+        const k = cW / spanPx;
+        const t = d3.zoomIdentity.scale(k).translate(-xs(startMs), 0);
+        d3.select(svgEl).transition().duration(350).call(zoomB.transform, t);
+        zoomRef.current = t;
+      };
+    }
 
     return () => { tip.style.display = 'none'; };
   }, [data, axisMs, leftW, svgH, maxDisplayDepth, ctx]);
