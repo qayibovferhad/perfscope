@@ -13,8 +13,14 @@ interface TimelineContextValue {
 
 const TimelineCtx = createContext<TimelineContextValue | null>(null);
 
-export function TimelineProvider({ children }: { children: ReactNode }) {
-  const motionMs      = useMotionValue(0);
+interface TimelineProviderProps {
+  children: ReactNode;
+  sharedMotionMs?: MotionValue<number>;
+}
+
+export function TimelineProvider({ children, sharedMotionMs }: TimelineProviderProps) {
+  const ownMotionMs   = useMotionValue(0);
+  const motionMs      = sharedMotionMs ?? ownMotionMs;
   const hoveredUrl    = useMotionValue('');
   const maxTiming     = useRef(0);
   const networkOffset = useRef(0);

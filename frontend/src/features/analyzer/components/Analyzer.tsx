@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, GitCompareArrows, Download } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -132,15 +133,39 @@ export function Analyzer() {
     analyze(normalized);
   };
 
+  const handleExport = () => {
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `perfscope-${new URL(data.url).hostname}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  console.log(data,'data');
-  
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">PerfScope</h1>
-        <p className="text-sm text-muted-foreground">Analyze any website's performance with Lighthouse</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">PerfScope</h1>
+          <p className="text-sm text-muted-foreground">Analyze any website's performance with Lighthouse</p>
+        </div>
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
+          {data && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport}>
+              <Download className="w-3.5 h-3.5" />
+              Export JSON
+            </Button>
+          )}
+          <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+            <Link to="/compare">
+              <GitCompareArrows className="w-3.5 h-3.5" />
+              Compare Mode
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Form */}
