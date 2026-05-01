@@ -61,7 +61,9 @@ function truncate(s: string, max = 14) {
 
 // ─── Executive Summary ────────────────────────────────────────────────────────
 
-function HealthSummary({ inpMs, tbtMs }: { inpMs: number; tbtMs: number }) {
+function HealthSummary({ inpMs, tbtMs, dark = false }: {
+  inpMs: number; tbtMs: number; dark?: boolean;
+}) {
   const issues: Array<{ icon: string; text: string; color: string; bg: string }> = [];
 
   if (tbtMs > 500) {
@@ -69,7 +71,7 @@ function HealthSummary({ inpMs, tbtMs }: { inpMs: number; tbtMs: number }) {
       icon: '⚠️',
       text: 'High Main Thread blocking detected. UI might feel laggy during load.',
       color: '#f97316',
-      bg:   'rgba(249,115,22,0.08)',
+      bg:   dark ? 'transparent' : 'rgba(249,115,22,0.08)',
     });
   }
   if (inpMs > 200) {
@@ -77,13 +79,18 @@ function HealthSummary({ inpMs, tbtMs }: { inpMs: number; tbtMs: number }) {
       icon: '🔴',
       text: 'Critical interaction delay found. User clicks are being held up by long tasks.',
       color: '#ef4444',
-      bg:   'rgba(239,68,68,0.08)',
+      bg:   dark ? 'transparent' : 'rgba(239,68,68,0.08)',
     });
   }
 
   if (issues.length === 0) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3">
+      <div
+        className={dark
+          ? 'flex items-center gap-2.5 rounded-lg border px-4 py-3'
+          : 'flex items-center gap-2.5 rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3'}
+        style={dark ? { borderColor: 'rgba(34,197,94,0.40)' } : undefined}
+      >
         <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
         <p className="text-sm text-green-400">
           ✅ Responsiveness is within healthy limits.
@@ -98,7 +105,10 @@ function HealthSummary({ inpMs, tbtMs }: { inpMs: number; tbtMs: number }) {
         <div
           key={i}
           className="flex items-start gap-2.5 rounded-lg border px-4 py-3"
-          style={{ borderColor: issue.color + '30', background: issue.bg }}
+          style={{
+            borderColor: dark ? issue.color + '55' : issue.color + '30',
+            background:  issue.bg,
+          }}
         >
           <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" style={{ color: issue.color }} />
           <p className="text-sm" style={{ color: issue.color }}>
@@ -163,7 +173,13 @@ function StackedBar({ ev }: { ev: InteractionEvent }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const InteractionTimeline = memo(function InteractionTimeline({ data }: { data: InteractionData }) {
+export const InteractionTimeline = memo(function InteractionTimeline({
+  data,
+  darkVariant = false,
+}: {
+  data: InteractionData;
+  darkVariant?: boolean;
+}) {
   const wrapRef    = useRef<HTMLDivElement>(null);
   const svgRef     = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -432,7 +448,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({ data }: {
     <div className="space-y-4">
 
       {/* ── Executive Summary ─────────────────────────────────────────────── */}
-      <HealthSummary inpMs={data.inpMs} tbtMs={data.totalBlockingTimeMs} />
+      <HealthSummary inpMs={data.inpMs} tbtMs={data.totalBlockingTimeMs} dark={darkVariant} />
 
       {/* ── Score Cards ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">

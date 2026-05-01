@@ -5,8 +5,9 @@ import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
-const PAGE_BG   = '#0f172a';
-const ROW_HOVER = 'rgba(255,255,255,0.04)';
+const PANEL_BG  = 'rgba(17,24,39,0.72)';
+const ROW_BASE  = 'rgba(255,255,255,0.025)';
+const ROW_HOVER = 'rgba(255,255,255,0.055)';
 const DIVIDER   = 'rgba(255,255,255,0.09)';
 
 const T_HEX  = '#818cf8';   // indigo-400
@@ -199,9 +200,9 @@ function MirrorBar({ tW, cW, tWins, cWins }: {
             borderRadius: '99px 0 0 99px',
             background: tWins
               ? `linear-gradient(270deg, ${T_HEX} 0%, #c7d2fe 100%)`
-              : `${T_HEX}30`,
+              : `${T_HEX}28`,
             boxShadow: tWins
-              ? `0 0 12px ${T_GLOW}, 0 0 24px rgba(129,140,248,0.45)`
+              ? `0 0 15px rgba(139,92,246,0.55), 0 0 30px rgba(139,92,246,0.30)`
               : 'none',
           }}
         />
@@ -229,9 +230,9 @@ function MirrorBar({ tW, cW, tWins, cWins }: {
             borderRadius: '0 99px 99px 0',
             background: cWins
               ? `linear-gradient(90deg, ${C_HEX} 0%, #fed7aa 100%)`
-              : `${C_HEX}30`,
+              : `${C_HEX}28`,
             boxShadow: cWins
-              ? `0 0 12px ${C_GLOW}, 0 0 24px rgba(251,146,60,0.45)`
+              ? `0 0 15px rgba(249,115,22,0.55), 0 0 30px rgba(249,115,22,0.30)`
               : 'none',
           }}
         />
@@ -294,9 +295,12 @@ function MetricRow({ def, tVal, cVal, index }: {
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: 0.08 + index * 0.055 }}
       className="grid items-center gap-x-4 px-5 py-3.5 rounded-xl transition-colors"
-      style={{ gridTemplateColumns: 'minmax(110px,160px) 80px 1fr 80px minmax(80px,150px)' }}
+      style={{
+        gridTemplateColumns: 'minmax(110px,160px) 80px 1fr 80px minmax(80px,150px)',
+        background: ROW_BASE,
+      }}
       onMouseEnter={e => (e.currentTarget.style.background = ROW_HOVER)}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      onMouseLeave={e => (e.currentTarget.style.background = ROW_BASE)}
     >
       {/* Metric name + info */}
       <div className="flex items-center gap-1.5">
@@ -323,9 +327,10 @@ function MetricRow({ def, tVal, cVal, index }: {
       {/* Your value */}
       <div className="text-right">
         <span
-          className="text-[14px] font-extrabold tabular-nums"
+          className="text-[14px] font-extrabold tabular-nums antialiased"
           style={{
-            color: tWins ? '#ffffff' : 'rgba(255,255,255,0.32)',
+            color: tWins ? '#ffffff' : 'rgba(255,255,255,0.30)',
+            letterSpacing: '0.02em',
             textShadow: tWins ? `0 0 14px ${T_GLOW}, 0 0 28px rgba(129,140,248,0.35)` : 'none',
           }}
         >
@@ -339,9 +344,10 @@ function MetricRow({ def, tVal, cVal, index }: {
       {/* Rival value */}
       <div className="text-left">
         <span
-          className="text-[14px] font-extrabold tabular-nums"
+          className="text-[14px] font-extrabold tabular-nums antialiased"
           style={{
-            color: cWins ? '#ffffff' : 'rgba(255,255,255,0.32)',
+            color: cWins ? '#ffffff' : 'rgba(255,255,255,0.30)',
+            letterSpacing: '0.02em',
             textShadow: cWins ? `0 0 14px ${C_GLOW}, 0 0 28px rgba(251,146,60,0.35)` : 'none',
           }}
         >
@@ -379,7 +385,13 @@ export function ComparisonScoreboard({
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: PAGE_BG, border: '1px solid rgba(255,255,255,0.08)' }}
+      style={{
+        background:     PANEL_BG,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+      }}
     >
       {/* Header */}
       <div

@@ -6,6 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { useComparisonSide } from './hooks/useComparisonSide';
 import { SideInputBar } from './components/SideInputBar';
 import { ComparisonScoreboard } from './components/ComparisonScoreboard';
+import { DeepComparison } from './components/DeepComparison';
 import { ComparisonSide } from './components/ComparisonSide';
 
 function normalize(url: string): string {
@@ -47,7 +48,19 @@ export function ComparisonPage() {
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 py-8 space-y-8">
+    <div className="relative min-h-screen" style={{ background: '#030712' }}>
+
+      {/* ── Mesh gradient blobs ── */}
+      <div className="pointer-events-none fixed top-0 left-0 w-[700px] h-[700px]" style={{
+        background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.13) 0%, transparent 62%)',
+        zIndex: 0,
+      }} />
+      <div className="pointer-events-none fixed bottom-0 right-0 w-[700px] h-[700px]" style={{
+        background: 'radial-gradient(ellipse at 100% 100%, rgba(249,115,22,0.10) 0%, transparent 62%)',
+        zIndex: 0,
+      }} />
+
+    <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-8 space-y-8">
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -178,6 +191,13 @@ export function ComparisonPage() {
         )}
       </AnimatePresence>
 
+      {/* ── Deep Comparison ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {bothLoaded && target.data && competitor.data && (
+          <DeepComparison target={target.data} competitor={competitor.data} />
+        )}
+      </AnimatePresence>
+
       {/* ── Side-by-side visualizations ──────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
@@ -187,7 +207,7 @@ export function ComparisonPage() {
             transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
             className="space-y-4"
           >
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-5 lg:grid-cols-2">
               <ComparisonSide
                 side="target"
                 data={target.data}
@@ -209,6 +229,7 @@ export function ComparisonPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 }

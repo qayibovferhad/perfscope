@@ -1,14 +1,33 @@
 import type { MotionValue } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
-import { Card, CardContent } from '@/shared/components/ui/card';
-import { MetricsGrid } from '../../analyzer/components/MetricsGrid';
 import { InteractionTimeline } from '../../analyzer/components/InteractionTimeline';
 import { HeapMemoryChart } from '../../analyzer/components/HeapMemoryChart';
 import { TimelineProvider } from '../../analyzer/context/TimelineContext';
 import { ScoreCard } from '../../analyzer/components/ScoreCard';
+import { CompareMetricsGrid } from './CompareMetricsGrid';
 import type { AnalysisResult } from '../../analyzer/types';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 type Side = 'target' | 'competitor';
+
+const SIDE_LABELS: Record<Side, string>  = { target: 'Your Site', competitor: 'Competitor' };
+const SIDE_COLORS: Record<Side, string>  = { target: '#6366f1',   competitor: '#f97316'    };
+
+const SCORE_ITEMS = [
+  { label: 'Performance'    as const, key: 'performance'   as const },
+  { label: 'Accessibility'  as const, key: 'accessibility'  as const },
+  { label: 'Best Practices' as const, key: 'bestPractices'  as const },
+  { label: 'SEO'            as const, key: 'seo'            as const },
+];
+
+const DARK_CARD: React.CSSProperties = {
+  background:   'rgba(255,255,255,0.03)',
+  border:       '1px solid rgba(255,255,255,0.09)',
+  borderRadius: '0.875rem',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   side:           Side;
@@ -18,40 +37,26 @@ interface Props {
   onReset:        () => void;
 }
 
-const SIDE_LABELS: Record<Side, string> = {
-  target:     'Your Site',
-  competitor: 'Competitor',
-};
-
-const SIDE_COLORS: Record<Side, string> = {
-  target:     '#6366f1',
-  competitor: '#f97316',
-};
-
-const SCORE_ITEMS = [
-  { label: 'Performance'    as const, key: 'performance'   as const },
-  { label: 'Accessibility'  as const, key: 'accessibility'  as const },
-  { label: 'Best Practices' as const, key: 'bestPractices'  as const },
-  { label: 'SEO'            as const, key: 'seo'            as const },
-];
-
 export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
   const color = SIDE_COLORS[side];
   const label = SIDE_LABELS[side];
 
   return (
     <TimelineProvider sharedMotionMs={sharedMotionMs}>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-5">
 
         {/* Side header */}
-        <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: color + '30' }}>
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+        <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: color + '28' }}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
           <span className="text-sm font-semibold" style={{ color }}>{label}</span>
           <a
             href={data.url}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors truncate max-w-[200px]"
+            className="text-xs flex items-center gap-0.5 transition-colors truncate max-w-[200px]"
+            style={{ color: 'rgba(255,255,255,0.35)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.65)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
             onClick={(e) => e.stopPropagation()}
           >
             {(() => { try { return new URL(data.url).hostname; } catch { return data.url; } })()}
@@ -66,17 +71,19 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
           ))}
         </div>
 
-        {/* Core Web Vitals */}
+        {/* Core Web Vitals — dark glass cards */}
         <section>
           <SectionLabel>Core Web Vitals</SectionLabel>
-          <MetricsGrid metrics={data.metrics} />
+          <CompareMetricsGrid metrics={data.metrics} />
         </section>
 
         {/* Interaction Timeline */}
         {data.interactionData && (
           <section>
             <SectionLabel>Interaction Responsiveness (INP)</SectionLabel>
-            <InteractionTimeline data={data.interactionData} />
+            <div style={DARK_CARD} className="px-4 pt-4 pb-3">
+              <InteractionTimeline data={data.interactionData} darkVariant />
+            </div>
           </section>
         )}
 
@@ -84,11 +91,9 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
         {data.heapMemoryData && (
           <section>
             <SectionLabel>JS Heap Memory</SectionLabel>
-            <Card>
-              <CardContent className="pt-4 pb-4 px-4">
-                <HeapMemoryChart data={data.heapMemoryData} />
-              </CardContent>
-            </Card>
+            <div style={{ ...DARK_CARD, padding: '1rem 1rem 0.75rem' }}>
+              <HeapMemoryChart data={data.heapMemoryData} />
+            </div>
           </section>
         )}
       </div>
@@ -98,7 +103,10 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+    <h3
+      className="text-[10px] font-bold uppercase tracking-widest mb-2.5"
+      style={{ color: '#475569' }}
+    >
       {children}
     </h3>
   );
