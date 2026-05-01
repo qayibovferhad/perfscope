@@ -413,7 +413,11 @@ export function DeepComparison({
     ...(competitor.resources?.requests ?? []),
   ].some(r => r.isCritical);
 
+  console.log(hasResources,'hasResources');
+  console.log(hasCpu,'hasCpu');
+  
   if (!hasResources && !hasCpu && !hasOversized) return null;
+  console.log(hasOversized,'hasOversized');
 
   return (
     <motion.div

@@ -7,6 +7,8 @@ import { useComparisonSide } from './hooks/useComparisonSide';
 import { SideInputBar } from './components/SideInputBar';
 import { ComparisonScoreboard } from './components/ComparisonScoreboard';
 import { DeepComparison } from './components/DeepComparison';
+import { ComparisonEngine } from './components/ComparisonEngine';
+import { FilmstripComparison } from './components/FilmstripComparison';
 import { ComparisonSide } from './components/ComparisonSide';
 
 function normalize(url: string): string {
@@ -191,10 +193,24 @@ export function ComparisonPage() {
         )}
       </AnimatePresence>
 
+      {/* ── Comparison Engine ────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {bothLoaded && target.data && competitor.data && (
+          <ComparisonEngine target={target.data} competitor={competitor.data} />
+        )}
+      </AnimatePresence>
+
       {/* ── Deep Comparison ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
           <DeepComparison target={target.data} competitor={competitor.data} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Filmstrip Comparison ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {bothLoaded && target.data && competitor.data && (
+          <FilmstripComparison target={target.data} competitor={competitor.data} />
         )}
       </AnimatePresence>
 

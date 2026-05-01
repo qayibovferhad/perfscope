@@ -78,24 +78,6 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
         </section>
 
         {/* Interaction Timeline */}
-        {data.interactionData && (
-          <section>
-            <SectionLabel>Interaction Responsiveness (INP)</SectionLabel>
-            <div style={DARK_CARD} className="px-4 pt-4 pb-3">
-              <InteractionTimeline data={data.interactionData} darkVariant />
-            </div>
-          </section>
-        )}
-
-        {/* Heap Memory */}
-        {data.heapMemoryData && (
-          <section>
-            <SectionLabel>JS Heap Memory</SectionLabel>
-            <div style={{ ...DARK_CARD, padding: '1rem 1rem 0.75rem' }}>
-              <HeapMemoryChart data={data.heapMemoryData} />
-            </div>
-          </section>
-        )}
       </div>
     </TimelineProvider>
   );
