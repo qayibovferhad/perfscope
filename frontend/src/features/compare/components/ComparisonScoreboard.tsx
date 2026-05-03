@@ -294,7 +294,7 @@ function MetricRow({ def, tVal, cVal, index }: {
       <div className="flex items-center gap-1.5">
         <div>
           <span className="text-[12px] font-extrabold" style={{ color: '#cbd5e1' }}>{abbr}</span>
-          <p className="text-[9px] mt-0.5 hidden sm:block" style={{ color: '#64748b' }}>{label}</p>
+          <p className="text-[9px] mt-0.5 hidden sm:block" style={{ color: '#94a3b8' }}>{label}</p>
         </div>
         <div className="relative group/tip">
           <Info
@@ -317,7 +317,7 @@ function MetricRow({ def, tVal, cVal, index }: {
         <span
           className="text-[14px] font-extrabold tabular-nums antialiased"
           style={{
-            color: tWins ? '#ffffff' : 'rgba(255,255,255,0.30)',
+            color: tWins ? '#ffffff' : 'rgba(255,255,255,0.62)',
             letterSpacing: '0.02em',
             textShadow: tWins ? `0 0 14px ${T_GLOW}, 0 0 28px rgba(129,140,248,0.35)` : 'none',
           }}
@@ -334,7 +334,7 @@ function MetricRow({ def, tVal, cVal, index }: {
         <span
           className="text-[14px] font-extrabold tabular-nums antialiased"
           style={{
-            color: cWins ? '#ffffff' : 'rgba(255,255,255,0.30)',
+            color: cWins ? '#ffffff' : 'rgba(255,255,255,0.62)',
             letterSpacing: '0.02em',
             textShadow: cWins ? `0 0 14px ${C_GLOW}, 0 0 28px rgba(251,146,60,0.35)` : 'none',
           }}
