@@ -3,19 +3,17 @@ import { motion } from 'framer-motion';
 import { Trophy, Info, Zap, Star } from 'lucide-react';
 import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 
 const PANEL_BG  = 'rgba(17,24,39,0.72)';
 const ROW_BASE  = 'rgba(255,255,255,0.025)';
 const ROW_HOVER = 'rgba(255,255,255,0.055)';
 const DIVIDER   = 'rgba(255,255,255,0.09)';
 
-const T_HEX  = '#818cf8';   // indigo-400
-const C_HEX  = '#fb923c';   // orange-400
+const T_HEX  = '#818cf8';  
+const C_HEX  = '#fb923c';   
 const T_GLOW = 'rgba(129,140,248,0.80)';
 const C_GLOW = 'rgba(251,146,60,0.80)';
 
-// ─── Metric definitions ───────────────────────────────────────────────────────
 
 interface MetricDef {
   key:           keyof CoreWebVitals;
@@ -61,7 +59,6 @@ function barWidths(tVal: number, cVal: number, lowerIsBetter: boolean) {
   return { tW: Math.round(ratio * 100), cW: 100, tWins, cWins };
 }
 
-// ─── Champion circle ──────────────────────────────────────────────────────────
 
 function HeroCircle({
   score, color, glow, label, isWinner,
@@ -85,7 +82,6 @@ function HeroCircle({
     >
       <div className="relative" style={{ width: SIZE, height: SIZE }}>
 
-        {/* Ambient background glow */}
         {isWinner && (
           <div
             className="absolute rounded-full blur-3xl"
@@ -96,7 +92,6 @@ function HeroCircle({
           />
         )}
 
-        {/* Pulse rings (winner only) */}
         {isWinner && [0, 1].map(i => (
           <motion.div
             key={i}
@@ -112,7 +107,6 @@ function HeroCircle({
           />
         ))}
 
-        {/* SVG arc */}
         <svg
           width={SIZE} height={SIZE}
           style={{
@@ -134,7 +128,6 @@ function HeroCircle({
           />
         </svg>
 
-        {/* Score */}
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ zIndex: 2 }}>
           <span
             className="text-[2.8rem] font-black tabular-nums leading-none"
@@ -148,7 +141,6 @@ function HeroCircle({
           <span className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.28)' }}>/ 100</span>
         </div>
 
-        {/* Crown badge */}
         {isWinner && (
           <div
             className="absolute z-10 flex items-center justify-center w-7 h-7 rounded-full"
@@ -179,14 +171,12 @@ function HeroCircle({
   );
 }
 
-// ─── Mirror bar ───────────────────────────────────────────────────────────────
 
 function MirrorBar({ tW, cW, tWins, cWins }: {
   tW: number; cW: number; tWins: boolean; cWins: boolean;
 }) {
   return (
     <div className="flex items-center w-full" style={{ height: '10px', gap: 0 }}>
-      {/* Left half — You (fills from center leftward) */}
       <div
         className="flex-1 flex justify-end overflow-hidden"
         style={{ height: '100%', borderRadius: '99px 0 0 99px', background: 'rgba(255,255,255,0.06)' }}
@@ -208,7 +198,6 @@ function MirrorBar({ tW, cW, tWins, cWins }: {
         />
       </div>
 
-      {/* Center pin */}
       <div
         style={{
           width: '1.5px', height: '18px', flexShrink: 0, zIndex: 10,
@@ -216,7 +205,6 @@ function MirrorBar({ tW, cW, tWins, cWins }: {
         }}
       />
 
-      {/* Right half — Rival (fills from center rightward) */}
       <div
         className="flex-1 flex justify-start overflow-hidden"
         style={{ height: '100%', borderRadius: '0 99px 99px 0', background: 'rgba(255,255,255,0.06)' }}
@@ -243,8 +231,8 @@ function MirrorBar({ tW, cW, tWins, cWins }: {
 
 // ─── Champion badge ───────────────────────────────────────────────────────────
 
-function ChampionBadge({ pct, color, glow, side }: {
-  pct: number; color: string; glow: string; side: 'you' | 'rival';
+function ChampionBadge({ pct, color, side }: {
+  pct: number; color: string; glow?: string; side: 'you' | 'rival';
 }) {
   const title = badgeText(pct);
   if (!title) return null;

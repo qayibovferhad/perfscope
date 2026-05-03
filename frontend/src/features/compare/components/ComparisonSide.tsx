@@ -1,13 +1,9 @@
 import type { MotionValue } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
-import { InteractionTimeline } from '../../analyzer/components/InteractionTimeline';
-import { HeapMemoryChart } from '../../analyzer/components/HeapMemoryChart';
 import { TimelineProvider } from '../../analyzer/context/TimelineContext';
 import { ScoreCard } from '../../analyzer/components/ScoreCard';
 import { CompareMetricsGrid } from './CompareMetricsGrid';
 import type { AnalysisResult } from '../../analyzer/types';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 type Side = 'target' | 'competitor';
 
@@ -20,14 +16,6 @@ const SCORE_ITEMS = [
   { label: 'Best Practices' as const, key: 'bestPractices'  as const },
   { label: 'SEO'            as const, key: 'seo'            as const },
 ];
-
-const DARK_CARD: React.CSSProperties = {
-  background:   'rgba(255,255,255,0.03)',
-  border:       '1px solid rgba(255,255,255,0.09)',
-  borderRadius: '0.875rem',
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   side:           Side;
@@ -45,7 +33,6 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
     <TimelineProvider sharedMotionMs={sharedMotionMs}>
       <div className="flex flex-col gap-5">
 
-        {/* Side header */}
         <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: color + '28' }}>
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
           <span className="text-sm font-semibold" style={{ color }}>{label}</span>
@@ -64,20 +51,17 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
           </a>
         </div>
 
-        {/* Score cards */}
         <div className="grid grid-cols-2 gap-2">
           {SCORE_ITEMS.map(({ label: lbl, key }) => (
             <ScoreCard key={key} label={lbl} score={data.scores[key]} />
           ))}
         </div>
 
-        {/* Core Web Vitals — dark glass cards */}
         <section>
           <SectionLabel>Core Web Vitals</SectionLabel>
           <CompareMetricsGrid metrics={data.metrics} />
         </section>
 
-        {/* Interaction Timeline */}
       </div>
     </TimelineProvider>
   );

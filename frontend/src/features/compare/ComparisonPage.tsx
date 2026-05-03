@@ -9,6 +9,7 @@ import { ComparisonScoreboard } from './components/ComparisonScoreboard';
 import { DeepComparison } from './components/DeepComparison';
 import { ComparisonEngine } from './components/ComparisonEngine';
 import { FilmstripComparison } from './components/FilmstripComparison';
+import { WaterfallComparison } from './components/WaterfallComparison';
 import { ComparisonSide } from './components/ComparisonSide';
 
 function normalize(url: string): string {
@@ -20,8 +21,8 @@ export function ComparisonPage() {
   const target     = useComparisonSide();
   const competitor = useComparisonSide();
 
-  const [targetUrl,     setTargetUrl]     = useState('');
-  const [competitorUrl, setCompetitorUrl] = useState('');
+  const [targetUrl,     setTargetUrl]     = useState('https://');
+  const [competitorUrl, setCompetitorUrl] = useState('https://');
 
   const sharedMotionMs = useMotionValue(0);
 
@@ -29,15 +30,16 @@ export function ComparisonPage() {
   const bothLoaded = target.isSuccess  && competitor.isSuccess;
 
   // Enable launch when both sides have either a pending URL or already-loaded data
-  const targetReady     = targetUrl.trim()     !== '' || target.isSuccess;
-  const competitorReady = competitorUrl.trim() !== '' || competitor.isSuccess;
+  const isBlank = (u: string) => u.trim() === '' || u.trim() === 'https://';
+  const targetReady     = !isBlank(targetUrl)     || target.isSuccess;
+  const competitorReady = !isBlank(competitorUrl) || competitor.isSuccess;
   const canLaunch       = targetReady && competitorReady && !isRunning && !bothLoaded;
 
   const handleLaunch = () => {
-    if (!target.isSuccess && targetUrl.trim()) {
+    if (!target.isSuccess && !isBlank(targetUrl)) {
       target.analyze(normalize(targetUrl));
     }
-    if (!competitor.isSuccess && competitorUrl.trim()) {
+    if (!competitor.isSuccess && !isBlank(competitorUrl)) {
       competitor.analyze(normalize(competitorUrl));
     }
   };
@@ -45,8 +47,8 @@ export function ComparisonPage() {
   const handleResetAll = () => {
     target.reset();
     competitor.reset();
-    setTargetUrl('');
-    setCompetitorUrl('');
+    setTargetUrl('https://');
+    setCompetitorUrl('https://');
   };
 
   return (
@@ -211,6 +213,13 @@ export function ComparisonPage() {
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
           <FilmstripComparison target={target.data} competitor={competitor.data} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Waterfall Timeline Comparison ────────────────────────────────── */}
+      <AnimatePresence>
+        {bothLoaded && target.data && competitor.data && (
+          <WaterfallComparison target={target.data} competitor={competitor.data} />
         )}
       </AnimatePresence>
 

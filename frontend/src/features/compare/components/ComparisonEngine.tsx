@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Zap, Trophy, AlertTriangle, TrendingUp } from 'lucide-react';
 import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
 
-// ─── Tokens ───────────────────────────────────────────────────────────────────
 
 const PANEL: React.CSSProperties = {
   background:     'rgba(17,24,39,0.72)',
@@ -21,7 +20,6 @@ const T_GLOW  = 'rgba(139,92,246,0.55)';
 const C_GLOW  = 'rgba(245,158,11,0.55)';
 const GAP_CLR = '#ef4444';
 
-// ─── Thresholds (web.dev standards) ──────────────────────────────────────────
 
 const THRESHOLDS: Record<keyof CoreWebVitals, { good: number; poor: number }> = {
   fcp: { good: 1800,  poor: 3000  },
@@ -41,9 +39,6 @@ const METRIC_META: { key: keyof CoreWebVitals; label: string; unit: string; fmt:
   { key: 'cls', label: 'CLS',          unit: '',    fmt: v => v.toFixed(3)               },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** 0–100 normalised score (lower-is-better metrics) */
 function normalise(value: number, good: number, poor: number): number {
   if (value <= good) return 100;
   if (value >= poor) return 0;
@@ -56,14 +51,12 @@ function bundleMB(result: AnalysisResult): number | null {
   return bytes / 1_048_576;
 }
 
-/** Performance efficiency: Lighthouse score / bundle size (pts per MB) */
 function efficiencyScore(result: AnalysisResult): number | null {
   const mb = bundleMB(result);
   if (!mb) return null;
   return +(result.scores.performance / mb).toFixed(2);
 }
 
-/** Ratio between two values (always > 1, lower-is-better assumed) */
 function metricRatio(tVal: number, cVal: number): { ratio: number; winner: 'target' | 'competitor' | 'tied' } {
   if (tVal === cVal) return { ratio: 1, winner: 'tied' };
   const winner = tVal < cVal ? 'target' : 'competitor';
@@ -72,8 +65,6 @@ function metricRatio(tVal: number, cVal: number): { ratio: number; winner: 'targ
   const ratio  = better < 1 ? 1 : +(worse / better).toFixed(2);
   return { ratio, winner };
 }
-
-// ─── Sub-section header ───────────────────────────────────────────────────────
 
 function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) {
   return (
@@ -87,8 +78,6 @@ function SectionHeader({ icon, title, sub }: { icon: React.ReactNode; title: str
     </div>
   );
 }
-
-// ─── Efficiency Score section ─────────────────────────────────────────────────
 
 function EfficiencySection({ target, competitor }: { target: AnalysisResult; competitor: AnalysisResult }) {
   const tEff  = efficiencyScore(target);
@@ -112,20 +101,17 @@ function EfficiencySection({ target, competitor }: { target: AnalysisResult; com
         sub="Lighthouse performance per MB of transferred resources"
       />
       <div className="px-6 py-5 space-y-4">
-        {/* Your Site bar */}
         <EfficencyBar
           label="Your Site" color={T_HEX} glow={T_GLOW}
           score={tEff} mb={tMB} barW={tW} isWinner={tWins}
           delay={0}
         />
-        {/* Competitor bar */}
         <EfficencyBar
           label="Competitor" color={C_HEX} glow={C_GLOW}
           score={cEff} mb={cMB} barW={cW} isWinner={!tWins}
           delay={0.05}
         />
 
-        {/* Winner callout */}
         {ratio && (
           <div
             className="flex items-center gap-3 rounded-xl px-4 py-3 mt-2"
@@ -190,8 +176,6 @@ function EfficencyBar({ label, color, glow, score, mb, barW, isWinner, delay }: 
   );
 }
 
-// ─── Normalised Metrics table ─────────────────────────────────────────────────
-
 function NormalisedMetrics({ target, competitor }: { target: AnalysisResult; competitor: AnalysisResult }) {
   const rows = useMemo(() => METRIC_META.map(({ key, label, fmt }) => {
     const th = THRESHOLDS[key];
@@ -211,7 +195,6 @@ function NormalisedMetrics({ target, competitor }: { target: AnalysisResult; com
         title="Normalised Metrics"
         sub="Each metric scored 0–100 based on Google Web Vitals thresholds"
       />
-      {/* Column header */}
       <div
         className="grid items-center gap-3 px-6 py-2 text-[9px] font-bold uppercase tracking-widest"
         style={{ gridTemplateColumns: '100px 56px 1fr 56px 110px', borderBottom: `1px solid ${DIVIDER}`, color: 'rgba(255,255,255,0.22)' }}
@@ -239,7 +222,6 @@ type NormRowData = {
   isGap: boolean; fmt: (v: number) => string;
 };
 
-// Fix the NormRow prop type
 function NormRow({ row, index }: { row: NormRowData; index: number }) {
   const tWins = row.winner === 'target';
   const cWins = row.winner === 'competitor';
@@ -327,7 +309,6 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
   );
 }
 
-// ─── Performance Gaps callout ─────────────────────────────────────────────────
 
 function GapsCallout({ target, competitor }: { target: AnalysisResult; competitor: AnalysisResult }) {
   const gaps = useMemo(() => METRIC_META.map(({ key, label, fmt }) => {
@@ -355,7 +336,6 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
           const worseW   = (worse  / (better + worse)) * 100;
           const winLabel = tWins ? 'Your Site' : 'Competitor';
           const winColor = tWins ? T_HEX : C_HEX;
-          const winGlow  = tWins ? T_GLOW : C_GLOW;
 
           return (
             <motion.div
@@ -386,13 +366,11 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
                 </span>
               </div>
 
-              {/* Gap bar */}
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold tabular-nums w-14 text-right" style={{ color: tWins ? '#ffffff' : 'rgba(255,255,255,0.35)' }}>
                   {gap.fmt(gap.tVal)}
                 </span>
                 <div className="flex-1 flex items-center gap-0" style={{ height: 10 }}>
-                  {/* Left: Your Site */}
                   <div className="flex justify-end overflow-hidden" style={{ flex: 1, height: '100%', borderRadius: '99px 0 0 99px', background: 'rgba(255,255,255,0.05)' }}>
                     <motion.div
                       initial={{ width: 0 }}
@@ -406,7 +384,6 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
                     />
                   </div>
                   <div style={{ width: 1.5, height: 16, flexShrink: 0, background: 'rgba(255,255,255,0.20)' }} />
-                  {/* Right: Competitor */}
                   <div className="flex justify-start overflow-hidden" style={{ flex: 1, height: '100%', borderRadius: '0 99px 99px 0', background: 'rgba(255,255,255,0.05)' }}>
                     <motion.div
                       initial={{ width: 0 }}
@@ -432,7 +409,6 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
   );
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
 
 export function ComparisonEngine({
   target, competitor,
@@ -463,7 +439,6 @@ export function ComparisonEngine({
       <NormalisedMetrics target={target} competitor={competitor} />
       <GapsCallout       target={target} competitor={competitor} />
 
-      {/* Footer formula legend */}
       <div
         className="px-6 py-3 text-[9px] flex flex-wrap gap-x-6 gap-y-1"
         style={{ borderTop: `1px solid ${DIVIDER}`, color: 'rgba(255,255,255,0.22)' }}
