@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GitCompareArrows, Trophy, Clock, Search, TrendingUp, TrendingDown,
-  Minus, ChevronRight, X, Zap, History,
+  Minus, ChevronRight, X, Zap, History, FileDown, Lightbulb,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from './useCompareHistory';
 
@@ -18,203 +18,414 @@ const PANEL: React.CSSProperties = {
   borderRadius:         '1rem',
   overflow:             'hidden',
 };
-const DIVIDER  = 'rgba(255,255,255,0.08)';
-const T_HEX    = '#8B5CF6';
-const T_GLOW   = 'rgba(139,92,246,0.55)';
-const C_HEX    = '#F59E0B';
-const C_GLOW   = 'rgba(245,158,11,0.55)';
-const OK_CLR   = '#10b981';
-const REG_CLR  = '#ef4444';
+const DIVIDER = 'rgba(255,255,255,0.08)';
+const T_HEX   = '#8B5CF6';
+const T_GLOW  = 'rgba(139,92,246,0.55)';
+const C_HEX   = '#F59E0B';
+const C_GLOW  = 'rgba(245,158,11,0.55)';
+const OK_CLR  = '#10b981';
+const REG_CLR = '#ef4444';
+
+// ─── Metric system ────────────────────────────────────────────────────────────
+
+type MetricKey = 'score' | 'lcp' | 'tbt' | 'cls';
+
+interface MetricDef {
+  label:         string;
+  unit:          string;
+  accent:        string;
+  lowerIsBetter: boolean;
+  getValue:      (e: CompareEntry, side: 'source' | 'competitor') => number;
+  fmt:           (v: number) => string;
+  yFmt:          (v: number) => string;
+}
+
+const METRIC_DEFS: Record<MetricKey, MetricDef> = {
+  score: {
+    label: 'Score', unit: 'pts', accent: T_HEX, lowerIsBetter: false,
+    getValue: (e, s) => Math.round(e[s].scores['performance'] ?? 0),
+    fmt:  v => `${Math.round(v)}`,
+    yFmt: v => Math.round(v).toString(),
+  },
+  lcp: {
+    label: 'LCP', unit: 's', accent: '#10b981', lowerIsBetter: true,
+    getValue: (e, s) => e[s].metrics['lcp'] ?? 0,
+    fmt:  v => v >= 1000 ? `${(v / 1000).toFixed(2)}s` : `${Math.round(v)}ms`,
+    yFmt: v => v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${Math.round(v)}ms`,
+  },
+  tbt: {
+    label: 'TBT', unit: 'ms', accent: '#f97316', lowerIsBetter: true,
+    getValue: (e, s) => e[s].metrics['tbt'] ?? 0,
+    fmt:  v => `${Math.round(v)}ms`,
+    yFmt: v => `${Math.round(v)}`,
+  },
+  cls: {
+    label: 'CLS', unit: '', accent: '#ec4899', lowerIsBetter: true,
+    getValue: (e, s) => e[s].metrics['cls'] ?? 0,
+    fmt:  v => v.toFixed(3),
+    yFmt: v => v.toFixed(2),
+  },
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmtMs  = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
-const score  = (e: CompareEntry, side: 'source' | 'competitor') =>
-  Math.round(e[side].scores['performance'] ?? 0);
+const fmtMs = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 function fmtDateFull(iso: string) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── Breadcrumb ───────────────────────────────────────────────────────────────
+function generateInsight(
+  key: MetricKey, srcVal: number, cmpVal: number,
+  srcHost: string, cmpHost: string,
+): string {
+  const def     = METRIC_DEFS[key];
+  const diff    = srcVal - cmpVal;
+  const srcWins = def.lowerIsBetter ? diff < 0 : diff > 0;
+  const winner  = srcWins ? srcHost : cmpHost;
+  const absDiff = Math.abs(diff);
 
-function Breadcrumb() {
+  if (key === 'score') {
+    const pts = Math.round(absDiff);
+    if (pts < 2) return 'Both sites are virtually tied on performance score — the battle is perfectly balanced.';
+    return `${winner} leads by ${pts} pts. ${srcWins ? 'Your' : "Competitor's"} advantage translates to ~${Math.min(pts * 2, 40)}% lower estimated bounce rate from performance alone.`;
+  }
+  if (key === 'lcp') {
+    if (absDiff < 100) return 'LCP values are within margin of error — effectively tied on largest contentful paint.';
+    const secs = (absDiff / 1000).toFixed(2);
+    const risk = Math.min(Math.round(absDiff / 100) * 7, 35);
+    return `${winner}'s LCP is ${secs}s faster — content appears sooner, reducing bounce rate risk by ~${risk}%. Google considers LCP under 2.5s "Good".`;
+  }
+  if (key === 'tbt') {
+    if (absDiff < 20) return 'Total Blocking Time is comparable — no significant main-thread bottleneck difference.';
+    return `${winner} has ${Math.round(absDiff)}ms less blocking time, directly improving INP and making interactions feel ${srcWins ? 'noticeably smoother on your site' : 'more sluggish on yours'}.`;
+  }
+  if (key === 'cls') {
+    if (absDiff < 0.005) return 'Layout stability is essentially the same between both sites — no meaningful CLS difference.';
+    return `${winner} is ${absDiff.toFixed(3)} CLS points more stable (${(absDiff * 100).toFixed(1)}% less shift), reducing ${srcWins ? 'your' : "competitor's"} visual instability that frustrates users mid-read.`;
+  }
+  return '';
+}
+
+// ─── Metric Toggle ────────────────────────────────────────────────────────────
+
+function MetricToggle({
+  active, onChange,
+}: { active: MetricKey; onChange: (k: MetricKey) => void }) {
   return (
-    <nav className="flex items-center gap-1.5 text-sm select-none flex-wrap">
-      {[
-        { to: '/',        label: 'Analyzer' },
-        { to: '/compare', label: 'Competitive Analysis' },
-      ].map(({ to, label }) => (
-        <span key={to} className="flex items-center gap-1.5">
-          <Link to={to} className="font-medium transition-all duration-150"
-            style={{ color: 'rgba(255,255,255,0.40)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T_HEX; (e.currentTarget as HTMLElement).style.textShadow = `0 0 12px ${T_GLOW}`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.40)'; (e.currentTarget as HTMLElement).style.textShadow = 'none'; }}>
-            {label}
-          </Link>
-          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 16 }}>›</span>
-        </span>
-      ))}
-      <div className="flex items-center gap-1.5">
-        <History className="w-3.5 h-3.5" style={{ color: T_HEX }} />
-        <span className="font-semibold" style={{ color: '#e2e8f0' }}>Compare History</span>
-      </div>
-    </nav>
+    <div className="flex items-center gap-1 p-1 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DIVIDER}` }}>
+      {(Object.entries(METRIC_DEFS) as [MetricKey, MetricDef][]).map(([key, def]) => {
+        const isActive = active === key;
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            className="relative px-3.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-colors duration-150"
+            style={{ color: isActive ? '#ffffff' : 'rgba(255,255,255,0.35)' }}
+          >
+            {isActive && (
+              <motion.div
+                layoutId="metric-pill"
+                className="absolute inset-0 rounded-lg"
+                style={{ background: `${def.accent}22`, border: `1px solid ${def.accent}55`, boxShadow: `0 0 12px ${def.accent}30` }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10" style={{ color: isActive ? def.accent : 'rgba(255,255,255,0.35)' }}>
+              {def.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
 // ─── Dual Trend Chart ─────────────────────────────────────────────────────────
 
 const CW = 640; const CH = 180;
-const PAD = { t: 16, r: 20, b: 48, l: 48 };
+const PAD = { t: 16, r: 20, b: 48, l: 52 };
 
-function DualTrendChart({ entries }: { entries: CompareEntry[] }) {
-  const n = entries.length;
+function DualTrendChart({
+  entries, metricKey,
+}: { entries: CompareEntry[]; metricKey: MetricKey }) {
+  const n   = entries.length;
+  const def = METRIC_DEFS[metricKey];
   if (n < 2) return null;
 
-  const iW = CW - PAD.l - PAD.r;
-  const iH = CH - PAD.t - PAD.b;
+  const iW  = CW - PAD.l - PAD.r;
+  const iH  = CH - PAD.t - PAD.b;
   const xOf = (i: number) => PAD.l + (i / (n - 1)) * iW;
 
-  const allScores = entries.flatMap(e => [score(e, 'source'), score(e, 'competitor')]);
-  const sMin = Math.min(...allScores) * 0.9;
-  const sMax = Math.max(...allScores) * 1.05;
-  const yOf  = (v: number) => PAD.t + iH - ((v - sMin) / (sMax - sMin || 1)) * iH;
+  const srcVals = entries.map(e => def.getValue(e, 'source'));
+  const cmpVals = entries.map(e => def.getValue(e, 'competitor'));
+  const allVals = [...srcVals, ...cmpVals];
+  const vMin    = Math.min(...allVals) * (def.lowerIsBetter ? 0.88 : 0.92);
+  const vMax    = Math.max(...allVals) * 1.08;
+  const yOf     = (v: number) => PAD.t + iH - ((v - vMin) / (vMax - vMin || 1)) * iH;
 
-  const srcPts  = entries.map((e, i) => ({ x: xOf(i), y: yOf(score(e, 'source')) }));
-  const cmpPts  = entries.map((e, i) => ({ x: xOf(i), y: yOf(score(e, 'competitor')) }));
-  const toPath  = (pts: { x: number; y: number }[]) =>
-    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const toPath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
 
-  // Gap delta evolution (source - competitor score)
-  const deltas  = entries.map(e => score(e, 'source') - score(e, 'competitor'));
-  const lastDelta = deltas[deltas.length - 1];
-  const prevDelta = deltas.length >= 2 ? deltas[deltas.length - 2] : null;
-  const deltaChange = prevDelta !== null ? lastDelta - prevDelta : 0;
-
-  const yTicks = [0, 0.5, 1].map(t => ({
-    v: sMin + t * (sMax - sMin), y: PAD.t + iH * (1 - t),
-  }));
+  const srcPath = toPath(srcVals);
+  const cmpPath = toPath(cmpVals);
+  const yTicks  = [0, 0.5, 1].map(t => ({ v: vMin + t * (vMax - vMin), y: PAD.t + iH * (1 - t) }));
 
   return (
-    <div className="space-y-3">
-      <svg viewBox={`0 0 ${CW} ${CH}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-        <defs>
-          {[{ id: 'src', color: T_HEX }, { id: 'cmp', color: C_HEX }].map(({ id, color }) => (
-            <linearGradient key={id} id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
-            </linearGradient>
-          ))}
-        </defs>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={metricKey}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+      >
+        <svg viewBox={`0 0 ${CW} ${CH}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+          <defs>
+            {[{ id: 'src', color: T_HEX }, { id: 'cmp', color: C_HEX }].map(({ id, color }) => (
+              <linearGradient key={id} id={`area-${id}-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.14" />
+                <stop offset="100%" stopColor={color} stopOpacity="0" />
+              </linearGradient>
+            ))}
+          </defs>
 
-        {/* Grid */}
-        {yTicks.map((t, i) => (
-          <g key={i}>
-            <line x1={PAD.l} y1={t.y} x2={CW - PAD.r} y2={t.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-            <text x={PAD.l - 6} y={t.y + 4} textAnchor="end" fill="rgba(255,255,255,0.20)" fontSize="9" fontFamily="monospace">
-              {Math.round(t.v)}
-            </text>
-          </g>
-        ))}
-
-        {/* Area fills */}
-        <path
-          d={`${toPath(srcPts)} L${srcPts[n-1].x},${PAD.t + iH} L${PAD.l},${PAD.t + iH} Z`}
-          fill="url(#area-src)"
-        />
-        <path
-          d={`${toPath(cmpPts)} L${cmpPts[n-1].x},${PAD.t + iH} L${PAD.l},${PAD.t + iH} Z`}
-          fill="url(#area-cmp)"
-        />
-
-        {/* Lines */}
-        <path d={toPath(srcPts)} fill="none" stroke={T_HEX} strokeWidth="2.5" strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 6px ${T_GLOW})` }} />
-        <path d={toPath(cmpPts)} fill="none" stroke={C_HEX} strokeWidth="2.5" strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 6px ${C_GLOW})` }} />
-
-        {/* Dots */}
-        {entries.map((e, i) => {
-          const sx = srcPts[i].x, sy = srcPts[i].y;
-          const cx = cmpPts[i].x, cy = cmpPts[i].y;
-          const isLast = i === n - 1;
-          return (
+          {/* Grid */}
+          {yTicks.map((t, i) => (
             <g key={i}>
-              <circle cx={sx} cy={sy} r={isLast ? 5 : 3.5} fill={T_HEX}
-                stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                style={{ filter: isLast ? `drop-shadow(0 0 8px ${T_GLOW})` : 'none' }} />
-              <circle cx={cx} cy={cy} r={isLast ? 5 : 3.5} fill={C_HEX}
-                stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                style={{ filter: isLast ? `drop-shadow(0 0 8px ${C_GLOW})` : 'none' }} />
-              {/* X tick */}
-              <text x={sx} y={CH - 8} textAnchor="middle" fill="rgba(255,255,255,0.22)" fontSize="8" fontFamily="monospace">
-                {fmtDate(e.timestamp)}
+              <line x1={PAD.l} y1={t.y} x2={CW - PAD.r} y2={t.y}
+                stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <text x={PAD.l - 6} y={t.y + 4} textAnchor="end"
+                fill="rgba(255,255,255,0.22)" fontSize="9" fontFamily="monospace">
+                {def.yFmt(t.v)}
               </text>
             </g>
-          );
-        })}
-      </svg>
+          ))}
 
-      {/* Gap Evolution */}
-      <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-        style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DIVIDER}` }}>
-        <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: lastDelta >= 0 ? T_HEX : C_HEX }} />
-        <div className="flex items-center gap-2 flex-wrap text-[11px]">
-          <span style={{ color: 'rgba(255,255,255,0.50)' }}>Gap Evolution:</span>
-          {lastDelta === 0 ? (
-            <span style={{ color: 'rgba(255,255,255,0.50)' }}>Tied</span>
-          ) : (
-            <span style={{ color: lastDelta > 0 ? T_HEX : C_HEX, fontWeight: 700 }}>
-              {lastDelta > 0 ? 'You are' : 'Rival is'}{' '}
-              <strong>{Math.abs(lastDelta)} pts</strong>{' '}
-              {lastDelta > 0 ? 'ahead' : 'ahead'}
-            </span>
-          )}
-          {deltaChange !== 0 && (
-            <span className="flex items-center gap-0.5" style={{ color: deltaChange > 0 ? OK_CLR : REG_CLR }}>
-              {deltaChange > 0
-                ? <TrendingUp className="w-3 h-3" />
-                : <TrendingDown className="w-3 h-3" />}
-              {deltaChange > 0 ? `+${deltaChange}` : deltaChange} pts vs previous run
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+          {/* Area fills */}
+          <path d={`${srcPath} L${xOf(n-1)},${PAD.t+iH} L${PAD.l},${PAD.t+iH} Z`}
+            fill={`url(#area-src-${metricKey})`} />
+          <path d={`${cmpPath} L${xOf(n-1)},${PAD.t+iH} L${PAD.l},${PAD.t+iH} Z`}
+            fill={`url(#area-cmp-${metricKey})`} />
+
+          {/* Lines */}
+          <path d={srcPath} fill="none" stroke={T_HEX} strokeWidth="2.5" strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 6px ${T_GLOW})` }} />
+          <path d={cmpPath} fill="none" stroke={C_HEX} strokeWidth="2.5" strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 6px ${C_GLOW})` }} />
+
+          {/* Dots */}
+          {entries.map((e, i) => {
+            const isLast = i === n - 1;
+            const sx = xOf(i), sy = yOf(srcVals[i]);
+            const cx = xOf(i), cy = yOf(cmpVals[i]);
+            return (
+              <g key={i}>
+                <circle cx={sx} cy={sy} r={isLast ? 5.5 : 3.5} fill={T_HEX}
+                  stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
+                  style={{ filter: isLast ? `drop-shadow(0 0 10px ${T_GLOW})` : 'none' }} />
+                <circle cx={cx} cy={cy} r={isLast ? 5.5 : 3.5} fill={C_HEX}
+                  stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
+                  style={{ filter: isLast ? `drop-shadow(0 0 10px ${C_GLOW})` : 'none' }} />
+                <text x={sx} y={CH - 8} textAnchor="middle"
+                  fill="rgba(255,255,255,0.20)" fontSize="8" fontFamily="monospace">
+                  {fmtDate(e.timestamp)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
-// ─── Split Card (detail view) ────────────────────────────────────────────────
+// ─── Insight Box ─────────────────────────────────────────────────────────────
+
+function InsightBox({
+  entries, metricKey,
+}: { entries: CompareEntry[]; metricKey: MetricKey }) {
+  const def  = METRIC_DEFS[metricKey];
+  const last = entries[entries.length - 1];
+  const prev = entries.length >= 2 ? entries[entries.length - 2] : null;
+
+  const srcVal = def.getValue(last, 'source');
+  const cmpVal = def.getValue(last, 'competitor');
+  const diff   = srcVal - cmpVal;
+  const srcWins = def.lowerIsBetter ? diff < 0 : diff > 0;
+
+  const deltas = entries.map(e => {
+    const s = def.getValue(e, 'source'), c = def.getValue(e, 'competitor');
+    return def.lowerIsBetter ? c - s : s - c; // positive = source winning
+  });
+  const lastDelta   = deltas[deltas.length - 1];
+  const prevDelta   = prev ? deltas[deltas.length - 2] : null;
+  const deltaChange = prevDelta !== null ? lastDelta - prevDelta : 0;
+
+  const insight = generateInsight(
+    metricKey, srcVal, cmpVal,
+    last.sourceHostname, last.targetHostname,
+  );
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={metricKey}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="space-y-2"
+      >
+        {/* Gap row */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DIVIDER}` }}>
+          <Zap className="w-3.5 h-3.5 shrink-0"
+            style={{ color: srcWins ? T_HEX : C_HEX }} />
+          <div className="flex items-center gap-2 flex-wrap text-[11px] flex-1">
+            <span className="font-bold uppercase tracking-wider text-[9px]"
+              style={{ color: 'rgba(255,255,255,0.30)' }}>Gap · {def.label}</span>
+
+            {Math.abs(diff) < 0.001 ? (
+              <span style={{ color: 'rgba(255,255,255,0.45)' }}>Tied</span>
+            ) : (
+              <span style={{ color: srcWins ? T_HEX : C_HEX, fontWeight: 700 }}>
+                {srcWins ? last.sourceHostname : last.targetHostname}
+                {' '}is{' '}
+                <strong>{def.fmt(Math.abs(diff))}</strong>
+                {' '}{def.lowerIsBetter ? 'faster' : 'ahead'}
+              </span>
+            )}
+
+            {deltaChange !== 0 && (
+              <span className="flex items-center gap-0.5 ml-auto"
+                style={{ color: deltaChange > 0 ? OK_CLR : REG_CLR }}>
+                {deltaChange > 0
+                  ? <TrendingUp className="w-3 h-3" />
+                  : <TrendingDown className="w-3 h-3" />}
+                Gap {deltaChange > 0 ? 'widening' : 'narrowing'} vs prev run
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Business insight */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{
+            background: `${def.accent}08`,
+            border:     `1px solid ${def.accent}22`,
+          }}>
+          <Lightbulb className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: def.accent }} />
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-widest block mb-1"
+              style={{ color: def.accent }}>Senior Insight</span>
+            <p className="text-[12px] leading-relaxed"
+              style={{ color: 'rgba(255,255,255,0.70)' }}>
+              {insight}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ─── PDF Export ───────────────────────────────────────────────────────────────
+
+async function generatePdf(
+  ref: React.RefObject<HTMLDivElement | null>,
+  sourceHostname: string,
+  targetHostname: string,
+) {
+  if (!ref.current) return;
+
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
+  const canvas  = await html2canvas(ref.current, {
+    scale:           2,
+    backgroundColor: '#030712',
+    useCORS:         true,
+    logging:         false,
+  });
+
+  const pdf  = new jsPDF('p', 'mm', 'a4');
+  const pdfW = pdf.internal.pageSize.getWidth();
+  const pdfH = pdf.internal.pageSize.getHeight();
+
+  // Dark background
+  pdf.setFillColor(3, 7, 18);
+  pdf.rect(0, 0, pdfW, pdfH, 'F');
+
+  // Header bar
+  pdf.setFillColor(17, 24, 39);
+  pdf.rect(0, 0, pdfW, 22, 'F');
+
+  // Logo text
+  pdf.setTextColor(139, 92, 246);
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('PerfScope', 12, 14);
+
+  // Report title
+  pdf.setTextColor(203, 213, 225);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Competitive Analysis: ${sourceHostname} vs ${targetHostname}`, 12, 28);
+  pdf.text(`Generated: ${new Date().toLocaleString()}`, 12, 34);
+
+  // Divider
+  pdf.setDrawColor(139, 92, 246, 0.4);
+  pdf.setLineWidth(0.3);
+  pdf.line(12, 37, pdfW - 12, 37);
+
+  // Chart image
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  const imgW    = pdfW - 24;
+  const imgH    = Math.min((canvas.height / canvas.width) * imgW, pdfH - 50);
+  pdf.addImage(imgData, 'JPEG', 12, 42, imgW, imgH);
+
+  // Footer
+  pdf.setTextColor(75, 85, 99);
+  pdf.setFontSize(7);
+  pdf.text('Generated by PerfScope · Performance Intelligence Platform', 12, pdfH - 8);
+
+  pdf.save(`perfscope-compare-${sourceHostname}-vs-${targetHostname}-${Date.now()}.pdf`);
+}
+
+// ─── Split Cards ─────────────────────────────────────────────────────────────
 
 function SplitCards({ entry }: { entry: CompareEntry }) {
   const sides: { key: 'source' | 'competitor'; label: string; accent: string; glow: string }[] = [
     { key: 'source',     label: 'Your Site',  accent: T_HEX, glow: T_GLOW },
     { key: 'competitor', label: 'Competitor', accent: C_HEX, glow: C_GLOW },
   ];
-  const metrics: { label: string; key: string; fmt: (v: number) => string }[] = [
-    { label: 'LCP',   key: 'lcp', fmt: fmtMs },
-    { label: 'TBT',   key: 'tbt', fmt: fmtMs },
-    { label: 'FCP',   key: 'fcp', fmt: fmtMs },
-    { label: 'CLS',   key: 'cls', fmt: v => v.toFixed(3) },
-    { label: 'TTI',   key: 'tti', fmt: fmtMs },
+  const metricRows: { label: string; mk: string; fmt: (v: number) => string }[] = [
+    { label: 'LCP', mk: 'lcp', fmt: fmtMs },
+    { label: 'TBT', mk: 'tbt', fmt: fmtMs },
+    { label: 'FCP', mk: 'fcp', fmt: fmtMs },
+    { label: 'CLS', mk: 'cls', fmt: v => v.toFixed(3) },
+    { label: 'TTI', mk: 'tti', fmt: fmtMs },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-4">
       {sides.map(({ key, label, accent, glow }) => {
-        const data    = entry[key];
-        const sc      = Math.round(data.scores['performance'] ?? 0);
+        const data     = entry[key];
+        const sc       = Math.round(data.scores['performance'] ?? 0);
         const isWinner = entry.winner === key;
         return (
           <div key={key} className="rounded-xl p-4 space-y-3"
             style={{
               background: `${accent}08`,
               border:     `1px solid ${accent}22`,
-              boxShadow:  isWinner ? `0 0 24px ${glow.replace('0.55', '0.15')}` : 'none',
+              boxShadow:  isWinner ? `0 0 24px ${glow.replace('0.55', '0.12')}` : 'none',
             }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -223,23 +434,22 @@ function SplitCards({ entry }: { entry: CompareEntry }) {
                   {label}
                 </span>
               </div>
-              {isWinner && (
-                <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              )}
+              {isWinner && <Trophy className="w-3.5 h-3.5 text-amber-400" />}
             </div>
             <div className="text-center py-1">
               <span className="text-[2rem] font-black tabular-nums"
-                style={{ color: isWinner ? '#ffffff' : 'rgba(255,255,255,0.65)',
+                style={{ color: isWinner ? '#ffffff' : 'rgba(255,255,255,0.60)',
                   textShadow: isWinner ? `0 0 20px ${glow}` : 'none' }}>
                 {sc}
               </span>
-              <span className="text-[11px] ml-1" style={{ color: 'rgba(255,255,255,0.30)' }}>/100</span>
+              <span className="text-[11px] ml-1" style={{ color: 'rgba(255,255,255,0.28)' }}>/100</span>
             </div>
             <div className="space-y-1.5">
-              {metrics.map(({ label: ml, key: mk, fmt }) => (
+              {metricRows.map(({ label: ml, mk, fmt }) => (
                 <div key={mk} className="flex items-center justify-between text-[11px]">
-                  <span style={{ color: 'rgba(255,255,255,0.35)' }}>{ml}</span>
-                  <span className="font-mono font-bold tabular-nums" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.33)' }}>{ml}</span>
+                  <span className="font-mono font-bold tabular-nums"
+                    style={{ color: 'rgba(255,255,255,0.72)' }}>
                     {fmt(data.metrics[mk] ?? 0)}
                   </span>
                 </div>
@@ -256,7 +466,18 @@ function SplitCards({ entry }: { entry: CompareEntry }) {
 
 function PairDetail({ pairId, onClose }: { pairId: string; onClose: () => void }) {
   const { data: entries = [], isLoading } = useCompareHistoryPair(pairId);
+  const [activeMetric, setActiveMetric]  = useState<MetricKey>('score');
+  const [exporting, setExporting]        = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
   const last = entries[entries.length - 1];
+
+  async function handleExport() {
+    if (!last) return;
+    setExporting(true);
+    try { await generatePdf(reportRef, last.sourceHostname, last.targetHostname); }
+    finally { setExporting(false); }
+  }
 
   return (
     <motion.div
@@ -266,23 +487,42 @@ function PairDetail({ pairId, onClose }: { pairId: string; onClose: () => void }
       transition={{ duration: 0.25 }}
       style={PANEL}
     >
-      <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${DIVIDER}` }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: `1px solid ${DIVIDER}` }}>
         <div className="flex items-center gap-2">
           <GitCompareArrows className="w-4 h-4 text-violet-400" />
-          <span className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>
-            Pair Detail
-          </span>
-          <span className="font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <span className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>Pair Detail</span>
+          <span className="font-mono text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
             {pairId}
           </span>
         </div>
-        <button onClick={onClose}
-          className="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
-          style={{ background: 'rgba(255,255,255,0.05)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}>
-          <X className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.50)' }} />
-        </button>
+        <div className="flex items-center gap-2">
+          {!isLoading && entries.length > 0 && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+              style={{
+                background: exporting ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.12)',
+                border:     '1px solid rgba(139,92,246,0.28)',
+                color:      exporting ? 'rgba(139,92,246,0.40)' : T_HEX,
+              }}
+              onMouseEnter={e => { if (!exporting) (e.currentTarget.style.background = 'rgba(139,92,246,0.20)'); }}
+              onMouseLeave={e => { if (!exporting) (e.currentTarget.style.background = 'rgba(139,92,246,0.12)'); }}
+            >
+              <FileDown className="w-3 h-3" />
+              {exporting ? 'Generating…' : 'Generate Report'}
+            </button>
+          )}
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}>
+            <X className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.45)' }} />
+          </button>
+        </div>
       </div>
 
       {isLoading && (
@@ -293,30 +533,48 @@ function PairDetail({ pairId, onClose }: { pairId: string; onClose: () => void }
       )}
 
       {!isLoading && entries.length > 0 && (
-        <div className="px-6 py-5 space-y-6">
+        <div ref={reportRef} className="px-6 py-5 space-y-6">
+
           {/* Legend */}
           <div className="flex items-center gap-4 text-[10px]">
-            {[{ color: T_HEX, glow: T_GLOW, label: last.sourceHostname },
-              { color: C_HEX, glow: C_GLOW, label: last.targetHostname }].map(({ color, glow, label }) => (
-              <span key={label} className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                <span className="w-4 h-0.5 rounded-full" style={{ background: color, boxShadow: `0 0 4px ${glow}` }} />
-                {label}
+            {[
+              { color: T_HEX, glow: T_GLOW, label: last.sourceHostname, note: 'Your Site' },
+              { color: C_HEX, glow: C_GLOW, label: last.targetHostname, note: 'Competitor' },
+            ].map(({ color, glow, label, note }) => (
+              <span key={label} className="flex items-center gap-1.5"
+                style={{ color: 'rgba(255,255,255,0.45)' }}>
+                <span className="w-4 h-0.5 rounded-full"
+                  style={{ background: color, boxShadow: `0 0 4px ${glow}` }} />
+                <span style={{ color: 'rgba(255,255,255,0.65)' }}>{label}</span>
+                <span style={{ color: 'rgba(255,255,255,0.28)' }}>({note})</span>
               </span>
             ))}
           </div>
 
-          {/* Dual trend chart */}
-          {entries.length >= 2
-            ? <DualTrendChart entries={entries} />
-            : <p className="text-[11px] text-center py-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
-                Run this comparison again to see trend data.
-              </p>
-          }
+          {/* Metric Toggle + Chart */}
+          {entries.length >= 2 ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <span className="text-[9px] font-bold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  Performance Trend · {entries.length} runs
+                </span>
+                <MetricToggle active={activeMetric} onChange={setActiveMetric} />
+              </div>
+              <DualTrendChart entries={entries} metricKey={activeMetric} />
+              <InsightBox entries={entries} metricKey={activeMetric} />
+            </div>
+          ) : (
+            <p className="text-[11px] text-center py-4"
+              style={{ color: 'rgba(255,255,255,0.28)' }}>
+              Run this comparison again to unlock trend analysis.
+            </p>
+          )}
 
-          {/* Last run split view */}
+          {/* Latest run split cards */}
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest mb-3"
-              style={{ color: 'rgba(255,255,255,0.25)' }}>
+              style={{ color: 'rgba(255,255,255,0.22)' }}>
               Latest Run · {fmtDateFull(last.timestamp)}
             </p>
             <SplitCards entry={last} />
@@ -332,7 +590,7 @@ function PairDetail({ pairId, onClose }: { pairId: string; onClose: () => void }
 function WinnerBadge({ winner }: { winner: CompareEntry['winner'] }) {
   if (winner === 'tie') return (
     <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.30)' }}>
+      style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.28)' }}>
       <Minus className="w-2.5 h-2.5" /> Tie
     </span>
   );
@@ -347,14 +605,11 @@ function WinnerBadge({ winner }: { winner: CompareEntry['winner'] }) {
 
 function ArchiveTable({
   entries, selectedPair, onSelect,
-}: {
-  entries: CompareEntry[];
-  selectedPair: string | null;
-  onSelect: (pairId: string) => void;
-}) {
+}: { entries: CompareEntry[]; selectedPair: string | null; onSelect: (id: string) => void }) {
   return (
     <div style={PANEL}>
-      <div className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: `1px solid ${DIVIDER}` }}>
+      <div className="flex items-center gap-2 px-6 py-4"
+        style={{ borderBottom: `1px solid ${DIVIDER}` }}>
         <History className="w-4 h-4 text-violet-400" />
         <span className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>All Comparisons</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded-md"
@@ -362,14 +617,13 @@ function ArchiveTable({
           {entries.length} pair{entries.length !== 1 ? 's' : ''}
         </span>
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${DIVIDER}` }}>
               {['Your Site', 'Competitor', 'Score (You)', 'Score (Rival)', 'Delta', 'Winner', 'Last Run', ''].map((h, i) => (
                 <th key={i} className="px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest"
-                  style={{ color: 'rgba(255,255,255,0.25)', textAlign: i >= 2 ? 'center' : 'left' }}>
+                  style={{ color: 'rgba(255,255,255,0.22)', textAlign: i >= 2 ? 'center' : 'left' }}>
                   {h}
                 </th>
               ))}
@@ -380,100 +634,81 @@ function ArchiveTable({
               {entries.length === 0 ? (
                 <motion.tr key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <td colSpan={8} className="px-6 py-12 text-center text-[12px]"
-                    style={{ color: 'rgba(255,255,255,0.25)' }}>
+                    style={{ color: 'rgba(255,255,255,0.22)' }}>
                     No comparisons match your search.
                   </td>
                 </motion.tr>
-              ) : (
-                entries.map((e, i) => {
-                  const src  = score(e, 'source');
-                  const cmp  = score(e, 'competitor');
-                  const delta = src - cmp;
-                  const isSelected = selectedPair === e.pairId;
-                  return (
-                    <motion.tr
-                      key={e.pairId}
-                      layout
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.16, delay: i * 0.03 }}
-                      onClick={() => onSelect(e.pairId)}
-                      style={{
-                        borderBottom: `1px solid ${DIVIDER}`,
-                        background: isSelected
-                          ? 'rgba(139,92,246,0.08)'
-                          : i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent',
-                        cursor: 'pointer',
-                        borderLeft: isSelected ? `2px solid ${T_HEX}` : '2px solid transparent',
-                      }}
-                      onMouseEnter={e2 => { if (!isSelected) (e2.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
-                      onMouseLeave={e2 => { if (!isSelected) (e2.currentTarget as HTMLElement).style.background = i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent'; }}
-                    >
-                      {/* Your Site */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: T_HEX }} />
-                          <span className="font-mono" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                            {e.sourceHostname}
-                          </span>
-                        </div>
-                      </td>
-                      {/* Competitor */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C_HEX }} />
-                          <span className="font-mono" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                            {e.targetHostname}
-                          </span>
-                        </div>
-                      </td>
-                      {/* Score source */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-black tabular-nums text-[14px]"
-                          style={{ color: e.winner === 'source' ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                            textShadow: e.winner === 'source' ? `0 0 12px ${T_GLOW}` : 'none' }}>
-                          {src}
-                        </span>
-                      </td>
-                      {/* Score competitor */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-black tabular-nums text-[14px]"
-                          style={{ color: e.winner === 'competitor' ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                            textShadow: e.winner === 'competitor' ? `0 0 12px ${C_GLOW}` : 'none' }}>
-                          {cmp}
-                        </span>
-                      </td>
-                      {/* Delta */}
-                      <td className="px-4 py-3 text-center">
-                        <span className="flex items-center justify-center gap-0.5 text-[11px] font-bold"
-                          style={{ color: delta > 0 ? T_HEX : delta < 0 ? C_HEX : 'rgba(255,255,255,0.30)' }}>
-                          {delta > 0 ? <TrendingUp className="w-3 h-3" /> : delta < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-                          {delta > 0 ? `+${delta}` : delta}
-                        </span>
-                      </td>
-                      {/* Winner */}
-                      <td className="px-4 py-3 text-center">
-                        <WinnerBadge winner={e.winner} />
-                      </td>
-                      {/* Date */}
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[10px]"
-                          style={{ color: 'rgba(255,255,255,0.35)' }}>
-                          <Clock className="w-3 h-3" />
-                          {fmtDate(e.timestamp)}
-                        </div>
-                      </td>
-                      {/* Arrow */}
-                      <td className="px-3 py-3">
-                        <ChevronRight className="w-3.5 h-3.5 transition-transform"
-                          style={{ color: isSelected ? T_HEX : 'rgba(255,255,255,0.20)',
-                            transform: isSelected ? 'rotate(90deg)' : 'none' }} />
-                      </td>
-                    </motion.tr>
-                  );
-                })
-              )}
+              ) : entries.map((e, i) => {
+                const srcScore  = Math.round(e.source.scores['performance'] ?? 0);
+                const cmpScore  = Math.round(e.competitor.scores['performance'] ?? 0);
+                const delta     = srcScore - cmpScore;
+                const isSel     = selectedPair === e.pairId;
+                return (
+                  <motion.tr
+                    key={e.pairId} layout
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.16, delay: i * 0.03 }}
+                    onClick={() => onSelect(e.pairId)}
+                    style={{
+                      borderBottom: `1px solid ${DIVIDER}`,
+                      borderLeft:   `2px solid ${isSel ? T_HEX : 'transparent'}`,
+                      background:   isSel
+                        ? 'rgba(139,92,246,0.07)'
+                        : i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={ev => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+                    onMouseLeave={ev => { if (!isSel) (ev.currentTarget as HTMLElement).style.background = i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent'; }}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: T_HEX }} />
+                        <span className="font-mono" style={{ color: 'rgba(255,255,255,0.72)' }}>{e.sourceHostname}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C_HEX }} />
+                        <span className="font-mono" style={{ color: 'rgba(255,255,255,0.72)' }}>{e.targetHostname}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="font-black tabular-nums text-[14px]"
+                        style={{ color: e.winner === 'source' ? '#ffffff' : 'rgba(255,255,255,0.50)',
+                          textShadow: e.winner === 'source' ? `0 0 12px ${T_GLOW}` : 'none' }}>
+                        {srcScore}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="font-black tabular-nums text-[14px]"
+                        style={{ color: e.winner === 'competitor' ? '#ffffff' : 'rgba(255,255,255,0.50)',
+                          textShadow: e.winner === 'competitor' ? `0 0 12px ${C_GLOW}` : 'none' }}>
+                        {cmpScore}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="flex items-center justify-center gap-0.5 text-[11px] font-bold"
+                        style={{ color: delta > 0 ? T_HEX : delta < 0 ? C_HEX : 'rgba(255,255,255,0.28)' }}>
+                        {delta > 0 ? <TrendingUp className="w-3 h-3" /> : delta < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                        {delta > 0 ? `+${delta}` : delta}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center"><WinnerBadge winner={e.winner} /></td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1 text-[10px]"
+                        style={{ color: 'rgba(255,255,255,0.32)' }}>
+                        <Clock className="w-3 h-3" />{fmtDate(e.timestamp)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <ChevronRight className="w-3.5 h-3.5 transition-transform"
+                        style={{ color: isSel ? T_HEX : 'rgba(255,255,255,0.18)',
+                          transform: isSel ? 'rotate(90deg)' : 'none' }} />
+                    </td>
+                  </motion.tr>
+                );
+              })}
             </AnimatePresence>
           </tbody>
         </table>
@@ -486,31 +721,49 @@ function ArchiveTable({
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="relative">
+    <div className="relative max-w-sm">
       <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
         style={{ color: 'rgba(255,255,255,0.25)' }} />
       <input
-        type="text"
-        placeholder="Search by rival URL…"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full pl-9 pr-4 py-2.5 rounded-xl text-[12px] outline-none transition-all"
-        style={{
-          background:   'rgba(255,255,255,0.04)',
-          border:       '1px solid rgba(255,255,255,0.10)',
-          color:        '#e2e8f0',
-        }}
+        type="text" placeholder="Search by rival URL…"
+        value={value} onChange={e => onChange(e.target.value)}
+        className="w-full pl-9 pr-8 py-2.5 rounded-xl text-[12px] outline-none transition-all"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: '#e2e8f0' }}
         onFocus={e => { e.currentTarget.style.border = `1px solid ${T_HEX}50`; e.currentTarget.style.boxShadow = `0 0 0 3px ${T_HEX}10`; }}
         onBlur={e  => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
       />
       {value && (
         <button onClick={() => onChange('')}
           className="absolute right-3 top-1/2 -translate-y-1/2"
-          style={{ color: 'rgba(255,255,255,0.30)' }}>
+          style={{ color: 'rgba(255,255,255,0.28)' }}>
           <X className="w-3 h-3" />
         </button>
       )}
     </div>
+  );
+}
+
+// ─── Breadcrumb ───────────────────────────────────────────────────────────────
+
+function Breadcrumb() {
+  return (
+    <nav className="flex items-center gap-1.5 text-sm select-none flex-wrap">
+      {[{ to: '/', label: 'Analyzer' }, { to: '/compare', label: 'Competitive Analysis' }].map(({ to, label }) => (
+        <span key={to} className="flex items-center gap-1.5">
+          <Link to={to} className="font-medium transition-all duration-150"
+            style={{ color: 'rgba(255,255,255,0.38)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T_HEX; (e.currentTarget as HTMLElement).style.textShadow = `0 0 12px ${T_GLOW}`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.38)'; (e.currentTarget as HTMLElement).style.textShadow = 'none'; }}>
+            {label}
+          </Link>
+          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 16 }}>›</span>
+        </span>
+      ))}
+      <div className="flex items-center gap-1.5">
+        <History className="w-3.5 h-3.5" style={{ color: T_HEX }} />
+        <span className="font-semibold" style={{ color: '#e2e8f0' }}>Compare History</span>
+      </div>
+    </nav>
   );
 }
 
@@ -526,17 +779,16 @@ function EmptyState() {
       </div>
       <div className="space-y-1.5">
         <p className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>No comparisons yet</p>
-        <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.33)' }}>
           Run a competitive analysis to start tracking performance battles.
         </p>
       </div>
       <Link to="/compare"
         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold mt-1 transition-all"
         style={{ background: 'rgba(139,92,246,0.12)', border: `1px solid rgba(139,92,246,0.28)`, color: T_HEX }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.20)')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.22)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.12)')}>
-        <GitCompareArrows className="w-3.5 h-3.5" />
-        Go to Compare
+        <GitCompareArrows className="w-3.5 h-3.5" /> Go to Compare
       </Link>
     </motion.div>
   );
@@ -546,33 +798,37 @@ function EmptyState() {
 
 export function CompareHistoryPage() {
   const [params, setParams] = useSearchParams();
-  const search      = params.get('search') ?? '';
+  const search       = params.get('search') ?? '';
   const selectedPair = params.get('pair');
+  const [localSearch, setLocalSearch] = useState(search);
 
   const { data: pairs = [], isLoading } = useCompareHistoryList(search);
 
-  function setSearch(v: string) {
-    setParams(p => { const n = new URLSearchParams(p); v ? n.set('search', v) : n.delete('search'); n.delete('pair'); return n; }, { replace: true });
-  }
-  function setPair(pairId: string) {
-    setParams(p => {
-      const n = new URLSearchParams(p);
-      if (n.get('pair') === pairId) n.delete('pair'); else n.set('pair', pairId);
-      return n;
-    }, { replace: true });
-  }
-  function closePair() {
-    setParams(p => { const n = new URLSearchParams(p); n.delete('pair'); return n; }, { replace: true });
-  }
-
-  // Debounced search: update URL after input change
-  const [localSearch, setLocalSearch] = useState(search);
   useMemo(() => { setLocalSearch(search); }, [search]);
 
   function handleSearch(v: string) {
     setLocalSearch(v);
-    const t = setTimeout(() => setSearch(v), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => {
+      setParams(p => {
+        const n = new URLSearchParams(p);
+        v ? n.set('search', v) : n.delete('search');
+        n.delete('pair');
+        return n;
+      }, { replace: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }
+
+  function handleSelect(pairId: string) {
+    setParams(p => {
+      const n = new URLSearchParams(p);
+      n.get('pair') === pairId ? n.delete('pair') : n.set('pair', pairId);
+      return n;
+    }, { replace: true });
+  }
+
+  function closePair() {
+    setParams(p => { const n = new URLSearchParams(p); n.delete('pair'); return n; }, { replace: true });
   }
 
   return (
@@ -584,34 +840,24 @@ export function CompareHistoryPage() {
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
         <Breadcrumb />
-
-        <div className="max-w-sm">
-          <SearchBar value={localSearch} onChange={handleSearch} />
-        </div>
+        <SearchBar value={localSearch} onChange={handleSearch} />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-28">
             <div className="w-6 h-6 rounded-full border-2 animate-spin"
               style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
           </div>
-        ) : pairs.length === 0 && !search ? (
-          <EmptyState />
-        ) : (
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="space-y-6"
-            >
-              <ArchiveTable entries={pairs} selectedPair={selectedPair} onSelect={setPair} />
-              <AnimatePresence>
-                {selectedPair && (
-                  <PairDetail key={selectedPair} pairId={selectedPair} onClose={closePair} />
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </AnimatePresence>
+        ) : pairs.length === 0 && !search ? <EmptyState /> : (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }} className="space-y-6">
+            <ArchiveTable entries={pairs} selectedPair={selectedPair} onSelect={handleSelect} />
+            <AnimatePresence>
+              {selectedPair && (
+                <PairDetail key={selectedPair} pairId={selectedPair} onClose={closePair} />
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </div>
