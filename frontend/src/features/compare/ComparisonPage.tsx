@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMotionValue, motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, GitCompareArrows, Zap, RotateCcw } from 'lucide-react';
+import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
+import { apiClient } from '@/api/client';
 import { Button } from '@/shared/components/ui/button';
 import { useComparisonSide } from './hooks/useComparisonSide';
 import { SideInputBar } from './components/SideInputBar';
@@ -25,9 +26,23 @@ export function ComparisonPage() {
   const [competitorUrl, setCompetitorUrl] = useState('https://');
 
   const sharedMotionMs = useMotionValue(0);
+  const savedRef = useRef(false);
 
   const isRunning  = target.isLoading || competitor.isLoading;
   const bothLoaded = target.isSuccess  && competitor.isSuccess;
+
+  // Auto-save to compare history when both sides complete
+  useEffect(() => {
+    if (bothLoaded && target.data && competitor.data && !savedRef.current) {
+      savedRef.current = true;
+      apiClient.post('/compare-history', {
+        sourceUrl:  target.data.url,
+        targetUrl:  competitor.data.url,
+        source:     { scores: target.data.scores, metrics: target.data.metrics },
+        competitor: { scores: competitor.data.scores, metrics: competitor.data.metrics },
+      }).catch(() => {});
+    }
+  }, [bothLoaded, target.data, competitor.data]);
 
   // Enable launch when both sides have either a pending URL or already-loaded data
   const isBlank = (u: string) => u.trim() === '' || u.trim() === 'https://';
@@ -49,6 +64,7 @@ export function ComparisonPage() {
     competitor.reset();
     setTargetUrl('https://');
     setCompetitorUrl('https://');
+    savedRef.current = false;
   };
 
   return (
@@ -78,12 +94,19 @@ export function ComparisonPage() {
             <span className="text-sm font-semibold">Competitive Analysis</span>
           </div>
         </div>
-        {bothLoaded && (
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs text-muted-foreground"
-            onClick={handleResetAll}>
-            <RotateCcw className="w-3 h-3" /> Reset All
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+            <Link to="/compare-history">
+              <History className="w-3.5 h-3.5" /> Compare History
+            </Link>
           </Button>
-        )}
+          {bothLoaded && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs text-muted-foreground"
+              onClick={handleResetAll}>
+              <RotateCcw className="w-3 h-3" /> Reset All
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Input card ───────────────────────────────────────────────────── */}
