@@ -1,7 +1,12 @@
 import { createApp } from './app.js';
 import { config, validateConfig } from './config/index.js';
+import { connectDatabase } from './config/database.js';
 
 validateConfig();
+
+await connectDatabase(config.mongoUri).catch(err => {
+  console.warn('[Database] MongoDB unavailable — history will be skipped:', (err as Error).message);
+});
 
 const { httpServer } = createApp();
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, GitCompareArrows, Download } from 'lucide-react';
@@ -23,6 +23,8 @@ import { TimelineProvider, useTimelineContext } from '../context/TimelineContext
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
+import { useHistory } from '../../history/hooks/useHistory';
+import { RegressionHistory } from '../../history/components/RegressionHistory';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -122,8 +124,17 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 
 export function Analyzer() {
   const [url, setUrl] = useState('');
+  const [completedUrl, setCompletedUrl] = useState<string | null>(null);
   const { analyze, data, progress, partials, isPending, isError, error, reset } = useAnalysis();
 
+  // Capture URL once analysis completes so we can refetch history
+  useEffect(() => {
+    if (data?.url) setCompletedUrl(data.url);
+  }, [data?.url]);
+
+  const { data: historyEntries } = useHistory(completedUrl);
+  console.log(historyEntries,'historyEntries');
+  
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = url.trim();
@@ -327,6 +338,13 @@ export function Analyzer() {
                   Critical ({data.audits.filter((a) => a.impact === 'critical').length}) · Other ({data.audits.filter((a) => a.impact !== 'critical').length})
                 </SectionTitle>
                 <AuditList audits={data.audits} />
+              </section>
+            )}
+
+            {historyEntries && historyEntries.length >= 2 && (
+              <section>
+                <SectionTitle>Regression History</SectionTitle>
+                <RegressionHistory entries={historyEntries} />
               </section>
             )}
           </motion.div>

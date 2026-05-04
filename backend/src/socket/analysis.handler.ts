@@ -9,6 +9,7 @@ import type {
 } from '../types/index.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { AiService } from '../services/ai.service.js';
+import { HistoryService } from '../services/history.service.js';
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -73,6 +74,15 @@ export function registerAnalysisSocket(io: TypedServer): void {
             }
           }
         }
+
+        HistoryService.save({
+          id:        result.id,
+          shortId:   result.id.slice(0, 7),
+          url:       result.url,
+          timestamp: result.timestamp,
+          scores:    result.scores,
+          metrics:   result.metrics,
+        }).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {

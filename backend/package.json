@@ -14,6 +14,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "lighthouse": "^12.4.0",
+    "mongoose": "^9.6.1",
     "prisma": "^7.7.0",
     "puppeteer": "^24.4.0",
     "socket.io": "^4.8.3",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/mongoose": "^5.11.96",
     "@types/node": "^22.19.17",
     "@types/uuid": "^10.0.0",
     "socket.io-client": "^4.8.3",
