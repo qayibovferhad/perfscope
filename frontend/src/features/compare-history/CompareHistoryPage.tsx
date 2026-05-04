@@ -153,6 +153,8 @@ const PAD = { t: 16, r: 20, b: 48, l: 52 };
 function DualTrendChart({
   entries, metricKey,
 }: { entries: CompareEntry[]; metricKey: MetricKey }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
   const n   = entries.length;
   const def = METRIC_DEFS[metricKey];
   if (n < 2) return null;
@@ -175,6 +177,12 @@ function DualTrendChart({
   const cmpPath = toPath(cmpVals);
   const yTicks  = [0, 0.5, 1].map(t => ({ v: vMin + t * (vMax - vMin), y: PAD.t + iH * (1 - t) }));
 
+  // Tooltip position: flip to left if hovered point is in right half
+  const tooltipPct = hoveredIdx !== null
+    ? ((xOf(hoveredIdx) - PAD.l) / iW) * 100
+    : 0;
+  const flipLeft = tooltipPct > 55;
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -183,6 +191,7 @@ function DualTrendChart({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="relative"
       >
         <svg viewBox={`0 0 ${CW} ${CH}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
           <defs>
@@ -206,6 +215,15 @@ function DualTrendChart({
             </g>
           ))}
 
+          {/* Hover cursor line */}
+          {hoveredIdx !== null && (
+            <line
+              x1={xOf(hoveredIdx)} y1={PAD.t}
+              x2={xOf(hoveredIdx)} y2={PAD.t + iH}
+              stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="4 3"
+            />
+          )}
+
           {/* Area fills */}
           <path d={`${srcPath} L${xOf(n-1)},${PAD.t+iH} L${PAD.l},${PAD.t+iH} Z`}
             fill={`url(#area-src-${metricKey})`} />
@@ -220,25 +238,112 @@ function DualTrendChart({
 
           {/* Dots */}
           {entries.map((e, i) => {
+            const isHov  = hoveredIdx === i;
             const isLast = i === n - 1;
             const sx = xOf(i), sy = yOf(srcVals[i]);
             const cx = xOf(i), cy = yOf(cmpVals[i]);
             return (
               <g key={i}>
-                <circle cx={sx} cy={sy} r={isLast ? 5.5 : 3.5} fill={T_HEX}
+                <circle cx={sx} cy={sy} r={isHov ? 6 : isLast ? 5.5 : 3.5} fill={T_HEX}
                   stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                  style={{ filter: isLast ? `drop-shadow(0 0 10px ${T_GLOW})` : 'none' }} />
-                <circle cx={cx} cy={cy} r={isLast ? 5.5 : 3.5} fill={C_HEX}
+                  style={{ filter: (isHov || isLast) ? `drop-shadow(0 0 10px ${T_GLOW})` : 'none', transition: 'r 0.1s' }} />
+                <circle cx={cx} cy={cy} r={isHov ? 6 : isLast ? 5.5 : 3.5} fill={C_HEX}
                   stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                  style={{ filter: isLast ? `drop-shadow(0 0 10px ${C_GLOW})` : 'none' }} />
+                  style={{ filter: (isHov || isLast) ? `drop-shadow(0 0 10px ${C_GLOW})` : 'none', transition: 'r 0.1s' }} />
                 <text x={sx} y={CH - 8} textAnchor="middle"
-                  fill="rgba(255,255,255,0.20)" fontSize="8" fontFamily="monospace">
+                  fill={isHov ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.20)'}
+                  fontSize="8" fontFamily="monospace">
                   {fmtDate(e.timestamp)}
                 </text>
+                {/* Invisible hover target */}
+                <rect
+                  x={xOf(i) - (iW / n / 2)} y={PAD.t}
+                  width={iW / n} height={iH}
+                  fill="transparent" style={{ cursor: 'crosshair' }}
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                />
               </g>
             );
           })}
         </svg>
+
+        {/* Floating tooltip */}
+        <AnimatePresence>
+          {hoveredIdx !== null && (() => {
+            const e       = entries[hoveredIdx];
+            const srcVal  = srcVals[hoveredIdx];
+            const cmpVal  = cmpVals[hoveredIdx];
+            const srcWins = def.lowerIsBetter ? srcVal < cmpVal : srcVal > cmpVal;
+            return (
+              <motion.div
+                key={hoveredIdx}
+                initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.97 }}
+                transition={{ duration: 0.12 }}
+                className="absolute top-0 z-30 pointer-events-none"
+                style={{
+                  [flipLeft ? 'right' : 'left']: `calc(${flipLeft ? 100 - tooltipPct : tooltipPct}% + 12px)`,
+                  minWidth: 168,
+                }}
+              >
+                <div className="rounded-xl px-3.5 py-3 text-[11px] space-y-2"
+                  style={{
+                    background:     'rgba(13,18,36,0.97)',
+                    backdropFilter: 'blur(14px)',
+                    border:         '1px solid rgba(255,255,255,0.12)',
+                    boxShadow:      '0 8px 32px rgba(0,0,0,0.5)',
+                  }}>
+                  {/* Date */}
+                  <div className="flex items-center gap-1.5 pb-1.5"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <span className="font-mono font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      {fmtDateFull(e.timestamp)}
+                    </span>
+                  </div>
+
+                  {/* Your Site */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: T_HEX }} />
+                      {e.sourceHostname}
+                    </span>
+                    <span className="font-mono font-black tabular-nums"
+                      style={{ color: srcWins ? T_HEX : 'rgba(255,255,255,0.70)',
+                        textShadow: srcWins ? `0 0 8px ${T_GLOW}` : 'none' }}>
+                      {def.fmt(srcVal)}
+                    </span>
+                  </div>
+
+                  {/* Competitor */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: C_HEX }} />
+                      {e.targetHostname}
+                    </span>
+                    <span className="font-mono font-black tabular-nums"
+                      style={{ color: !srcWins ? C_HEX : 'rgba(255,255,255,0.70)',
+                        textShadow: !srcWins ? `0 0 8px ${C_GLOW}` : 'none' }}>
+                      {def.fmt(cmpVal)}
+                    </span>
+                  </div>
+
+                  {/* Delta */}
+                  <div className="flex items-center justify-between pt-1.5"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                    <span className="text-[9px] uppercase tracking-widest"
+                      style={{ color: 'rgba(255,255,255,0.25)' }}>Delta</span>
+                    <span className="font-mono font-bold text-[11px]"
+                      style={{ color: srcWins ? T_HEX : C_HEX }}>
+                      {srcWins ? '-' : '+'}{def.fmt(Math.abs(srcVal - cmpVal))}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );
