@@ -1,7 +1,7 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, GitCompareArrows, Download } from 'lucide-react';
+import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -23,8 +23,6 @@ import { TimelineProvider, useTimelineContext } from '../context/TimelineContext
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
-import { useHistory } from '../../history/hooks/useHistory';
-import { RegressionHistory } from '../../history/components/RegressionHistory';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -124,17 +122,8 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 
 export function Analyzer() {
   const [url, setUrl] = useState('');
-  const [completedUrl, setCompletedUrl] = useState<string | null>(null);
   const { analyze, data, progress, partials, isPending, isError, error, reset } = useAnalysis();
 
-  // Capture URL once analysis completes so we can refetch history
-  useEffect(() => {
-    if (data?.url) setCompletedUrl(data.url);
-  }, [data?.url]);
-
-  const { data: historyEntries } = useHistory(completedUrl);
-  console.log(historyEntries,'historyEntries');
-  
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = url.trim();
@@ -341,12 +330,30 @@ export function Analyzer() {
               </section>
             )}
 
-            {historyEntries && historyEntries.length >= 2 && (
-              <section>
-                <SectionTitle>Regression History</SectionTitle>
-                <RegressionHistory entries={historyEntries} />
-              </section>
-            )}
+            {/* View Full History button */}
+            <div className="flex justify-center pt-2">
+              <Link
+                to={`/history?url=${encodeURIComponent(data.url)}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{
+                  background:     'rgba(139,92,246,0.10)',
+                  border:         '1px solid rgba(139,92,246,0.28)',
+                  color:          '#8B5CF6',
+                  backdropFilter: 'blur(8px)',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.18)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(139,92,246,0.20)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.10)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                }}
+              >
+                <TrendingUp className="w-4 h-4" />
+                View Full History
+              </Link>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
