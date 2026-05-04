@@ -6,19 +6,19 @@ import {
   Minus, ChevronRight, X, Zap, History, FileDown, Lightbulb,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from './useCompareHistory';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
-const PAGE_BG = '#030712';
 const PANEL: React.CSSProperties = {
-  background:           'rgba(17,24,39,0.72)',
+  background:           'var(--ps-panel-bg)',
   backdropFilter:       'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border:               '1px solid rgba(255,255,255,0.10)',
+  border:               '1px solid var(--ps-panel-border)',
   borderRadius:         '1rem',
   overflow:             'hidden',
 };
-const DIVIDER = 'rgba(255,255,255,0.08)';
+const DIVIDER = 'var(--ps-divider)';
 const T_HEX   = '#8B5CF6';
 const T_GLOW  = 'rgba(139,92,246,0.55)';
 const C_HEX   = '#F59E0B';
@@ -455,7 +455,7 @@ async function generatePdf(
 
   const canvas  = await html2canvas(ref.current, {
     scale:           2,
-    backgroundColor: '#030712',
+    backgroundColor: document.documentElement.classList.contains('dark') ? '#030712' : '#f1f5f9',
     useCORS:         true,
     logging:         false,
   });
@@ -722,7 +722,7 @@ function ArchiveTable({
           {entries.length} pair{entries.length !== 1 ? 's' : ''}
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" style={{ overflowX: 'clip' }}>
         <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${DIVIDER}` }}>
@@ -751,9 +751,9 @@ function ArchiveTable({
                 return (
                   <motion.tr
                     key={e.pairId} layout
-                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.16, delay: i * 0.03 }}
+                    transition={{ duration: 0.14 }}
                     onClick={() => onSelect(e.pairId)}
                     style={{
                       borderBottom: `1px solid ${DIVIDER}`,
@@ -937,14 +937,17 @@ export function CompareHistoryPage() {
   }
 
   return (
-    <div className="relative min-h-screen" style={{ background: PAGE_BG }}>
+    <div className="relative min-h-screen bg-background">
       <div className="pointer-events-none fixed top-0 left-0 w-[600px] h-[600px]"
         style={{ background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.11) 0%, transparent 62%)', zIndex: 0 }} />
       <div className="pointer-events-none fixed bottom-0 right-0 w-[600px] h-[600px]"
         style={{ background: 'radial-gradient(ellipse at 100% 100%, rgba(245,158,11,0.08) 0%, transparent 62%)', zIndex: 0 }} />
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
-        <Breadcrumb />
+        <div className="flex items-center justify-between">
+          <Breadcrumb />
+          <ThemeToggle />
+        </div>
         <SearchBar value={localSearch} onChange={handleSearch} />
 
         {isLoading ? (

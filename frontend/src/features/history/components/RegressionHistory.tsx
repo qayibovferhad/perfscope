@@ -6,10 +6,10 @@ import type { HistoryEntry } from '../hooks/useHistory';
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
 const PANEL: React.CSSProperties = {
-  background:           'rgba(17,24,39,0.72)',
+  background:           'var(--ps-panel-bg)',
   backdropFilter:       'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border:               '1px solid rgba(255,255,255,0.10)',
+  border:               '1px solid var(--ps-panel-border)',
   borderRadius:         '1rem',
   overflow:             'hidden',
 };

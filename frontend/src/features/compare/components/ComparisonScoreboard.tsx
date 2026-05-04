@@ -4,10 +4,10 @@ import { Trophy, Info, Zap, Star } from 'lucide-react';
 import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
 
 
-const PANEL_BG  = 'rgba(17,24,39,0.72)';
+const PANEL_BG  = 'var(--ps-panel-bg)';
 const ROW_BASE  = 'rgba(255,255,255,0.025)';
 const ROW_HOVER = 'rgba(255,255,255,0.055)';
-const DIVIDER   = 'rgba(255,255,255,0.09)';
+const DIVIDER   = 'var(--ps-divider)';
 
 const T_HEX  = '#818cf8';  
 const C_HEX  = '#fb923c';   

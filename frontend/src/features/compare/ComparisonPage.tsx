@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMotionValue, motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
 import { apiClient } from '@/api/client';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { Button } from '@/shared/components/ui/button';
 import { useComparisonSide } from './hooks/useComparisonSide';
 import { SideInputBar } from './components/SideInputBar';
@@ -95,6 +96,7 @@ export function ComparisonPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="sm" asChild className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
             <Link to="/compare-history">
               <History className="w-3.5 h-3.5" /> Compare History

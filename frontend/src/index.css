@@ -22,6 +22,12 @@
     --input: 240 6% 90%;
     --ring: 240 6% 10%;
     --radius: 0.5rem;
+
+    /* Custom panel tokens — light mode */
+    --ps-panel-bg:     rgba(255, 255, 255, 0.82);
+    --ps-panel-border: rgba(0, 0, 0, 0.09);
+    --ps-divider:      rgba(0, 0, 0, 0.07);
+    --ps-page-bg:      #f1f5f9;
   }
 
   .dark {
@@ -42,6 +48,12 @@
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 240 5% 84%;
+
+    /* Custom panel tokens — dark mode */
+    --ps-panel-bg:     rgba(17, 24, 39, 0.72);
+    --ps-panel-border: rgba(255, 255, 255, 0.10);
+    --ps-divider:      rgba(255, 255, 255, 0.08);
+    --ps-page-bg:      #030712;
   }
 }
 

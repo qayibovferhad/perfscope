@@ -6,10 +6,10 @@ import type { AnalysisResult, TimelineData, TimelineFrame } from '../../analyzer
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
 const PANEL: React.CSSProperties = {
-  background:     'rgba(17,24,39,0.72)',
+  background:     'var(--ps-panel-bg)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border:         '1px solid rgba(255,255,255,0.10)',
+  border:         '1px solid var(--ps-panel-border)',
   borderRadius:   '1rem',
   overflow:       'hidden',
 };
@@ -18,7 +18,7 @@ const T_HEX   = '#8B5CF6';
 const C_HEX   = '#F59E0B';
 const T_GLOW  = 'rgba(139,92,246,0.55)';
 const C_GLOW  = 'rgba(245,158,11,0.55)';
-const DIVIDER = 'rgba(255,255,255,0.08)';
+const DIVIDER = 'var(--ps-divider)';
 
 const METRIC_DEFS = [
   { key: 'fcp' as const, label: 'FCP', color: '#3b82f6', glow: 'rgba(59,130,246,0.5)'  },

@@ -8,21 +8,21 @@ import {
   Filter,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { useHistory, type HistoryEntry } from './hooks/useHistory';
 import { RegressionHistory } from './components/RegressionHistory';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
-const PAGE_BG = '#030712';
 const PANEL: React.CSSProperties = {
-  background:           'rgba(17,24,39,0.72)',
+  background:           'var(--ps-panel-bg)',
   backdropFilter:       'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border:               '1px solid rgba(255,255,255,0.10)',
+  border:               '1px solid var(--ps-panel-border)',
   borderRadius:         '1rem',
   overflow:             'hidden',
 };
-const DIVIDER = 'rgba(255,255,255,0.08)';
+const DIVIDER = 'var(--ps-divider)';
 const T_HEX   = '#8B5CF6';
 const T_GLOW  = 'rgba(139,92,246,0.55)';
 const C_HEX   = '#F59E0B';
@@ -607,7 +607,7 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="relative min-h-screen" style={{ background: PAGE_BG }}>
+    <div className="relative min-h-screen bg-background">
       {/* Mesh blobs */}
       <div className="pointer-events-none fixed top-0 left-0 w-[600px] h-[600px]"
         style={{ background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.11) 0%, transparent 62%)', zIndex: 0 }} />
@@ -616,8 +616,11 @@ export function HistoryPage() {
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
 
-        {/* Breadcrumb */}
-        <Breadcrumb hostname={hostname} />
+        {/* Breadcrumb + theme toggle */}
+        <div className="flex items-center justify-between">
+          <Breadcrumb hostname={hostname} />
+          <ThemeToggle />
+        </div>
 
         {/* Loading */}
         {isLoading && (

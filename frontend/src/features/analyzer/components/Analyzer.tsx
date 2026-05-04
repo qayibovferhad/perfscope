@@ -23,6 +23,7 @@ import { TimelineProvider, useTimelineContext } from '../context/TimelineContext
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,7 @@ export function Analyzer() {
               Compare Mode
             </Link>
           </Button>
+          <ThemeToggle />
         </div>
       </div>
 

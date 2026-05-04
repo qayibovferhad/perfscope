@@ -5,15 +5,15 @@ import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
 
 
 const PANEL: React.CSSProperties = {
-  background:     'rgba(17,24,39,0.72)',
+  background:     'var(--ps-panel-bg)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border:         '1px solid rgba(255,255,255,0.10)',
+  border:         '1px solid var(--ps-panel-border)',
   borderRadius:   '1rem',
   overflow:       'hidden',
 };
 
-const DIVIDER = 'rgba(255,255,255,0.08)';
+const DIVIDER = 'var(--ps-divider)';
 const T_HEX   = '#8B5CF6';
 const C_HEX   = '#F59E0B';
 const T_GLOW  = 'rgba(139,92,246,0.55)';
