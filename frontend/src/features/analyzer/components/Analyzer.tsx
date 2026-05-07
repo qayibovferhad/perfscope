@@ -19,6 +19,7 @@ import { TimelineWaterfall } from './TimelineWaterfall';
 import { ChordDiagram } from './ChordDiagram';
 import { HeapMemoryChart } from './HeapMemoryChart';
 import { InteractionTimeline } from './InteractionTimeline';
+import { CLSVisualizer } from './CLSVisualizer';
 import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -144,6 +145,9 @@ export function Analyzer() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  console.log(data,'data');
+  
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
@@ -318,6 +322,13 @@ export function Analyzer() {
                   <section className="mt-8">
                     <SectionTitle>Interaction Responsiveness (FID / INP)</SectionTitle>
                     <InteractionTimeline data={data.interactionData} />
+                  </section>
+                )}
+
+                {data.clsData && data.timelineData && (
+                  <section className="mt-8">
+                    <SectionTitle>Layout Shift Visualizer (CLS)</SectionTitle>
+                    <CLSVisualizer clsData={data.clsData} timelineData={data.timelineData} />
                   </section>
                 )}
               </TimelineProvider>

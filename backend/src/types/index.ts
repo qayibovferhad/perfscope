@@ -141,6 +141,28 @@ export interface HeapMemoryData {
   peakMb:    number;
 }
 
+// ─── CLS Visualizer Types ─────────────────────────────────────────────────────
+
+export interface CLSShiftElement {
+  selector: string;
+  snippet: string;
+  score: number;
+  impact: 'high' | 'medium' | 'low';
+  /** Root cause hint from Lighthouse v12 subItems: 'unsized-media' | 'web-font' | 'injected-iframe' */
+  rootCause?: string;
+  /** Viewport-normalised fractions (0–1). Present when Lighthouse provides boundingRect. */
+  rect?: { topPct: number; leftPct: number; widthPct: number; heightPct: number };
+}
+
+export interface CLSData {
+  totalScore: number;
+  elements: CLSShiftElement[];
+  /** Viewport width used during the Lighthouse run (pixels), for rect scaling. */
+  viewportWidth: number;
+  /** Viewport height used during the Lighthouse run (pixels), for rect scaling. */
+  viewportHeight: number;
+}
+
 // ─── Flame Chart Types ───────────────────────────────────────────────────────
 
 export type FlameCategory = 'scripting' | 'rendering' | 'painting' | 'other';
@@ -175,6 +197,7 @@ export interface AnalysisResult {
   dependencyGraph?: DependencyGraph;
   heapMemoryData?: HeapMemoryData;
   interactionData?: InteractionData;
+  clsData?: CLSData;
 }
 
 // ─── Resource Analysis Types ─────────────────────────────────────────────────

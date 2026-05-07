@@ -186,6 +186,22 @@ export interface DependencyGraph {
   links: DependencyLink[];
 }
 
+export interface CLSShiftElement {
+  selector: string;
+  snippet: string;
+  score: number;
+  impact: 'high' | 'medium' | 'low';
+  rootCause?: string;
+  rect?: { topPct: number; leftPct: number; widthPct: number; heightPct: number };
+}
+
+export interface CLSData {
+  totalScore: number;
+  elements: CLSShiftElement[];
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
 export interface AnalysisResult {
   id: string;
   url: string;
@@ -200,6 +216,7 @@ export interface AnalysisResult {
   dependencyGraph?: DependencyGraph;
   heapMemoryData?:  HeapMemoryData;
   interactionData?: InteractionData;
+  clsData?: CLSData;
 }
 
 export interface AnalysisProgress {
