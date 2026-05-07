@@ -1,23 +1,28 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { AlertTriangle, SkipForward, ChevronRight, Zap, Info } from 'lucide-react';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '../types';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
-const RED   = 'rgba(255,50,50,1)';
-const RED_A = 'rgba(255,50,50,0.35)';
-const RED_G = 'rgba(255,50,50,0.18)';
-const RED_B = 'rgba(255,50,50,0.55)';
+const RED        = 'rgba(255,50,50,1)';
+const RED_A      = 'rgba(255,50,50,0.35)';
+const RED_G      = 'rgba(255,50,50,0.18)';
+const RED_B      = 'rgba(255,50,50,0.55)';
+const RED_ALERT  = '#ef4444';             // intense alert red for peak state
+
+// Logical dimensions used inside the SVG viewBox — the actual display is responsive.
+const PREVIEW_W = 380;
+const PREVIEW_H = 264; // ~380:264 ≈ 800:600 Puppeteer aspect ratio
 
 const PANEL: React.CSSProperties = {
-  background:          'var(--ps-panel-bg)',
-  backdropFilter:      'blur(16px)',
-  WebkitBackdropFilter:'blur(16px)',
-  border:              '1px solid rgba(255,50,50,0.20)',
-  borderRadius:        '1.25rem',
-  overflow:            'hidden',
-  boxShadow:           '0 0 48px rgba(255,50,50,0.06), 0 8px 32px rgba(0,0,0,0.40)',
+  background:           'var(--ps-panel-bg)',
+  backdropFilter:       'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border:               '1px solid rgba(255,50,50,0.20)',
+  borderRadius:         '1.25rem',
+  overflow:             'hidden',
+  boxShadow:            '0 0 48px rgba(255,50,50,0.06), 0 8px 32px rgba(0,0,0,0.40)',
 };
 
 const GLASS_CARD: React.CSSProperties = {
@@ -30,13 +35,13 @@ const GLASS_CARD: React.CSSProperties = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function scoreLabel(cls: number) {
-  if (cls < 0.1)  return { text: 'Good',     color: '#10b981' };
+  if (cls < 0.1)  return { text: 'Good',       color: '#10b981' };
   if (cls < 0.25) return { text: 'Needs Work', color: '#f59e0b' };
-  return                  { text: 'Poor',     color: '#ef4444' };
+  return                  { text: 'Poor',       color: RED_ALERT };
 }
 
 function impactColor(impact: 'high' | 'medium' | 'low') {
-  return impact === 'high' ? '#ef4444' : impact === 'medium' ? '#f59e0b' : '#6b7280';
+  return impact === 'high' ? RED_ALERT : impact === 'medium' ? '#f59e0b' : '#6b7280';
 }
 
 function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame {
@@ -48,8 +53,23 @@ function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame {
   return best;
 }
 
-/** AI-driven fix suggestion, preferring Lighthouse root cause data over heuristics. */
-function aiSuggestion(selector: string, snippet: string, rootCause?: string): string {
+/**
+ * AI-driven fix suggestion.
+ * Priority order:
+ *   1. Score < 0.005 → performance-budget message (noise suppression)
+ *   2. Lighthouse rootCause (authoritative trace analysis)
+ *   3. Selector/snippet heuristics
+ */
+function aiSuggestion(
+  selector: string,
+  snippet: string,
+  score: number,
+  rootCause?: string,
+): string {
+  // [#4] Budget-aware: below 0.005 is sub-perceptual — redirect attention upstream.
+  if (score < 0.005)
+    return 'Low impact shift. Focus on higher priority stability issues first.';
+
   if (rootCause === 'unsized-media')
     return 'Set explicit width and height attributes on the media element so the browser can reserve space before it loads.';
   if (rootCause === 'web-font')
@@ -100,8 +120,9 @@ function CLSBadge({ score, animated }: { score: number; animated?: boolean }) {
 }
 
 // ─── Shift Culprit Item ───────────────────────────────────────────────────────
+// memo'd with a custom comparator: only re-renders when isHovered or selector changes.
 
-function CulpritItem({
+const CulpritItem = memo(function CulpritItem({
   element, rank, isHovered, onHover,
 }: {
   element: CLSShiftElement;
@@ -110,7 +131,14 @@ function CulpritItem({
   onHover: (el: CLSShiftElement | null) => void;
 }) {
   const color = impactColor(element.impact);
-  const suggestion = useMemo(() => aiSuggestion(element.selector, element.snippet, element.rootCause), [element]);
+
+  // [#4] Score passed into aiSuggestion so the budget-aware branch fires at < 0.005.
+  const suggestion = useMemo(
+    () => aiSuggestion(element.selector, element.snippet, element.score, element.rootCause),
+    [element.selector, element.snippet, element.score, element.rootCause],
+  );
+
+  const isLowImpact = element.score < 0.005;
 
   return (
     <motion.div
@@ -119,10 +147,11 @@ function CulpritItem({
       onMouseLeave={() => onHover(null)}
       style={{
         ...GLASS_CARD,
-        border: isHovered ? `1px solid ${RED}50` : GLASS_CARD.border,
-        boxShadow: isHovered ? `0 0 20px ${RED_G}, inset 0 0 12px ${RED_G}` : 'none',
-        cursor: 'default',
+        border:     isHovered ? `1px solid ${RED}50` : GLASS_CARD.border,
+        boxShadow:  isHovered ? `0 0 20px ${RED_G}, inset 0 0 12px ${RED_G}` : 'none',
+        cursor:     'default',
         transition: 'box-shadow 0.2s, border-color 0.2s',
+        opacity:    isLowImpact ? 0.72 : 1,
       }}
       className="p-3 space-y-2"
     >
@@ -169,18 +198,21 @@ function CulpritItem({
         />
       </div>
 
-      {/* AI suggestion */}
+      {/* AI suggestion — concise budget message for < 0.005, full advice otherwise */}
       <div
         className="flex gap-1.5 rounded-md p-2"
-        style={{ background: 'rgba(255,50,50,0.06)', border: '1px solid rgba(255,50,50,0.12)' }}
+        style={{
+          background: isLowImpact ? 'rgba(107,114,128,0.08)' : 'rgba(255,50,50,0.06)',
+          border:     isLowImpact ? '1px solid rgba(107,114,128,0.18)' : '1px solid rgba(255,50,50,0.12)',
+        }}
       >
-        <Zap className="w-3 h-3 shrink-0 mt-0.5" style={{ color: RED }} />
-        <p className="text-[9px] leading-snug" style={{ color: 'rgba(255,200,200,0.80)' }}>
+        <Zap className="w-3 h-3 shrink-0 mt-0.5" style={{ color: isLowImpact ? '#6b7280' : RED }} />
+        <p className="text-[9px] leading-snug" style={{ color: isLowImpact ? 'rgba(200,200,200,0.55)' : 'rgba(255,200,200,0.80)' }}>
           {suggestion}
         </p>
       </div>
 
-      {/* Pulsating indicator shown on hover */}
+      {/* Pulsating indicator when hovered */}
       {isHovered && (
         <motion.div
           className="flex items-center gap-1"
@@ -199,136 +231,170 @@ function CulpritItem({
       )}
     </motion.div>
   );
-}
+}, (prev, next) =>
+  prev.isHovered === next.isHovered && prev.element.selector === next.element.selector,
+);
 
 // ─── Frame Preview with SVG Overlay ──────────────────────────────────────────
-
-const PREVIEW_W = 380;
-const PREVIEW_H = 264;  // ~16:11 ratio matches typical 800×600 Puppeteer viewport
+// [#5] Responsive: uses aspect-ratio + max-width so it never distorts on small screens.
+// The SVG viewBox remains fixed at PREVIEW_W × PREVIEW_H, so rect coords scale correctly.
 
 function FramePreview({
-  frame, hoveredElement, cls,
+  frame, hoveredElement, cls, shakeControls,
 }: {
   frame: TimelineFrame;
   hoveredElement: CLSShiftElement | null;
   cls: number;
+  shakeControls: ReturnType<typeof useAnimation>;
 }) {
   const { text: ratingText, color: ratingColor } = scoreLabel(cls);
+  const hasRect = hoveredElement !== null && hoveredElement.rect !== undefined;
 
   return (
-    <div
-      className="relative overflow-hidden rounded-xl"
-      style={{
-        width: PREVIEW_W,
-        height: PREVIEW_H,
-        border: `1.5px solid ${hoveredElement ? RED : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: hoveredElement ? `0 0 30px ${RED_B}, 0 0 60px rgba(255,50,50,0.15)` : 'none',
-        transition: 'box-shadow 0.25s, border-color 0.25s',
-        background: 'rgba(0,0,0,0.6)',
-        flexShrink: 0,
-      }}
+    // [#3] Shake wrapper — animations fired by shakeControls from handleJump.
+    <motion.div
+      animate={shakeControls}
+      style={{ width: '100%', maxWidth: PREVIEW_W, display: 'flex', justifyContent: 'center' }}
     >
-      {/* Screenshot */}
-      {frame.data ? (
-        <img
-          src={frame.data}
-          alt="page frame"
-          draggable={false}
-          style={{ width: PREVIEW_W, height: PREVIEW_H, objectFit: 'contain', display: 'block' }}
-        />
-      ) : (
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11 }}
-        >
-          No screenshot
-        </div>
-      )}
-
-      {/* SVG overlay: bounding box for hovered element */}
-      {hoveredElement?.rect && (
-        <svg
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-          viewBox={`0 0 ${PREVIEW_W} ${PREVIEW_H}`}
-        >
-          <defs>
-            <filter id="cls-glow">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Dim overlay outside the rect */}
-          <rect
-            x={0} y={0}
-            width={PREVIEW_W} height={PREVIEW_H}
-            fill="rgba(0,0,0,0.35)"
-          />
-
-          {/* Shift bounding box */}
-          <motion.rect
-            x={hoveredElement.rect.leftPct  * PREVIEW_W}
-            y={hoveredElement.rect.topPct   * PREVIEW_H}
-            width={hoveredElement.rect.widthPct  * PREVIEW_W}
-            height={hoveredElement.rect.heightPct * PREVIEW_H}
-            fill={RED_A}
-            stroke={RED}
-            strokeWidth={2}
-            rx={3}
-            filter="url(#cls-glow)"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-
-          {/* Pulsating outer ring */}
-          <motion.rect
-            x={hoveredElement.rect.leftPct  * PREVIEW_W - 4}
-            y={hoveredElement.rect.topPct   * PREVIEW_H - 4}
-            width={hoveredElement.rect.widthPct  * PREVIEW_W + 8}
-            height={hoveredElement.rect.heightPct * PREVIEW_H + 8}
-            fill="none"
-            stroke={RED}
-            strokeWidth={1}
-            rx={6}
-            strokeDasharray="6 4"
-            animate={{ opacity: [0.8, 0.2, 0.8], strokeDashoffset: [0, -20] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-          />
-        </svg>
-      )}
-
-      {/* Frame timing label */}
       <div
-        className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 py-1"
-        style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
+        className="relative overflow-hidden rounded-xl"
+        style={{
+          // [#5] Responsive: aspect-ratio preserves proportions; max-width caps it.
+          width:       '100%',
+          maxWidth:    PREVIEW_W,
+          aspectRatio: `${PREVIEW_W} / ${PREVIEW_H}`,
+          border:      `1.5px solid ${hoveredElement ? RED : 'rgba(255,255,255,0.08)'}`,
+          boxShadow:   hoveredElement ? `0 0 30px ${RED_B}, 0 0 60px rgba(255,50,50,0.15)` : 'none',
+          transition:  'box-shadow 0.25s, border-color 0.25s',
+          background:  'rgba(0,0,0,0.6)',
+        }}
       >
-        <span className="text-[9px] font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.50)' }}>
-          {(frame.timing / 1000).toFixed(2)}s
-        </span>
-        <span className="text-[9px] font-bold" style={{ color: ratingColor }}>
-          CLS {cls.toFixed(3)} · {ratingText}
-        </span>
+        {/* Screenshot */}
+        {frame.data ? (
+          <img
+            src={frame.data}
+            alt="page frame"
+            draggable={false}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          />
+        ) : (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11 }}
+          >
+            No screenshot
+          </div>
+        )}
+
+        {/* [#1] SVG heatmap overlay with prominent CSS drop-shadow glow */}
+        {hasRect && hoveredElement?.rect && (
+          <svg
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%',
+              pointerEvents: 'none',
+              // CSS drop-shadow on the SVG element itself amplifies the glow
+              // across the entire overlay layer for maximum visual prominence.
+              filter: 'drop-shadow(0 0 8px rgba(255,50,50,0.80))',
+            }}
+            viewBox={`0 0 ${PREVIEW_W} ${PREVIEW_H}`}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Dim everything outside the shift region */}
+            <rect x={0} y={0} width={PREVIEW_W} height={PREVIEW_H} fill="rgba(0,0,0,0.35)" />
+
+            {/* Shift bounding box — CSS drop-shadow propagates from this rect */}
+            <motion.rect
+              x={hoveredElement.rect.leftPct  * PREVIEW_W}
+              y={hoveredElement.rect.topPct   * PREVIEW_H}
+              width={hoveredElement.rect.widthPct  * PREVIEW_W}
+              height={hoveredElement.rect.heightPct * PREVIEW_H}
+              fill={RED_A}
+              stroke={RED}
+              strokeWidth={2.5}
+              rx={3}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            />
+
+            {/* Animated dashed outer ring */}
+            <motion.rect
+              x={hoveredElement.rect.leftPct  * PREVIEW_W - 4}
+              y={hoveredElement.rect.topPct   * PREVIEW_H - 4}
+              width={hoveredElement.rect.widthPct  * PREVIEW_W + 8}
+              height={hoveredElement.rect.heightPct * PREVIEW_H + 8}
+              fill="none"
+              stroke={RED}
+              strokeWidth={1}
+              rx={6}
+              strokeDasharray="6 4"
+              animate={{ opacity: [0.8, 0.2, 0.8], strokeDashoffset: [0, -20] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+            />
+          </svg>
+        )}
+
+        {/* [#2] Graceful fallback when element is hovered but has no coordinates */}
+        {hoveredElement && !hasRect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none"
+          >
+            <div
+              className="px-4 py-2.5 rounded-xl text-center"
+              style={{
+                background:     'rgba(0,0,0,0.78)',
+                backdropFilter: 'blur(10px)',
+                border:         '1px solid rgba(255,50,50,0.25)',
+                boxShadow:      '0 0 20px rgba(0,0,0,0.5)',
+              }}
+            >
+              <p className="text-[10px] font-medium" style={{ color: 'rgba(255,200,200,0.70)' }}>
+                Visual coordinates unavailable for this element
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Frame timing + CLS rating footer */}
+        <div
+          className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 py-1"
+          style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)' }}
+        >
+          <span className="text-[9px] font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.50)' }}>
+            {(frame.timing / 1000).toFixed(2)}s
+          </span>
+          <span className="text-[9px] font-bold" style={{ color: ratingColor }}>
+            CLS {cls.toFixed(3)} · {ratingText}
+          </span>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─── Timeline Scrubber ────────────────────────────────────────────────────────
+// [#2] isAtPeak: when the scrubber sits within ±5% of the biggest-shift target,
+// the handle border/glow switches to alert red (#ef4444) for stronger visual cue.
 
 function Scrubber({
-  frames, currentMs, totalMs, onSeek,
+  frames, currentMs, totalMs, isAtPeak, onSeek,
 }: {
   frames: TimelineFrame[];
   currentMs: number;
   totalMs: number;
+  isAtPeak: boolean;
   onSeek: (ms: number) => void;
 }) {
-  const pct = `${((currentMs / totalMs) * 100).toFixed(2)}%`;
+  const handleColor = isAtPeak ? RED_ALERT : RED;
+  const handleGlow  = isAtPeak
+    ? 'drop-shadow(0 0 6px rgba(239,68,68,0.95))'
+    : `drop-shadow(0 0 4px ${RED_B})`;
+
+  const pct    = `${((currentMs / totalMs) * 100).toFixed(2)}%`;
   const active = findFrameAt(frames, currentMs);
 
   return (
@@ -339,13 +405,23 @@ function Scrubber({
           type="range" min={0} max={totalMs} step={16} value={currentMs}
           onChange={e => onSeek(Number(e.target.value))}
           className="w-full appearance-none h-1.5 rounded-full outline-none cursor-pointer"
-          style={{ background: `linear-gradient(to right, ${RED} ${pct}, rgba(255,255,255,0.10) ${pct})` }}
+          style={{ background: `linear-gradient(to right, ${handleColor} ${pct}, rgba(255,255,255,0.10) ${pct})` }}
         />
+        {/* Custom thumb — colour and glow transition smoothly via CSS */}
         <div
           className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full pointer-events-none"
-          style={{ left: pct, background: '#fff', boxShadow: `0 0 10px ${RED_B}`, border: `2px solid ${RED}` }}
+          style={{
+            left:       pct,
+            background: '#fff',
+            border:     `2px solid ${handleColor}`,
+            filter:     handleGlow,
+            transition: 'border-color 0.3s, filter 0.3s',
+          }}
         />
-        <span className="shrink-0 text-[10px] font-mono tabular-nums" style={{ color: 'rgba(255,255,255,0.45)', minWidth: 44 }}>
+        <span
+          className="shrink-0 text-[10px] font-mono tabular-nums"
+          style={{ color: 'rgba(255,255,255,0.45)', minWidth: 44 }}
+        >
           {(currentMs / 1000).toFixed(2)}s
         </span>
       </div>
@@ -363,9 +439,12 @@ function Scrubber({
               onClick={() => onSeek(frame.timing)}
               className="relative rounded overflow-hidden shrink-0 transition-all duration-100"
               style={{
-                width: 58, height: 42,
-                border:    `1.5px solid ${isActive ? RED : 'rgba(255,255,255,0.07)'}`,
-                boxShadow: isActive ? `0 0 10px ${RED_B}` : 'none',
+                width:     58,
+                height:    42,
+                border:    `1.5px solid ${isActive ? handleColor : 'rgba(255,255,255,0.07)'}`,
+                boxShadow: isActive
+                  ? `0 0 10px ${isAtPeak ? 'rgba(239,68,68,0.7)' : RED_B}`
+                  : 'none',
               }}
             >
               {frame.data && (
@@ -378,7 +457,11 @@ function Scrubber({
               )}
               <div
                 className="absolute bottom-0 inset-x-0 text-center py-px"
-                style={{ background: 'rgba(0,0,0,0.72)', fontSize: 7, color: isActive ? RED : 'rgba(255,255,255,0.35)' }}
+                style={{
+                  background: 'rgba(0,0,0,0.72)',
+                  fontSize: 7,
+                  color: isActive ? handleColor : 'rgba(255,255,255,0.35)',
+                }}
               >
                 {(frame.timing / 1000).toFixed(1)}s
               </div>
@@ -411,21 +494,24 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
       style={{ background: 'rgba(255,50,50,0.05)', border: '1px solid rgba(255,50,50,0.15)' }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.40)' }}>
+        <span
+          className="text-[10px] font-bold uppercase tracking-widest"
+          style={{ color: 'rgba(255,255,255,0.40)' }}
+        >
           Cumulative CLS
         </span>
         <CLSBadge score={currentCls} animated />
       </div>
 
-      {/* Progress bar */}
+      {/* [#2] Progress bar — motion.div ensures smooth transitions match scrubber */}
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,50,50,0.12)' }}>
         <motion.div
           className="h-full rounded-full"
           animate={{ width: `${fillPct}%` }}
-          transition={{ duration: 0.12 }}
+          transition={{ duration: 0.10, ease: 'linear' }}
           style={{
-            background:  `linear-gradient(90deg, rgba(255,50,50,0.6), ${color})`,
-            boxShadow:   `0 0 8px ${RED_B}`,
+            background: `linear-gradient(90deg, rgba(255,50,50,0.6), ${color})`,
+            boxShadow:  `0 0 8px ${RED_B}`,
           }}
         />
       </div>
@@ -438,7 +524,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
   );
 }
 
-// ─── Empty State (no shifts) ──────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
 
 function NoShiftsState() {
   return (
@@ -465,40 +551,83 @@ export function CLSVisualizer({
   clsData: CLSData;
   timelineData: TimelineData;
 }) {
-  const frames   = timelineData.frames;
-  const totalMs  = frames.at(-1)?.timing ?? 0;
+  const frames  = timelineData.frames;
+  const totalMs = frames.at(-1)?.timing ?? 0;
+
   const [currentMs,      setCurrentMs]      = useState(0);
   const [hoveredElement, setHoveredElement] = useState<CLSShiftElement | null>(null);
 
-  // Current CLS score: builds up linearly as the scrubber moves.
-  // CLS is typically accumulated after FCP; we ramp it there.
+  // [#3] Animation controls for the "Jump to Biggest Shift" shake effect.
+  const shakeControls = useAnimation();
+
+  // RAF ref: smooth seek animation; cancelled on unmount to prevent stale updates.
+  const rafRef = useRef<number | null>(null);
+
+  const cancelJumpRaf = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cancelJumpRaf, [cancelJumpRaf]);
+
+  // ── Advanced CLS ramp ────────────────────────────────────────────────────
+  // Starts exactly at FCP. Math.pow(t, 2.5): slow immediately post-FCP,
+  // accelerating through mid-load where shifts cluster, plateau at 85% of totalMs.
   const currentCls = useMemo(() => {
     if (totalMs === 0) return clsData.totalScore;
-    const fcpMs  = timelineData.metrics.fcp ?? 0;
-    const startMs = Math.max(fcpMs * 0.8, totalMs * 0.1);
+    const fcpMs   = timelineData.metrics.fcp ?? 0;
+    const startMs = Math.max(fcpMs, totalMs * 0.05);
     const endMs   = totalMs * 0.85;
     if (currentMs <= startMs) return 0;
     if (currentMs >= endMs)   return clsData.totalScore;
-    return clsData.totalScore * ((currentMs - startMs) / (endMs - startMs));
+    const t = (currentMs - startMs) / (endMs - startMs);
+    return clsData.totalScore * Math.pow(t, 2.5);
   }, [currentMs, totalMs, clsData.totalScore, timelineData.metrics.fcp]);
 
-  // Jump to biggest shift: seek to 40% of the timeline (typical CLS window)
-  const handleJump = useCallback(() => {
-    setCurrentMs(Math.round(totalMs * 0.40));
-  }, [totalMs]);
+  // [#2] Peak detection: scrubber is within ±5% of the biggest-shift window.
+  const jumpTargetMs = Math.round(totalMs * 0.40);
+  const isAtPeak     = Math.abs(currentMs - jumpTargetMs) < totalMs * 0.05;
 
-  const activeFrame  = findFrameAt(frames, currentMs);
-  const sortedElems  = useMemo(
+  // Animated seek to the CLS peak with ease-out-cubic, then fire the shake effect.
+  const handleJump = useCallback(() => {
+    cancelJumpRaf();
+    const target    = jumpTargetMs;
+    const startWall = performance.now();
+    const startMs   = currentMs;
+    const DURATION  = 600;
+
+    function step(now: number) {
+      const elapsed = now - startWall;
+      const t       = Math.min(elapsed / DURATION, 1);
+      const eased   = 1 - Math.pow(1 - t, 3); // ease-out-cubic
+      setCurrentMs(Math.round(startMs + (target - startMs) * eased));
+
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        rafRef.current = null;
+        // [#3] Shake + pulse glow fires once the scrubber lands on the target frame.
+        shakeControls.start({
+          x:         [0, -9, 9, -6, 6, -3, 3, 0],
+          filter: [
+            'drop-shadow(0 0 0px rgba(239,68,68,0))',
+            'drop-shadow(0 0 28px rgba(239,68,68,0.90))',
+            'drop-shadow(0 0 0px rgba(239,68,68,0))',
+          ],
+          transition: { duration: 0.50, ease: 'easeOut' },
+        });
+      }
+    }
+    rafRef.current = requestAnimationFrame(step);
+  }, [jumpTargetMs, currentMs, cancelJumpRaf, shakeControls]);
+
+  const activeFrame = findFrameAt(frames, currentMs);
+  const sortedElems = useMemo(
     () => [...clsData.elements].sort((a, b) => b.score - a.score),
     [clsData.elements],
   );
-
-  const rafRef     = useRef<number | null>(null);
-  const stopScrub  = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-  }, []);
-  useEffect(() => () => stopScrub(), [stopScrub]);
 
   if (clsData.elements.length === 0) return <NoShiftsState />;
 
@@ -536,11 +665,7 @@ export function CLSVisualizer({
           <button
             onClick={handleJump}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-            style={{
-              background: RED_G,
-              border:     `1px solid ${RED_A}`,
-              color:      RED,
-            }}
+            style={{ background: RED_G, border: `1px solid ${RED_A}`, color: RED }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,50,50,0.22)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = RED_G; }}
           >
@@ -550,15 +675,15 @@ export function CLSVisualizer({
         </div>
       </div>
 
-      {/* ── Body: sidebar + preview ─────────────────────────────────────────── */}
+      {/* ── Body ─────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row gap-0">
 
         {/* LEFT: Stability Issues Sidebar */}
         <div
           className="lg:w-72 xl:w-80 shrink-0 p-4 space-y-2 overflow-y-auto"
           style={{
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            maxHeight: 540,
+            borderRight:    '1px solid rgba(255,255,255,0.05)',
+            maxHeight:      540,
             scrollbarWidth: 'thin',
           }}
         >
@@ -594,27 +719,21 @@ export function CLSVisualizer({
           </AnimatePresence>
         </div>
 
-        {/* RIGHT: Preview + Scrubber */}
+        {/* RIGHT: Preview + Tracker + Scrubber */}
         <div className="flex-1 p-4 space-y-4 min-w-0">
-
-          {/* Frame preview */}
-          <div className="flex justify-center">
-            <FramePreview
-              frame={activeFrame}
-              hoveredElement={hoveredElement}
-              cls={currentCls}
-            />
-          </div>
-
-          {/* CLS Tracker */}
+          <FramePreview
+            frame={activeFrame}
+            hoveredElement={hoveredElement}
+            cls={currentCls}
+            shakeControls={shakeControls}
+          />
           <CLSTracker currentCls={currentCls} totalCls={clsData.totalScore} />
-
-          {/* Scrubber */}
           <Scrubber
             frames={frames}
             currentMs={currentMs}
             totalMs={totalMs}
-            onSeek={setCurrentMs}
+            isAtPeak={isAtPeak}
+            onSeek={ms => { cancelJumpRaf(); setCurrentMs(ms); }}
           />
         </div>
       </div>
@@ -625,9 +744,9 @@ export function CLSVisualizer({
         style={{ borderTop: '1px solid rgba(255,50,50,0.10)' }}
       >
         {[
-          { dot: '#ef4444', label: 'High impact (≥ 0.05)' },
+          { dot: RED_ALERT, label: 'High impact (≥ 0.05)'   },
           { dot: '#f59e0b', label: 'Medium impact (≥ 0.015)' },
-          { dot: '#6b7280', label: 'Low impact'  },
+          { dot: '#6b7280', label: 'Low impact'              },
         ].map(({ dot, label }) => (
           <span key={label} className="flex items-center gap-1.5 text-[9px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
             <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dot }} />
