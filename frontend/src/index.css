@@ -1,59 +1,151 @@
+/* ── PerfScope · Global Theme ────────────────────────────────────────────────── */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ────────────────────────── Light mode ───────────────────────────────────── */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
-    --primary: 240 6% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 240 6% 10%;
-    --radius: 0.5rem;
+    /* Shadcn semantic tokens */
+    --background:              210 40% 98%;
+    --foreground:              222 47% 11%;
+    --card:                    0 0% 100%;
+    --card-foreground:         222 47% 11%;
+    --primary:                 262 83% 58%;
+    --primary-foreground:      0 0% 100%;
+    --secondary:               210 40% 96%;
+    --secondary-foreground:    222 47% 11%;
+    --muted:                   210 40% 96%;
+    --muted-foreground:        215 16% 47%;
+    --accent:                  210 40% 96%;
+    --accent-foreground:       222 47% 11%;
+    --destructive:             0 84% 60%;
+    --destructive-foreground:  0 0% 98%;
+    --border:                  214 32% 91%;
+    --input:                   214 32% 91%;
+    --ring:                    262 83% 58%;
+    --radius:                  0.75rem;
 
-    /* Custom panel tokens — light mode */
-    --ps-panel-bg:     rgba(255, 255, 255, 0.82);
-    --ps-panel-border: rgba(0, 0, 0, 0.09);
-    --ps-divider:      rgba(0, 0, 0, 0.07);
-    --ps-page-bg:      #f1f5f9;
+    /* ── Page & panel surfaces ─────────────────────────────────────────────── */
+    --ps-page-bg:       #f1f5f9;
+    --ps-panel-bg:      rgba(255, 255, 255, 0.82);
+    --ps-panel-border:  rgba(0, 0, 0, 0.09);
+    --ps-divider:       rgba(0, 0, 0, 0.07);
+
+    /* ── Neon violet — primary accent ─────────────────────────────────────── */
+    --ps-accent:          #8B5CF6;
+    --ps-accent-muted:    rgba(139, 92, 246, 0.10);
+    --ps-accent-hover:    rgba(139, 92, 246, 0.18);
+    --ps-accent-border:   rgba(139, 92, 246, 0.25);
+    --ps-accent-glow-sm:  rgba(139, 92, 246, 0.20);
+    --ps-accent-glow:     rgba(139, 92, 246, 0.32);
+    --ps-accent-glow-lg:  rgba(139, 92, 246, 0.55);
+
+    /* ── Amber — competitor / secondary accent ────────────────────────────── */
+    --ps-amber:           #F59E0B;
+    --ps-amber-muted:     rgba(245, 158, 11, 0.10);
+    --ps-amber-border:    rgba(245, 158, 11, 0.25);
+    --ps-amber-glow:      rgba(245, 158, 11, 0.38);
+
+    /* ── Regression red ───────────────────────────────────────────────────── */
+    --ps-regression:      #ef4444;
+    --ps-reg-muted:       rgba(239, 68, 68, 0.09);
+    --ps-reg-border:      rgba(239, 68, 68, 0.28);
+    --ps-reg-glow:        rgba(239, 68, 68, 0.40);
+
+    /* ── Healthy green ────────────────────────────────────────────────────── */
+    --ps-healthy:         #10b981;
+    --ps-healthy-muted:   rgba(16, 185, 129, 0.09);
+    --ps-healthy-border:  rgba(16, 185, 129, 0.28);
+    --ps-healthy-glow:    rgba(16, 185, 129, 0.38);
+
+    /* ── Text scale ───────────────────────────────────────────────────────── */
+    --ps-text-heading:    #1e293b;
+    --ps-text-primary:    #334155;
+    --ps-text-secondary:  #64748b;
+    --ps-text-muted:      #94a3b8;
+    --ps-text-faint:      rgba(0, 0, 0, 0.28);
+
+    /* ── Fonts ────────────────────────────────────────────────────────────── */
+    --ps-font-sans:     'Inter', system-ui, sans-serif;
+    --ps-font-heading:  'Inter', system-ui, sans-serif;
+    --ps-font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+
+    /* ── Mesh gradient blobs ──────────────────────────────────────────────── */
+    --ps-blob-tl: radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.09) 0%, transparent 62%);
+    --ps-blob-br: radial-gradient(ellipse at 100% 100%, rgba(249,115,22,0.07) 0%, transparent 62%);
   }
 
+  /* ────────────────────────── Dark mode ────────────────────────────────────── */
   .dark {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 6% 10%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 240 4% 16%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 240 5% 84%;
+    /* Shadcn semantic tokens — tuned to deep-dark navy palette */
+    --background:              224 71% 4%;   /* #030712 — universal page bg     */
+    --foreground:              213 31% 91%;  /* #e2e8f0 — slate-200             */
+    --card:                    222 47% 8%;   /* ~#0b1120 — lifted glass surface  */
+    --card-foreground:         213 31% 91%;
+    --primary:                 262 83% 58%;  /* #8B5CF6 — violet CTA             */
+    --primary-foreground:      0 0% 100%;
+    --secondary:               222 47% 11%;  /* #0f1729 — slate-900 equiv        */
+    --secondary-foreground:    213 31% 91%;
+    --muted:                   222 47% 11%;
+    --muted-foreground:        215 20% 55%;  /* ~#7588a3 — readable slate        */
+    --accent:                  222 47% 11%;
+    --accent-foreground:       213 31% 91%;
+    --destructive:             0 63% 31%;
+    --destructive-foreground:  0 0% 98%;
+    --border:                  226 22% 14%;  /* ~rgba(255,255,255,0.10) equiv    */
+    --input:                   226 22% 14%;
+    --ring:                    262 83% 58%;
 
-    /* Custom panel tokens — dark mode */
-    --ps-panel-bg:     rgba(17, 24, 39, 0.72);
-    --ps-panel-border: rgba(255, 255, 255, 0.10);
-    --ps-divider:      rgba(255, 255, 255, 0.08);
-    --ps-page-bg:      #030712;
+    /* ── Page & panel surfaces ─────────────────────────────────────────────── */
+    --ps-page-bg:       #030712;
+    --ps-panel-bg:      rgba(17, 24, 39, 0.72);
+    --ps-panel-border:  rgba(255, 255, 255, 0.08);
+    --ps-divider:       rgba(255, 255, 255, 0.06);
+
+    /* ── Neon violet (same hue, dark-mode opacity) ────────────────────────── */
+    --ps-accent:          #8B5CF6;
+    --ps-accent-muted:    rgba(139, 92, 246, 0.10);
+    --ps-accent-hover:    rgba(139, 92, 246, 0.20);
+    --ps-accent-border:   rgba(139, 92, 246, 0.25);
+    --ps-accent-glow-sm:  rgba(139, 92, 246, 0.20);
+    --ps-accent-glow:     rgba(139, 92, 246, 0.35);
+    --ps-accent-glow-lg:  rgba(139, 92, 246, 0.55);
+
+    /* ── Amber ────────────────────────────────────────────────────────────── */
+    --ps-amber:           #F59E0B;
+    --ps-amber-muted:     rgba(245, 158, 11, 0.08);
+    --ps-amber-border:    rgba(245, 158, 11, 0.22);
+    --ps-amber-glow:      rgba(245, 158, 11, 0.42);
+
+    /* ── Regression red ───────────────────────────────────────────────────── */
+    --ps-regression:      #ef4444;
+    --ps-reg-muted:       rgba(239, 68, 68, 0.08);
+    --ps-reg-border:      rgba(239, 68, 68, 0.25);
+    --ps-reg-glow:        rgba(239, 68, 68, 0.45);
+
+    /* ── Healthy green ────────────────────────────────────────────────────── */
+    --ps-healthy:         #10b981;
+    --ps-healthy-muted:   rgba(16, 185, 129, 0.08);
+    --ps-healthy-border:  rgba(16, 185, 129, 0.25);
+    --ps-healthy-glow:    rgba(16, 185, 129, 0.42);
+
+    /* ── Text scale ───────────────────────────────────────────────────────── */
+    --ps-text-heading:    #e2e8f0;
+    --ps-text-primary:    #cbd5e1;
+    --ps-text-secondary:  #94a3b8;
+    --ps-text-muted:      rgba(255, 255, 255, 0.35);
+    --ps-text-faint:      rgba(255, 255, 255, 0.18);
+
+    /* ── Fonts (same across modes) ────────────────────────────────────────── */
+    --ps-font-sans:     'Inter', system-ui, sans-serif;
+    --ps-font-heading:  'Inter', system-ui, sans-serif;
+    --ps-font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+
+    /* ── Mesh blobs (slightly brighter in dark) ───────────────────────────── */
+    --ps-blob-tl: radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.13) 0%, transparent 62%);
+    --ps-blob-br: radial-gradient(ellipse at 100% 100%, rgba(249,115,22,0.10) 0%, transparent 62%);
   }
 }
 
@@ -61,7 +153,121 @@
   * {
     @apply border-border;
   }
+
+  html {
+    background: var(--ps-page-bg);
+  }
+
   body {
-    @apply bg-background text-foreground;
+    background: var(--ps-page-bg);
+    @apply text-foreground;
+    font-family: var(--ps-font-sans);
+    line-height: 1.5;
+    color: var(--ps-text-secondary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Heading hierarchy: bold, tight leading, wide tracking */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--ps-font-heading);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--ps-text-heading);
+    line-height: 1.25;
+  }
+
+  /* Body text */
+  p {
+    color: var(--ps-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* All monospaced values use JetBrains Mono */
+  code, kbd, pre, .font-mono {
+    font-family: var(--ps-font-mono);
+  }
+}
+
+@layer components {
+  /* ── Glass panel — use in place of PANEL const ───────────────────────────── */
+  .ps-panel {
+    background: var(--ps-panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--ps-panel-border);
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  /* ── Primary CTA: gradient + neon glow ───────────────────────────────────── */
+  .ps-btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #f97316 100%);
+    box-shadow: 0 0 32px var(--ps-accent-glow);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .ps-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 48px var(--ps-accent-glow-lg);
+    transform: translateY(-1px);
+  }
+
+  /* ── Ghost accent button: subtle bg + border ─────────────────────────────── */
+  .ps-btn-ghost {
+    background: var(--ps-accent-muted);
+    border: 1px solid var(--ps-accent-border);
+    color: var(--ps-accent);
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ps-btn-ghost:hover {
+    background: var(--ps-accent-hover);
+    box-shadow: 0 0 20px var(--ps-accent-glow);
+  }
+
+  /* ── Status badges ───────────────────────────────────────────────────────── */
+  .ps-badge-reg {
+    background: var(--ps-reg-muted);
+    border: 1px solid var(--ps-reg-border);
+    color: var(--ps-regression);
+  }
+  .ps-badge-ok {
+    background: var(--ps-healthy-muted);
+    border: 1px solid var(--ps-healthy-border);
+    color: var(--ps-healthy);
+  }
+  .ps-badge-amber {
+    background: var(--ps-amber-muted);
+    border: 1px solid var(--ps-amber-border);
+    color: var(--ps-amber);
+  }
+  .ps-badge-neutral {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ps-text-muted);
+  }
+
+  /* ── Monospace metric values (scores, CLS, LCP, etc.) ───────────────────── */
+  .ps-metric {
+    font-family: var(--ps-font-mono);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Section label ───────────────────────────────────────────────────────── */
+  .ps-section-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ps-text-muted);
+  }
+
+  /* ── Input focus ring (neon) ─────────────────────────────────────────────── */
+  .ps-input:focus {
+    border-color: var(--ps-accent-border) !important;
+    box-shadow: 0 0 0 3px var(--ps-accent-muted) !important;
+    outline: none;
   }
 }

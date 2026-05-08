@@ -146,9 +146,6 @@ export function Analyzer() {
     URL.revokeObjectURL(url);
   };
 
-  console.log(data,'data');
-  
-
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header */}
@@ -347,21 +344,7 @@ export function Analyzer() {
             <div className="flex justify-center pt-2">
               <Link
                 to={`/history?url=${encodeURIComponent(data.url)}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background:     'rgba(139,92,246,0.10)',
-                  border:         '1px solid rgba(139,92,246,0.28)',
-                  color:          '#8B5CF6',
-                  backdropFilter: 'blur(8px)',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.18)';
-                  (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(139,92,246,0.20)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.background = 'rgba(139,92,246,0.10)';
-                  (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ps-btn-ghost"
               >
                 <TrendingUp className="w-4 h-4" />
                 View Full History

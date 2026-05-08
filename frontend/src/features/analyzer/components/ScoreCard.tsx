@@ -75,7 +75,7 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
                 stroke={stroke}
               />
             </svg>
-            <span className={cn('absolute inset-0 flex items-center justify-center text-2xl font-bold tabular-nums', text)}>
+            <span className={cn('absolute inset-0 flex items-center justify-center text-2xl font-bold tabular-nums font-mono', text)}>
               {score}
             </span>
           </div>

@@ -30,7 +30,7 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
                 </div>
                 <span className="text-xs text-muted-foreground/60">{hint}</span>
               </div>
-              <p className={cn('text-xl font-bold tabular-nums', isGood ? 'text-emerald-500' : 'text-amber-500')}>{fmt(value)}</p>
+              <p className={cn('text-xl font-bold tabular-nums font-mono', isGood ? 'text-emerald-500' : 'text-amber-500')}>{fmt(value)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
             </CardContent>
           </Card>

@@ -69,17 +69,13 @@ export function ComparisonPage() {
   };
 
   return (
-    <div className="relative min-h-screen" style={{ background: '#030712' }}>
+    <div className="relative min-h-screen">
 
       {/* ── Mesh gradient blobs ── */}
-      <div className="pointer-events-none fixed top-0 left-0 w-[700px] h-[700px]" style={{
-        background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.13) 0%, transparent 62%)',
-        zIndex: 0,
-      }} />
-      <div className="pointer-events-none fixed bottom-0 right-0 w-[700px] h-[700px]" style={{
-        background: 'radial-gradient(ellipse at 100% 100%, rgba(249,115,22,0.10) 0%, transparent 62%)',
-        zIndex: 0,
-      }} />
+      <div className="pointer-events-none fixed top-0 left-0 w-[700px] h-[700px]"
+        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
+      <div className="pointer-events-none fixed bottom-0 right-0 w-[700px] h-[700px]"
+        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
 
     <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-8 space-y-8">
 

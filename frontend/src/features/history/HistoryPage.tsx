@@ -22,13 +22,12 @@ const PANEL: React.CSSProperties = {
   borderRadius:         '1rem',
   overflow:             'hidden',
 };
-const DIVIDER = 'var(--ps-divider)';
-const T_HEX   = '#8B5CF6';
-const T_GLOW  = 'rgba(139,92,246,0.55)';
-const C_HEX   = '#F59E0B';
-const REG_CLR  = '#ef4444';
-const REG_GLOW = 'rgba(239,68,68,0.55)';
-const OK_CLR   = '#10b981';
+const DIVIDER  = 'var(--ps-divider)';
+const T_HEX    = 'var(--ps-accent)';
+const T_GLOW   = 'var(--ps-accent-glow-lg)';
+const REG_CLR  = 'var(--ps-regression)';
+const REG_GLOW = 'var(--ps-reg-glow)';
+const OK_CLR   = 'var(--ps-healthy)';
 const THRESHOLD = 15;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -166,10 +165,10 @@ function ScoreSparkline({ entries }: { entries: HistoryEntry[] }) {
     <div className="flex items-center gap-3">
       <svg width={W} height={H} style={{ overflow: 'visible' }}>
         <path d={path} fill="none" stroke={T_HEX} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: `drop-shadow(0 0 4px rgba(139,92,246,0.5))` }} />
+          style={{ filter: 'drop-shadow(0 0 4px var(--ps-accent-glow))' }} />
         <circle cx={xOf(scores.length - 1)} cy={yOf(last)} r="3.5"
           fill={T_HEX} stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-          style={{ filter: `drop-shadow(0 0 6px rgba(139,92,246,0.7))` }} />
+          style={{ filter: 'drop-shadow(0 0 6px var(--ps-accent-glow-lg))' }} />
       </svg>
       <div className="flex flex-col">
         <span className="text-[22px] font-black tabular-nums leading-none" style={{ color: '#e2e8f0' }}>
@@ -201,7 +200,7 @@ function PageHeader({ url, entries }: { url: string; entries: HistoryEntry[] }) 
       <div className="px-6 py-5 flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+            style={{ background: 'var(--ps-accent-muted)', border: '1px solid var(--ps-accent-border)' }}>
             <Globe className="w-5 h-5" style={{ color: T_HEX }} />
           </div>
           <div>
@@ -209,7 +208,7 @@ function PageHeader({ url, entries }: { url: string; entries: HistoryEntry[] }) 
               <h1 className="text-lg font-bold" style={{ color: '#e2e8f0' }}>{hostname}</h1>
               {regCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(239,68,68,0.12)', border: `1px solid rgba(239,68,68,0.30)`, color: REG_CLR }}>
+                  style={{ background: 'var(--ps-reg-muted)', border: '1px solid var(--ps-reg-border)', color: REG_CLR }}>
                   <AlertTriangle className="w-2.5 h-2.5" />
                   {regCount} regression{regCount > 1 ? 's' : ''}
                 </span>
@@ -231,17 +230,11 @@ function PageHeader({ url, entries }: { url: string; entries: HistoryEntry[] }) 
           </div>
           <div className="flex flex-col gap-2">
             <button onClick={() => exportJson(entries, url)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
-              style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.25)', color: T_HEX }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.20)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.10)')}>
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ps-btn-ghost">
               <Download className="w-3 h-3" /> Export JSON
             </button>
             <button onClick={() => exportCsv(entries, url)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
-              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: C_HEX }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.16)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(245,158,11,0.08)')}>
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ps-badge-amber">
               <FileText className="w-3 h-3" /> Export CSV
             </button>
           </div>
@@ -253,10 +246,10 @@ function PageHeader({ url, entries }: { url: string; entries: HistoryEntry[] }) 
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
-const STATUS_OPTS: { value: StatusFilter; label: string; color?: string; border?: string; bg?: string }[] = [
+const STATUS_OPTS: { value: StatusFilter; label: string; color?: string; border?: string; bg?: string; chipBg?: string; glow?: string }[] = [
   { value: 'all',        label: 'All'        },
-  { value: 'regression', label: 'Regression', color: REG_CLR, border: 'rgba(239,68,68,0.35)', bg: 'rgba(239,68,68,0.10)' },
-  { value: 'improved',   label: 'Improved',   color: OK_CLR,  border: 'rgba(16,185,129,0.35)', bg: 'rgba(16,185,129,0.10)' },
+  { value: 'regression', label: 'Regression', color: REG_CLR, border: 'var(--ps-reg-border)',     bg: 'var(--ps-reg-muted)',     chipBg: 'var(--ps-reg-muted)',     glow: 'var(--ps-reg-glow)'     },
+  { value: 'improved',   label: 'Improved',   color: OK_CLR,  border: 'var(--ps-healthy-border)', bg: 'var(--ps-healthy-muted)', chipBg: 'var(--ps-healthy-muted)', glow: 'var(--ps-healthy-glow)' },
   { value: 'stable',     label: 'Stable'     },
 ];
 
@@ -294,18 +287,18 @@ function FilterBar({
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150"
             style={{
               background: active
-                ? (opt.bg ?? 'rgba(139,92,246,0.15)')
+                ? (opt.bg ?? 'var(--ps-accent-hover)')
                 : 'rgba(255,255,255,0.04)',
               border: `1px solid ${active
-                ? (opt.border ?? 'rgba(139,92,246,0.40)')
+                ? (opt.border ?? 'var(--ps-accent-border)')
                 : 'rgba(255,255,255,0.08)'}`,
               color: active
                 ? (opt.color ?? T_HEX)
                 : 'rgba(255,255,255,0.40)',
-              boxShadow: active && opt.color
-                ? `0 0 12px ${opt.color}25`
+              boxShadow: active && opt.glow
+                ? `0 0 12px ${opt.glow}`
                 : active
-                ? `0 0 12px ${T_GLOW.replace('0.55', '0.20')}`
+                ? '0 0 12px var(--ps-accent-glow-sm)'
                 : 'none',
             }}
           >
@@ -313,7 +306,7 @@ function FilterBar({
             <span
               className="text-[9px] px-1.5 py-0 rounded-full tabular-nums"
               style={{
-                background: active ? (opt.color ? `${opt.color}20` : 'rgba(139,92,246,0.20)') : 'rgba(255,255,255,0.06)',
+                background: active ? (opt.chipBg ?? 'var(--ps-accent-hover)') : 'rgba(255,255,255,0.06)',
                 color: active ? (opt.color ?? T_HEX) : 'rgba(255,255,255,0.25)',
               }}
             >
@@ -337,13 +330,13 @@ function StatusBadge({ status }: { status: RowStatus }) {
   );
   if (status === 'regression') return (
     <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(239,68,68,0.12)', border: `1px solid rgba(239,68,68,0.28)`, color: REG_CLR }}>
+      style={{ background: 'var(--ps-reg-muted)', border: '1px solid var(--ps-reg-border)', color: REG_CLR }}>
       <AlertTriangle className="w-2.5 h-2.5" /> Regression
     </span>
   );
   if (status === 'improved') return (
     <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.25)', color: OK_CLR }}>
+      style={{ background: 'var(--ps-healthy-muted)', border: '1px solid var(--ps-healthy-border)', color: OK_CLR }}>
       <CheckCircle2 className="w-2.5 h-2.5" /> Improved
     </span>
   );
@@ -493,7 +486,7 @@ function DeepDiveTable({
                       style={{
                         borderBottom: `1px solid ${DIVIDER}`,
                         background: rowReg
-                          ? 'rgba(239,68,68,0.04)'
+                          ? 'var(--ps-reg-muted)'
                           : ri % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent',
                       }}
                     >
@@ -551,7 +544,7 @@ function EmptyState({ url }: { url: string }) {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center gap-4 py-24 text-center">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.20)' }}>
+        style={{ background: 'var(--ps-accent-muted)', border: '1px solid var(--ps-accent-border)' }}>
         <Clock className="w-7 h-7" style={{ color: T_HEX, opacity: 0.7 }} />
       </div>
       <div className="space-y-1.5">
@@ -607,12 +600,12 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen">
       {/* Mesh blobs */}
       <div className="pointer-events-none fixed top-0 left-0 w-[600px] h-[600px]"
-        style={{ background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.11) 0%, transparent 62%)', zIndex: 0 }} />
+        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
       <div className="pointer-events-none fixed bottom-0 right-0 w-[600px] h-[600px]"
-        style={{ background: 'radial-gradient(ellipse at 100% 100%, rgba(245,158,11,0.08) 0%, transparent 62%)', zIndex: 0 }} />
+        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
 

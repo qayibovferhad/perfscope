@@ -19,12 +19,12 @@ const PANEL: React.CSSProperties = {
   overflow:             'hidden',
 };
 const DIVIDER = 'var(--ps-divider)';
-const T_HEX   = '#8B5CF6';
-const T_GLOW  = 'rgba(139,92,246,0.55)';
-const C_HEX   = '#F59E0B';
-const C_GLOW  = 'rgba(245,158,11,0.55)';
-const OK_CLR  = '#10b981';
-const REG_CLR = '#ef4444';
+const T_HEX   = 'var(--ps-accent)';
+const T_GLOW  = 'var(--ps-accent-glow-lg)';
+const C_HEX   = 'var(--ps-amber)';
+const C_GLOW  = 'var(--ps-amber-glow)';
+const OK_CLR  = 'var(--ps-healthy)';
+const REG_CLR = 'var(--ps-regression)';
 
 // ─── Metric system ────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ interface MetricDef {
 
 const METRIC_DEFS: Record<MetricKey, MetricDef> = {
   score: {
-    label: 'Score', unit: 'pts', accent: T_HEX, lowerIsBetter: false,
+    label: 'Score', unit: 'pts', accent: '#8B5CF6', lowerIsBetter: false,
     getValue: (e, s) => Math.round(e[s].scores['performance'] ?? 0),
     fmt:  v => `${Math.round(v)}`,
     yFmt: v => Math.round(v).toString(),
@@ -232,9 +232,9 @@ function DualTrendChart({
 
           {/* Lines */}
           <path d={srcPath} fill="none" stroke={T_HEX} strokeWidth="2.5" strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 6px ${T_GLOW})` }} />
+            style={{ filter: 'drop-shadow(0 0 6px var(--ps-accent-glow-lg))' }} />
           <path d={cmpPath} fill="none" stroke={C_HEX} strokeWidth="2.5" strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 6px ${C_GLOW})` }} />
+            style={{ filter: 'drop-shadow(0 0 6px var(--ps-amber-glow))' }} />
 
           {/* Dots */}
           {entries.map((e, i) => {
@@ -246,10 +246,10 @@ function DualTrendChart({
               <g key={i}>
                 <circle cx={sx} cy={sy} r={isHov ? 6 : isLast ? 5.5 : 3.5} fill={T_HEX}
                   stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                  style={{ filter: (isHov || isLast) ? `drop-shadow(0 0 10px ${T_GLOW})` : 'none', transition: 'r 0.1s' }} />
+                  style={{ filter: (isHov || isLast) ? 'drop-shadow(0 0 10px var(--ps-accent-glow-lg))' : 'none', transition: 'r 0.1s' }} />
                 <circle cx={cx} cy={cy} r={isHov ? 6 : isLast ? 5.5 : 3.5} fill={C_HEX}
                   stroke="rgba(17,24,39,0.9)" strokeWidth="1.5"
-                  style={{ filter: (isHov || isLast) ? `drop-shadow(0 0 10px ${C_GLOW})` : 'none', transition: 'r 0.1s' }} />
+                  style={{ filter: (isHov || isLast) ? 'drop-shadow(0 0 10px var(--ps-amber-glow))' : 'none', transition: 'r 0.1s' }} />
                 <text x={sx} y={CH - 8} textAnchor="middle"
                   fill={isHov ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.20)'}
                   fontSize="8" fontFamily="monospace">
@@ -607,14 +607,7 @@ function PairDetail({ pairId, onClose }: { pairId: string; onClose: () => void }
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
-              style={{
-                background: exporting ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.12)',
-                border:     '1px solid rgba(139,92,246,0.28)',
-                color:      exporting ? 'rgba(139,92,246,0.40)' : T_HEX,
-              }}
-              onMouseEnter={e => { if (!exporting) (e.currentTarget.style.background = 'rgba(139,92,246,0.20)'); }}
-              onMouseLeave={e => { if (!exporting) (e.currentTarget.style.background = 'rgba(139,92,246,0.12)'); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ps-btn-ghost disabled:opacity-40"
             >
               <FileDown className="w-3 h-3" />
               {exporting ? 'Generating…' : 'Generate Report'}
@@ -759,7 +752,7 @@ function ArchiveTable({
                       borderBottom: `1px solid ${DIVIDER}`,
                       borderLeft:   `2px solid ${isSel ? T_HEX : 'transparent'}`,
                       background:   isSel
-                        ? 'rgba(139,92,246,0.07)'
+                        ? 'var(--ps-accent-muted)'
                         : i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent',
                       cursor: 'pointer',
                     }}
@@ -879,7 +872,7 @@ function EmptyState() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center gap-4 py-24 text-center">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.20)' }}>
+        style={{ background: 'var(--ps-accent-muted)', border: '1px solid var(--ps-accent-border)' }}>
         <GitCompareArrows className="w-7 h-7" style={{ color: T_HEX, opacity: 0.7 }} />
       </div>
       <div className="space-y-1.5">
@@ -889,10 +882,7 @@ function EmptyState() {
         </p>
       </div>
       <Link to="/compare"
-        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold mt-1 transition-all"
-        style={{ background: 'rgba(139,92,246,0.12)', border: `1px solid rgba(139,92,246,0.28)`, color: T_HEX }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.22)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.12)')}>
+        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold mt-1 transition-all ps-btn-ghost">
         <GitCompareArrows className="w-3.5 h-3.5" /> Go to Compare
       </Link>
     </motion.div>
@@ -937,11 +927,11 @@ export function CompareHistoryPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen">
       <div className="pointer-events-none fixed top-0 left-0 w-[600px] h-[600px]"
-        style={{ background: 'radial-gradient(ellipse at 0% 0%, rgba(139,92,246,0.11) 0%, transparent 62%)', zIndex: 0 }} />
+        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
       <div className="pointer-events-none fixed bottom-0 right-0 w-[600px] h-[600px]"
-        style={{ background: 'radial-gradient(ellipse at 100% 100%, rgba(245,158,11,0.08) 0%, transparent 62%)', zIndex: 0 }} />
+        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">

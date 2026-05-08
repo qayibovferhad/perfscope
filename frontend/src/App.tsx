@@ -6,7 +6,7 @@ import { CompareHistoryPage } from './features/compare-history/CompareHistoryPag
 
 export default function App() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <Routes>
         <Route path="/" element={<Analyzer />} />
         <Route path="/compare" element={<ComparisonPage />} />
