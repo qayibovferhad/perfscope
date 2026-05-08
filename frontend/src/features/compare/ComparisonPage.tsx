@@ -69,15 +69,7 @@ export function ComparisonPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
-
-      {/* ── Mesh gradient blobs ── */}
-      <div className="pointer-events-none fixed top-0 left-0 w-[700px] h-[700px]"
-        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
-      <div className="pointer-events-none fixed bottom-0 right-0 w-[700px] h-[700px]"
-        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
-
-    <div className="relative z-10 max-w-[1600px] mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-[1600px] mx-auto px-4 py-8 space-y-8">
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -275,7 +267,6 @@ export function ComparisonPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
     </div>
   );
 }

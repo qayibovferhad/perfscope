@@ -927,13 +927,7 @@ export function CompareHistoryPage() {
   }
 
   return (
-    <div className="relative min-h-screen">
-      <div className="pointer-events-none fixed top-0 left-0 w-[600px] h-[600px]"
-        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
-      <div className="pointer-events-none fixed bottom-0 right-0 w-[600px] h-[600px]"
-        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
-
-      <div className="relative z-10 max-w-[1400px] mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <Breadcrumb />
           <ThemeToggle />
@@ -957,7 +951,6 @@ export function CompareHistoryPage() {
             </AnimatePresence>
           </motion.div>
         )}
-      </div>
     </div>
   );
 }
