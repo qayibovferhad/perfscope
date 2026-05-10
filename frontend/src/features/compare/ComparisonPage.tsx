@@ -75,7 +75,7 @@ export function ComparisonPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild className="gap-1.5 text-muted-foreground hover:text-foreground">
-            <Link to="/"><ArrowLeft className="w-3.5 h-3.5" /> Analyzer</Link>
+            <Link to="/app"><ArrowLeft className="w-3.5 h-3.5" /> Analyzer</Link>
           </Button>
           <div className="w-px h-4 bg-white/10" />
           <div className="flex items-center gap-2">

@@ -119,7 +119,7 @@ function Breadcrumb({ hostname }: { hostname: string }) {
   return (
     <nav className="flex items-center gap-1.5 text-sm select-none">
       <Link
-        to="/"
+        to="/app"
         className="flex items-center gap-1 font-medium transition-all duration-150"
         style={{ color: 'rgba(255,255,255,0.45)' }}
         onMouseEnter={e => {
@@ -558,7 +558,7 @@ function EmptyState({ url }: { url: string }) {
         </p>
       </div>
       <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs mt-1">
-        <Link to="/">← Back to Analyzer</Link>
+        <Link to="/app">← Back to Analyzer</Link>
       </Button>
     </motion.div>
   );

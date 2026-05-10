@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { LandingPage } from './features/landing/LandingPage';
 import { Analyzer } from './features/analyzer/components/Analyzer';
 import { ComparisonPage } from './features/compare/ComparisonPage';
 import { HistoryPage } from './features/history/HistoryPage';
@@ -15,9 +16,10 @@ export default function App() {
 
       <main className="relative z-10 min-h-screen">
         <Routes>
-          <Route path="/"               element={<Analyzer />} />
-          <Route path="/compare"        element={<ComparisonPage />} />
-          <Route path="/history"        element={<HistoryPage />} />
+          <Route path="/"                element={<LandingPage />} />
+          <Route path="/app"             element={<Analyzer />} />
+          <Route path="/compare"         element={<ComparisonPage />} />
+          <Route path="/history"         element={<HistoryPage />} />
           <Route path="/compare-history" element={<CompareHistoryPage />} />
         </Routes>
       </main>
