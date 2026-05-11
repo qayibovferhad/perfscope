@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
-import { useHistory, type HistoryEntry } from './hooks/useHistory';
+import { useHistory, useAllHistory, type HistoryEntry } from './hooks/useHistory';
 import { RegressionHistory } from './components/RegressionHistory';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -574,7 +574,11 @@ export function HistoryPage() {
   const sort   = (params.get('sort')   ?? 'date') as SortKey;
   const order  = (params.get('order')  ?? 'desc') as SortOrder;
 
-  const { data: entries = [], isLoading } = useHistory(url || null);
+  const { data: urlEntries = [],  isLoading: urlLoading  } = useHistory(url || null);
+  const { data: allEntries = [],  isLoading: allLoading  } = useAllHistory();
+
+  const entries   = url ? urlEntries : allEntries;
+  const isLoading = url ? urlLoading : allLoading;
 
   const allRows = useMemo(() => computeRows(entries), [entries]);
 

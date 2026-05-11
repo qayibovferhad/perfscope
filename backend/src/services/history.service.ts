@@ -32,21 +32,31 @@ function normalizeUrl(url: string): string {
   }
 }
 
+function toEntry(d: InstanceType<typeof HistoryModel>): HistoryEntry {
+  return {
+    id:        d.analysisId,
+    shortId:   d.shortId,
+    url:       d.url,
+    timestamp: (d.createdAt as Date).toISOString(),
+    scores:    d.scores,
+    metrics:   d.metrics,
+  };
+}
+
 export const HistoryService = {
-  async save(entry: HistoryEntry): Promise<void> {
+  async save(entry: HistoryEntry, userId?: string): Promise<void> {
     const normalizedUrl = normalizeUrl(entry.url);
-    console.log(normalizedUrl,'normalizedUrl');
-    
+
     await HistoryModel.create({
       analysisId:    entry.id,
       shortId:       entry.shortId,
       url:           entry.url,
       normalizedUrl,
+      userId,
       scores:        entry.scores,
       metrics:       entry.metrics,
     });
 
-    // Keep only latest MAX_PER_URL per URL — delete oldest extras
     const count = await HistoryModel.countDocuments({ normalizedUrl });
     if (count > MAX_PER_URL) {
       const oldest = await HistoryModel
@@ -61,16 +71,16 @@ export const HistoryService = {
   async get(url: string): Promise<HistoryEntry[]> {
     const docs = await HistoryModel
       .find({ normalizedUrl: normalizeUrl(url) })
-      .sort({ createdAt: 1 })   // oldest → newest for trend chart
+      .sort({ createdAt: 1 })
       .lean();
+    return docs.map(toEntry);
+  },
 
-    return docs.map(d => ({
-      id:        d.analysisId,
-      shortId:   d.shortId,
-      url:       d.url,
-      timestamp: (d.createdAt as Date).toISOString(),
-      scores:    d.scores,
-      metrics:   d.metrics,
-    }));
+  async getAll(userId: string): Promise<HistoryEntry[]> {
+    const docs = await HistoryModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+    return docs.map(toEntry);
   },
 };

@@ -1,4 +1,5 @@
 import type { Server, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -10,6 +11,18 @@ import type {
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { AiService } from '../services/ai.service.js';
 import { HistoryService } from '../services/history.service.js';
+import { config } from '../config/index.js';
+
+function extractUserId(socket: TypedSocket): string | undefined {
+  try {
+    const token = (socket.handshake.auth as { token?: string }).token;
+    if (!token) return undefined;
+    const payload = jwt.verify(token, config.jwtSecret) as { sub: string };
+    return payload.sub;
+  } catch {
+    return undefined;
+  }
+}
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -75,6 +88,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
           }
         }
 
+        const userId = extractUserId(socket);
         HistoryService.save({
           id:        result.id,
           shortId:   result.id.slice(0, 7),
@@ -82,7 +96,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
           timestamp: result.timestamp,
           scores:    result.scores,
           metrics:   result.metrics,
-        }).catch(err => console.warn('[History] Save failed:', err));
+        }, userId).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {

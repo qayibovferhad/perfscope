@@ -31,6 +31,7 @@ export interface IHistory extends Document {
   shortId:       string;
   url:           string;
   normalizedUrl: string;
+  userId?:       string;
   scores:        { performance: number; accessibility: number; bestPractices: number; seo: number };
   metrics:       { fcp: number; lcp: number; tbt: number; cls: number; si: number; tti: number };
   createdAt:     Date;
@@ -42,6 +43,7 @@ const HistorySchema = new Schema<IHistory>(
     shortId:       { type: String, required: true },
     url:           { type: String, required: true },
     normalizedUrl: { type: String, required: true, index: true },
+    userId:        { type: String, index: true },
     scores:        { type: ScoresSchema, required: true },
     metrics:       { type: MetricsSchema, required: true },
   },

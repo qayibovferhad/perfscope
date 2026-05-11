@@ -35,3 +35,14 @@ export function useHistory(url: string | null) {
     staleTime: 0,
   });
 }
+
+export function useAllHistory() {
+  return useQuery<HistoryEntry[]>({
+    queryKey: ['history', 'all'],
+    queryFn:  async () => {
+      const res = await apiClient.get<{ success: boolean; data: HistoryEntry[] }>('/history/all');
+      return res.data.data ?? [];
+    },
+    staleTime: 0,
+  });
+}
