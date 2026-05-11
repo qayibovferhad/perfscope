@@ -4,6 +4,7 @@ import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
 import { config } from './config/index.js';
 import { authRouter } from './routes/auth.routes.js';
+import { websiteRouter } from './routes/website.routes.js';
 import { analyzerRouter } from './routes/analyzer.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
@@ -40,6 +41,7 @@ export function createApp(): { app: Application; httpServer: Server } {
 
   // ── Routes ───────────────────────────────────────────────────────────────
   app.use('/api', authRouter);
+  app.use('/api', websiteRouter);
   app.use('/api', analyzerRouter);
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);

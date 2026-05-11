@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
@@ -123,8 +123,9 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Analyzer() {
-  const [url, setUrl] = useState('');
-  const { analyze, data, progress, partials, isPending, isError, error, reset } = useAnalysis();
+  const [searchParams] = useSearchParams();
+  const { analyze, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
+  const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
