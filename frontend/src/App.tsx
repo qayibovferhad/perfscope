@@ -1,28 +1,36 @@
 import { Routes, Route } from 'react-router-dom';
-import { LandingPage } from './features/landing/LandingPage';
-import { Analyzer } from './features/analyzer/components/Analyzer';
-import { ComparisonPage } from './features/compare/ComparisonPage';
-import { HistoryPage } from './features/history/HistoryPage';
+import { LandingPage }      from './features/landing/LandingPage';
+import { LoginPage }        from './features/auth/LoginPage';
+import { RegisterPage }     from './features/auth/RegisterPage';
+import { ProtectedRoute }   from './features/auth/ProtectedRoute';
+import { DashboardLayout }  from './features/dashboard/DashboardLayout';
+import { Analyzer }         from './features/analyzer/components/Analyzer';
+import { ComparisonPage }   from './features/compare/ComparisonPage';
+import { HistoryPage }      from './features/history/HistoryPage';
 import { CompareHistoryPage } from './features/compare-history/CompareHistoryPage';
+
+function DashboardRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>{children}</DashboardLayout>
+    </ProtectedRoute>
+  );
+}
 
 export default function App() {
   return (
-    <div className="relative min-h-screen">
-      {/* Global mesh gradient blobs — fixed, behind all content */}
-      <div className="pointer-events-none fixed top-0 left-0 w-[700px] h-[700px]"
-        style={{ background: 'var(--ps-blob-tl)', zIndex: 0 }} />
-      <div className="pointer-events-none fixed bottom-0 right-0 w-[700px] h-[700px]"
-        style={{ background: 'var(--ps-blob-br)', zIndex: 0 }} />
+    <>
+      {/* Global mesh blobs — only for public pages (landing/login) */}
+      <Routes>
+        <Route path="/"      element={<LandingPage />} />
+        <Route path="/login"    element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-      <main className="relative z-10 min-h-screen">
-        <Routes>
-          <Route path="/"                element={<LandingPage />} />
-          <Route path="/app"             element={<Analyzer />} />
-          <Route path="/compare"         element={<ComparisonPage />} />
-          <Route path="/history"         element={<HistoryPage />} />
-          <Route path="/compare-history" element={<CompareHistoryPage />} />
-        </Routes>
-      </main>
-    </div>
+        <Route path="/app"             element={<DashboardRoute><Analyzer /></DashboardRoute>} />
+        <Route path="/compare"         element={<DashboardRoute><ComparisonPage /></DashboardRoute>} />
+        <Route path="/history"         element={<DashboardRoute><HistoryPage /></DashboardRoute>} />
+        <Route path="/compare-history" element={<DashboardRoute><CompareHistoryPage /></DashboardRoute>} />
+      </Routes>
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { createServer, type Server } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
 import { config } from './config/index.js';
+import { authRouter } from './routes/auth.routes.js';
 import { analyzerRouter } from './routes/analyzer.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
@@ -38,6 +39,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use(express.json());
 
   // ── Routes ───────────────────────────────────────────────────────────────
+  app.use('/api', authRouter);
   app.use('/api', analyzerRouter);
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);

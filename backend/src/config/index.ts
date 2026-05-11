@@ -16,6 +16,7 @@ export const config = {
   nodeEnv:     optionalEnv('NODE_ENV', 'development'),
   geminiApiKey: process.env['GEMINI_API_KEY'],
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
+  jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
 
   get isDev(): boolean {
     return this.nodeEnv === 'development';
