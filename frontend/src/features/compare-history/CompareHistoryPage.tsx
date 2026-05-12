@@ -891,7 +891,7 @@ function EmptyState() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export function CompareHistoryPage() {
+export function CompareHistoryPage({ asTab = false }: { asTab?: boolean }) {
   const [params, setParams] = useSearchParams();
   const search       = params.get('search') ?? '';
   const selectedPair = params.get('pair');
@@ -926,31 +926,41 @@ export function CompareHistoryPage() {
     setParams(p => { const n = new URLSearchParams(p); n.delete('pair'); return n; }, { replace: true });
   }
 
-  return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
+  const content = (
+    <div className="space-y-6">
+      {!asTab && (
         <div className="flex items-center justify-between">
           <Breadcrumb />
           <ThemeToggle />
         </div>
-        <SearchBar value={localSearch} onChange={handleSearch} />
+      )}
+      <SearchBar value={localSearch} onChange={handleSearch} />
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-28">
-            <div className="w-6 h-6 rounded-full border-2 animate-spin"
-              style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
-          </div>
-        ) : pairs.length === 0 && !search ? <EmptyState /> : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }} className="space-y-6">
-            <ArchiveTable entries={pairs} selectedPair={selectedPair} onSelect={handleSelect} />
-            <AnimatePresence>
-              {selectedPair && (
-                <PairDetail key={selectedPair} pairId={selectedPair} onClose={closePair} />
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-28">
+          <div className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
+        </div>
+      ) : pairs.length === 0 && !search ? <EmptyState /> : (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }} className="space-y-6">
+          <ArchiveTable entries={pairs} selectedPair={selectedPair} onSelect={handleSelect} />
+          <AnimatePresence>
+            {selectedPair && (
+              <PairDetail key={selectedPair} pairId={selectedPair} onClose={closePair} />
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </div>
+  );
+
+  if (asTab) return content;
+
+  return (
+    <div className="max-w-[1400px] mx-auto px-4 py-8">
+      {content}
     </div>
   );
 }

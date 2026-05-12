@@ -5,13 +5,14 @@ import {
   Globe, TrendingUp, TrendingDown, Minus,
   Download, FileText, Clock, GitCommit, AlertTriangle,
   CheckCircle2, Activity, ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, ArrowRight,
+  Filter, ArrowRight, GitCompareArrows,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { useHistory, useAllHistory, type HistoryEntry } from './hooks/useHistory';
 import { useWebsites } from '../dashboard/useWebsites';
 import { RegressionHistory, EvolutionChart } from './components/RegressionHistory';
+import { CompareHistoryPage } from '../compare-history/CompareHistoryPage';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -770,102 +771,152 @@ function WebsitesOverview({ allEntries, isLoading }: { allEntries: HistoryEntry[
   );
 }
 
+// ─── Tab Bar ─────────────────────────────────────────────────────────────────
+
+type Tab = 'analysis' | 'compare';
+
+function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'analysis', label: 'Analysis', icon: <Activity         className="w-3.5 h-3.5" /> },
+    { key: 'compare',  label: 'Compare',  icon: <GitCompareArrows className="w-3.5 h-3.5" /> },
+  ];
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-xl w-fit"
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--ps-panel-border)' }}>
+      {tabs.map(({ key, label, icon }) => {
+        const isActive = active === key;
+        return (
+          <button key={key} onClick={() => onChange(key)}
+            className="relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-150"
+            style={{ color: isActive ? 'var(--ps-text-heading)' : 'var(--ps-text-muted)' }}
+          >
+            {isActive && (
+              <motion.div layoutId="history-tab-pill"
+                className="absolute inset-0 rounded-lg"
+                style={{ background: 'var(--ps-accent-hover)', border: '1px solid var(--ps-accent-border)' }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2"
+              style={{ color: isActive ? T_HEX : 'inherit' }}>
+              {icon}{label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function HistoryPage() {
   const [params, setParams] = useSearchParams();
 
+  const tab    = (params.get('tab') ?? 'analysis') as Tab;
   const url    = params.get('url')    ?? '';
   const status = (params.get('status') ?? 'all') as StatusFilter;
   const sort   = (params.get('sort')   ?? 'date') as SortKey;
   const order  = (params.get('order')  ?? 'desc') as SortOrder;
 
-  const { data: urlEntries = [],  isLoading: urlLoading  } = useHistory(url || null);
-  const { data: allEntries = [],  isLoading: allLoading  } = useAllHistory();
+  const { data: urlEntries = [], isLoading: urlLoading } = useHistory(url || null);
+  const { data: allEntries = [], isLoading: allLoading  } = useAllHistory();
 
-  const entries   = url ? urlEntries : allEntries;
-  const isLoading = url ? urlLoading : allLoading;
-
-  const allRows = useMemo(() => computeRows(entries), [entries]);
-
+  const allRows  = useMemo(() => computeRows(urlEntries), [urlEntries]);
   const hostname = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
+
+  function setTab(t: Tab) {
+    setParams(_ => {
+      const n = new URLSearchParams();
+      if (t !== 'analysis') n.set('tab', t);
+      return n;
+    }, { replace: true });
+  }
 
   function setParam(key: string, val: string) {
     setParams(p => { const n = new URLSearchParams(p); n.set(key, val); return n; }, { replace: true });
   }
 
   function handleStatus(s: StatusFilter) { setParam('status', s); }
-
   function handleSort(col: SortKey) {
     if (col === sort) {
       setParam('order', order === 'asc' ? 'desc' : 'asc');
     } else {
       setParams(p => {
         const n = new URLSearchParams(p);
-        n.set('sort', col);
-        n.set('order', col === 'score' ? 'desc' : 'asc');
+        n.set('sort', col); n.set('order', col === 'score' ? 'desc' : 'asc');
         return n;
       }, { replace: true });
     }
   }
 
-  // No URL → show websites overview
-  if (!url) {
-    return (
-      <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <Breadcrumb hostname="" />
-          <ThemeToggle />
-        </div>
-        <WebsitesOverview allEntries={allEntries} isLoading={allLoading} />
-      </div>
-    );
-  }
-
-  // URL param present → show detailed history for that URL
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
 
-      {/* Breadcrumb + theme toggle */}
-      <div className="flex items-center justify-between">
-        <Breadcrumb hostname={hostname} />
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        {tab === 'analysis'
+          ? <Breadcrumb hostname={hostname} />
+          : <nav className="flex items-center gap-1.5 text-sm select-none">
+              <span className="font-semibold" style={{ color: '#e2e8f0' }}>History</span>
+              <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 16 }}>›</span>
+              <div className="flex items-center gap-1.5">
+                <GitCompareArrows className="w-3.5 h-3.5" style={{ color: T_HEX }} />
+                <span className="font-semibold" style={{ color: '#e2e8f0' }}>Compare</span>
+              </div>
+            </nav>
+        }
         <ThemeToggle />
       </div>
 
-      {/* Loading */}
-      {urlLoading && (
-        <div className="flex items-center justify-center py-28">
-          <div className="w-6 h-6 rounded-full border-2 animate-spin"
-            style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
-        </div>
-      )}
+      {/* Tab Bar */}
+      <TabBar active={tab} onChange={setTab} />
 
-      <AnimatePresence>
-        {!urlLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
+      {/* Content */}
+      <AnimatePresence mode="wait">
+
+        {tab === 'analysis' && (
+          <motion.div key="analysis"
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            {urlEntries.length === 0 ? (
-              <EmptyState url={url} />
+            {!url ? (
+              <WebsitesOverview allEntries={allEntries} isLoading={allLoading} />
             ) : (
               <>
-                <PageHeader url={url} entries={urlEntries} />
-                <RegressionHistory entries={urlEntries} />
-                <DeepDiveTable
-                  allRows={allRows}
-                  status={status}
-                  sort={sort}
-                  order={order}
-                  onStatus={handleStatus}
-                  onSort={handleSort}
-                />
+                {urlLoading && (
+                  <div className="flex items-center justify-center py-28">
+                    <div className="w-6 h-6 rounded-full border-2 animate-spin"
+                      style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
+                  </div>
+                )}
+                {!urlLoading && (
+                  urlEntries.length === 0 ? <EmptyState url={url} /> : (
+                    <>
+                      <PageHeader url={url} entries={urlEntries} />
+                      <RegressionHistory entries={urlEntries} />
+                      <DeepDiveTable
+                        allRows={allRows} status={status} sort={sort} order={order}
+                        onStatus={handleStatus} onSort={handleSort}
+                      />
+                    </>
+                  )
+                )}
               </>
             )}
           </motion.div>
         )}
+
+        {tab === 'compare' && (
+          <motion.div key="compare"
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}
+          >
+            <CompareHistoryPage asTab />
+          </motion.div>
+        )}
+
       </AnimatePresence>
     </div>
   );

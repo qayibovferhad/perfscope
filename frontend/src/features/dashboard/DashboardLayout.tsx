@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Activity, Search, GitCompareArrows, History, GitBranch,
+  Activity, Search, GitCompareArrows, History,
   LogOut, Menu, X, ChevronRight, Plus, Globe, Trash2, LayoutGrid,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -15,8 +15,7 @@ import { AddWebsiteModal } from './AddWebsiteModal';
 const NAV = [
   { to: '/app',             icon: <Search           className="w-4 h-4" />, label: 'Analyzer'       },
   { to: '/compare',         icon: <GitCompareArrows className="w-4 h-4" />, label: 'Compare'        },
-  { to: '/history',         icon: <History          className="w-4 h-4" />, label: 'History'        },
-  { to: '/compare-history', icon: <GitBranch        className="w-4 h-4" />, label: 'Compare History'},
+  { to: '/history',              icon: <History  className="w-4 h-4" />, label: 'History'        },
   { to: '/websites',        icon: <LayoutGrid       className="w-4 h-4" />, label: 'My Websites'    },
 ];
 
