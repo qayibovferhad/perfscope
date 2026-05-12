@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startAnalysis } from '@/api/socket';
+import { startAnalysis, joinAnalysis } from '@/api/socket';
 import { useAnalysisStore } from '@/store/analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '../types';
 
@@ -60,9 +60,35 @@ export function useAnalysis() {
     useAnalysisStore.getState().clear();
   }, []);
 
+  const bootstrap = useCallback((result: AnalysisResult, url: string) => {
+    cleanupRef.current?.();
+    setState({ status: 'success', data: result, progress: null, partials: {}, error: null });
+    setResult(result, url);
+  }, [setResult]);
+
+  const adoptRunning = useCallback(() => {
+    cleanupRef.current?.();
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null });
+    const cleanup = joinAnalysis({
+      onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
+      onPartial:  (partial)  => setState((prev) => ({
+        ...prev,
+        partials: { ...prev.partials, [partial.category]: partial },
+      })),
+      onComplete: (data) => {
+        setState({ status: 'success', data, progress: null, partials: {}, error: null });
+        setResult(data, data.url);
+      },
+      onError: (error) => setState({ status: 'error', error, data: null, progress: null, partials: {} }),
+    });
+    cleanupRef.current = cleanup;
+  }, [setResult]);
+
   return {
     analyze,
     reset,
+    bootstrap,
+    adoptRunning,
     lastUrl,
     data:      state.data,
     progress:  state.progress,

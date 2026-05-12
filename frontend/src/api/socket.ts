@@ -24,10 +24,7 @@ export interface AnalysisCallbacks {
   onError:    (message: string)        => void;
 }
 
-export function startAnalysis(url: string, callbacks: AnalysisCallbacks): () => void {
-  const s = getSocket();
-  if (!s.connected) s.connect();
-
+function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
   const onPartial  = (data: CategoryPartial)     => callbacks.onPartial(data);
   const onComplete = (result: AnalysisResult)    => callbacks.onComplete(result);
@@ -37,7 +34,6 @@ export function startAnalysis(url: string, callbacks: AnalysisCallbacks): () => 
   s.on('analysis:partial',  onPartial);
   s.on('analysis:complete', onComplete);
   s.on('analysis:error',    onError);
-  s.emit('analysis:start', { url });
 
   return () => {
     s.off('analysis:progress', onProgress);
@@ -45,4 +41,17 @@ export function startAnalysis(url: string, callbacks: AnalysisCallbacks): () => 
     s.off('analysis:complete', onComplete);
     s.off('analysis:error',    onError);
   };
+}
+
+export function startAnalysis(url: string, callbacks: AnalysisCallbacks): () => void {
+  const s = getSocket();
+  if (!s.connected) s.connect();
+  const cleanup = attachListeners(s, callbacks);
+  s.emit('analysis:start', { url });
+  return cleanup;
+}
+
+export function joinAnalysis(callbacks: AnalysisCallbacks): () => void {
+  const s = getSocket();
+  return attachListeners(s, callbacks);
 }

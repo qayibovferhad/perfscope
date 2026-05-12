@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp } from 'lucide-react';
@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/aler
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
+import { usePrefetchStore } from '@/store/prefetchStore';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -124,13 +125,35 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 
 export function Analyzer() {
   const [searchParams] = useSearchParams();
-  const { analyze, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
+  const { analyze, bootstrap, adoptRunning, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
+  const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
     const paramUrl = searchParams.get('url');
-    if (paramUrl) setUrl(paramUrl);
-  }, [searchParams]);
+    if (!paramUrl || paramUrl === handledUrl.current) return;
+    handledUrl.current = paramUrl;
+    setUrl(paramUrl);
+
+    const prefetch = usePrefetchStore.getState();
+
+    if (prefetch.url === paramUrl) {
+      if (prefetch.status === 'success' && prefetch.result) {
+        bootstrap(prefetch.result, paramUrl);
+        prefetch.clear();
+        return;
+      }
+      if (prefetch.status === 'loading') {
+        adoptRunning();
+        prefetch.clear();
+        return;
+      }
+    }
+
+    const normalized = paramUrl.startsWith('http') ? paramUrl : `https://${paramUrl}`;
+    reset();
+    analyze(normalized);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

@@ -3,11 +3,16 @@ import { Globe, Plus, Trash2, ExternalLink, Activity } from 'lucide-react';
 import { useWebsites } from './useWebsites';
 import { AddWebsiteModal } from './AddWebsiteModal';
 import { useState } from 'react';
+import { usePrefetchStore } from '@/store/prefetchStore';
 
 export function WebsitesPage() {
   const navigate = useNavigate();
   const { websites, isLoading, remove } = useWebsites();
   const [modalOpen, setModalOpen] = useState(false);
+
+  function handleAuditHover(url: string) {
+    usePrefetchStore.getState().start(url);
+  }
 
   function runAudit(url: string) {
     navigate(`/app?url=${encodeURIComponent(url)}`);
@@ -101,10 +106,10 @@ export function WebsitesPage() {
                 <div className="flex items-center gap-2 mt-1">
                   <button
                     onClick={(e) => { e.stopPropagation(); runAudit(site.url); }}
+                    onMouseEnter={(e) => { handleAuditHover(site.url); (e.currentTarget as HTMLElement).style.opacity = '0.8'; }}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-1 justify-center transition-all"
                     style={{ background: 'var(--ps-accent-muted)', color: 'var(--ps-accent)' }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = '0.8')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                   >
                     <Activity className="w-3 h-3" /> Run Audit
                   </button>
