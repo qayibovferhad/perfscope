@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, Search, GitCompareArrows, History, GitBranch,
-  LogOut, Menu, X, ChevronRight, Plus, Globe,
-  Trash2, ExternalLink,
+  LogOut, Menu, X, ChevronRight, Plus, Globe, Trash2, LayoutGrid,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useWebsites } from './useWebsites';
+import { useAllHistory } from '../history/hooks/useHistory';
 import { AddWebsiteModal } from './AddWebsiteModal';
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/compare',         icon: <GitCompareArrows className="w-4 h-4" />, label: 'Compare'        },
   { to: '/history',         icon: <History          className="w-4 h-4" />, label: 'History'        },
   { to: '/compare-history', icon: <GitBranch        className="w-4 h-4" />, label: 'Compare History'},
+  { to: '/websites',        icon: <LayoutGrid       className="w-4 h-4" />, label: 'My Websites'    },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -26,6 +27,23 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
   const navigate  = useNavigate();
   const { user, logout } = useAuthStore();
   const { websites, remove } = useWebsites();
+  const { data: allHistory = [] } = useAllHistory();
+
+  const sortedWebsites = useMemo(() => {
+    if (!allHistory.length) return websites;
+    const lastAuditAt: Record<string, number> = {};
+    for (const entry of allHistory) {
+      const t = new Date(entry.timestamp).getTime();
+      if (!lastAuditAt[entry.url] || t > lastAuditAt[entry.url]) {
+        lastAuditAt[entry.url] = t;
+      }
+    }
+    return [...websites].sort((a, b) => {
+      const ta = lastAuditAt[a.url] ?? 0;
+      const tb = lastAuditAt[b.url] ?? 0;
+      return tb - ta;
+    });
+  }, [websites, allHistory]);
 
   function handleLogout() {
     logout();
@@ -65,16 +83,17 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
       </div>
 
       {/* Saved websites */}
-      {websites.length > 0 && (
+      {sortedWebsites.length > 0 && (
         <div className="px-3 pb-2">
           <p className="px-3 mb-1.5 text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
             My Websites
           </p>
           <div className="space-y-0.5">
-            {websites.map((site) => (
+            {sortedWebsites.slice(0, 3).map((site) => (
               <div key={site._id}
-                className="group flex items-center gap-2 px-3 py-2 rounded-lg"
-                style={{ border: '1px solid transparent' }}
+                className="group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer"
+                style={{ border: '1px solid transparent', transition: 'background 0.15s, border-color 0.15s' }}
+                onClick={() => runAudit(site.url)}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-panel-border)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; }}
               >
@@ -90,21 +109,29 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
                     {new URL(site.url).hostname}
                   </p>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => runAudit(site.url)} title="Run audit"
-                    className="p-1 rounded" style={{ color: 'var(--ps-accent)' }}>
-                    <ExternalLink className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => remove.mutate(site._id)} title="Remove"
-                    className="p-1 rounded" style={{ color: 'var(--ps-text-muted)' }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-regression)')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}>
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); remove.mutate(site._id); }}
+                  title="Remove"
+                  className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--ps-text-muted)' }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-regression)')}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
             ))}
           </div>
+          {sortedWebsites.length > 3 && (
+            <Link to="/websites" onClick={onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 mt-1 rounded-lg text-[11px] font-medium transition-all"
+              style={{ color: 'var(--ps-accent)' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--ps-accent-muted)')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+            >
+              <ChevronRight className="w-3 h-3" />
+              View all {sortedWebsites.length} websites
+            </Link>
+          )}
         </div>
       )}
 

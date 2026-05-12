@@ -1,16 +1,17 @@
-import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe, TrendingUp, TrendingDown, Minus,
   Download, FileText, Clock, GitCommit, AlertTriangle,
   CheckCircle2, Activity, ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter,
+  Filter, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { useHistory, useAllHistory, type HistoryEntry } from './hooks/useHistory';
-import { RegressionHistory } from './components/RegressionHistory';
+import { useWebsites } from '../dashboard/useWebsites';
+import { RegressionHistory, EvolutionChart } from './components/RegressionHistory';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -564,6 +565,211 @@ function EmptyState({ url }: { url: string }) {
   );
 }
 
+// ─── Website History Card (overview) ─────────────────────────────────────────
+
+function WebsiteHistoryCard({ siteUrl, siteName, entries }: {
+  siteUrl:  string;
+  siteName: string;
+  entries:  HistoryEntry[];
+}) {
+  const navigate     = useNavigate();
+  const [hov, setHov] = useState<number | null>(null);
+  const hostname     = (() => { try { return new URL(siteUrl).hostname; } catch { return siteUrl; } })();
+  const latest       = entries[entries.length - 1];
+  const prev         = entries.length >= 2 ? entries[entries.length - 2] : null;
+  const trend        = prev ? latest.scores.performance - prev.scores.performance : 0;
+
+  const regCount = useMemo(() => {
+    let n = 0;
+    for (let i = 1; i < entries.length; i++) {
+      const dp = (entries[i].metrics.lcp - entries[i-1].metrics.lcp) / (entries[i-1].metrics.lcp || 1) * 100;
+      const dt = (entries[i].metrics.tbt - entries[i-1].metrics.tbt) / (entries[i-1].metrics.tbt || 1) * 100;
+      if (dp > 15 || dt > 15) n++;
+    }
+    return n;
+  }, [entries]);
+
+  const fmtMs = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
+
+  return (
+    <div className="rounded-2xl overflow-hidden"
+      style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)', backdropFilter: 'blur(12px)' }}>
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'var(--ps-accent-muted)' }}>
+            <Globe className="w-4 h-4" style={{ color: T_HEX }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--ps-text-heading)' }}>
+              {siteName || hostname}
+            </p>
+            <p className="text-[10px] font-mono truncate" style={{ color: 'rgba(255,255,255,0.28)' }}>{hostname}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* score badge */}
+          <div className="flex flex-col items-end">
+            <span className="text-[22px] font-black tabular-nums leading-none" style={{ color: 'var(--ps-text-heading)' }}>
+              {Math.round(latest.scores.performance)}
+            </span>
+            <span className="text-[10px] flex items-center gap-0.5"
+              style={{ color: trend > 0 ? 'var(--ps-healthy)' : trend < 0 ? 'var(--ps-regression)' : 'rgba(255,255,255,0.30)' }}>
+              {trend > 0 ? <TrendingUp className="w-3 h-3" /> : trend < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+              {trend !== 0 ? `${trend > 0 ? '+' : ''}${Math.round(trend)} pts` : 'stable'}
+            </span>
+          </div>
+
+          {regCount > 0 && (
+            <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--ps-reg-muted)', border: '1px solid var(--ps-reg-border)', color: 'var(--ps-regression)' }}>
+              <AlertTriangle className="w-2.5 h-2.5" /> {regCount} regression{regCount > 1 ? 's' : ''}
+            </span>
+          )}
+
+          <span className="text-[10px] px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)' }}>
+            {entries.length} run{entries.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Key metrics row ── */}
+      <div className="grid grid-cols-4 divide-x px-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.08)' }}>
+        {[
+          { label: 'LCP',   value: fmtMs(latest.metrics.lcp) },
+          { label: 'TBT',   value: fmtMs(latest.metrics.tbt) },
+          { label: 'CLS',   value: latest.metrics.cls.toFixed(3) },
+          { label: 'FCP',   value: fmtMs(latest.metrics.fcp) },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex flex-col items-center py-3"
+            style={{ borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+            <span className="text-[9px] font-bold uppercase tracking-widest mb-0.5"
+              style={{ color: 'rgba(255,255,255,0.25)' }}>{label}</span>
+            <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--ps-text-heading)' }}>{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Evolution chart ── */}
+      <div className="px-6 pt-5 pb-2">
+        <div className="flex items-center gap-4 mb-3">
+          {[
+            { color: '#8B5CF6', label: 'LCP', glow: 'rgba(139,92,246,0.6)' },
+            { color: '#F59E0B', label: 'TBT', glow: 'rgba(245,158,11,0.6)' },
+            { color: '#ef4444', label: 'Regression', dot: true, glow: 'rgba(239,68,68,0.75)' },
+          ].map(({ color, label, dot, glow }) => (
+            <span key={label} className="flex items-center gap-1.5 text-[9px]"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {dot
+                ? <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: color, boxShadow: `0 0 6px ${glow}` }} />
+                : <span className="w-4 h-0.5 rounded-full inline-block" style={{ background: color, boxShadow: `0 0 4px ${glow}` }} />
+              }
+              {label}
+            </span>
+          ))}
+        </div>
+        <EvolutionChart entries={entries} hoveredIdx={hov} onHover={setHov} />
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="flex items-center justify-between px-6 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          Last run: {new Date(latest.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </span>
+        <button
+          onClick={() => navigate(`/history?url=${encodeURIComponent(siteUrl)}`)}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{ background: 'var(--ps-accent-muted)', color: T_HEX, border: '1px solid var(--ps-accent-border)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--ps-accent-hover)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--ps-accent-muted)'; }}
+        >
+          View Details <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── All Websites Overview ────────────────────────────────────────────────────
+
+function WebsitesOverview({ allEntries, isLoading }: { allEntries: HistoryEntry[]; isLoading: boolean }) {
+  const { websites } = useWebsites();
+
+  const grouped = useMemo(() => {
+    const map: Record<string, HistoryEntry[]> = {};
+    for (const e of allEntries) {
+      if (!map[e.url]) map[e.url] = [];
+      map[e.url].push(e);
+    }
+    // sort each group oldest→newest for sparkline direction
+    for (const url of Object.keys(map)) {
+      map[url].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }
+    return map;
+  }, [allEntries]);
+
+  const sitesWithHistory = useMemo(() =>
+    websites.filter(s => grouped[s.url]?.length > 0)
+      .sort((a, b) => {
+        const la = grouped[a.url]?.at(-1)?.timestamp ?? '';
+        const lb = grouped[b.url]?.at(-1)?.timestamp ?? '';
+        return lb.localeCompare(la);
+      }),
+  [websites, grouped]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-28">
+        <div className="w-6 h-6 rounded-full border-2 animate-spin"
+          style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
+      </div>
+    );
+  }
+
+  if (sitesWithHistory.length === 0) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center gap-4 py-24 text-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: 'var(--ps-accent-muted)', border: '1px solid var(--ps-accent-border)' }}>
+          <Clock className="w-7 h-7" style={{ color: T_HEX, opacity: 0.7 }} />
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold" style={{ color: '#cbd5e1' }}>No history yet</p>
+          <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            Run an analysis to start tracking performance over time.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs mt-1">
+          <Link to="/app">Go to Analyzer</Link>
+        </Button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {sitesWithHistory.map((site, i) => (
+        <motion.div key={site._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.06 }}>
+          <WebsiteHistoryCard
+            siteUrl={site.url}
+            siteName={site.name}
+            entries={grouped[site.url]}
+          />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function HistoryPage() {
@@ -603,52 +809,64 @@ export function HistoryPage() {
     }
   }
 
+  // No URL → show websites overview
+  if (!url) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <Breadcrumb hostname="" />
+          <ThemeToggle />
+        </div>
+        <WebsitesOverview allEntries={allEntries} isLoading={allLoading} />
+      </div>
+    );
+  }
+
+  // URL param present → show detailed history for that URL
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
 
-        {/* Breadcrumb + theme toggle */}
-        <div className="flex items-center justify-between">
-          <Breadcrumb hostname={hostname} />
-          <ThemeToggle />
+      {/* Breadcrumb + theme toggle */}
+      <div className="flex items-center justify-between">
+        <Breadcrumb hostname={hostname} />
+        <ThemeToggle />
+      </div>
+
+      {/* Loading */}
+      {urlLoading && (
+        <div className="flex items-center justify-center py-28">
+          <div className="w-6 h-6 rounded-full border-2 animate-spin"
+            style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
         </div>
+      )}
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-28">
-            <div className="w-6 h-6 rounded-full border-2 animate-spin"
-              style={{ borderColor: `${T_HEX}30`, borderTopColor: T_HEX }} />
-          </div>
+      <AnimatePresence>
+        {!urlLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="space-y-6"
+          >
+            {urlEntries.length === 0 ? (
+              <EmptyState url={url} />
+            ) : (
+              <>
+                <PageHeader url={url} entries={urlEntries} />
+                <RegressionHistory entries={urlEntries} />
+                <DeepDiveTable
+                  allRows={allRows}
+                  status={status}
+                  sort={sort}
+                  order={order}
+                  onStatus={handleStatus}
+                  onSort={handleSort}
+                />
+              </>
+            )}
+          </motion.div>
         )}
-
-        {!isLoading && !url && <EmptyState url="https://example.com" />}
-
-        <AnimatePresence>
-          {!isLoading && url && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="space-y-6"
-            >
-              {entries.length === 0 ? (
-                <EmptyState url={url} />
-              ) : (
-                <>
-                  <PageHeader url={url} entries={entries} />
-                  <RegressionHistory entries={entries} />
-                  <DeepDiveTable
-                    allRows={allRows}
-                    status={status}
-                    sort={sort}
-                    order={order}
-                    onStatus={handleStatus}
-                    onSort={handleSort}
-                  />
-                </>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      </AnimatePresence>
     </div>
   );
 }

@@ -68,7 +68,7 @@ function linePath(points: { x: number; y: number }[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 }
 
-function EvolutionChart({
+export function EvolutionChart({
   entries, hoveredIdx, onHover,
 }: {
   entries: HistoryEntry[];

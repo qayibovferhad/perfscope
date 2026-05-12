@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp } from 'lucide-react';
@@ -126,6 +126,11 @@ export function Analyzer() {
   const [searchParams] = useSearchParams();
   const { analyze, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
+
+  useEffect(() => {
+    const paramUrl = searchParams.get('url');
+    if (paramUrl) setUrl(paramUrl);
+  }, [searchParams]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
