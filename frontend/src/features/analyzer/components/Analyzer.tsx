@@ -26,6 +26,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { usePrefetchStore } from '@/store/prefetchStore';
+import { useAuthAuditStore } from '@/store/authAuditStore';
 import { AuthAuditModal } from './AuthAuditModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -129,6 +130,7 @@ export function Analyzer() {
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { sessionId: authSessionId } = useAuthAuditStore();
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
@@ -162,8 +164,12 @@ export function Analyzer() {
     const trimmed = url.trim();
     if (!trimmed) return;
     const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
-    reset();
-    analyze(normalized);
+    if (authSessionId) {
+      startAuthAudit(authSessionId, normalized);
+    } else {
+      reset();
+      analyze(normalized);
+    }
   };
 
   const handleExport = () => {
@@ -182,12 +188,8 @@ export function Analyzer() {
       <AuthAuditModal
         open={authModalOpen}
         initialUrl={url}
-        isPending={isPending}
         onClose={() => setAuthModalOpen(false)}
-        onStart={(sessionId, auditUrl) => {
-          setUrl(auditUrl);
-          startAuthAudit(sessionId, auditUrl);
-        }}
+        onSetUrl={(auditUrl) => setUrl(auditUrl)}
       />
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -231,9 +233,12 @@ export function Analyzer() {
               disabled={isPending}
               className="flex-1"
             />
-            <Button type="submit" disabled={isPending || !url.trim()} className="min-w-[130px]">
-              <Search className="w-4 h-4 mr-2" />
-              {isPending ? 'Analyzing...' : 'Analyze'}
+            <Button type="submit" disabled={isPending || !url.trim()} className="min-w-[130px] gap-2">
+              {authSessionId
+                ? <Lock className="w-4 h-4" />
+                : <Search className="w-4 h-4" />
+              }
+              {isPending ? 'Analyzing...' : authSessionId ? 'Analyze (Auth)' : 'Analyze'}
             </Button>
           </form>
 

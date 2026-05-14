@@ -155,33 +155,48 @@ export class LighthouseService extends EventEmitter {
       browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
       this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
 
-      // Inject cookies + localStorage into every page Lighthouse opens.
       const { cookies, localStorage: ls } = sessionData;
       const hasCookies = cookies.length > 0;
       const hasLs      = Object.keys(ls).length > 0;
 
+      this.emitProgress(analysisId, 'navigating', 20, 'Transferring session...');
+
+      // ── Step 1: Set cookies browser-wide via a setup page ────────────────
+      // Navigate to the target origin so cookies are scoped correctly and
+      // localStorage can be written to the right origin.
       if (hasCookies || hasLs) {
-        browser.on('targetcreated', (target) => {
+        const setupPage = await browser.newPage();
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (hasCookies) await setupPage.setCookie(...(cookies as any[])).catch(() => {});
+          if (hasLs) {
+            await setupPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 }).catch(() => {});
+            await setupPage.evaluate((data: Record<string, string>) => {
+              for (const [k, v] of Object.entries(data)) {
+                try { localStorage.setItem(k, v); } catch { /* quota — skip */ }
+              }
+            }, ls).catch(() => {});
+          }
+        } finally {
+          await setupPage.close().catch(() => {});
+        }
+      }
+
+      // ── Step 2: Intercept Lighthouse's page via CDP before it navigates ──
+      // Uses createCDPSession (faster than target.page()) so evaluateOnNewDocument
+      // is registered before Lighthouse calls page.goto().
+      if (hasLs) {
+        const lsScript = `(function(){const d=${JSON.stringify(ls)};for(const k of Object.keys(d)){try{localStorage.setItem(k,d[k])}catch(e){}}})()`;
+        browser.on('targetcreated', async (target) => {
           if (target.type() !== 'page') return;
-          target.page().then(page => {
-            if (!page) return;
-            if (hasCookies) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              page.setCookie(...(cookies as any[])).catch(() => {});
-            }
-            if (hasLs) {
-              page.evaluateOnNewDocument((data: Record<string, string>) => {
-                for (const [k, v] of Object.entries(data)) {
-                  try { localStorage.setItem(k, v); } catch { /* quota — skip */ }
-                }
-              }, ls).catch(() => {});
-            }
-          }).catch(() => {});
+          try {
+            const session = await target.createCDPSession();
+            await session.send('Page.addScriptToEvaluateOnNewDocument', { source: lsScript });
+          } catch { /* page may already be closed */ }
         });
       }
 
-      this.emitProgress(analysisId, 'navigating', 25, 'Session transferred, preparing audit...');
-      this.emitProgress(analysisId, 'auditing',   35, 'Running Lighthouse audit...');
+      this.emitProgress(analysisId, 'auditing', 35, 'Running Lighthouse audit...');
 
       let fakeProg = 35;
       const ticker = setInterval(() => {
@@ -191,7 +206,7 @@ export class LighthouseService extends EventEmitter {
 
       let runnerResult: Awaited<ReturnType<typeof this.runLighthouse>>;
       try {
-        runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES);
+        runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES, true);
       } finally {
         clearInterval(ticker);
       }
@@ -299,6 +314,7 @@ export class LighthouseService extends EventEmitter {
     analysisId: string,
     browser: Browser,
     categories: AnalysisCategory[],
+    disableStorageReset = false,
   ): Promise<RunnerResult> {
     const port = Number(new URL(browser.wsEndpoint()).port);
 
@@ -311,6 +327,7 @@ export class LighthouseService extends EventEmitter {
       // Use real server speed instead of simulated mobile (4x CPU + slow 4G)
       // which was artificially inflating FCP/LCP to 40+ seconds
       throttlingMethod: 'provided',
+      ...(disableStorageReset ? { disableStorageReset: true } : {}),
     });
 
     if (!result) throw new Error('Lighthouse returned no result');

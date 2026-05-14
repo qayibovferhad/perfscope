@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
+// Loader2 used in launching state and checking state
 import { apiClient } from '@/api/client';
 import { useAuthAuditStore } from '@/store/authAuditStore';
 import { Button } from '@/shared/components/ui/button';
@@ -18,12 +19,11 @@ type Step = 'checking' | 'setup' | 'ready';
 interface Props {
   open:        boolean;
   initialUrl?: string;
-  isPending:   boolean;
   onClose:     () => void;
-  onStart:     (sessionId: string, url: string) => void;
+  onSetUrl:    (url: string) => void;
 }
 
-export function AuthAuditModal({ open, initialUrl = '', isPending, onClose, onStart }: Props) {
+export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl }: Props) {
   const { sessionId: storedId, setSession, clearSession } = useAuthAuditStore();
 
   const [step,      setStep]      = useState<Step>('checking');
@@ -86,11 +86,11 @@ export function AuthAuditModal({ open, initialUrl = '', isPending, onClose, onSt
     }
   }
 
-  function handleStartAudit() {
-    if (!url.trim() || !sessionId) return;
+  function handleSetUrl() {
+    if (!url.trim()) return;
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
-    onStart(sessionId, normalized);
-    onClose(); // close modal — session stays alive for next time
+    onSetUrl(normalized);
+    onClose();
   }
 
   function handleEndSession() {
@@ -211,7 +211,6 @@ export function AuthAuditModal({ open, initialUrl = '', isPending, onClose, onSt
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://app.example.com/dashboard"
                   className="text-xs h-8"
-                  disabled={isPending}
                   autoFocus
                 />
               </div>
@@ -224,16 +223,12 @@ export function AuthAuditModal({ open, initialUrl = '', isPending, onClose, onSt
                 <RefreshCw className="w-3 h-3" /> Open a new browser / re-login
               </button>
 
-              {/* Start audit */}
               <Button
                 className="w-full gap-2"
-                onClick={handleStartAudit}
-                disabled={isPending || !url.trim()}
+                onClick={handleSetUrl}
+                disabled={!url.trim()}
               >
-                {isPending
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</>
-                  : <><PlayCircle className="w-4 h-4" /> Start Audit</>
-                }
+                <PlayCircle className="w-4 h-4" /> Analyze This Page
               </Button>
             </motion.div>
           )}
