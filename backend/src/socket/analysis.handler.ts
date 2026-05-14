@@ -11,6 +11,7 @@ import type {
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { AiService } from '../services/ai.service.js';
 import { HistoryService } from '../services/history.service.js';
+import { hasSession, extractSessionData, destroySession } from '../services/authAuditSession.js';
 import { config } from '../config/index.js';
 
 function extractUserId(socket: TypedSocket): string | undefined {
@@ -109,6 +110,77 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
     socket.on('analysis:cancel', (payload: { analysisId: string }) => {
       lighthouseService.cancelAnalysis(payload.analysisId);
+    });
+
+    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string }) => {
+      const { sessionId, url } = payload;
+
+      if (!isValidUrl(url)) {
+        socket.emit('analysis:error', { analysisId: '', message: 'Invalid URL format.' });
+        return;
+      }
+
+      if (!hasSession(sessionId)) {
+        socket.emit('analysis:error', { analysisId: '', message: 'Auth session not found or expired. Please start over.' });
+        return;
+      }
+
+      // Extract session data (visible browser stays open for re-use).
+      const sessionData = await extractSessionData(sessionId);
+
+      const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
+      const onPartial  = (data: CategoryPartial)  => socket.emit('analysis:partial',  data);
+
+      lighthouseService.on('progress', onProgress);
+
+      try {
+        const result = await lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial);
+
+        if (AiService.isAvailable()) {
+          const criticals = (result.resources?.requests ?? [])
+            .filter((r) => r.isCritical)
+            .slice(0, 6);
+
+          const [insights, adviceMap] = await Promise.all([
+            AiService.getInsights(result).catch((err: unknown) => {
+              console.error('[AI] Insights failed:', err);
+              return null;
+            }),
+            criticals.length > 0
+              ? AiService.getResourceAdvice(criticals).catch((err: unknown) => {
+                  console.error('[AI] Resource advice failed:', err);
+                  return new Map<string, string>();
+                })
+              : Promise.resolve(new Map<string, string>()),
+          ]);
+
+          if (insights) result.aiInsights = insights;
+
+          if (adviceMap.size > 0 && result.resources) {
+            for (const req of result.resources.requests) {
+              const advice = adviceMap.get(req.url);
+              if (advice) req.advice = advice;
+            }
+          }
+        }
+
+        const userId = extractUserId(socket);
+        HistoryService.save({
+          id:        result.id,
+          shortId:   result.id.slice(0, 7),
+          url:       result.url,
+          timestamp: result.timestamp,
+          scores:    result.scores,
+          metrics:   result.metrics,
+        }, userId).catch(err => console.warn('[History] Save failed:', err));
+
+        socket.emit('analysis:complete', result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Analysis failed';
+        socket.emit('analysis:error', { analysisId: '', message });
+      } finally {
+        lighthouseService.off('progress', onProgress);
+      }
     });
 
     socket.on('disconnect', (reason: string) => {

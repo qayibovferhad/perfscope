@@ -133,6 +133,101 @@ export class LighthouseService extends EventEmitter {
     return full;
   }
 
+  // ─── Authenticated audit (session transfer) ──────────────────────────────
+  // Accepts pre-extracted cookies + localStorage from the visible login browser.
+  // Launches a fresh headless Chrome, injects the session, runs a single
+  // Lighthouse pass (all categories), then closes the headless browser.
+
+  async analyzeWithInjectedSession(
+    url: string,
+    sessionData: {
+      cookies:      Array<{ name: string; value: string; domain: string | undefined; path: string | undefined; expires: number | undefined; httpOnly: boolean | undefined; secure: boolean | undefined; sameSite: string | undefined }>;
+      localStorage: Record<string, string>;
+    },
+    onPartial: (partial: CategoryPartial) => void,
+  ): Promise<AnalysisResult> {
+    const analysisId = uuidv4();
+    let browser: Browser | null = null;
+
+    try {
+      this.emitProgress(analysisId, 'launching', 10, 'Launching audit browser...');
+
+      browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
+      this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
+
+      // Inject cookies + localStorage into every page Lighthouse opens.
+      const { cookies, localStorage: ls } = sessionData;
+      const hasCookies = cookies.length > 0;
+      const hasLs      = Object.keys(ls).length > 0;
+
+      if (hasCookies || hasLs) {
+        browser.on('targetcreated', (target) => {
+          if (target.type() !== 'page') return;
+          target.page().then(page => {
+            if (!page) return;
+            if (hasCookies) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              page.setCookie(...(cookies as any[])).catch(() => {});
+            }
+            if (hasLs) {
+              page.evaluateOnNewDocument((data: Record<string, string>) => {
+                for (const [k, v] of Object.entries(data)) {
+                  try { localStorage.setItem(k, v); } catch { /* quota — skip */ }
+                }
+              }, ls).catch(() => {});
+            }
+          }).catch(() => {});
+        });
+      }
+
+      this.emitProgress(analysisId, 'navigating', 25, 'Session transferred, preparing audit...');
+      this.emitProgress(analysisId, 'auditing',   35, 'Running Lighthouse audit...');
+
+      let fakeProg = 35;
+      const ticker = setInterval(() => {
+        fakeProg = Math.min(fakeProg + 3, 85);
+        this.emitProgress(analysisId, 'auditing', fakeProg, 'Running Lighthouse audit...');
+      }, 3000);
+
+      let runnerResult: Awaited<ReturnType<typeof this.runLighthouse>>;
+      try {
+        runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES);
+      } finally {
+        clearInterval(ticker);
+      }
+
+      this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
+
+      for (const cat of CATEGORIES) {
+        onPartial(this.buildPartial(analysisId, cat, runnerResult.lhr));
+      }
+
+      const maxMs    = runnerResult.lhr.audits?.['interactive']?.numericValue ?? 15000;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyResult = runnerResult as any;
+      const traces =
+        anyResult?.artifacts?.Trace    ??
+        anyResult?.artifacts?.traces   ??
+        anyResult?.artifacts?.defaultPass;
+
+      const flameChartData  = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
+      const heapMemoryData  = traces ? (parseHeapMemory(traces)        ?? undefined) : undefined;
+      const interactionData = traces ? (parseInteractions(traces)      ?? undefined) : undefined;
+
+      const result = this.buildFullResult(
+        analysisId, url, [runnerResult.lhr],
+        flameChartData, heapMemoryData, interactionData,
+        undefined, anyResult?.artifacts,
+      );
+
+      this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
+      return result;
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+      this.activeAnalyses.delete(analysisId);
+    }
+  }
+
   private runLighthouseInWorker(
     url: string,
     categories: string[],

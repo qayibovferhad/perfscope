@@ -55,3 +55,11 @@ export function joinAnalysis(callbacks: AnalysisCallbacks): () => void {
   const s = getSocket();
   return attachListeners(s, callbacks);
 }
+
+export function emitAuthAuditStart(sessionId: string, url: string, callbacks: AnalysisCallbacks): () => void {
+  const s = getSocket();
+  if (!s.connected) s.connect();
+  const cleanup = attachListeners(s, callbacks);
+  s.emit('auth-audit:start', { sessionId, url });
+  return cleanup;
+}

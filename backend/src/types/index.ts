@@ -319,8 +319,9 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'analysis:start': (data: { url: string }) => void;
-  'analysis:cancel': (data: { analysisId: string }) => void;
+  'analysis:start':    (data: { url: string }) => void;
+  'analysis:cancel':   (data: { analysisId: string }) => void;
+  'auth-audit:start':  (data: { sessionId: string; url: string }) => void;
 }
 
 export interface InterServerEvents {

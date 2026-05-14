@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startAnalysis, joinAnalysis } from '@/api/socket';
+import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/api/socket';
 import { useAnalysisStore } from '@/store/analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '../types';
 
@@ -84,11 +84,32 @@ export function useAnalysis() {
     cleanupRef.current = cleanup;
   }, [setResult]);
 
+  const startAuthAudit = useCallback((sessionId: string, url: string) => {
+    cleanupRef.current?.();
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null });
+
+    const cleanup = emitAuthAuditStart(sessionId, url, {
+      onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
+      onPartial:  (partial)  => setState((prev) => ({
+        ...prev,
+        partials: { ...prev.partials, [partial.category]: partial },
+      })),
+      onComplete: (data) => {
+        setState({ status: 'success', data, progress: null, partials: {}, error: null });
+        setResult(data, url);
+      },
+      onError: (error) => setState({ status: 'error', error, data: null, progress: null, partials: {} }),
+    });
+
+    cleanupRef.current = cleanup;
+  }, [setResult]);
+
   return {
     analyze,
     reset,
     bootstrap,
     adoptRunning,
+    startAuthAudit,
     lastUrl,
     data:      state.data,
     progress:  state.progress,

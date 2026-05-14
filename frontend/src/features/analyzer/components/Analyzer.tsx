@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp } from 'lucide-react';
+import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -26,6 +26,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { usePrefetchStore } from '@/store/prefetchStore';
+import { AuthAuditModal } from './AuthAuditModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -125,8 +126,9 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 
 export function Analyzer() {
   const [searchParams] = useSearchParams();
-  const { analyze, bootstrap, adoptRunning, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
+  const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
@@ -177,6 +179,16 @@ export function Analyzer() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+      <AuthAuditModal
+        open={authModalOpen}
+        initialUrl={url}
+        isPending={isPending}
+        onClose={() => setAuthModalOpen(false)}
+        onStart={(sessionId, auditUrl) => {
+          setUrl(auditUrl);
+          startAuthAudit(sessionId, auditUrl);
+        }}
+      />
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
@@ -195,6 +207,10 @@ export function Analyzer() {
               <GitCompareArrows className="w-3.5 h-3.5" />
               Compare Mode
             </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setAuthModalOpen(true)}>
+            <Lock className="w-3.5 h-3.5" />
+            Locked Page?
           </Button>
           <ThemeToggle />
         </div>
