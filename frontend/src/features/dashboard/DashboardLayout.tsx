@@ -49,9 +49,9 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
     navigate('/login', { replace: true });
   }
 
-  function runAudit(url: string) {
+  function openProject(id: string) {
     onClose?.();
-    navigate(`/app?url=${encodeURIComponent(url)}`);
+    navigate(`/projects/${id}`);
   }
 
   return (
@@ -92,7 +92,7 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
               <div key={site._id}
                 className="group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer"
                 style={{ border: '1px solid transparent', transition: 'background 0.15s, border-color 0.15s' }}
-                onClick={() => runAudit(site.url)}
+                onClick={() => openProject(site._id)}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-panel-border)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; }}
               >

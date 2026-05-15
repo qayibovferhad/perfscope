@@ -43,11 +43,11 @@ function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   };
 }
 
-export function startAnalysis(url: string, callbacks: AnalysisCallbacks): () => void {
+export function startAnalysis(url: string, callbacks: AnalysisCallbacks, projectId?: string): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
   const cleanup = attachListeners(s, callbacks);
-  s.emit('analysis:start', { url });
+  s.emit('analysis:start', { url, ...(projectId ? { projectId } : {}) });
   return cleanup;
 }
 

@@ -28,7 +28,7 @@ export function useAnalysis() {
 
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  const analyze = useCallback((url: string) => {
+  const analyze = useCallback((url: string, projectId?: string) => {
     cleanupRef.current?.();
     setState({ status: 'loading', progress: null, partials: {}, data: null, error: null });
 
@@ -49,7 +49,7 @@ export function useAnalysis() {
 
       onError: (error) =>
         setState({ status: 'error', error, data: null, progress: null, partials: {} }),
-    });
+    }, projectId);
 
     cleanupRef.current = cleanup;
   }, [setResult]);

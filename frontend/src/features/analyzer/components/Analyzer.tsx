@@ -134,7 +134,8 @@ export function Analyzer() {
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
-    const paramUrl = searchParams.get('url');
+    const paramUrl   = searchParams.get('url');
+    const projectId  = searchParams.get('projectId') ?? undefined;
     if (!paramUrl || paramUrl === handledUrl.current) return;
     handledUrl.current = paramUrl;
     setUrl(paramUrl);
@@ -156,7 +157,7 @@ export function Analyzer() {
 
     const normalized = paramUrl.startsWith('http') ? paramUrl : `https://${paramUrl}`;
     reset();
-    analyze(normalized);
+    analyze(normalized, projectId);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = (e: FormEvent) => {
@@ -238,7 +239,7 @@ export function Analyzer() {
                 ? <Lock className="w-4 h-4" />
                 : <Search className="w-4 h-4" />
               }
-              {isPending ? 'Analyzing...' : authSessionId ? 'Analyze (Auth)' : 'Analyze'}
+              {isPending ? 'Analyzing...'  : 'Analyze'}
             </Button>
           </form>
 

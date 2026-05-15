@@ -28,3 +28,17 @@ historyRouter.get('/history', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: 'Failed to load history' });
   }
 });
+
+// GET /api/projects/:id/audits  — project audit history grouped by route
+historyRouter.get('/projects/:id/audits', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await HistoryService.getByProject(String(req.params['id']), req.userId!);
+    if (!data) {
+      res.status(404).json({ success: false, error: 'Project not found' });
+      return;
+    }
+    res.json({ success: true, data });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to load project audits' });
+  }
+});

@@ -18,6 +18,10 @@ export function WebsitesPage() {
     navigate(`/app?url=${encodeURIComponent(url)}`);
   }
 
+  function openProject(id: string) {
+    navigate(`/projects/${id}`);
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -77,7 +81,7 @@ export function WebsitesPage() {
               <div key={site._id}
                 className="group relative flex flex-col gap-3 p-4 rounded-2xl cursor-pointer transition-all duration-150"
                 style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)' }}
-                onClick={() => runAudit(site.url)}
+                onClick={() => openProject(site._id)}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-accent-border)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-panel-border)'; }}
               >
@@ -110,8 +114,9 @@ export function WebsitesPage() {
                     onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-1 justify-center transition-all"
                     style={{ background: 'var(--ps-accent-muted)', color: 'var(--ps-accent)' }}
+                    title="Quick audit (no project tracking)"
                   >
-                    <Activity className="w-3 h-3" /> Run Audit
+                    <Activity className="w-3 h-3" /> Quick Audit
                   </button>
                   <a
                     href={site.url}

@@ -41,8 +41,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
-    socket.on('analysis:start', async (payload: { url: string }) => {
-      const { url } = payload;
+    socket.on('analysis:start', async (payload: { url: string; projectId?: string }) => {
+      const { url, projectId } = payload;
 
       if (!isValidUrl(url)) {
         socket.emit('analysis:error', { analysisId: '', message: 'Invalid URL format.' });
@@ -97,7 +97,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
           timestamp: result.timestamp,
           scores:    result.scores,
           metrics:   result.metrics,
-        }, userId).catch(err => console.warn('[History] Save failed:', err));
+        }, userId, projectId).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {
@@ -112,8 +112,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
       lighthouseService.cancelAnalysis(payload.analysisId);
     });
 
-    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string }) => {
-      const { sessionId, url } = payload;
+    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string; projectId?: string }) => {
+      const { sessionId, url, projectId } = payload;
 
       if (!isValidUrl(url)) {
         socket.emit('analysis:error', { analysisId: '', message: 'Invalid URL format.' });
@@ -172,7 +172,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
           timestamp: result.timestamp,
           scores:    result.scores,
           metrics:   result.metrics,
-        }, userId).catch(err => console.warn('[History] Save failed:', err));
+        }, userId, projectId).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {

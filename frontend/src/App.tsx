@@ -8,7 +8,8 @@ import { Analyzer }         from './features/analyzer/components/Analyzer';
 import { ComparisonPage }   from './features/compare/ComparisonPage';
 import { HistoryPage }      from './features/history/HistoryPage';
 import { CompareHistoryPage } from './features/compare-history/CompareHistoryPage';
-import { WebsitesPage }      from './features/dashboard/WebsitesPage';
+import { WebsitesPage }       from './features/dashboard/WebsitesPage';
+import { ProjectDetailPage }  from './features/projects/ProjectDetailPage';
 
 function DashboardRoute({ children }: { children: React.ReactNode }) {
   return (
@@ -31,7 +32,8 @@ export default function App() {
         <Route path="/compare"         element={<DashboardRoute><ComparisonPage /></DashboardRoute>} />
         <Route path="/history"         element={<DashboardRoute><HistoryPage /></DashboardRoute>} />
         <Route path="/compare-history" element={<DashboardRoute><CompareHistoryPage /></DashboardRoute>} />
-        <Route path="/websites"        element={<DashboardRoute><WebsitesPage /></DashboardRoute>} />
+        <Route path="/websites"          element={<DashboardRoute><WebsitesPage /></DashboardRoute>} />
+        <Route path="/projects/:id"    element={<DashboardRoute><ProjectDetailPage /></DashboardRoute>} />
       </Routes>
     </>
   );
