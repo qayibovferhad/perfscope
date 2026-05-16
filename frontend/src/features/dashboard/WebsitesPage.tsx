@@ -1,35 +1,167 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Plus, Trash2, ExternalLink, Activity } from 'lucide-react';
-import { useWebsites } from './useWebsites';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
+import {
+  Globe, Plus, Trash2, ExternalLink, Activity, PlayCircle,
+  ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck,
+} from 'lucide-react';
+import { useWebsites, type Website } from './useWebsites';
 import { AddWebsiteModal } from './AddWebsiteModal';
-import { useState } from 'react';
 import { usePrefetchStore } from '@/store/prefetchStore';
+
+const col = createColumnHelper<Website>();
 
 export function WebsitesPage() {
   const navigate = useNavigate();
   const { websites, isLoading, remove } = useWebsites();
+
   const [modalOpen, setModalOpen] = useState(false);
+  const [sorting,   setSorting]   = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
 
-  function handleAuditHover(url: string) {
+  function quickAudit(url: string, id: string) {
     usePrefetchStore.getState().start(url);
+    navigate(`/app?url=${encodeURIComponent(url)}&projectId=${id}`);
   }
 
-  function runAudit(url: string) {
-    navigate(`/app?url=${encodeURIComponent(url)}`);
+  function startAudit(url: string, id: string) {
+    navigate(`/app?prefill=${encodeURIComponent(url)}&projectId=${id}`);
   }
 
-  function openProject(id: string) {
-    navigate(`/projects/${id}`);
-  }
+  const columns = useMemo(() => [
+    col.accessor('name', {
+      header: 'Website',
+      cell: ({ row }) => {
+        const site     = row.original;
+        const hostname = new URL(site.url).hostname;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'var(--ps-accent-muted)' }}>
+              <Globe className="w-3.5 h-3.5" style={{ color: 'var(--ps-accent)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--ps-text-heading)' }}>
+                {site.name || hostname}
+              </p>
+              <p className="text-xs truncate" style={{ color: 'var(--ps-text-muted)' }}>
+                {hostname}
+              </p>
+            </div>
+          </div>
+        );
+      },
+    }),
+    col.accessor('url', {
+      header: 'URL',
+      cell: ({ getValue }) => (
+        <span className="text-xs font-mono truncate block max-w-[220px]" style={{ color: 'var(--ps-text-muted)' }}>
+          {getValue()}
+        </span>
+      ),
+    }),
+    col.accessor('session', {
+      header: 'Session',
+      enableSorting: false,
+      cell: ({ getValue }) => {
+        const session = getValue();
+        if (!session) return <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>—</span>;
+        return (
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" style={{ color: '#22c55e' }} />
+            <span className="text-xs" style={{ color: '#22c55e' }}>Saved</span>
+          </div>
+        );
+      },
+    }),
+    col.accessor('createdAt', {
+      header: 'Added',
+      cell: ({ getValue }) => (
+        <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
+          {new Date(getValue()).toLocaleDateString()}
+        </span>
+      ),
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      cell: ({ row }) => {
+        const site = row.original;
+        return (
+          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => quickAudit(site.url, site._id)}
+              title="Quick Audit — runs immediately"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ background: 'var(--ps-accent-muted)', color: 'var(--ps-accent)' }}
+            >
+              <Activity className="w-3 h-3" />
+              <span className="hidden sm:inline">Quick Audit</span>
+            </button>
+            <button
+              onClick={() => startAudit(site.url, site._id)}
+              title="Start Audit — open analyzer with this URL"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ background: 'rgba(99,102,241,0.08)', color: 'var(--ps-text-secondary)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ps-text-heading)'; (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.14)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ps-text-secondary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; }}
+            >
+              <PlayCircle className="w-3 h-3" />
+              <span className="hidden sm:inline">Start Audit</span>
+            </button>
+            <a
+              href={site.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open website"
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--ps-text-muted)' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-heading)')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <button
+              onClick={() => remove.mutate(site._id)}
+              title="Remove website"
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--ps-text-muted)' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-regression)')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], [remove]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const table = useReactTable({ // eslint-disable-line react-hooks/incompatible-library
+    data:            websites,
+    columns,
+    state:           { sorting, globalFilter },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel:     getCoreRowModel(),
+    getSortedRowModel:   getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--ps-text-heading)' }}>
-            My Websites
-          </h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--ps-text-heading)' }}>My Websites</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--ps-text-muted)' }}>
             {websites.length} website{websites.length !== 1 ? 's' : ''} saved
           </p>
@@ -42,11 +174,31 @@ export function WebsitesPage() {
         </button>
       </div>
 
-      {/* Loading */}
+      {/* Search bar — only if there are websites */}
+      {!isLoading && websites.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none"
+            style={{ color: 'var(--ps-text-muted)' }} />
+          <input
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Filter websites…"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl"
+            style={{
+              background:   'var(--ps-accent-muted)',
+              border:       '1px solid var(--ps-panel-border)',
+              color:        'var(--ps-text-heading)',
+              outline:      'none',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Loading skeletons */}
       {isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-32 rounded-2xl animate-pulse"
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-14 rounded-xl animate-pulse"
               style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)' }} />
           ))}
         </div>
@@ -63,91 +215,75 @@ export function WebsitesPage() {
           <p className="text-xs mb-5" style={{ color: 'var(--ps-text-muted)' }}>
             Add your first website to start tracking performance
           </p>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ps-btn-primary"
-          >
+          <button onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ps-btn-primary">
             <Plus className="w-4 h-4" /> Add Website
           </button>
         </div>
       )}
 
-      {/* Grid */}
+      {/* TanStack Table */}
       {!isLoading && websites.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {websites.map((site) => {
-            const hostname = new URL(site.url).hostname;
-            return (
-              <div key={site._id}
-                className="group relative flex flex-col gap-3 p-4 rounded-2xl cursor-pointer transition-all duration-150"
-                style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)' }}
-                onClick={() => openProject(site._id)}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-accent-border)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-panel-border)'; }}
-              >
-                {/* Icon + domain */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'var(--ps-accent-muted)' }}>
-                    <Globe className="w-4 h-4" style={{ color: 'var(--ps-accent)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--ps-text-heading)' }}>
-                      {site.name || hostname}
-                    </p>
-                    <p className="text-xs truncate" style={{ color: 'var(--ps-text-muted)' }}>
-                      {hostname}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Full URL */}
-                <p className="text-[11px] truncate px-0.5" style={{ color: 'var(--ps-text-muted)' }}>
-                  {site.url}
-                </p>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); runAudit(site.url); }}
-                    onMouseEnter={(e) => { handleAuditHover(site.url); (e.currentTarget as HTMLElement).style.opacity = '0.8'; }}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-1 justify-center transition-all"
-                    style={{ background: 'var(--ps-accent-muted)', color: 'var(--ps-accent)' }}
-                    title="Quick audit (no project tracking)"
+        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--ps-panel-border)' }}>
+          <table className="w-full border-collapse">
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} style={{ background: 'var(--ps-panel-bg)', borderBottom: '1px solid var(--ps-panel-border)' }}>
+                  {hg.headers.map((header) => {
+                    const canSort = header.column.getCanSort();
+                    const sorted  = header.column.getIsSorted();
+                    return (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider select-none"
+                        style={{ color: 'var(--ps-text-muted)', cursor: canSort ? 'pointer' : 'default', whiteSpace: 'nowrap' }}
+                        onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {canSort && (
+                            sorted === 'asc'  ? <ArrowUp   className="w-3 h-3" /> :
+                            sorted === 'desc' ? <ArrowDown className="w-3 h-3" /> :
+                                               <ArrowUpDown className="w-3 h-3 opacity-40" />
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row, idx) => {
+                const isLast = idx === table.getRowModel().rows.length - 1;
+                return (
+                  <tr
+                    key={row.id}
+                    className="group cursor-pointer transition-colors duration-100"
+                    style={{ background: 'var(--ps-panel-bg)', borderBottom: isLast ? 'none' : '1px solid var(--ps-panel-border)' }}
+                    onClick={() => navigate(`/projects/${row.original._id}`)}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.04)')}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--ps-panel-bg)')}
                   >
-                    <Activity className="w-3 h-3" /> Quick Audit
-                  </button>
-                  <a
-                    href={site.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-lg transition-all"
-                    style={{ color: 'var(--ps-text-muted)' }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-heading)')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); remove.mutate(site._id); }}
-                    className="p-1.5 rounded-lg transition-all"
-                    style={{ color: 'var(--ps-text-muted)' }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-regression)')}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
 
-                {/* Added date */}
-                <p className="text-[10px]" style={{ color: 'var(--ps-text-muted)' }}>
-                  Added {new Date(site.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            );
-          })}
+              {table.getRowModel().rows.length === 0 && (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-8 text-center text-sm"
+                    style={{ color: 'var(--ps-text-muted)' }}>
+                    No websites match your filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock } from 'lucide-react';
+import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock, ShieldCheck } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAnalysis, type PartialMap } from '../hooks/useAnalysis';
@@ -28,6 +27,8 @@ import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { usePrefetchStore } from '@/store/prefetchStore';
 import { useAuthAuditStore } from '@/store/authAuditStore';
 import { AuthAuditModal } from './AuthAuditModal';
+import { Input } from '@/shared/components/ui/input';
+import { useWebsites } from '@/features/dashboard/useWebsites';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -128,9 +129,11 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 export function Analyzer() {
   const [searchParams] = useSearchParams();
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
-  const [url, setUrl] = useState(() => searchParams.get('url') ?? lastUrl ?? '');
+  const [url, setUrl] = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { sessionId: authSessionId } = useAuthAuditStore();
+  const { websites } = useWebsites();
+  const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
@@ -165,11 +168,12 @@ export function Analyzer() {
     const trimmed = url.trim();
     if (!trimmed) return;
     const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+    const projectId  = searchParams.get('projectId') ?? undefined;
     if (authSessionId) {
       startAuthAudit(authSessionId, normalized);
     } else {
       reset();
-      analyze(normalized);
+      analyze(normalized, projectId);
     }
   };
 
@@ -222,7 +226,16 @@ export function Analyzer() {
       {/* Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Enter a URL to analyze</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Enter a URL to analyze</CardTitle>
+            {activeSession && (
+              <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Session active
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex gap-2">
@@ -239,7 +252,7 @@ export function Analyzer() {
                 ? <Lock className="w-4 h-4" />
                 : <Search className="w-4 h-4" />
               }
-              {isPending ? 'Analyzing...'  : 'Analyze'}
+              {isPending ? 'Analyzing...' : 'Analyze'}
             </Button>
           </form>
 

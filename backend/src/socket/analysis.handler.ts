@@ -12,6 +12,7 @@ import { lighthouseService } from '../services/lighthouse.service.js';
 import { AiService } from '../services/ai.service.js';
 import { HistoryService } from '../services/history.service.js';
 import { hasSession, extractSessionData, destroySession } from '../services/authAuditSession.js';
+import { Website } from '../models/Website.model.js';
 import { config } from '../config/index.js';
 
 function extractUserId(socket: TypedSocket): string | undefined {
@@ -56,8 +57,30 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       lighthouseService.on('progress', onProgress);
 
+      // Auto-inject saved session if this URL belongs to a website with a stored session
+      const userId = extractUserId(socket);
+      let savedSession: { cookies: unknown[]; localStorage: Record<string, string> } | null = null;
+      if (userId) {
+        try {
+          const websites = await Website.find({ userId }).lean();
+          const match = websites.find(w => url.startsWith(w.url));
+          if (match?.session && (match.session.cookies.length > 0 || Object.keys(match.session.localStorage as object).length > 0)) {
+            savedSession = {
+              cookies:      match.session.cookies,
+              localStorage: match.session.localStorage as Record<string, string>,
+            };
+            console.log(`[Socket] Using saved session for ${url}`);
+          }
+        } catch (err) {
+          console.warn('[Socket] Failed to load saved session:', err);
+        }
+      }
+
       try {
-        const result = await lighthouseService.analyzeStreaming(url, onPartial);
+        const result = savedSession
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? await lighthouseService.analyzeWithInjectedSession(url, savedSession as any, onPartial)
+          : await lighthouseService.analyzeStreaming(url, onPartial);
 
         
         // AI insights + resource advice (parallel when both available)
@@ -89,7 +112,6 @@ export function registerAnalysisSocket(io: TypedServer): void {
           }
         }
 
-        const userId = extractUserId(socket);
         HistoryService.save({
           id:        result.id,
           shortId:   result.id.slice(0, 7),

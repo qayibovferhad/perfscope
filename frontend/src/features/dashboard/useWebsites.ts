@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 
+export interface WebsiteSession {
+  capturedAt: string;
+  cookies: Array<{ name?: string; value?: string; domain?: string }>;
+  localStorage: Record<string, string>;
+}
+
 export interface Website {
   _id:       string;
   url:       string;
   name:      string;
   createdAt: string;
+  session:   WebsiteSession | null;
 }
 
 const KEY = ['websites'];
@@ -32,5 +39,11 @@ export function useWebsites() {
     onSuccess:  () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
-  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove };
+  const saveSession = useMutation({
+    mutationFn: ({ id, sessionData }: { id: string; sessionData: { cookies: unknown[]; localStorage: Record<string, string> } }) =>
+      apiClient.patch<Website>(`/websites/${id}/session`, sessionData).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+
+  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession };
 }

@@ -158,7 +158,7 @@ function AuditRow({ entry, projectId }: { entry: ProjectAuditEntry; projectId: s
 // ─── Route Group Card ─────────────────────────────────────────────────────────
 
 function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: string }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="rounded-xl overflow-hidden"
@@ -176,7 +176,7 @@ function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: st
           : <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--ps-text-muted)' }} />
         }
         <code className="text-sm font-mono font-semibold" style={{ color: 'var(--ps-accent)' }}>
-          {group.routePath}
+          {group.routePath === '/' ? 'Home' : group.routePath}
         </code>
         <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
           {group.entries.length} audit{group.entries.length !== 1 ? 's' : ''}

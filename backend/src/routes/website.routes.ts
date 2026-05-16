@@ -24,10 +24,32 @@ websiteRouter.post('/websites', requireAuth, async (req: AuthRequest, res: Respo
     const website = await Website.findOneAndUpdate(
       { userId: req.userId, url: normalized },
       { url: normalized, name: name ?? '' },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     );
     return res.status(201).json(website);
   } catch {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PATCH /api/websites/:id/session — save extracted session data to the website doc
+websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { cookies = [], localStorage: ls = {} } = req.body as {
+      cookies?: unknown[];
+      localStorage?: Record<string, string>;
+    };
+
+    const website = await Website.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      { session: { cookies, localStorage: ls, capturedAt: new Date() } },
+      { returnDocument: 'after' },
+    );
+    if (!website) return res.status(404).json({ error: 'Website not found' });
+
+    return res.json(website);
+  } catch (err) {
+    console.error('[Website session]', err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
