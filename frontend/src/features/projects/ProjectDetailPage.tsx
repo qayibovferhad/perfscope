@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronRight, ExternalLink, Activity, BarChart3,
-  Clock, Route, RefreshCw, X,
+  Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare,
 } from 'lucide-react';
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { CrossWebsitePicker } from './components/CrossWebsitePicker';
+import { setComparePreload } from '@/store/comparePreloadStore';
+import type { AnalysisResult } from '@/features/analyzer/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -96,12 +99,24 @@ function ScoreRing({ score, size = 56 }: { score: number; size?: number }) {
 
 // ─── Audit Row ────────────────────────────────────────────────────────────────
 
-function AuditRow({ entry, projectId }: { entry: ProjectAuditEntry; projectId: string }) {
+function AuditRow({
+  entry, projectId, compareMode, isSelected, onToggleSelect,
+}: {
+  entry: ProjectAuditEntry;
+  projectId: string;
+  compareMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (entry: ProjectAuditEntry) => void;
+}) {
   const navigate = useNavigate();
   const perf     = entry.scores.performance;
   const color    = scoreColor(perf);
 
   function handleClick() {
+    if (compareMode) {
+      onToggleSelect(entry);
+      return;
+    }
     navigate(`/app?url=${encodeURIComponent(entry.url)}&projectId=${projectId}`);
   }
 
@@ -109,10 +124,26 @@ function AuditRow({ entry, projectId }: { entry: ProjectAuditEntry; projectId: s
     <tr
       className="group cursor-pointer transition-colors"
       onClick={handleClick}
-      style={{ borderBottom: '1px solid var(--ps-divider)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(99,102,241,0.05)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      style={{
+        borderBottom: '1px solid var(--ps-divider)',
+        background: isSelected ? 'rgba(99,102,241,0.08)' : 'transparent',
+      }}
+      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(99,102,241,0.05)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? 'rgba(99,102,241,0.08)' : 'transparent'; }}
     >
+      {compareMode && (
+        <td className="py-3 pl-3 pr-1 w-8">
+          <div
+            className="w-4 h-4 rounded flex items-center justify-center transition-all"
+            style={{
+              border: isSelected ? '2px solid var(--ps-accent)' : '2px solid rgba(255,255,255,0.2)',
+              background: isSelected ? 'var(--ps-accent)' : 'transparent',
+            }}
+          >
+            {isSelected && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+          </div>
+        </td>
+      )}
       <td className="py-3 pl-4 pr-2">
         <div className="flex flex-col">
           <span className="text-xs font-medium" style={{ color: 'var(--ps-text-heading)' }}>
@@ -146,10 +177,12 @@ function AuditRow({ entry, projectId }: { entry: ProjectAuditEntry; projectId: s
         </span>
       </td>
       <td className="py-3 pr-4">
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px]"
-          style={{ color: 'var(--ps-accent)' }}>
-          <RefreshCw className="w-3 h-3" /> Re-audit
-        </span>
+        {!compareMode && (
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px]"
+            style={{ color: 'var(--ps-accent)' }}>
+            <RefreshCw className="w-3 h-3" /> Re-audit
+          </span>
+        )}
       </td>
     </tr>
   );
@@ -157,8 +190,18 @@ function AuditRow({ entry, projectId }: { entry: ProjectAuditEntry; projectId: s
 
 // ─── Route Group Card ─────────────────────────────────────────────────────────
 
-function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: string }) {
-  const [open, setOpen] = useState(false);
+function RouteGroupCard({
+  group, projectId, compareMode, selectedIds, onToggleSelect,
+}: {
+  group: RouteGroup;
+  projectId: string;
+  compareMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (entry: ProjectAuditEntry) => void;
+}) {
+  const [open, setOpen] = useState(compareMode);
+
+  const isOpen = compareMode ? true : open;
 
   return (
     <div className="rounded-xl overflow-hidden"
@@ -166,12 +209,12 @@ function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: st
       {/* Route header */}
       <button
         className="w-full flex items-center gap-3 px-4 py-3 transition-colors"
-        style={{ borderBottom: open ? '1px solid var(--ps-divider)' : 'none' }}
-        onClick={() => setOpen((v) => !v)}
+        style={{ borderBottom: isOpen ? '1px solid var(--ps-divider)' : 'none' }}
+        onClick={() => !compareMode && setOpen((v) => !v)}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
-        {open
+        {isOpen
           ? <ChevronDown className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--ps-text-muted)' }} />
           : <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--ps-text-muted)' }} />
         }
@@ -189,7 +232,7 @@ function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: st
 
       {/* Audits table */}
       <AnimatePresence initial={false}>
-        {open && (
+        {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -200,8 +243,9 @@ function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: st
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--ps-divider)' }}>
-                  {['Date', 'Perf', 'LCP', 'CLS', 'FCP', 'Status', ''].map((h) => (
-                    <th key={h} className={`py-2 ${h === 'Date' ? 'pl-4 pr-2' : h === '' ? 'pr-4' : 'px-2'} text-left text-[10px] font-bold uppercase tracking-widest`}
+                  {[...(compareMode ? [''] : []), 'Date', 'Perf', 'LCP', 'CLS', 'FCP', 'Status', ''].map((h, i) => (
+                    <th key={`${h}-${i}`}
+                      className={`py-2 ${h === 'Date' ? 'pl-4 pr-2' : h === '' ? (i === 0 && compareMode ? 'pl-3 pr-1 w-8' : 'pr-4') : 'px-2'} text-left text-[10px] font-bold uppercase tracking-widest`}
                       style={{ color: 'var(--ps-text-muted)' }}>
                       {h}
                     </th>
@@ -210,7 +254,14 @@ function RouteGroupCard({ group, projectId }: { group: RouteGroup; projectId: st
               </thead>
               <tbody>
                 {[...group.entries].reverse().map((entry) => (
-                  <AuditRow key={entry.id} entry={entry} projectId={projectId} />
+                  <AuditRow
+                    key={entry.id}
+                    entry={entry}
+                    projectId={projectId}
+                    compareMode={compareMode}
+                    isSelected={selectedIds.has(entry.id)}
+                    onToggleSelect={onToggleSelect}
+                  />
                 ))}
               </tbody>
             </table>
@@ -354,7 +405,20 @@ export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const navigate  = useNavigate();
   const { data, isLoading, isError } = useProjectAudits(id!);
-  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditOpen,     setAuditOpen]     = useState(false);
+  const [compareMode,   setCompareMode]   = useState(false);
+  const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
+  const [crossSiteOpen, setCrossSiteOpen] = useState(false);
+
+  const allAudits = useMemo(
+    () => (data?.groups ?? []).flatMap((g) => g.entries),
+    [data?.groups],
+  );
+
+  const selectedAudits = useMemo(
+    () => allAudits.filter((a) => selectedIds.has(a.id)),
+    [allAudits, selectedIds],
+  );
 
   if (isLoading) return <PageSkeleton />;
 
@@ -370,6 +434,44 @@ export function ProjectDetailPage() {
   const { project, groups, stats } = data;
   const hostname = (() => { try { return new URL(project.url).hostname; } catch { return project.url; } })();
 
+  function toAnalysisResult(entry: ProjectAuditEntry): AnalysisResult {
+    return { id: entry.id, url: entry.url, timestamp: entry.timestamp, scores: entry.scores, metrics: entry.metrics, audits: [] };
+  }
+
+  function launchCompare(a: ProjectAuditEntry, b: ProjectAuditEntry) {
+    setComparePreload({ target: toAnalysisResult(a), competitor: toAnalysisResult(b) });
+    navigate('/compare');
+  }
+
+  function toggleSelect(entry: ProjectAuditEntry) {
+    const next = new Set(selectedIds);
+    if (next.has(entry.id)) {
+      next.delete(entry.id);
+      setSelectedIds(next);
+      return;
+    }
+    if (next.size >= 2) return;
+    next.add(entry.id);
+    setSelectedIds(next);
+    if (next.size === 2) {
+      const entries = allAudits.filter((a) => next.has(a.id));
+      if (entries.length === 2) launchCompare(entries[0]!, entries[1]!);
+    }
+  }
+
+  function exitCompareMode() {
+    setCompareMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function handleCrossSiteSelect(entry: ProjectAuditEntry) {
+    setCrossSiteOpen(false);
+    if (selectedAudits.length === 1) {
+      launchCompare(selectedAudits[0]!, entry);
+      exitCompareMode();
+    }
+  }
+
   return (
     <>
       <AnimatePresence>
@@ -379,6 +481,16 @@ export function ProjectDetailPage() {
             baseUrl={project.url}
             projectId={project.id}
             onClose={() => setAuditOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {crossSiteOpen && (
+          <CrossWebsitePicker
+            excludeProjectId={id!}
+            onSelect={handleCrossSiteSelect}
+            onClose={() => setCrossSiteOpen(false)}
           />
         )}
       </AnimatePresence>
@@ -430,6 +542,24 @@ export function ProjectDetailPage() {
                 </span>
               </div>
             )}
+            {stats.totalAudits >= 2 && (
+              <button
+                onClick={() => { setCompareMode((v) => !v); setSelectedIds(new Set()); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={compareMode ? {
+                  background: 'rgba(99,102,241,0.15)',
+                  border: '1px solid rgba(99,102,241,0.4)',
+                  color: 'var(--ps-accent)',
+                } : {
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--ps-panel-border)',
+                  color: 'var(--ps-text-secondary)',
+                }}
+              >
+                <GitCompareArrows className="w-4 h-4" />
+                {compareMode ? 'Exit Compare' : 'Compare'}
+              </button>
+            )}
             <button
               onClick={() => setAuditOpen(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ps-btn-primary"
@@ -477,20 +607,96 @@ export function ProjectDetailPage() {
               <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
                 Audit History by Route
               </h2>
-              <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
-                Click any row to re-audit
-              </span>
+              {compareMode ? (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--ps-accent)' }}>
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  Select 2 audits to compare
+                </span>
+              ) : (
+                <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
+                  Click any row to re-audit
+                </span>
+              )}
             </div>
             {groups.map((group) => (
               <RouteGroupCard
                 key={group.routePath}
                 group={group}
                 projectId={project.id}
+                compareMode={compareMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Floating compare bar */}
+      <AnimatePresence>
+        {compareMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+            style={{
+              background: 'var(--ps-card-bg)',
+              border: '1px solid rgba(99,102,241,0.35)',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.2)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {[0, 1].map((i) => (
+                  <div key={i} className="w-5 h-5 rounded flex items-center justify-center transition-all"
+                    style={{
+                      background: selectedIds.size > i ? 'var(--ps-accent)' : 'rgba(255,255,255,0.08)',
+                      border: selectedIds.size > i ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                    }}>
+                    {selectedIds.size > i && <span className="text-white text-[10px] font-bold">✓</span>}
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs font-semibold" style={{ color: 'var(--ps-text-secondary)' }}>
+                {selectedIds.size}/2 selected
+              </span>
+            </div>
+
+            <div className="w-px h-4" style={{ background: 'var(--ps-divider)' }} />
+
+            {selectedIds.size === 1 && (
+              <button
+                onClick={() => setCrossSiteOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--ps-text-secondary)', border: '1px solid var(--ps-panel-border)' }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)')}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Compare with another website
+              </button>
+            )}
+
+            {selectedIds.size < 2 && (
+              <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
+                {selectedIds.size === 0 ? 'Select 2 audits' : 'Select 1 more — opens automatically'}
+              </span>
+            )}
+
+            <button
+              onClick={exitCompareMode}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--ps-text-muted)' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-heading)')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = 'var(--ps-text-muted)')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

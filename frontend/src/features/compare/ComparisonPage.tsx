@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { consumeComparePreload } from '@/store/comparePreloadStore';
 import { useMotionValue, motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
 import { apiClient } from '@/api/client';
@@ -28,6 +29,16 @@ export function ComparisonPage() {
 
   const sharedMotionMs = useMotionValue(0);
   const savedRef = useRef(false);
+
+  // Consume preloaded data injected from the projects compare flow
+  useLayoutEffect(() => {
+    const preload = consumeComparePreload();
+    if (!preload) return;
+    target.setData(preload.target);
+    competitor.setData(preload.competitor);
+    setTargetUrl(preload.target.url ?? '');
+    setCompetitorUrl(preload.competitor.url ?? '');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isRunning  = target.isLoading || competitor.isLoading;
   const bothLoaded = target.isSuccess  && competitor.isSuccess;
