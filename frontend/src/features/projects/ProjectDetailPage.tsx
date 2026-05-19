@@ -453,10 +453,6 @@ export function ProjectDetailPage() {
     if (next.size >= 2) return;
     next.add(entry.id);
     setSelectedIds(next);
-    if (next.size === 2) {
-      const entries = allAudits.filter((a) => next.has(a.id));
-      if (entries.length === 2) launchCompare(entries[0]!, entries[1]!);
-    }
   }
 
   function exitCompareMode() {
@@ -495,7 +491,7 @@ export function ProjectDetailPage() {
         )}
       </AnimatePresence>
 
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className={`p-6 max-w-5xl mx-auto space-y-6 ${compareMode ? 'pb-28' : ''}`}>
         {/* Back */}
         <button
           onClick={() => navigate('/websites')}
@@ -642,9 +638,9 @@ export function ProjectDetailPage() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
             style={{
-              background: 'var(--ps-card-bg)',
+              background: '#111827',
               border: '1px solid rgba(99,102,241,0.35)',
-              boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.2)',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.2)',
             }}
           >
             <div className="flex items-center gap-2">
@@ -681,8 +677,24 @@ export function ProjectDetailPage() {
 
             {selectedIds.size < 2 && (
               <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>
-                {selectedIds.size === 0 ? 'Select 2 audits' : 'Select 1 more — opens automatically'}
+                {selectedIds.size === 0 ? 'Select 2 audits' : 'Select 1 more'}
               </span>
+            )}
+
+            {selectedIds.size === 2 && (
+              <button
+                onClick={() => {
+                  const entries = allAudits.filter((a) => selectedIds.has(a.id));
+                  if (entries.length === 2) launchCompare(entries[0]!, entries[1]!);
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: 'var(--ps-accent)', color: '#fff' }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = '0.9')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = '1')}
+              >
+                <GitCompareArrows className="w-3.5 h-3.5" />
+                Compare
+              </button>
             )}
 
             <button
