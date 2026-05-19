@@ -59,6 +59,7 @@ interface Props {
 }
 
 export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Props) {
+  console.log('[FlameChart] render', data.events.length, 'events');
   const wrapRef      = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
   const tooltipRef   = useRef<HTMLDivElement>(null);
@@ -107,7 +108,12 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
       .attr('clip-path', `url(#${clipId})`);
 
     // ── Render rects ──────────────────────────────────────────────────────────
-    const visibleEvents = data.events.filter(e => e.depth <= maxDisplayDepth);
+    // Skip sub-pixel events (invisible at current zoom, just slow down D3)
+    const minPx = 0.5;
+    const visibleEvents = data.events.filter(e =>
+      e.depth <= maxDisplayDepth &&
+      (xScale(e.startMs + e.durationMs) - xScale(e.startMs)) >= minPx
+    );
 
     content.selectAll<SVGRectElement, FlameChartEvent>('rect.fc-event')
       .data(visibleEvents)
@@ -213,15 +219,11 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
     
     if (!ctx) return;
     return ctx.hoveredUrl.on('change', (url: string) => {
-      console.log(url,'url');
-      
       if (!svgRef.current) return;
       d3.select(svgRef.current)
         .selectAll<SVGRectElement, FlameChartEvent>('rect.fc-event')
         .attr('opacity', d => {
           if (!url) return 0.88;
-          console.log( d.url === url);
-          
           return d.url === url ? 1 : 0.12;
         })
         .attr('stroke', d => {

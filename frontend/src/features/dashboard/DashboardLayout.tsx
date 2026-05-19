@@ -21,6 +21,7 @@ const NAV = [
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite: () => void }) {
+  console.log('[Sidebar] render');
   const location = useLocation();
   const navigate  = useNavigate();
   const { user, logout } = useAuthStore();
@@ -188,6 +189,7 @@ function Sidebar({ onClose, onAddWebsite }: { onClose?: () => void; onAddWebsite
 // ─── Dashboard Layout ─────────────────────────────────────────────────────────
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  console.log('[DashboardLayout] render');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modalOpen,  setModalOpen]  = useState(false);
 

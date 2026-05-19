@@ -253,6 +253,7 @@ export function TimelineWaterfall({
   timelineData:    TimelineData;
   flameChartData?: FlameChartData;
 }) {
+  console.log('[TimelineWaterfall] render', resources.requests.length, 'requests');
   const ctx = useTimelineContext();
   const { frames, metrics, networkOffsetMs } = timelineData;
   const maxTiming = frames.at(-1)!.timing;
@@ -434,8 +435,6 @@ export function TimelineWaterfall({
   }
 
 
-  console.log(rows,'rows');
-  
   // axis row height: thumbnail + tick mark + label + top padding
   const AXIS_ROW_H = 8 + THUMB_H + 6 + 16 + 8; // 83px
 

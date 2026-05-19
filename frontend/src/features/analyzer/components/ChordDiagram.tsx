@@ -142,6 +142,7 @@ interface Props {
 }
 
 export const ChordDiagram = memo(function ChordDiagram({ graph, onResourceHover }: Props) {
+  console.log('[ChordDiagram] render', graph.nodes.length, 'nodes');
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
   const tooltipRef   = useRef<HTMLDivElement>(null);

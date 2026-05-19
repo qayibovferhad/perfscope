@@ -14,6 +14,7 @@ const STAGES = [
 interface Props { progress: AnalysisProgress }
 
 export function ProgressStepper({ progress }: Props) {
+  console.log('[ProgressStepper] render', progress.stage);
   const pct = progress.progress;
 
   // Current active step = last stage whose threshold has been reached

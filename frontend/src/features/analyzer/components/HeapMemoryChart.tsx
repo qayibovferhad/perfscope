@@ -46,6 +46,7 @@ interface Props {
 }
 
 export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
+  console.log('[HeapMemoryChart] render', data.points.length, 'points');
   const wrapRef    = useRef<HTMLDivElement>(null);
   const svgRef     = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,20 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
     const svgEl = svgRef.current;
     const tip   = tooltipRef.current;
     if (!wrap || !svgEl || !tip || data.points.length === 0) return;
+
+    // Downsample to ≤300 points for rendering — keep GC points + even samples
+    const pts = (() => {
+      if (data.points.length <= 300) return data.points;
+      const step = Math.ceil(data.points.length / 300);
+      const out: typeof data.points = [];
+      for (let i = 0; i < data.points.length; i++) {
+        if (i % step === 0 || data.points[i].isGC) out.push(data.points[i]);
+      }
+      if (out[out.length - 1] !== data.points[data.points.length - 1]) {
+        out.push(data.points[data.points.length - 1]);
+      }
+      return out;
+    })();
 
     const totalW = wrap.clientWidth;
     const innerW = totalW - MARGIN.left - MARGIN.right;
@@ -179,7 +194,7 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       .curve(d3.curveCatmullRom.alpha(0.5));
 
     g.append('path')
-      .datum(data.points)
+      .datum(pts)
       .attr('clip-path', `url(#${clipId})`)
       .attr('fill', `url(#${gradId})`)
       .attr('d', areaGen);
@@ -192,7 +207,7 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       .curve(d3.curveCatmullRom.alpha(0.5));
 
     g.append('path')
-      .datum(data.points)
+      .datum(pts)
       .attr('clip-path', `url(#${clipId})`)
       .attr('fill', 'none')
       .attr('stroke', '#818cf8')

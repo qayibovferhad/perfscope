@@ -180,6 +180,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
   data: InteractionData;
   darkVariant?: boolean;
 }) {
+  console.log('[InteractionTimeline] render', data.interactions?.length ?? 0, 'interactions');
   const wrapRef    = useRef<HTMLDivElement>(null);
   const svgRef     = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);

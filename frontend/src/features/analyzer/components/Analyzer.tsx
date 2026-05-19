@@ -127,6 +127,7 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Analyzer() {
+  console.log('[Analyzer] render');
   const [searchParams] = useSearchParams();
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
