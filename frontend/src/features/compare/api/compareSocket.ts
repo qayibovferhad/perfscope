@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { useAuthStore } from '@/store/authStore';
 import type { AnalysisCallbacks } from '@/api/socket';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
@@ -8,7 +9,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
  * analyses don't share event listeners and mix up results.
  */
 export function startCompareAnalysis(url: string, callbacks: AnalysisCallbacks): () => void {
-  const socket = io(BACKEND_URL, { autoConnect: false });
+  const token = useAuthStore.getState().token;
+  const socket = io(BACKEND_URL, { autoConnect: false, auth: token ? { token } : {} });
   socket.connect();
 
   socket.on('analysis:progress', callbacks.onProgress);

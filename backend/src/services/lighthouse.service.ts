@@ -48,6 +48,15 @@ const CATEGORIES: AnalysisCategory[] = ['performance', 'accessibility', 'best-pr
 export class LighthouseService extends EventEmitter {
   private readonly activeAnalyses = new Map<string, ActiveAnalysis>();
 
+  // Serialises concurrent main-thread Lighthouse runs so they never share
+  // performance marks (workers are exempt — each thread has its own context).
+  private _mainThreadQueue: Promise<unknown> = Promise.resolve();
+  private queueMainThreadRun<T>(fn: () => Promise<T>): Promise<T> {
+    const next = this._mainThreadQueue.then(fn, fn) as Promise<T>;
+    this._mainThreadQueue = next.then(() => {}, () => {});
+    return next;
+  }
+
   // ─── Single-run (REST path) ───────────────────────────────────────────────
 
   async analyze(url: string): Promise<AnalysisResult> {
@@ -316,22 +325,30 @@ export class LighthouseService extends EventEmitter {
     categories: AnalysisCategory[],
     disableStorageReset = false,
   ): Promise<RunnerResult> {
-    const port = Number(new URL(browser.wsEndpoint()).port);
+    return this.queueMainThreadRun(async () => {
+      // Clear any stale lh: marks left by a previous run that may have crashed
+      // mid-flight, which would cause "performance mark has not been set" errors.
+      try {
+        for (const e of performance.getEntriesByType('mark')) {
+          if (e.name.startsWith('lh:')) performance.clearMarks(e.name);
+        }
+      } catch { /* non-critical */ }
 
-    const result = await lighthouse(url, {
-      port,
-      output: 'json',
-      logLevel: 'error',
-      onlyCategories: categories,
-      screenEmulation: { disabled: true },
-      // Use real server speed instead of simulated mobile (4x CPU + slow 4G)
-      // which was artificially inflating FCP/LCP to 40+ seconds
-      throttlingMethod: 'provided',
-      ...(disableStorageReset ? { disableStorageReset: true } : {}),
+      const port = Number(new URL(browser.wsEndpoint()).port);
+
+      const result = await lighthouse(url, {
+        port,
+        output: 'json',
+        logLevel: 'error',
+        onlyCategories: categories,
+        screenEmulation: { disabled: true },
+        throttlingMethod: 'provided',
+        ...(disableStorageReset ? { disableStorageReset: true } : {}),
+      });
+
+      if (!result) throw new Error('Lighthouse returned no result');
+      return result;
     });
-
-    if (!result) throw new Error('Lighthouse returned no result');
-    return result;
   }
 
   // ─── Private: Transform ──────────────────────────────────────────────────

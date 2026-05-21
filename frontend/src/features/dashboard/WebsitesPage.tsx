@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-table';
 import {
   Globe, Plus, Trash2, ExternalLink, Activity, PlayCircle,
-  ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck,
+  ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, GitCompareArrows,
 } from 'lucide-react';
 import { useWebsites, type Website } from './useWebsites';
 import { AddWebsiteModal } from './AddWebsiteModal';
@@ -34,6 +34,10 @@ export function WebsitesPage() {
 
   function startAudit(url: string, id: string) {
     navigate(`/app?prefill=${encodeURIComponent(url)}&projectId=${id}`);
+  }
+
+  function startCompare(url: string) {
+    navigate(`/compare?url=${encodeURIComponent(url)}`);
   }
 
   const columns = useMemo(() => [
@@ -104,7 +108,18 @@ export function WebsitesPage() {
               style={{ background: 'var(--ps-accent-muted)', color: 'var(--ps-accent)' }}
             >
               <Activity className="w-3 h-3" />
-              <span className="hidden sm:inline">Quick Audit</span>
+              <span>Quick Audit</span>
+            </button>
+            <button
+              onClick={() => startCompare(site.url)}
+              title="Compare — open compare page with this URL pre-filled"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+              style={{ background: 'rgba(249,115,22,0.08)', color: 'var(--ps-text-secondary)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#f97316'; (e.currentTarget as HTMLElement).style.background = 'rgba(249,115,22,0.15)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ps-text-secondary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(249,115,22,0.08)'; }}
+            >
+              <GitCompareArrows className="w-3 h-3" />
+              <span>Compare</span>
             </button>
             <button
               onClick={() => startAudit(site.url, site._id)}
@@ -115,7 +130,7 @@ export function WebsitesPage() {
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--ps-text-secondary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.08)'; }}
             >
               <PlayCircle className="w-3 h-3" />
-              <span className="hidden sm:inline">Start Audit</span>
+              <span>Start Audit</span>
             </button>
             <a
               href={site.url}
@@ -157,7 +172,7 @@ export function WebsitesPage() {
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

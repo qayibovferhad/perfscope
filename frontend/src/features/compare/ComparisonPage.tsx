@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { consumeComparePreload } from '@/store/comparePreloadStore';
 import { useMotionValue, motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
@@ -24,8 +24,16 @@ export function ComparisonPage() {
   const target     = useComparisonSide();
   const competitor = useComparisonSide();
 
-  const [targetUrl,     setTargetUrl]     = useState('https://');
+  const [searchParams] = useSearchParams();
+  const prefilledUrl = searchParams.get('url') ?? '';
+
+  const [targetUrl,     setTargetUrl]     = useState(prefilledUrl || 'https://');
   const [competitorUrl, setCompetitorUrl] = useState('https://');
+
+  const handleTargetUrlChange = (val: string) => {
+    if (prefilledUrl && !val.startsWith(prefilledUrl)) return;
+    setTargetUrl(val);
+  };
 
   const sharedMotionMs = useMotionValue(0);
   const savedRef = useRef(false);
@@ -119,7 +127,7 @@ export function ComparisonPage() {
             <SideInputBar
               side="target"
               url={targetUrl}
-              onUrlChange={setTargetUrl}
+              onUrlChange={handleTargetUrlChange}
               isLoading={target.isLoading}
               isSuccess={target.isSuccess}
               isError={target.isError}
@@ -127,7 +135,7 @@ export function ComparisonPage() {
               progress={target.progress}
               data={target.data}
               onUpload={(d) => { target.setData(d); setTargetUrl(d.url ?? ''); }}
-              onReset={() => { target.reset(); setTargetUrl(''); }}
+              onReset={() => { target.reset(); setTargetUrl(prefilledUrl || ''); }}
             />
           </div>
 
