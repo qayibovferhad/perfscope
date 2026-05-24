@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2 } from 'lucide-react';
+import { Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
@@ -156,8 +156,21 @@ export function SideInputBar({
         </div>
       )}
 
+      {/* ── Auth redirect warning ── */}
+      {isSuccess && data?.authRedirectDetected && (
+        <div className="flex items-start gap-2 text-xs bg-amber-500/10 border border-amber-500/25 rounded-md px-3 py-2" style={{ color: '#f59e0b' }}>
+          <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>
+            This page redirected to a login screen. Results are for the login page, not the URL you requested.{' '}
+            <span className="opacity-70">
+              Save a session for this site to audit protected pages.
+            </span>
+          </span>
+        </div>
+      )}
+
       {/* ── Success ── */}
-      {isSuccess && data && (
+      {isSuccess && data && !data.authRedirectDetected && (
         <div className="flex items-center gap-2 text-[11px] text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">

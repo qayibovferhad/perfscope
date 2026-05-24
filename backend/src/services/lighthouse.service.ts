@@ -442,7 +442,31 @@ export class LighthouseService extends EventEmitter {
     if (flameChartData)  result.flameChartData  = flameChartData;
     if (heapMemoryData)  result.heapMemoryData  = heapMemoryData;
     if (interactionData) result.interactionData = interactionData;
+
+    // Detect auth redirect: check all LHRs for a redirect to a login/auth page
+    for (const lhr of lhrs) {
+      const redirect = this.detectAuthRedirect(lhr.requestedUrl, lhr.finalDisplayedUrl ?? (lhr as unknown as Record<string, string>)['finalUrl']);
+      if (redirect) { result.authRedirectDetected = redirect; break; }
+    }
+
     return result;
+  }
+
+  private detectAuthRedirect(
+    requestedUrl: string | undefined,
+    finalUrl: string | undefined,
+  ): { finalUrl: string } | undefined {
+    if (!requestedUrl || !finalUrl || requestedUrl === finalUrl) return undefined;
+    try {
+      const req = new URL(requestedUrl);
+      const fin = new URL(finalUrl);
+      const authPattern = /\/(login|signin|sign[-_]in|auth|sso|oauth|session\/new|account\/login|users\/sign_in)/i;
+      // Cross-origin redirect is almost always SSO/auth
+      if (req.origin !== fin.origin) return { finalUrl };
+      // Same origin but path changed to an auth route
+      if (req.pathname !== fin.pathname && authPattern.test(fin.pathname)) return { finalUrl };
+    } catch { /* ignore malformed URLs */ }
+    return undefined;
   }
 
   private extractFailingAudits(

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock, ShieldCheck } from 'lucide-react';
+import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -311,6 +311,17 @@ export function Analyzer() {
                 {data.url}
               </a>
             </p>
+
+            {data.authRedirectDetected && (
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm border"
+                style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)', color: '#f59e0b' }}>
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>
+                  This page redirected to a login screen — the results below are for the login page, not the URL you entered.{' '}
+                  <span className="opacity-70">Save a session for this website to audit protected pages.</span>
+                </span>
+              </div>
+            )}
 
             <section>
               <SectionTitle>Scores</SectionTitle>

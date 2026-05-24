@@ -217,6 +217,8 @@ export interface AnalysisResult {
   heapMemoryData?:  HeapMemoryData;
   interactionData?: InteractionData;
   clsData?: CLSData;
+  /** Set when Lighthouse was redirected to an auth/login page instead of the requested URL. */
+  authRedirectDetected?: { finalUrl: string };
 }
 
 export interface AnalysisProgress {
