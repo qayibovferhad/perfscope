@@ -17,13 +17,15 @@ import {
 type Step = 'checking' | 'setup' | 'ready';
 
 interface Props {
-  open:        boolean;
-  initialUrl?: string;
-  onClose:     () => void;
-  onSetUrl:    (url: string) => void;
+  open:          boolean;
+  initialUrl?:   string;
+  onClose:       () => void;
+  onSetUrl:      (url: string) => void;
+  /** Called instead of onSetUrl when the caller wants to handle auth-audit emission itself. */
+  onAuthAudit?:  (sessionId: string, url: string) => void;
 }
 
-export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl }: Props) {
+export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAuthAudit }: Props) {
   const { sessionId: storedId, setSession, clearSession } = useAuthAuditStore();
 
   const [step,      setStep]      = useState<Step>('checking');
@@ -89,8 +91,12 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl }: Pro
   function handleSetUrl() {
     if (!url.trim()) return;
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
-    onSetUrl(normalized);
-    onClose();
+    if (onAuthAudit) {
+      onAuthAudit(sessionId, normalized);
+    } else {
+      onSetUrl(normalized);
+      onClose();
+    }
   }
 
   function handleEndSession() {

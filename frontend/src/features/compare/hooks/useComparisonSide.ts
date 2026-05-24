@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startCompareAnalysis } from '../api/compareSocket';
+import { startCompareAnalysis, startCompareAuthAudit } from '../api/compareSocket';
 import type { AnalysisResult, AnalysisProgress } from '../../analyzer/types';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -17,25 +17,24 @@ export function useComparisonSide() {
   const [state, setState] = useState<State>(INITIAL);
   const cleanupRef = useRef<(() => void) | null>(null);
 
+  const callbacks = {
+    onProgress: (progress: AnalysisProgress) => setState((prev) => ({ ...prev, progress })),
+    onPartial:  () => {},
+    onComplete: (data: AnalysisResult)        => setState({ status: 'success', data, progress: null, error: null }),
+    onError:    (error: string)               => setState({ status: 'error', error, data: null, progress: null }),
+  };
+
   const analyze = useCallback((url: string) => {
     cleanupRef.current?.();
     setState({ status: 'loading', data: null, progress: null, error: null });
+    cleanupRef.current = startCompareAnalysis(url, callbacks);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const cleanup = startCompareAnalysis(url, {
-      onProgress: (progress) =>
-        setState((prev) => ({ ...prev, progress })),
-
-      onPartial: () => {},
-
-      onComplete: (data) =>
-        setState({ status: 'success', data, progress: null, error: null }),
-
-      onError: (error) =>
-        setState({ status: 'error', error, data: null, progress: null }),
-    });
-
-    cleanupRef.current = cleanup;
-  }, []);
+  const startAuthAudit = useCallback((sessionId: string, url: string) => {
+    cleanupRef.current?.();
+    setState({ status: 'loading', data: null, progress: null, error: null });
+    cleanupRef.current = startCompareAuthAudit(sessionId, url, callbacks);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setData = useCallback((data: AnalysisResult) => {
     cleanupRef.current?.();
@@ -49,6 +48,7 @@ export function useComparisonSide() {
 
   return {
     analyze,
+    startAuthAudit,
     setData,
     reset,
     data:      state.data,

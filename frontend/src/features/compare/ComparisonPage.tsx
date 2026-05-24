@@ -30,6 +30,9 @@ export function ComparisonPage() {
   const [targetUrl,     setTargetUrl]     = useState(prefilledUrl || 'https://');
   const [competitorUrl, setCompetitorUrl] = useState('https://');
 
+  const [targetAuthSession,     setTargetAuthSession]     = useState<string | null>(null);
+  const [competitorAuthSession, setCompetitorAuthSession] = useState<string | null>(null);
+
   const handleTargetUrlChange = (val: string) => {
     if (prefilledUrl && !val.startsWith(prefilledUrl)) return;
     setTargetUrl(val);
@@ -72,10 +75,14 @@ export function ComparisonPage() {
 
   const handleLaunch = () => {
     if (!target.isSuccess && !isBlank(targetUrl)) {
-      target.analyze(normalize(targetUrl));
+      targetAuthSession
+        ? target.startAuthAudit(targetAuthSession, normalize(targetUrl))
+        : target.analyze(normalize(targetUrl));
     }
     if (!competitor.isSuccess && !isBlank(competitorUrl)) {
-      competitor.analyze(normalize(competitorUrl));
+      competitorAuthSession
+        ? competitor.startAuthAudit(competitorAuthSession, normalize(competitorUrl))
+        : competitor.analyze(normalize(competitorUrl));
     }
   };
 
@@ -84,6 +91,8 @@ export function ComparisonPage() {
     competitor.reset();
     setTargetUrl('https://');
     setCompetitorUrl('https://');
+    setTargetAuthSession(null);
+    setCompetitorAuthSession(null);
     savedRef.current = false;
   };
 
@@ -136,6 +145,8 @@ export function ComparisonPage() {
               data={target.data}
               onUpload={(d) => { target.setData(d); setTargetUrl(d.url ?? ''); }}
               onReset={() => { target.reset(); setTargetUrl(prefilledUrl || ''); }}
+              onAuthAudit={(sessionId, auditUrl) => { setTargetUrl(auditUrl); setTargetAuthSession(sessionId); }}
+              hasAuthSession={!!targetAuthSession}
             />
           </div>
 
@@ -156,6 +167,8 @@ export function ComparisonPage() {
               data={competitor.data}
               onUpload={(d) => { competitor.setData(d); setCompetitorUrl(d.url ?? ''); }}
               onReset={() => { competitor.reset(); setCompetitorUrl(''); }}
+              onAuthAudit={(sessionId, auditUrl) => { setCompetitorUrl(auditUrl); setCompetitorAuthSession(sessionId); }}
+              hasAuthSession={!!competitorAuthSession}
             />
           </div>
         </div>

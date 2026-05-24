@@ -1,25 +1,28 @@
-import { useRef } from 'react';
-import { Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2, ShieldAlert } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2, ShieldAlert, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { ProgressStepper } from '../../analyzer/components/ProgressStepper';
+import { AuthAuditModal } from '../../analyzer/components/AuthAuditModal';
 import type { AnalysisResult, AnalysisProgress } from '../../analyzer/types';
 
 type Side = 'target' | 'competitor';
 
 interface Props {
-  side:        Side;
-  url:         string;
-  onUrlChange: (url: string) => void;
-  isLoading:   boolean;
-  isSuccess:   boolean;
-  isError:     boolean;
-  error:       string | null;
-  progress:    AnalysisProgress | null;
-  data:        AnalysisResult | null;
-  onUpload:    (result: AnalysisResult) => void;
-  onReset:     () => void;
+  side:          Side;
+  url:           string;
+  onUrlChange:   (url: string) => void;
+  isLoading:     boolean;
+  isSuccess:     boolean;
+  isError:       boolean;
+  error:         string | null;
+  progress:      AnalysisProgress | null;
+  data:          AnalysisResult | null;
+  onUpload:       (result: AnalysisResult) => void;
+  onReset:        () => void;
+  onAuthAudit:    (sessionId: string, url: string) => void;
+  hasAuthSession?: boolean;
 }
 
 const CONFIG: Record<Side, { label: string; placeholder: string; dotColor: string; labelColor: string }> = {
@@ -40,10 +43,11 @@ const CONFIG: Record<Side, { label: string; placeholder: string; dotColor: strin
 export function SideInputBar({
   side, url, onUrlChange,
   isLoading, isSuccess, isError, error,
-  progress, data, onUpload, onReset,
+  progress, data, onUpload, onReset, onAuthAudit, hasAuthSession = false,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const cfg     = CONFIG[side];
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleFile = (file: File) => {
     const reader = new FileReader();
@@ -83,25 +87,57 @@ export function SideInputBar({
       </div>
 
       {/* ── URL input ── */}
-      <div className="relative">
-        <Input
-          type="text"
-          placeholder={cfg.placeholder}
-          value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
-          disabled={isLoading || isSuccess}
-          className={
-            isSuccess
-              ? 'border-emerald-500/40 bg-emerald-950/10 text-muted-foreground'
-              : isError
-              ? 'border-destructive/40'
-              : ''
-          }
-        />
-        {isLoading && (
-          <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            type="text"
+            placeholder={cfg.placeholder}
+            value={url}
+            onChange={(e) => onUrlChange(e.target.value)}
+            disabled={isLoading || isSuccess}
+            className={
+              isSuccess
+                ? 'border-emerald-500/40 bg-emerald-950/10 text-muted-foreground'
+                : isError
+                ? 'border-destructive/40'
+                : ''
+            }
+          />
+          {isLoading && (
+            <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+          )}
+        </div>
+        {!isSuccess && (
+          <button
+            type="button"
+            title={hasAuthSession ? 'Session active — click to change' : 'Authenticated audit — log in first, then analyze'}
+            onClick={() => setAuthModalOpen(true)}
+            className="shrink-0 px-2.5 rounded-md border transition-colors relative"
+            style={hasAuthSession
+              ? { borderColor: 'rgba(34,197,94,0.4)', color: '#22c55e', background: 'rgba(34,197,94,0.08)' }
+              : { borderColor: 'rgba(255,255,255,0.1)', color: 'var(--ps-text-muted)' }
+            }
+          >
+            <Lock className="w-3.5 h-3.5" />
+            {hasAuthSession && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            )}
+          </button>
         )}
       </div>
+
+      <AuthAuditModal
+        open={authModalOpen}
+        initialUrl={url}
+        onClose={() => setAuthModalOpen(false)}
+        onSetUrl={(auditUrl) => {
+          onUrlChange(auditUrl);
+        }}
+        onAuthAudit={(sessionId, auditUrl) => {
+          setAuthModalOpen(false);
+          onAuthAudit(sessionId, auditUrl);
+        }}
+      />
 
       {/* ── Upload link ── */}
       {!isLoading && !isSuccess && (

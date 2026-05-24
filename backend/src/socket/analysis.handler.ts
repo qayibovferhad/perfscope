@@ -150,6 +150,19 @@ export function registerAnalysisSocket(io: TypedServer): void {
       // Extract session data (visible browser stays open for re-use).
       const sessionData = await extractSessionData(sessionId);
 
+      // Auto-persist session to the matching website so future audits use it automatically.
+      const userId = extractUserId(socket);
+      if (userId) {
+        Website.find({ userId }).lean().then((sites) => {
+          const match = sites.find(w => url.startsWith(w.url as string));
+          if (match) {
+            Website.findByIdAndUpdate(match._id, {
+              session: { ...sessionData, capturedAt: new Date() },
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+
       const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
       const onPartial  = (data: CategoryPartial)  => socket.emit('analysis:partial',  data);
 
