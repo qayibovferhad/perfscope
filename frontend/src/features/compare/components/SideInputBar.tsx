@@ -107,7 +107,7 @@ export function SideInputBar({
             <Loader2 className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
           )}
         </div>
-        {!isSuccess && (
+        {!isSuccess && side === 'competitor' && (
           <button
             type="button"
             title={hasAuthSession ? 'Session active — click to change' : 'Authenticated audit — log in first, then analyze'}

@@ -7,6 +7,8 @@ import { apiClient } from '@/api/client';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { Button } from '@/shared/components/ui/button';
 import { useComparisonSide } from './hooks/useComparisonSide';
+import { useWebsites } from '../dashboard/useWebsites';
+import { useCompetitorSessions } from './hooks/useCompetitorSessions';
 import { SideInputBar } from './components/SideInputBar';
 import { ComparisonScoreboard } from './components/ComparisonScoreboard';
 import { DeepComparison } from './components/DeepComparison';
@@ -32,6 +34,12 @@ export function ComparisonPage() {
 
   const [targetAuthSession,     setTargetAuthSession]     = useState<string | null>(null);
   const [competitorAuthSession, setCompetitorAuthSession] = useState<string | null>(null);
+
+  const { websites } = useWebsites();
+  const { sessions: competitorSessions } = useCompetitorSessions();
+  const urlHasSavedSession = (url: string) =>
+    websites.some(w => url.startsWith(w.url) && !!w.session) ||
+    competitorSessions.some(c => url.startsWith(c.url) && !!c.session);
 
   const handleTargetUrlChange = (val: string) => {
     if (prefilledUrl && !val.startsWith(prefilledUrl)) return;
@@ -146,7 +154,7 @@ export function ComparisonPage() {
               onUpload={(d) => { target.setData(d); setTargetUrl(d.url ?? ''); }}
               onReset={() => { target.reset(); setTargetUrl(prefilledUrl || ''); }}
               onAuthAudit={(sessionId, auditUrl) => { setTargetUrl(auditUrl); setTargetAuthSession(sessionId); }}
-              hasAuthSession={!!targetAuthSession}
+              hasAuthSession={!!targetAuthSession || urlHasSavedSession(targetUrl)}
             />
           </div>
 
@@ -168,7 +176,7 @@ export function ComparisonPage() {
               onUpload={(d) => { competitor.setData(d); setCompetitorUrl(d.url ?? ''); }}
               onReset={() => { competitor.reset(); setCompetitorUrl(''); }}
               onAuthAudit={(sessionId, auditUrl) => { setCompetitorUrl(auditUrl); setCompetitorAuthSession(sessionId); }}
-              hasAuthSession={!!competitorAuthSession}
+              hasAuthSession={!!competitorAuthSession || urlHasSavedSession(competitorUrl)}
             />
           </div>
         </div>

@@ -33,6 +33,6 @@ export function startCompareAuthAudit(sessionId: string, url: string, callbacks:
   const socket = makeSocket();
   socket.connect();
   const cleanup = attachCallbacks(socket, callbacks);
-  socket.emit('auth-audit:start', { sessionId, url });
+  socket.emit('auth-audit:start', { sessionId, url, context: 'competitor' });
   return cleanup;
 }

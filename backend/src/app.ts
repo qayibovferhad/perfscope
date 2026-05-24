@@ -9,6 +9,7 @@ import { analyzerRouter } from './routes/analyzer.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
 import { authAuditRouter } from './routes/authAudit.routes.js';
+import { competitorSessionRouter } from './routes/competitorSession.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import type {
   ServerToClientEvents,
@@ -47,6 +48,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);
   app.use('/api', authAuditRouter);
+  app.use('/api', competitorSessionRouter);
 
   app.get('/', (_req, res) => {
     res.json({ name: 'PerfScope API', version: '1.0.0', status: 'running' });

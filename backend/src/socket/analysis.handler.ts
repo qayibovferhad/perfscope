@@ -13,6 +13,7 @@ import { AiService } from '../services/ai.service.js';
 import { HistoryService } from '../services/history.service.js';
 import { hasSession, extractSessionData, destroySession } from '../services/authAuditSession.js';
 import { Website } from '../models/Website.model.js';
+import { CompetitorSession } from '../models/CompetitorSession.model.js';
 import { config } from '../config/index.js';
 
 function extractUserId(socket: TypedSocket): string | undefined {
@@ -57,19 +58,26 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       lighthouseService.on('progress', onProgress);
 
-      // Auto-inject saved session if this URL belongs to a website with a stored session
+      // Auto-inject saved session — check Website first, then CompetitorSession
       const userId = extractUserId(socket);
       let savedSession: { cookies: unknown[]; localStorage: Record<string, string> } | null = null;
       if (userId) {
         try {
-          const websites = await Website.find({ userId }).lean();
-          const match = websites.find(w => url.startsWith(w.url));
-          if (match?.session && (match.session.cookies.length > 0 || Object.keys(match.session.localStorage as object).length > 0)) {
-            savedSession = {
-              cookies:      match.session.cookies,
-              localStorage: match.session.localStorage as Record<string, string>,
-            };
-            console.log(`[Socket] Using saved session for ${url}`);
+          const [websites, competitorSessions] = await Promise.all([
+            Website.find({ userId }).lean(),
+            CompetitorSession.find({ userId }).lean(),
+          ]);
+          const allSources = [
+            ...websites.map(w => ({ url: w.url, session: w.session })),
+            ...competitorSessions.map(c => ({ url: c.url, session: c.session })),
+          ];
+          const match = allSources.find(s => url.startsWith(s.url) && s.session);
+          if (match?.session) {
+            const s = match.session;
+            if (s.cookies.length > 0 || Object.keys(s.localStorage as object).length > 0) {
+              savedSession = { cookies: s.cookies, localStorage: s.localStorage as Record<string, string> };
+              console.log(`[Socket] Using saved session for ${url}`);
+            }
           }
         } catch (err) {
           console.warn('[Socket] Failed to load saved session:', err);
@@ -134,8 +142,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
       lighthouseService.cancelAnalysis(payload.analysisId);
     });
 
-    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string; projectId?: string }) => {
-      const { sessionId, url, projectId } = payload;
+    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string; projectId?: string; context?: 'competitor' }) => {
+      const { sessionId, url, projectId, context } = payload;
 
       if (!isValidUrl(url)) {
         socket.emit('analysis:error', { analysisId: '', message: 'Invalid URL format.' });
@@ -150,17 +158,33 @@ export function registerAnalysisSocket(io: TypedServer): void {
       // Extract session data (visible browser stays open for re-use).
       const sessionData = await extractSessionData(sessionId);
 
-      // Auto-persist session to the matching website so future audits use it automatically.
+      // Auto-persist session — competitor sessions go to CompetitorSession, others to Website.
       const userId = extractUserId(socket);
       if (userId) {
-        Website.find({ userId }).lean().then((sites) => {
-          const match = sites.find(w => url.startsWith(w.url as string));
-          if (match) {
-            Website.findByIdAndUpdate(match._id, {
-              session: { ...sessionData, capturedAt: new Date() },
-            }).catch(() => {});
-          }
-        }).catch(() => {});
+        const sessionPayload = { ...sessionData, capturedAt: new Date() };
+        const origin   = new URL(url).origin;
+        const hostname = new URL(url).hostname;
+
+        if (context === 'competitor') {
+          CompetitorSession.findOneAndUpdate(
+            { userId, url: origin },
+            { $set: { session: sessionPayload, name: hostname } },
+            { upsert: true, new: true },
+          ).catch(() => {});
+        } else {
+          Website.find({ userId }).lean().then(async (sites) => {
+            const match = sites.find(w => url.startsWith(w.url as string));
+            if (match) {
+              await Website.findByIdAndUpdate(match._id, { session: sessionPayload });
+            } else {
+              await Website.findOneAndUpdate(
+                { userId, url: origin },
+                { $set: { session: sessionPayload, name: hostname } },
+                { upsert: true, new: true },
+              );
+            }
+          }).catch(() => {});
+        }
       }
 
       const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
