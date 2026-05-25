@@ -17,12 +17,21 @@ const sessionSchema = new Schema({
   capturedAt:   { type: Date, default: Date.now },
 }, { _id: false });
 
+const automationSchema = new Schema(
+  {
+    enabled:   { type: Boolean, default: false },
+    lastRunAt: { type: Date, default: null },
+  },
+  { _id: false },
+);
+
 const websiteSchema = new Schema(
   {
-    userId:  { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    url:     { type: String, required: true, trim: true },
-    name:    { type: String, trim: true, default: '' },
-    session: { type: sessionSchema, default: null },
+    userId:     { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    url:        { type: String, required: true, trim: true },
+    name:       { type: String, trim: true, default: '' },
+    session:    { type: sessionSchema, default: null },
+    automation: { type: automationSchema, default: () => ({ enabled: false, lastRunAt: null }) },
   },
   { timestamps: true },
 );
@@ -38,12 +47,18 @@ export interface IWebsiteSession {
   capturedAt: Date;
 }
 
+export interface IWebsiteAutomation {
+  enabled:   boolean;
+  lastRunAt: Date | null;
+}
+
 export interface IWebsite {
-  _id:     Types.ObjectId;
-  userId:  Types.ObjectId;
-  url:     string;
-  name:    string;
-  session: IWebsiteSession | null;
+  _id:        Types.ObjectId;
+  userId:     Types.ObjectId;
+  url:        string;
+  name:       string;
+  session:    IWebsiteSession | null;
+  automation: IWebsiteAutomation;
 }
 
 export const Website = model<IWebsite>('Website', websiteSchema);

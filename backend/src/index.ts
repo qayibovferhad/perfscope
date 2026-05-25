@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { config, validateConfig } from './config/index.js';
 import { connectDatabase } from './config/database.js';
+import { registerNightlyCron } from './cron/nightlyAudit.cron.js';
 
 validateConfig();
 
@@ -14,4 +15,5 @@ httpServer.listen(config.port, () => {
   console.log(`[Server] Running on http://localhost:${config.port}`);
   console.log(`[Server] WebSocket ready`);
   console.log(`[Server] Environment: ${config.nodeEnv}`);
+  registerNightlyCron();
 });

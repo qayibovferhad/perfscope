@@ -5,6 +5,7 @@ import {
   ArrowLeft, Plus, Globe, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronRight, ExternalLink, Activity, BarChart3,
   Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2,
+  Zap, Play, Moon,
 } from 'lucide-react';
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -12,6 +13,7 @@ import { CrossWebsitePicker } from './components/CrossWebsitePicker';
 import { setComparePreload } from '@/store/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';
+import { useWebsites } from '@/features/dashboard/useWebsites';
 import type { AnalysisResult } from '@/features/analyzer/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -408,6 +410,164 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
   );
 }
 
+// ─── Automation Card ─────────────────────────────────────────────────────────
+
+function AutomationCard({
+  websiteId,
+  enabled,
+  lastRunAt,
+  routes,
+}: {
+  websiteId: string;
+  enabled:   boolean;
+  lastRunAt: string | null;
+  routes:    string[];
+}) {
+  const { setAutomation, triggerRun } = useWebsites();
+  const [runTriggered, setRunTriggered] = useState(false);
+
+  const isToggling  = setAutomation.isPending;
+  const isRunning   = triggerRun.isPending || runTriggered;
+
+  function handleToggle() {
+    setAutomation.mutate({ id: websiteId, enabled: !enabled });
+  }
+
+  async function handleManualRun() {
+    setRunTriggered(true);
+    triggerRun.mutate(websiteId, {
+      onSettled: () => setTimeout(() => setRunTriggered(false), 3000),
+    });
+  }
+
+  function fmtDate(iso: string | null): string {
+    if (!iso) return 'Never';
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function nextMidnight(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden"
+      style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)' }}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4"
+        style={{ borderBottom: '1px solid var(--ps-divider)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: enabled ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)' }}>
+            <Moon className="w-4 h-4" style={{ color: enabled ? 'var(--ps-accent)' : 'var(--ps-text-muted)' }} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ps-text-heading)' }}>
+              Automation Settings
+            </p>
+            <p className="text-[10px]" style={{ color: 'var(--ps-text-muted)' }}>
+              Nightly audit — runs every day at 00:00
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle */}
+        <button
+          onClick={handleToggle}
+          disabled={isToggling}
+          className="relative flex items-center transition-opacity disabled:opacity-60"
+          style={{ width: 44, height: 24 }}
+          aria-label={enabled ? 'Disable nightly audit' : 'Enable nightly audit'}
+        >
+          <div className="absolute inset-0 rounded-full transition-colors duration-200"
+            style={{ background: enabled ? 'var(--ps-accent)' : 'rgba(255,255,255,0.12)' }} />
+          <div className="absolute top-0.5 transition-all duration-200 w-5 h-5 rounded-full shadow"
+            style={{
+              left:       enabled ? 22 : 2,
+              background: '#fff',
+            }} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-5 py-4 space-y-4">
+
+        {/* Status row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="px-3 py-2.5 rounded-xl space-y-0.5"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--ps-divider)' }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
+              Last Run
+            </p>
+            <p className="text-xs font-semibold" style={{ color: lastRunAt ? 'var(--ps-text-heading)' : 'var(--ps-text-muted)' }}>
+              {fmtDate(lastRunAt)}
+            </p>
+          </div>
+          <div className="px-3 py-2.5 rounded-xl space-y-0.5"
+            style={{ background: enabled ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${enabled ? 'rgba(99,102,241,0.2)' : 'var(--ps-divider)'}` }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
+              Next Run
+            </p>
+            <p className="text-xs font-semibold" style={{ color: enabled ? 'var(--ps-accent)' : 'var(--ps-text-muted)' }}>
+              {enabled ? nextMidnight() : '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Routes that will be audited */}
+        {routes.length > 0 && (
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--ps-text-muted)' }}>
+              Routes queued for audit ({routes.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {routes.map((r) => (
+                <span key={r}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
+                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)', color: 'var(--ps-accent)' }}>
+                  <Route className="w-2.5 h-2.5" />
+                  {r === '/' ? 'Home (/)' : r}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {routes.length === 0 && (
+          <p className="text-[11px] italic" style={{ color: 'var(--ps-text-muted)' }}>
+            Run your first manual audit — its routes will be included in future nightly runs.
+          </p>
+        )}
+
+        {/* Manual trigger */}
+        <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--ps-divider)' }}>
+          <p className="text-[10px]" style={{ color: 'var(--ps-text-muted)' }}>
+            Run all routes now without waiting for midnight
+          </p>
+          <button
+            onClick={handleManualRun}
+            disabled={isRunning || routes.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
+            style={{
+              background: isRunning ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
+              border:     `1px solid ${isRunning ? 'rgba(34,197,94,0.3)' : 'var(--ps-panel-border)'}`,
+              color:      isRunning ? '#22c55e' : 'var(--ps-text-secondary)',
+            }}
+          >
+            {isRunning
+              ? <><Zap className="w-3.5 h-3.5 animate-pulse" /> Running…</>
+              : <><Play className="w-3.5 h-3.5" /> Run Now</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function PageSkeleton() {
@@ -432,6 +592,7 @@ export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const navigate  = useNavigate();
   const { data, isLoading, isError } = useProjectAudits(id!);
+  const { websites } = useWebsites();
   const [auditOpen,     setAuditOpen]     = useState(false);
   const [compareMode,   setCompareMode]   = useState(false);
   const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
@@ -615,6 +776,21 @@ export function ProjectDetailPage() {
           <StatCard label="Avg Score"      value={stats.totalAudits ? stats.avgPerformance : '—'} icon={<Activity   className="w-4 h-4" />} />
           <StatCard label="Last Audit"     value={timeAgo(stats.lastAuditAt)} icon={<Clock      className="w-4 h-4" />} />
         </div>
+
+        {/* Automation Settings */}
+        {(() => {
+          const website = websites.find(w => w._id === project.id);
+          if (!website) return null;
+          const routes = groups.map(g => g.routePath);
+          return (
+            <AutomationCard
+              websiteId={project.id}
+              enabled={website.automation?.enabled ?? false}
+              lastRunAt={website.automation?.lastRunAt ?? null}
+              routes={routes}
+            />
+          );
+        })()}
 
         {/* Empty state */}
         {groups.length === 0 && (

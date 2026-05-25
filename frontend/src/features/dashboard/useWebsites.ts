@@ -7,12 +7,18 @@ export interface WebsiteSession {
   localStorage: Record<string, string>;
 }
 
+export interface WebsiteAutomation {
+  enabled:   boolean;
+  lastRunAt: string | null;
+}
+
 export interface Website {
-  _id:       string;
-  url:       string;
-  name:      string;
-  createdAt: string;
-  session:   WebsiteSession | null;
+  _id:        string;
+  url:        string;
+  name:       string;
+  createdAt:  string;
+  session:    WebsiteSession | null;
+  automation: WebsiteAutomation;
 }
 
 const KEY = ['websites'];
@@ -45,5 +51,16 @@ export function useWebsites() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
-  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession };
+  const setAutomation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      apiClient.patch<Website>(`/websites/${id}/automation`, { enabled }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+
+  const triggerRun = useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post(`/websites/${id}/automation/run`).then(r => r.data),
+  });
+
+  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession, setAutomation, triggerRun };
 }
