@@ -55,17 +55,22 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
   }
 });
 
-// PATCH /api/websites/:id/automation — toggle nightly automation on/off
+// PATCH /api/websites/:id/automation — update automation settings (enabled, routes)
 websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { enabled } = req.body as { enabled: boolean };
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({ error: 'enabled (boolean) is required' });
+    const body = req.body as { enabled?: boolean; routes?: string[] };
+
+    const update: Record<string, unknown> = {};
+    if (typeof body.enabled === 'boolean') update['automation.enabled'] = body.enabled;
+    if (Array.isArray(body.routes))        update['automation.routes']  = body.routes;
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'Provide enabled or routes to update' });
     }
 
     const website = await Website.findOneAndUpdate(
       { _id: req.params['id'], userId: req.userId },
-      { 'automation.enabled': enabled },
+      update,
       { returnDocument: 'after' },
     );
     if (!website) return res.status(404).json({ error: 'Website not found' });

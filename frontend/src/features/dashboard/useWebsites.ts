@@ -9,6 +9,7 @@ export interface WebsiteSession {
 
 export interface WebsiteAutomation {
   enabled:   boolean;
+  routes:    string[];
   lastRunAt: string | null;
 }
 
@@ -52,8 +53,8 @@ export function useWebsites() {
   });
 
   const setAutomation = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      apiClient.patch<Website>(`/websites/${id}/automation`, { enabled }).then(r => r.data),
+    mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[] }) =>
+      apiClient.patch<Website>(`/websites/${id}/automation`, patch).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 

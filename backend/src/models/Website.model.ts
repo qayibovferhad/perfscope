@@ -20,6 +20,7 @@ const sessionSchema = new Schema({
 const automationSchema = new Schema(
   {
     enabled:   { type: Boolean, default: false },
+    routes:    { type: [String], default: [] },
     lastRunAt: { type: Date, default: null },
   },
   { _id: false },
@@ -49,6 +50,7 @@ export interface IWebsiteSession {
 
 export interface IWebsiteAutomation {
   enabled:   boolean;
+  routes:    string[];
   lastRunAt: Date | null;
 }
 

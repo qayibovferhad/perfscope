@@ -416,34 +416,53 @@ function AutomationCard({
   websiteId,
   enabled,
   lastRunAt,
-  routes,
+  savedRoutes,
 }: {
-  websiteId: string;
-  enabled:   boolean;
-  lastRunAt: string | null;
-  routes:    string[];
+  websiteId:   string;
+  enabled:     boolean;
+  lastRunAt:   string | null;
+  savedRoutes: string[];
 }) {
   const { setAutomation, triggerRun } = useWebsites();
+  const [input,        setInput]        = useState('');
+  const [inputError,   setInputError]   = useState('');
   const [runTriggered, setRunTriggered] = useState(false);
 
-  const isToggling  = setAutomation.isPending;
-  const isRunning   = triggerRun.isPending || runTriggered;
+  const isToggling = setAutomation.isPending;
+  const isRunning  = triggerRun.isPending || runTriggered;
 
   function handleToggle() {
     setAutomation.mutate({ id: websiteId, enabled: !enabled });
   }
 
-  async function handleManualRun() {
-    setRunTriggered(true);
-    triggerRun.mutate(websiteId, {
-      onSettled: () => setTimeout(() => setRunTriggered(false), 3000),
-    });
+  function handleAddRoute() {
+    const raw = input.trim();
+    if (!raw) return;
+    const route = raw.startsWith('/') ? raw : `/${raw}`;
+
+    if (savedRoutes.includes(route)) {
+      setInputError('Already added');
+      return;
+    }
+    setInputError('');
+    setInput('');
+    setAutomation.mutate({ id: websiteId, routes: [...savedRoutes, route] });
+  }
+
+  function handleRemoveRoute(route: string) {
+    setAutomation.mutate({ id: websiteId, routes: savedRoutes.filter(r => r !== route) });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); handleAddRoute(); }
+    if (inputError)        setInputError('');
   }
 
   function fmtDate(iso: string | null): string {
     if (!iso) return 'Never';
-    const d = new Date(iso);
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
   }
 
   function nextMidnight(): string {
@@ -486,62 +505,93 @@ function AutomationCard({
           <div className="absolute inset-0 rounded-full transition-colors duration-200"
             style={{ background: enabled ? 'var(--ps-accent)' : 'rgba(255,255,255,0.12)' }} />
           <div className="absolute top-0.5 transition-all duration-200 w-5 h-5 rounded-full shadow"
-            style={{
-              left:       enabled ? 22 : 2,
-              background: '#fff',
-            }} />
+            style={{ left: enabled ? 22 : 2, background: '#fff' }} />
         </button>
       </div>
 
       {/* Body */}
       <div className="px-5 py-4 space-y-4">
 
-        {/* Status row */}
+        {/* Last / Next run */}
         <div className="grid grid-cols-2 gap-3">
           <div className="px-3 py-2.5 rounded-xl space-y-0.5"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--ps-divider)' }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
-              Last Run
-            </p>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>Last Run</p>
             <p className="text-xs font-semibold" style={{ color: lastRunAt ? 'var(--ps-text-heading)' : 'var(--ps-text-muted)' }}>
               {fmtDate(lastRunAt)}
             </p>
           </div>
           <div className="px-3 py-2.5 rounded-xl space-y-0.5"
             style={{ background: enabled ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${enabled ? 'rgba(99,102,241,0.2)' : 'var(--ps-divider)'}` }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>
-              Next Run
-            </p>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>Next Run</p>
             <p className="text-xs font-semibold" style={{ color: enabled ? 'var(--ps-accent)' : 'var(--ps-text-muted)' }}>
               {enabled ? nextMidnight() : '—'}
             </p>
           </div>
         </div>
 
-        {/* Routes that will be audited */}
-        {routes.length > 0 && (
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--ps-text-muted)' }}>
-              Routes queued for audit ({routes.length})
-            </p>
+        {/* Route editor */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--ps-text-muted)' }}>
+            Routes to audit {savedRoutes.length > 0 && `(${savedRoutes.length})`}
+          </p>
+
+          {/* Add input */}
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => { setInput(e.target.value); setInputError(''); }}
+                onKeyDown={handleKeyDown}
+                placeholder="/dashboard or /settings"
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-mono outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border:     `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
+                  color:      'var(--ps-text-heading)',
+                }}
+              />
+              {inputError && (
+                <p className="absolute -bottom-4 left-0 text-[10px]" style={{ color: '#ef4444' }}>{inputError}</p>
+              )}
+            </div>
+            <button
+              onClick={handleAddRoute}
+              disabled={!input.trim()}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
+              style={{ background: 'var(--ps-accent)', color: '#fff' }}
+            >
+              <Plus className="w-3.5 h-3.5" /> Add
+            </button>
+          </div>
+
+          {/* Route chips */}
+          {savedRoutes.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {routes.map((r) => (
+              {savedRoutes.map((r) => (
                 <span key={r}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
+                  className="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded-md text-[10px] font-mono font-semibold"
                   style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)', color: 'var(--ps-accent)' }}>
-                  <Route className="w-2.5 h-2.5" />
-                  {r === '/' ? 'Home (/)' : r}
+                  <Route className="w-2.5 h-2.5 shrink-0" />
+                  {r}
+                  <button
+                    onClick={() => handleRemoveRoute(r)}
+                    className="ml-0.5 w-3.5 h-3.5 rounded flex items-center justify-center transition-colors hover:bg-red-500/20"
+                    style={{ color: 'rgba(239,68,68,0.7)' }}
+                    title={`Remove ${r}`}
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
                 </span>
               ))}
             </div>
-          </div>
-        )}
-
-        {routes.length === 0 && (
-          <p className="text-[11px] italic" style={{ color: 'var(--ps-text-muted)' }}>
-            Run your first manual audit — its routes will be included in future nightly runs.
-          </p>
-        )}
+          ) : (
+            <p className="text-[11px] italic" style={{ color: 'var(--ps-text-muted)' }}>
+              No routes added yet — type a path above and press Enter or Add.
+            </p>
+          )}
+        </div>
 
         {/* Manual trigger */}
         <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--ps-divider)' }}>
@@ -549,8 +599,13 @@ function AutomationCard({
             Run all routes now without waiting for midnight
           </p>
           <button
-            onClick={handleManualRun}
-            disabled={isRunning || routes.length === 0}
+            onClick={() => {
+              setRunTriggered(true);
+              triggerRun.mutate(websiteId, {
+                onSettled: () => setTimeout(() => setRunTriggered(false), 3000),
+              });
+            }}
+            disabled={isRunning || savedRoutes.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
             style={{
               background: isRunning ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
@@ -781,13 +836,12 @@ export function ProjectDetailPage() {
         {(() => {
           const website = websites.find(w => w._id === project.id);
           if (!website) return null;
-          const routes = groups.map(g => g.routePath);
           return (
             <AutomationCard
               websiteId={project.id}
               enabled={website.automation?.enabled ?? false}
               lastRunAt={website.automation?.lastRunAt ?? null}
-              routes={routes}
+              savedRoutes={website.automation?.routes ?? []}
             />
           );
         })()}

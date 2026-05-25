@@ -1,5 +1,4 @@
 import { Website } from '../models/Website.model.js';
-import { HistoryModel } from '../models/History.model.js';
 import { lighthouseService } from './lighthouse.service.js';
 import { AiService } from './ai.service.js';
 import { HistoryService } from './history.service.js';
@@ -9,26 +8,6 @@ const AUDIT_DELAY_MS = 15_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function normalizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname}`.replace(/\/$/, '');
-  } catch {
-    return url;
-  }
-}
-
-async function getRoutesForWebsite(websiteUrl: string): Promise<string[]> {
-  const normalized = normalizeUrl(websiteUrl);
-  const docs = await HistoryModel
-    .find({ normalizedUrl: { $regex: `^${normalized}` } })
-    .distinct('routePath')
-    .lean();
-  // Always include root; remove duplicates.
-  const routes = Array.from(new Set(['/', ...docs])) as string[];
-  return routes;
 }
 
 async function runSingleAudit(
@@ -115,7 +94,11 @@ export const NightlyAuditService = {
         ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
         : null;
 
-      const routes = await getRoutesForWebsite(website.url);
+      const routes: string[] = website.automation?.routes ?? [];
+      if (routes.length === 0) {
+        console.log(`[NightlyAudit] ${website.name || baseUrl} — no routes configured, skipping.`);
+        continue;
+      }
       console.log(`[NightlyAudit] ${website.name || baseUrl} — ${routes.length} route(s): ${routes.join(', ')}`);
 
       for (const route of routes) {
@@ -145,7 +128,8 @@ export const NightlyAuditService = {
     const session = website.session
       ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
       : null;
-    const routes = await getRoutesForWebsite(website.url);
+    const routes: string[] = website.automation?.routes ?? [];
+    if (routes.length === 0) throw new Error('No routes configured for this website');
 
     for (const route of routes) {
       const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
