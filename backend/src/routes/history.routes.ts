@@ -29,6 +29,20 @@ historyRouter.get('/history', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/history/:id  — full analysis result for a single audit
+historyRouter.get('/history/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await HistoryService.getById(String(req.params['id']), req.userId!);
+    if (!data) {
+      res.status(404).json({ success: false, error: 'Not found or result not stored' });
+      return;
+    }
+    res.json({ success: true, data });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to load result' });
+  }
+});
+
 // GET /api/projects/:id/audits  — project audit history grouped by route
 historyRouter.get('/projects/:id/audits', requireAuth, async (req: AuthRequest, res: Response) => {
   try {

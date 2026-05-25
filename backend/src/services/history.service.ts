@@ -93,7 +93,8 @@ function toProjectEntry(d: any): ProjectAuditEntry {
 }
 
 export const HistoryService = {
-  async save(entry: HistoryEntry, userId?: string, projectId?: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async save(entry: HistoryEntry, userId?: string, projectId?: string, fullResult?: Record<string, any>): Promise<void> {
     const normalizedUrl = normalizeUrl(entry.url);
     const routePath     = extractRoutePath(entry.url);
 
@@ -103,10 +104,11 @@ export const HistoryService = {
       url:           entry.url,
       normalizedUrl,
       routePath,
-      ...(userId    ? { userId }    : {}),
-      ...(projectId ? { projectId } : {}),
+      ...(userId     ? { userId }     : {}),
+      ...(projectId  ? { projectId }  : {}),
       scores:        entry.scores,
       metrics:       entry.metrics,
+      ...(fullResult ? { fullResult } : {}),
     });
 
     const count = await HistoryModel.countDocuments({ normalizedUrl });
@@ -134,6 +136,15 @@ export const HistoryService = {
       .sort({ createdAt: -1 })
       .lean();
     return docs.map(toEntry);
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async getById(analysisId: string, userId: string): Promise<Record<string, any> | null> {
+    const doc = await HistoryModel
+      .findOne({ analysisId, userId })
+      .select('fullResult')
+      .lean();
+    return (doc?.fullResult as Record<string, any> | undefined) ?? null;
   },
 
   async getByProject(projectId: string, userId: string): Promise<ProjectAuditsResult | null> {

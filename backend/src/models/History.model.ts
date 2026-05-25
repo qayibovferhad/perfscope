@@ -36,6 +36,8 @@ export interface IHistory extends Document {
   projectId?:    string;
   scores:        { performance: number; accessibility: number; bestPractices: number; seo: number };
   metrics:       { fcp: number; lcp: number; tbt: number; cls: number; si: number; tti: number };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fullResult?:   Record<string, any>;
   createdAt:     Date;
 }
 
@@ -50,6 +52,7 @@ const HistorySchema = new Schema<IHistory>(
     projectId:     { type: String, index: true },
     scores:        { type: ScoresSchema, required: true },
     metrics:       { type: MetricsSchema, required: true },
+    fullResult:    { type: Schema.Types.Mixed },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

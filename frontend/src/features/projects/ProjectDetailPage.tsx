@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronRight, ExternalLink, Activity, BarChart3,
-  Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare,
+  Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2,
 } from 'lucide-react';
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { CrossWebsitePicker } from './components/CrossWebsitePicker';
 import { setComparePreload } from '@/store/comparePreloadStore';
+import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
+import { useAnalysisStore } from '@/store/analysisStore';
 import type { AnalysisResult } from '@/features/analyzer/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -100,17 +102,20 @@ function ScoreRing({ score, size = 56 }: { score: number; size?: number }) {
 // ─── Audit Row ────────────────────────────────────────────────────────────────
 
 function AuditRow({
-  entry, projectId, compareMode, isSelected, onToggleSelect,
+  entry, projectId, compareMode, isSelected, onToggleSelect, onOpen, loadingId,
 }: {
   entry: ProjectAuditEntry;
   projectId: string;
   compareMode: boolean;
   isSelected: boolean;
   onToggleSelect: (entry: ProjectAuditEntry) => void;
+  onOpen: (entry: ProjectAuditEntry) => void;
+  loadingId: string | null;
 }) {
   const navigate = useNavigate();
   const perf     = entry.scores.performance;
   const color    = scoreColor(perf);
+  const isLoading = loadingId === entry.id;
 
   function handleClick() {
     if (compareMode) {
@@ -176,12 +181,30 @@ function AuditRow({
           {scoreLabel(perf)}
         </span>
       </td>
-      <td className="py-3 pr-4">
+      <td className="py-3 pr-3">
         {!compareMode && (
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px]"
-            style={{ color: 'var(--ps-accent)' }}>
-            <RefreshCw className="w-3 h-3" /> Re-audit
-          </span>
+          <div className="flex items-center gap-2 justify-end">
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px]"
+              style={{ color: 'var(--ps-text-muted)' }}>
+              <RefreshCw className="w-3 h-3" /> Re-audit
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpen(entry); }}
+              disabled={isLoading}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all duration-150 disabled:opacity-50"
+              style={{
+                background: 'var(--ps-accent-muted)',
+                border:     '1px solid var(--ps-accent-border)',
+                color:      'var(--ps-accent)',
+              }}
+              title="Open saved result in Analyzer"
+            >
+              {isLoading
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <ExternalLink className="w-3 h-3" />}
+              View
+            </button>
+          </div>
         )}
       </td>
     </tr>
@@ -191,13 +214,15 @@ function AuditRow({
 // ─── Route Group Card ─────────────────────────────────────────────────────────
 
 function RouteGroupCard({
-  group, projectId, compareMode, selectedIds, onToggleSelect,
+  group, projectId, compareMode, selectedIds, onToggleSelect, onOpen, loadingId,
 }: {
   group: RouteGroup;
   projectId: string;
   compareMode: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (entry: ProjectAuditEntry) => void;
+  onOpen: (entry: ProjectAuditEntry) => void;
+  loadingId: string | null;
 }) {
   const [open, setOpen] = useState(compareMode);
 
@@ -261,6 +286,8 @@ function RouteGroupCard({
                     compareMode={compareMode}
                     isSelected={selectedIds.has(entry.id)}
                     onToggleSelect={onToggleSelect}
+                    onOpen={onOpen}
+                    loadingId={loadingId}
                   />
                 ))}
               </tbody>
@@ -409,6 +436,22 @@ export function ProjectDetailPage() {
   const [compareMode,   setCompareMode]   = useState(false);
   const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
   const [crossSiteOpen, setCrossSiteOpen] = useState(false);
+  const [loadingId,     setLoadingId]     = useState<string | null>(null);
+
+  const setResult = useAnalysisStore(s => s.setResult);
+
+  async function handleOpenInAnalyzer(entry: ProjectAuditEntry) {
+    setLoadingId(entry.id);
+    try {
+      const result = await fetchHistoryResult(entry.id);
+      setResult(result, entry.url);
+      navigate('/app');
+    } catch {
+      // result not stored — silently ignore
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   const allAudits = useMemo(
     () => (data?.groups ?? []).flatMap((g) => g.entries),
@@ -622,6 +665,8 @@ export function ProjectDetailPage() {
                 compareMode={compareMode}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
+                onOpen={handleOpenInAnalyzer}
+                loadingId={loadingId}
               />
             ))}
           </div>

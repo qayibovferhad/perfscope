@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import type { AnalysisResult } from '@/features/analyzer/types';
 
 export interface HistoryEntry {
   id:        string;
@@ -34,6 +35,13 @@ export function useHistory(url: string | null) {
     },
     staleTime: 0,
   });
+}
+
+export async function fetchHistoryResult(analysisId: string): Promise<AnalysisResult> {
+  const res = await apiClient.get<{ success: boolean; data: AnalysisResult }>(
+    `/history/${encodeURIComponent(analysisId)}`,
+  );
+  return res.data.data;
 }
 
 export function useAllHistory() {

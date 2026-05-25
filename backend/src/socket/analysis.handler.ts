@@ -127,7 +127,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
           timestamp: result.timestamp,
           scores:    result.scores,
           metrics:   result.metrics,
-        }, userId, projectId).catch(err => console.warn('[History] Save failed:', err));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }, userId, projectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {
@@ -231,7 +232,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
           timestamp: result.timestamp,
           scores:    result.scores,
           metrics:   result.metrics,
-        }, userId, projectId).catch(err => console.warn('[History] Save failed:', err));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }, userId, projectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {

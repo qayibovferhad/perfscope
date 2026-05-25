@@ -5,14 +5,15 @@ import {
   Globe, TrendingUp, TrendingDown, Minus,
   Download, FileText, Clock, GitCommit, AlertTriangle,
   CheckCircle2, Activity, ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, ArrowRight, GitCompareArrows,
+  Filter, ArrowRight, GitCompareArrows, ExternalLink, Loader2,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
-import { useHistory, useAllHistory, type HistoryEntry } from './hooks/useHistory';
+import { useHistory, useAllHistory, fetchHistoryResult, type HistoryEntry } from './hooks/useHistory';
 import { useWebsites } from '../dashboard/useWebsites';
 import { RegressionHistory, EvolutionChart } from './components/RegressionHistory';
 import { CompareHistoryPage } from '../compare-history/CompareHistoryPage';
+import { useAnalysisStore } from '@/store/analysisStore';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
@@ -413,14 +414,16 @@ function SortTh({
 
 function DeepDiveTable({
   allRows, status, sort, order,
-  onStatus, onSort,
+  onStatus, onSort, onOpen, loadingId,
 }: {
-  allRows:  RowData[];
-  status:   StatusFilter;
-  sort:     SortKey;
-  order:    SortOrder;
-  onStatus: (s: StatusFilter) => void;
-  onSort:   (col: SortKey) => void;
+  allRows:   RowData[];
+  status:    StatusFilter;
+  sort:      SortKey;
+  order:     SortOrder;
+  onStatus:  (s: StatusFilter) => void;
+  onSort:    (col: SortKey) => void;
+  onOpen:    (entry: HistoryEntry) => void;
+  loadingId: string | null;
 }) {
   const displayed = useMemo(() => {
     const filtered = status === 'all'
@@ -461,6 +464,7 @@ function DeepDiveTable({
               <SortTh label="TTI"   col="tti"   sort={sort} order={order} onSort={onSort} />
               <th className="px-4 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.25)' }}>Status</th>
+              <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody>
@@ -525,6 +529,24 @@ function DeepDiveTable({
                       </td>
                       <td className="px-4 py-3 text-center">
                         <StatusBadge status={rowStatus} />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <button
+                          onClick={() => onOpen(entry)}
+                          disabled={loadingId === entry.id}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 disabled:opacity-50"
+                          style={{
+                            background:  'var(--ps-accent-muted)',
+                            border:      '1px solid var(--ps-accent-border)',
+                            color:       'var(--ps-accent)',
+                          }}
+                          title="Open full result in Analyzer"
+                        >
+                          {loadingId === entry.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <ExternalLink className="w-3 h-3" />}
+                          Open
+                        </button>
                       </td>
                     </motion.tr>
                   );
@@ -825,6 +847,23 @@ export function HistoryPage() {
   const allRows  = useMemo(() => computeRows(urlEntries), [urlEntries]);
   const hostname = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
 
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const setResult = useAnalysisStore(s => s.setResult);
+
+  async function handleOpenInAnalyzer(entry: HistoryEntry) {
+    setLoadingId(entry.id);
+    try {
+      const result = await fetchHistoryResult(entry.id);
+      setResult(result, entry.url);
+      navigate('/app');
+    } catch {
+      // result not stored yet — fall through silently
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
   function setTab(t: Tab) {
     setParams(_ => {
       const n = new URLSearchParams();
@@ -899,6 +938,7 @@ export function HistoryPage() {
                       <DeepDiveTable
                         allRows={allRows} status={status} sort={sort} order={order}
                         onStatus={handleStatus} onSort={handleSort}
+                        onOpen={handleOpenInAnalyzer} loadingId={loadingId}
                       />
                     </>
                   )
