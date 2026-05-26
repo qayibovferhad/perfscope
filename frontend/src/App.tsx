@@ -10,6 +10,7 @@ import { HistoryPage }      from './features/history/HistoryPage';
 import { CompareHistoryPage } from './features/compare-history/CompareHistoryPage';
 import { WebsitesPage }       from './features/dashboard/WebsitesPage';
 import { ProjectDetailPage }  from './features/projects/ProjectDetailPage';
+import { AutomationPage }     from './features/automation/AutomationPage';
 
 function DashboardRoute({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/compare-history" element={<DashboardRoute><CompareHistoryPage /></DashboardRoute>} />
         <Route path="/websites"          element={<DashboardRoute><WebsitesPage /></DashboardRoute>} />
         <Route path="/projects/:id"    element={<DashboardRoute><ProjectDetailPage /></DashboardRoute>} />
+        <Route path="/automation"      element={<DashboardRoute><AutomationPage /></DashboardRoute>} />
       </Routes>
     </>
   );

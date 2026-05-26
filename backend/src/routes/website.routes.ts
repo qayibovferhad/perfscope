@@ -58,11 +58,13 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
 // PATCH /api/websites/:id/automation — update automation settings (enabled, routes)
 websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const body = req.body as { enabled?: boolean; routes?: string[] };
+    const body = req.body as { enabled?: boolean; routes?: string[]; scheduleTime?: string };
 
     const update: Record<string, unknown> = {};
-    if (typeof body.enabled === 'boolean') update['automation.enabled'] = body.enabled;
-    if (Array.isArray(body.routes))        update['automation.routes']  = body.routes;
+    if (typeof body.enabled === 'boolean')  update['automation.enabled']      = body.enabled;
+    if (Array.isArray(body.routes))         update['automation.routes']        = body.routes;
+    if (typeof body.scheduleTime === 'string' && /^\d{2}:\d{2}$/.test(body.scheduleTime))
+                                            update['automation.scheduleTime']  = body.scheduleTime;
 
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ error: 'Provide enabled or routes to update' });

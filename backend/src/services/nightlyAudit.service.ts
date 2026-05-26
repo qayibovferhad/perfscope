@@ -67,13 +67,17 @@ async function runSingleAudit(
 }
 
 export const NightlyAuditService = {
-  async runAllEnabled(): Promise<void> {
-    console.log('[NightlyAudit] Starting nightly run…');
+  async runAllEnabled(scheduleTime?: string): Promise<void> {
+    const label = scheduleTime ?? 'manual';
+    console.log(`[NightlyAudit] Starting run (${label})…`);
+
+    const query: Record<string, unknown> = { 'automation.enabled': true };
+    if (scheduleTime) query['automation.scheduleTime'] = scheduleTime;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let websites: any[];
     try {
-      websites = await Website.find({ 'automation.enabled': true }).lean();
+      websites = await Website.find(query).lean();
     } catch (err) {
       console.error('[NightlyAudit] Failed to query websites:', (err as Error).message);
       return;

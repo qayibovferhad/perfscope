@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, GitCompareArrows, History,
-  LogOut, Menu, X, ChevronRight, Plus, Globe, Trash2, LayoutGrid,
+  LogOut, Menu, X, ChevronRight, Plus, Globe, Trash2, LayoutGrid, Moon,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useWebsites } from './useWebsites';
@@ -13,9 +13,10 @@ import { AddWebsiteModal } from './AddWebsiteModal';
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
 const NAV = [
-  { to: '/compare',  icon: <GitCompareArrows className="w-4 h-4" />, label: 'Compare'     },
-  { to: '/history',  icon: <History          className="w-4 h-4" />, label: 'History'     },
-  { to: '/websites', icon: <LayoutGrid       className="w-4 h-4" />, label: 'My Websites' },
+  { to: '/compare',    icon: <GitCompareArrows className="w-4 h-4" />, label: 'Compare'     },
+  { to: '/history',    icon: <History          className="w-4 h-4" />, label: 'History'     },
+  { to: '/websites',   icon: <LayoutGrid       className="w-4 h-4" />, label: 'My Websites' },
+  { to: '/automation', icon: <Moon             className="w-4 h-4" />, label: 'Automation'  },
 ];
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────

@@ -8,9 +8,10 @@ export interface WebsiteSession {
 }
 
 export interface WebsiteAutomation {
-  enabled:   boolean;
-  routes:    string[];
-  lastRunAt: string | null;
+  enabled:      boolean;
+  routes:       string[];
+  scheduleTime: string;
+  lastRunAt:    string | null;
 }
 
 export interface Website {
@@ -53,7 +54,7 @@ export function useWebsites() {
   });
 
   const setAutomation = useMutation({
-    mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[] }) =>
+    mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[]; scheduleTime?: string }) =>
       apiClient.patch<Website>(`/websites/${id}/automation`, patch).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

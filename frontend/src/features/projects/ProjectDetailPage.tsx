@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronRight, ExternalLink, Activity, BarChart3,
-  Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2,
-  Zap, Play, Moon,
+  Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2, Moon,
 } from 'lucide-react';
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -14,6 +13,9 @@ import { setComparePreload } from '@/store/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';
 import { useWebsites } from '@/features/dashboard/useWebsites';
+import { Input }      from '@/shared/components/ui/input';
+import { Button }     from '@/shared/components/ui/button';
+import { TimePicker } from '@/shared/components/ui/time-picker';
 import type { AnalysisResult } from '@/features/analyzer/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -416,46 +418,27 @@ function AutomationCard({
   websiteId,
   enabled,
   lastRunAt,
+  scheduleTime,
   savedRoutes,
 }: {
-  websiteId:   string;
-  enabled:     boolean;
-  lastRunAt:   string | null;
-  savedRoutes: string[];
+  websiteId:    string;
+  enabled:      boolean;
+  lastRunAt:    string | null;
+  scheduleTime: string;
+  savedRoutes:  string[];
 }) {
-  const { setAutomation, triggerRun } = useWebsites();
-  const [input,        setInput]        = useState('');
-  const [inputError,   setInputError]   = useState('');
-  const [runTriggered, setRunTriggered] = useState(false);
-
-  const isToggling = setAutomation.isPending;
-  const isRunning  = triggerRun.isPending || runTriggered;
-
-  function handleToggle() {
-    setAutomation.mutate({ id: websiteId, enabled: !enabled });
-  }
+  const { setAutomation } = useWebsites();
+  const [input,      setInput]      = useState('');
+  const [inputError, setInputError] = useState('');
 
   function handleAddRoute() {
     const raw = input.trim();
     if (!raw) return;
     const route = raw.startsWith('/') ? raw : `/${raw}`;
-
-    if (savedRoutes.includes(route)) {
-      setInputError('Already added');
-      return;
-    }
+    if (savedRoutes.includes(route)) { setInputError('Already added'); return; }
     setInputError('');
     setInput('');
     setAutomation.mutate({ id: websiteId, routes: [...savedRoutes, route] });
-  }
-
-  function handleRemoveRoute(route: string) {
-    setAutomation.mutate({ id: websiteId, routes: savedRoutes.filter(r => r !== route) });
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); handleAddRoute(); }
-    if (inputError)        setInputError('');
   }
 
   function fmtDate(iso: string | null): string {
@@ -465,11 +448,13 @@ function AutomationCard({
     });
   }
 
-  function nextMidnight(): string {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(0, 0, 0, 0);
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  function nextRunAt(t: string): string {
+    const [hh, mm] = t.split(':').map(Number);
+    const now = new Date();
+    const next = new Date();
+    next.setHours(hh ?? 0, mm ?? 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    return next.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   return (
@@ -489,18 +474,15 @@ function AutomationCard({
               Automation Settings
             </p>
             <p className="text-[10px]" style={{ color: 'var(--ps-text-muted)' }}>
-              Nightly audit — runs every day at 00:00
+              Daily audit — runs at {scheduleTime}
             </p>
           </div>
         </div>
-
-        {/* Toggle */}
         <button
-          onClick={handleToggle}
-          disabled={isToggling}
+          onClick={() => setAutomation.mutate({ id: websiteId, enabled: !enabled })}
+          disabled={setAutomation.isPending}
           className="relative flex items-center transition-opacity disabled:opacity-60"
           style={{ width: 44, height: 24 }}
-          aria-label={enabled ? 'Disable nightly audit' : 'Enable nightly audit'}
         >
           <div className="absolute inset-0 rounded-full transition-colors duration-200"
             style={{ background: enabled ? 'var(--ps-accent)' : 'rgba(255,255,255,0.12)' }} />
@@ -512,20 +494,28 @@ function AutomationCard({
       {/* Body */}
       <div className="px-5 py-4 space-y-4">
 
-        {/* Last / Next run */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="px-3 py-2.5 rounded-xl space-y-0.5"
+        {/* Schedule + Last + Next */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="px-3 py-2.5 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--ps-divider)' }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--ps-text-muted)' }}>Schedule</p>
+            <TimePicker
+              value={scheduleTime}
+              onChange={v => setAutomation.mutate({ id: websiteId, scheduleTime: v })}
+            />
+          </div>
+          <div className="px-3 py-2.5 rounded-xl"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--ps-divider)' }}>
             <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>Last Run</p>
-            <p className="text-xs font-semibold" style={{ color: lastRunAt ? 'var(--ps-text-heading)' : 'var(--ps-text-muted)' }}>
+            <p className="text-xs font-semibold mt-0.5" style={{ color: lastRunAt ? 'var(--ps-text-heading)' : 'var(--ps-text-muted)' }}>
               {fmtDate(lastRunAt)}
             </p>
           </div>
-          <div className="px-3 py-2.5 rounded-xl space-y-0.5"
+          <div className="px-3 py-2.5 rounded-xl"
             style={{ background: enabled ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.03)', border: `1px solid ${enabled ? 'rgba(99,102,241,0.2)' : 'var(--ps-divider)'}` }}>
             <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--ps-text-muted)' }}>Next Run</p>
-            <p className="text-xs font-semibold" style={{ color: enabled ? 'var(--ps-accent)' : 'var(--ps-text-muted)' }}>
-              {enabled ? nextMidnight() : '—'}
+            <p className="text-xs font-semibold mt-0.5" style={{ color: enabled ? 'var(--ps-accent)' : 'var(--ps-text-muted)' }}>
+              {enabled ? nextRunAt(scheduleTime) : '—'}
             </p>
           </div>
         </div>
@@ -535,38 +525,35 @@ function AutomationCard({
           <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--ps-text-muted)' }}>
             Routes to audit {savedRoutes.length > 0 && `(${savedRoutes.length})`}
           </p>
-
-          {/* Add input */}
           <div className="flex gap-2 mb-3">
             <div className="flex-1 relative">
-              <input
-                type="text"
+              <Input
                 value={input}
-                onChange={(e) => { setInput(e.target.value); setInputError(''); }}
-                onKeyDown={handleKeyDown}
+                onChange={e => { setInput(e.target.value); setInputError(''); }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddRoute(); } }}
                 placeholder="/dashboard or /settings"
-                className="w-full px-3 py-1.5 rounded-lg text-xs font-mono outline-none"
+                className="h-8 text-xs font-mono"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
-                  border:     `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
-                  color:      'var(--ps-text-heading)',
+                  border: `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
+                  color: 'var(--ps-text-heading)',
                 }}
               />
               {inputError && (
                 <p className="absolute -bottom-4 left-0 text-[10px]" style={{ color: '#ef4444' }}>{inputError}</p>
               )}
             </div>
-            <button
+            <Button
+              size="sm"
               onClick={handleAddRoute}
               disabled={!input.trim()}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
+              className="h-8 text-xs"
               style={{ background: 'var(--ps-accent)', color: '#fff' }}
             >
-              <Plus className="w-3.5 h-3.5" /> Add
-            </button>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add
+            </Button>
           </div>
 
-          {/* Route chips */}
           {savedRoutes.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {savedRoutes.map((r) => (
@@ -576,10 +563,9 @@ function AutomationCard({
                   <Route className="w-2.5 h-2.5 shrink-0" />
                   {r}
                   <button
-                    onClick={() => handleRemoveRoute(r)}
-                    className="ml-0.5 w-3.5 h-3.5 rounded flex items-center justify-center transition-colors hover:bg-red-500/20"
+                    onClick={() => setAutomation.mutate({ id: websiteId, routes: savedRoutes.filter(x => x !== r) })}
+                    className="ml-0.5 w-3.5 h-3.5 rounded flex items-center justify-center hover:bg-red-500/20"
                     style={{ color: 'rgba(239,68,68,0.7)' }}
-                    title={`Remove ${r}`}
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
@@ -591,32 +577,6 @@ function AutomationCard({
               No routes added yet — type a path above and press Enter or Add.
             </p>
           )}
-        </div>
-
-        {/* Manual trigger */}
-        <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--ps-divider)' }}>
-          <p className="text-[10px]" style={{ color: 'var(--ps-text-muted)' }}>
-            Run all routes now without waiting for midnight
-          </p>
-          <button
-            onClick={() => {
-              setRunTriggered(true);
-              triggerRun.mutate(websiteId, {
-                onSettled: () => setTimeout(() => setRunTriggered(false), 3000),
-              });
-            }}
-            disabled={isRunning || savedRoutes.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40"
-            style={{
-              background: isRunning ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
-              border:     `1px solid ${isRunning ? 'rgba(34,197,94,0.3)' : 'var(--ps-panel-border)'}`,
-              color:      isRunning ? '#22c55e' : 'var(--ps-text-secondary)',
-            }}
-          >
-            {isRunning
-              ? <><Zap className="w-3.5 h-3.5 animate-pulse" /> Running…</>
-              : <><Play className="w-3.5 h-3.5" /> Run Now</>}
-          </button>
         </div>
       </div>
     </div>
@@ -832,20 +792,6 @@ export function ProjectDetailPage() {
           <StatCard label="Last Audit"     value={timeAgo(stats.lastAuditAt)} icon={<Clock      className="w-4 h-4" />} />
         </div>
 
-        {/* Automation Settings */}
-        {(() => {
-          const website = websites.find(w => w._id === project.id);
-          if (!website) return null;
-          return (
-            <AutomationCard
-              websiteId={project.id}
-              enabled={website.automation?.enabled ?? false}
-              lastRunAt={website.automation?.lastRunAt ?? null}
-              savedRoutes={website.automation?.routes ?? []}
-            />
-          );
-        })()}
-
         {/* Empty state */}
         {groups.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl"
@@ -901,6 +847,21 @@ export function ProjectDetailPage() {
             ))}
           </div>
         )}
+
+        {/* Automation Settings — bottom of page */}
+        {(() => {
+          const website = websites.find(w => w._id === project.id);
+          if (!website) return null;
+          return (
+            <AutomationCard
+              websiteId={project.id}
+              enabled={website.automation?.enabled ?? false}
+              lastRunAt={website.automation?.lastRunAt ?? null}
+              scheduleTime={website.automation?.scheduleTime ?? '00:00'}
+              savedRoutes={website.automation?.routes ?? []}
+            />
+          );
+        })()}
       </div>
 
       {/* Floating compare bar */}
