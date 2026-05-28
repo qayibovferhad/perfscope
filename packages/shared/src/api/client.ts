@@ -9,6 +9,7 @@ export interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
+  savedToHistory?: boolean
 }
 
 async function request<T>(
@@ -35,13 +36,13 @@ async function request<T>(
 
 export function createApiClient(config: ApiClientConfig) {
   return {
-    async analyzeUrl(url: string, projectId?: string): Promise<AnalysisResult> {
+    async analyzeUrl(url: string): Promise<{ result: AnalysisResult; savedToHistory: boolean }> {
       const json = await request<ApiResponse<AnalysisResult>>(config, '/api/analyze', {
         method: 'POST',
-        body: JSON.stringify({ url, ...(projectId ? { projectId } : {}) }),
+        body: JSON.stringify({ url }),
       })
       if (!json.success || !json.data) throw new Error(json.error ?? 'Analysis failed')
-      return json.data
+      return { result: json.data, savedToHistory: json.savedToHistory ?? false }
     },
 
     async getWebsites(): Promise<WebsiteDoc[]> {

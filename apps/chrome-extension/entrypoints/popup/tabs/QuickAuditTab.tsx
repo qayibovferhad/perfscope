@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createApiClient, rateLcp, rateCls, rateTbt } from '@perfscope/shared'
-import type { AnalysisResult, WebsiteDoc } from '@perfscope/shared'
+import type { AnalysisResult } from '@perfscope/shared'
 import { ScoreCard }      from '../components/ScoreCard'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
@@ -16,51 +16,30 @@ const RATING_COLOR: Record<string, string> = {
 }
 
 export function QuickAuditTab({ backendUrl, token }: Props) {
-  const [currentUrl,   setCurrentUrl]   = useState('')
-  const [websites,     setWebsites]     = useState<WebsiteDoc[]>([])
-  const [projectId,    setProjectId]    = useState<string>('')
-  const [loading,      setLoading]      = useState(false)
-  const [result,       setResult]       = useState<AnalysisResult | null>(null)
-  const [savedToAcct,  setSavedToAcct]  = useState(false)
-  const [error,        setError]        = useState<string | null>(null)
+  const [currentUrl, setCurrentUrl] = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [result,     setResult]     = useState<AnalysisResult | null>(null)
+  const [saved,      setSaved]      = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
 
-  const api = createApiClient({ baseUrl: backendUrl, getToken: () => token })
-
-  // Get active tab URL
   useEffect(() => {
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (tab?.url?.startsWith('http')) setCurrentUrl(tab.url)
     })
   }, [])
 
-  // Load websites + pre-select from web config if available
-  useEffect(() => {
-    if (!token) return
-    api.getWebsites().then(sites => {
-      setWebsites(sites)
-      // Check if web app wrote a default website preference
-      browser.storage.local.get('extConfig').then(s => {
-        const cfg = s.extConfig as { defaultWebsiteId?: string } | undefined
-        if (cfg?.defaultWebsiteId && sites.some(w => w._id === cfg.defaultWebsiteId)) {
-          setProjectId(cfg.defaultWebsiteId)
-        } else if (sites[0]) {
-          setProjectId(sites[0]._id)
-        }
-      })
-    }).catch(() => undefined)
-  }, [token, backendUrl])
-
   async function handleAnalyze() {
     if (!currentUrl) return
     setLoading(true)
     setError(null)
     setResult(null)
-    setSavedToAcct(false)
+    setSaved(false)
 
+    const api = createApiClient({ baseUrl: backendUrl, getToken: () => token })
     try {
-      const data = await api.analyzeUrl(currentUrl, projectId || undefined)
+      const { result: data, savedToHistory } = await api.analyzeUrl(currentUrl)
       setResult(data)
-      if (token) setSavedToAcct(true)
+      if (savedToHistory) setSaved(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed')
     } finally {
@@ -68,36 +47,36 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
     }
   }
 
-  const hostname = (() => {
-    try { return new URL(currentUrl).hostname } catch { return currentUrl }
+  const parsed = (() => {
+    try { return new URL(currentUrl) } catch { return null }
   })()
+
+  const hostname = parsed?.hostname ?? ''
+  const route    = parsed?.pathname ?? '/'
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Active page */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.7)' }} />
-        <span className="text-xs text-slate-300 truncate font-mono">{hostname || 'No active page'}</span>
-      </div>
 
-      {/* Project selector — only when logged in */}
-      {token && websites.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">Save under project</span>
-          <select
-            value={projectId}
-            onChange={e => setProjectId(e.target.value)}
-            className="w-full px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-300 outline-none focus:border-indigo-500 transition-colors"
-          >
-            <option value="">— No project —</option>
-            {websites.map(site => (
-              <option key={site._id} value={site._id}>
-                {site.name || site.url}
-              </option>
-            ))}
-          </select>
+      {/* URL breakdown */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.7)' }} />
+          <span className="text-xs text-slate-300 font-mono truncate flex-1">{hostname || 'No active page'}</span>
+          {route !== '/' && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 shrink-0">
+              {route}
+            </span>
+          )}
         </div>
-      )}
+
+        {/* Where it will be saved */}
+        {token && hostname && (
+          <p className="text-[10px] text-slate-600 px-1">
+            Saved under <span className="text-slate-500">{hostname}</span>
+            {route !== '/' && <> › <span className="text-indigo-400">{route}</span></>}
+          </p>
+        )}
+      </div>
 
       {/* Analyze button */}
       <button
@@ -109,15 +88,14 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
           boxShadow:  loading ? 'none' : '0 0 18px rgba(139,92,246,0.40)',
         }}
       >
-        {loading ? (
-          <><LoadingSpinner size={16} /><span>Analyzing…</span></>
-        ) : (
-          <><ChevronIcon /><span>Analyze Page</span></>
-        )}
+        {loading
+          ? <><LoadingSpinner size={16} /><span>Analyzing…</span></>
+          : <><ChevronIcon /><span>Analyze Page</span></>
+        }
       </button>
 
       {loading && (
-        <p className="text-center text-[11px] text-slate-600">Running Lighthouse — may take up to 60 s.</p>
+        <p className="text-center text-[11px] text-slate-600">Running Lighthouse — up to 60 s.</p>
       )}
 
       {error && (
@@ -126,15 +104,13 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
         </div>
       )}
 
-      {/* Saved confirmation */}
-      {savedToAcct && (
+      {saved && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-400">
           <span>✓</span>
           <span>Saved to your PerfScope account</span>
         </div>
       )}
 
-      {/* Results */}
       {result && (
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-4 gap-1.5">
@@ -155,10 +131,13 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
           </div>
 
           <button
-            onClick={() => browser.tabs.create({ url: 'http://localhost:5173/history' })}
+            onClick={() => {
+              const webUrl = backendUrl.replace('3101', '5173')
+              browser.tabs.create({ url: `${webUrl}/history?open=${result.id}` })
+            }}
             className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 text-center transition-colors"
           >
-            View full history in PerfScope →
+            View full report in PerfScope →
           </button>
         </div>
       )}

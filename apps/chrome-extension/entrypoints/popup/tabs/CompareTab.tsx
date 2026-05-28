@@ -51,7 +51,7 @@ export function CompareTab({ backendUrl, token }: Props) {
 
     try {
       // Run competitor analysis + fetch your site's latest history in parallel
-      const [competitor, history] = await Promise.all([
+      const [{ result: competitor }, history] = await Promise.all([
         api.analyzeUrl(currentUrl),
         api.getUrlHistory(yourSite.url),
       ])

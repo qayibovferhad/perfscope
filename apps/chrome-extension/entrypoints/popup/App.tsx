@@ -99,6 +99,23 @@ export function App() {
         </div>
       )}
 
+      {/* ── Not connected banner ────────────────────────────────────── */}
+      {!storage.token && (
+        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 shrink-0"
+          style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.25)' }}>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-indigo-300">Not connected</span>
+            <span className="text-[10px] text-slate-500">Results won't be saved to your account</span>
+          </div>
+          <button
+            onClick={() => browser.tabs.create({ url: `${storage.backendUrl.replace(':3101', ':5173')}/login` })}
+            className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shrink-0"
+          >
+            Log in →
+          </button>
+        </div>
+      )}
+
       {/* ── Tab bar ──────────────────────────────────────────────────── */}
       <div className="flex px-4 pt-3 gap-1.5 shrink-0">
         {(['quick-audit', 'compare'] as const).map(tab => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -850,6 +850,18 @@ export function HistoryPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const setResult = useAnalysisStore(s => s.setResult);
+
+  // Extension deep-link: /history?open=<analysisId>
+  useEffect(() => {
+    const openId = params.get('open');
+    if (!openId) return;
+    fetchHistoryResult(openId)
+      .then(result => {
+        setResult(result, result.url as string);
+        navigate('/app');
+      })
+      .catch(() => undefined);
+  }, []);
 
   async function handleOpenInAnalyzer(entry: HistoryEntry) {
     setLoadingId(entry.id);

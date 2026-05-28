@@ -5,8 +5,6 @@ import { Website }         from '../models/Website.model.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import type { ApiResponse, AnalysisResult } from '../types/index.js';
 
-const ANALYSIS_TIMEOUT_MS = 60_000;
-
 function isValidUrl(raw: string): boolean {
   try {
     const { protocol } = new URL(raw);
@@ -16,21 +14,12 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Analysis timed out after ${ms / 1000}s`)), ms),
-    ),
-  ]);
-}
-
 export class AnalyzerController {
   static async analyze(
     req: AuthRequest,
-    res: Response<ApiResponse<AnalysisResult>>,
+    res: Response<ApiResponse<AnalysisResult> & { savedToHistory?: boolean }>,
   ): Promise<void> {
-    const { url, projectId } = req.body as { url: string; projectId?: string };
+    const { url } = req.body as { url: string };
 
     if (!url || typeof url !== 'string') {
       res.status(400).json({ success: false, error: 'url field is required' });
@@ -43,40 +32,46 @@ export class AnalyzerController {
     }
 
     try {
-      const result = await withTimeout(AnalyzerService.analyze(url), ANALYSIS_TIMEOUT_MS);
-      res.json({ success: true, data: result });
+      const result = await AnalyzerService.analyze(url);
 
-      // Persist to history when a logged-in user sends the request (e.g. from the extension)
+      let savedToHistory = false;
       if (req.userId) {
-        AnalyzerController.persistForUser(result, req.userId, projectId).catch((err: unknown) => {
-          console.error('[Analyzer] Failed to persist:', (err as Error).message);
-        });
+        try {
+          await AnalyzerController.persistForUser(result, req.userId);
+          savedToHistory = true;
+        } catch (err) {
+          console.error('[Analyzer] History save failed:', (err as Error).message);
+        }
       }
+
+      res.json({ success: true, data: result, savedToHistory });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Analysis failed';
-      const status = message.includes('timed out') ? 504 : 500;
-      res.status(status).json({ success: false, error: message });
+      res.status(500).json({ success: false, error: message });
     }
   }
 
   private static async persistForUser(
     result: AnalysisResult,
     userId: string,
-    projectId?: string,
   ): Promise<void> {
-    // Resolve or auto-create the Website document for this URL
-    const normalized = result.url.startsWith('http') ? result.url : `https://${result.url}`;
-    let resolvedProjectId = projectId;
+    const parsed   = new URL(result.url);
+    const hostname = parsed.hostname;
+    const baseUrl  = `${parsed.protocol}//${hostname}`;
 
-    if (!resolvedProjectId) {
-      // No project explicitly selected — upsert a Website entry so the URL
-      // appears in the user's websites list automatically
-      const website = await Website.findOneAndUpdate(
-        { userId, url: normalized },
-        { $setOnInsert: { url: normalized, name: new URL(normalized).hostname } },
-        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
-      );
-      resolvedProjectId = String(website!._id);
+    const allWebsites = await Website.find({ userId }).lean();
+    console.log(`[Analyzer] userId=${userId} websites=${allWebsites.length}`, allWebsites.map(w => w.url));
+
+    let website = allWebsites.find(w => {
+      try { return new URL(w.url).hostname === hostname; }
+      catch { return false; }
+    });
+
+    if (!website) {
+      console.log(`[Analyzer] No match for hostname=${hostname}, creating new website`);
+      website = await Website.create({ userId, url: baseUrl, name: hostname });
+    } else {
+      console.log(`[Analyzer] Matched website _id=${website._id} url=${website.url}`);
     }
 
     const entry = {
@@ -87,6 +82,10 @@ export class AnalyzerController {
       scores:    result.scores,
       metrics:   result.metrics,
     };
-    await HistoryService.save(entry, userId, resolvedProjectId);
+
+    const projectId = String(website._id);
+    console.log(`[Analyzer] Saving history with projectId=${projectId}`);
+    await HistoryService.save(entry, userId, projectId, result as unknown as Record<string, unknown>);
+    console.log(`[Analyzer] History saved ✓`);
   }
 }
