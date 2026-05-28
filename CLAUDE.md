@@ -9,32 +9,30 @@ Always commit locally when asked, but wait for a direct "push et" or equivalent 
 
 ## Commands
 
-This is an npm workspaces monorepo (`backend` + `frontend`). Always run npm commands from the repo root unless targeting a specific workspace.
+This is a **pnpm + Turborepo monorepo**. Always run commands from the repo root; Turbo fans out to the right workspace automatically.
 
 ```bash
-# Run both services concurrently (recommended for development)
-npm run dev
+# Run all services concurrently
+pnpm dev
 
-# Run individually
-npm run dev:backend     # tsx watch on backend/src/index.ts, port 3101
-npm run dev:frontend    # Vite dev server, port 5173
+# Run individual workspaces
+pnpm dev:backend    # tsx watch → apps/backend/src/index.ts, port 3101
+pnpm dev:web        # Vite dev server → apps/web-dashboard, port 5173
+pnpm dev:ext        # WXT dev → apps/chrome-extension (loads into Chrome)
 
 # Build
-npm run build:backend   # tsc → backend/dist/
-npm run build:frontend  # tsc -b && vite build
+pnpm build          # full monorepo build (respects dependency order)
+pnpm build:web      # web-dashboard only
 
-# Production (after build)
-npm start --workspace=backend   # node dist/index.js
-
-# Lint (frontend only — no backend linter configured)
-npm run lint --workspace=frontend
+# First-time setup (after cloning or changing package managers)
+pnpm install
 ```
 
 There are no automated tests configured in this project.
 
 ## Environment Setup
 
-**Backend** — `backend/.env` (copy from `backend/.env.example`):
+**Backend** — `apps/backend/.env` (copy from `apps/backend/.env.example`):
 ```
 PORT=3101
 CLIENT_URL=http://localhost:5173
@@ -44,7 +42,7 @@ JWT_SECRET=<secret>
 NODE_ENV=development
 ```
 
-**Frontend** — `frontend/.env`:
+**Web Dashboard** — `apps/web-dashboard/.env`:
 ```
 VITE_BACKEND_URL=http://localhost:3101   # defaults to this if omitted
 VITE_GOOGLE_CLIENT_ID=<oauth client id>
@@ -57,8 +55,14 @@ MongoDB is gracefully optional — the server starts and runs analysis even with
 ### Monorepo structure
 ```
 perfscope/
-├── backend/   (@perfscope/backend — Express + Socket.io + Lighthouse)
-└── frontend/  (Vite + React 19 + TypeScript)
+├── pnpm-workspace.yaml
+├── turbo.json
+├── apps/
+│   ├── backend/           (@perfscope/backend — Express + Socket.io + Lighthouse)
+│   ├── web-dashboard/     (@perfscope/web-dashboard — Vite + React 19 + TypeScript)
+│   └── chrome-extension/  (@perfscope/chrome-extension — WXT + React + Tailwind)
+└── packages/
+    └── shared/            (@perfscope/shared — common TS types + API client factory)
 ```
 
 ### Analysis pipeline (the core flow)

@@ -2,23 +2,29 @@
   "name": "perfscope",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
+  "packageManager": "pnpm@10.33.3",
   "scripts": {
-    "dev:backend": "npm run dev --workspace=backend",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend"
+    "dev": "turbo dev",
+    "dev:backend": "turbo dev --filter=@perfscope/backend",
+    "dev:web": "turbo dev --filter=@perfscope/web-dashboard",
+    "dev:ext": "turbo dev --filter=@perfscope/chrome-extension",
+    "build": "turbo build",
+    "build:web": "turbo build --filter=@perfscope/web-dashboard",
+    "lint": "turbo lint"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "turbo": "^2.3.3"
   },
-  "dependencies": {
-    "@react-oauth/google": "^0.13.5",
-    "react-hook-form": "^7.75.0",
-    "zustand": "^5.0.13"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@prisma/engines",
+      "core-js",
+      "esbuild",
+      "prisma",
+      "protobufjs",
+      "puppeteer",
+      "spawn-sync"
+    ]
   }
 }
