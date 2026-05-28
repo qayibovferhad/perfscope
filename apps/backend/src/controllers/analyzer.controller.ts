@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import { AnalyzerService } from '../services/analyzer.service.js';
-import { HistoryService } from '../services/history.service.js';
+import { HistoryService }  from '../services/history.service.js';
+import { Website }         from '../models/Website.model.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import type { ApiResponse, AnalysisResult } from '../types/index.js';
 
@@ -47,16 +48,8 @@ export class AnalyzerController {
 
       // Persist to history when a logged-in user sends the request (e.g. from the extension)
       if (req.userId) {
-        const entry = {
-          id:        result.id,
-          shortId:   result.id.slice(0, 8),
-          url:       result.url,
-          timestamp: result.timestamp,
-          scores:    result.scores,
-          metrics:   result.metrics,
-        };
-        HistoryService.save(entry, req.userId, projectId).catch((err: unknown) => {
-          console.error('[Analyzer] Failed to persist history:', (err as Error).message);
+        AnalyzerController.persistForUser(result, req.userId, projectId).catch((err: unknown) => {
+          console.error('[Analyzer] Failed to persist:', (err as Error).message);
         });
       }
     } catch (err) {
@@ -64,5 +57,36 @@ export class AnalyzerController {
       const status = message.includes('timed out') ? 504 : 500;
       res.status(status).json({ success: false, error: message });
     }
+  }
+
+  private static async persistForUser(
+    result: AnalysisResult,
+    userId: string,
+    projectId?: string,
+  ): Promise<void> {
+    // Resolve or auto-create the Website document for this URL
+    const normalized = result.url.startsWith('http') ? result.url : `https://${result.url}`;
+    let resolvedProjectId = projectId;
+
+    if (!resolvedProjectId) {
+      // No project explicitly selected — upsert a Website entry so the URL
+      // appears in the user's websites list automatically
+      const website = await Website.findOneAndUpdate(
+        { userId, url: normalized },
+        { $setOnInsert: { url: normalized, name: new URL(normalized).hostname } },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+      );
+      resolvedProjectId = String(website!._id);
+    }
+
+    const entry = {
+      id:        result.id,
+      shortId:   result.id.slice(0, 8),
+      url:       result.url,
+      timestamp: result.timestamp,
+      scores:    result.scores,
+      metrics:   result.metrics,
+    };
+    await HistoryService.save(entry, userId, resolvedProjectId);
   }
 }
