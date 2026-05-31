@@ -1,50 +1,16 @@
 import { HistoryModel } from '../models/History.model.js';
 import { Website } from '../models/Website.model.js';
+import type {
+  HistoryEntry,
+  ProjectAuditEntry,
+  RouteGroup,
+  ProjectAuditsResult,
+} from '@perfscope/shared';
 
 const MAX_PER_URL = 10;
 
-export interface HistoryEntry {
-  id:        string;
-  shortId:   string;
-  url:       string;
-  timestamp: string;
-  scores: {
-    performance:   number;
-    accessibility: number;
-    bestPractices: number;
-    seo:           number;
-  };
-  metrics: {
-    fcp: number;
-    lcp: number;
-    tbt: number;
-    cls: number;
-    si:  number;
-    tti: number;
-  };
-}
-
-export interface ProjectAuditEntry extends HistoryEntry {
-  routePath: string;
-}
-
-export interface RouteGroup {
-  routePath:  string;
-  entries:    ProjectAuditEntry[];
-  trend:      'improving' | 'regressing' | 'stable' | 'single';
-  lastScore:  number;
-}
-
-export interface ProjectAuditsResult {
-  project: { id: string; name: string; url: string };
-  groups:  RouteGroup[];
-  stats: {
-    totalAudits:    number;
-    avgPerformance: number;
-    uniqueRoutes:   number;
-    lastAuditAt:    string | null;
-  };
-}
+// Re-export shared types so existing imports `from '.../history.service.js'` keep working.
+export type { HistoryEntry, ProjectAuditEntry, RouteGroup, ProjectAuditsResult };
 
 function normalizeUrl(url: string): string {
   try {

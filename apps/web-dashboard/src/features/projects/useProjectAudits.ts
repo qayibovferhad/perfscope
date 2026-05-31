@@ -1,45 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
+import type {
+  ProjectAuditEntry,
+  RouteGroup,
+  ProjectAuditsResult as ProjectAuditsData,
+} from '@/entities/history';
 
-export interface ProjectAuditEntry {
-  id:        string;
-  shortId:   string;
-  url:       string;
-  timestamp: string;
-  routePath: string;
-  scores: {
-    performance:   number;
-    accessibility: number;
-    bestPractices: number;
-    seo:           number;
-  };
-  metrics: {
-    fcp: number;
-    lcp: number;
-    tbt: number;
-    cls: number;
-    si:  number;
-    tti: number;
-  };
-}
-
-export interface RouteGroup {
-  routePath:  string;
-  entries:    ProjectAuditEntry[];
-  trend:      'improving' | 'regressing' | 'stable' | 'single';
-  lastScore:  number;
-}
-
-export interface ProjectAuditsData {
-  project: { id: string; name: string; url: string };
-  groups:  RouteGroup[];
-  stats: {
-    totalAudits:    number;
-    avgPerformance: number;
-    uniqueRoutes:   number;
-    lastAuditAt:    string | null;
-  };
-}
+export type { ProjectAuditEntry, RouteGroup, ProjectAuditsData };
 
 export function useProjectAudits(projectId: string) {
   return useQuery<ProjectAuditsData>({
