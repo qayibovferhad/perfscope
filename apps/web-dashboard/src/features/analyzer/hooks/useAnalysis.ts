@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/api/socket';
+import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/shared/api/socket';
 import { useAnalysisStore } from '@/store/analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '../types';
 

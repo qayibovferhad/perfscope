@@ -15,8 +15,8 @@
 import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import * as d3 from 'd3';
 import { Zap, Clock, AlertTriangle, MousePointerClick, Code2, Activity, ShieldCheck, ShieldAlert } from 'lucide-react';
-import { Card, CardContent } from '@/shared/components/ui/card';
-import { Button } from '@/shared/components/ui/button';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Button } from '@/shared/ui/button';
 import { useTimelineContext } from '../context/TimelineContext';
 import type { InteractionData, InteractionEvent, LongTaskSegment } from '../types';
 

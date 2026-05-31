@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { Gauge, Eye, Code2, Search } from 'lucide-react';
-import { Card, CardContent } from '@/shared/components/ui/card';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { cn } from '@/shared/lib/utils';
 
 const ICONS = {
   Performance:     Gauge,

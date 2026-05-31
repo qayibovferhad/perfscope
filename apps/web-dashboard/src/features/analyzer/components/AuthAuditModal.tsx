@@ -2,17 +2,17 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 // Loader2 used in launching state and checking state
-import { apiClient } from '@/api/client';
+import { apiClient } from '@/shared/api/client';
 import { useAuthAuditStore } from '@/store/authAuditStore';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui/dialog';
+} from '@/shared/ui/dialog';
 
 type Step = 'checking' | 'setup' | 'ready';
 

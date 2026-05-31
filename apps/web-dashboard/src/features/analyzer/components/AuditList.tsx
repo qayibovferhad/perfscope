@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import type { AuditItem } from '../types';
 
 const OTHER_STYLES: Record<string, string> = {

@@ -7,8 +7,8 @@ import {
   CheckCircle2, Activity, ChevronUp, ChevronDown, ChevronsUpDown,
   Filter, ArrowRight, GitCompareArrows, ExternalLink, Loader2,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { ThemeToggle } from '@/shared/components/ThemeToggle';
+import { Button } from '@/shared/ui/button';
+import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { useHistory, useAllHistory, fetchHistoryResult, type HistoryEntry } from './hooks/useHistory';
 import { useWebsites } from '../dashboard/useWebsites';
 import { RegressionHistory, EvolutionChart } from './components/RegressionHistory';

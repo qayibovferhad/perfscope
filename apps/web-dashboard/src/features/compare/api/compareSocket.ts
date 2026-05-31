@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
-import type { AnalysisCallbacks } from '@/api/socket';
+import type { AnalysisCallbacks } from '@/shared/api/socket';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
 

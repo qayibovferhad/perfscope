@@ -8,8 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui/dialog';
-import { apiClient } from '@/api/client';
+} from '@/shared/ui/dialog';
+import { apiClient } from '@/shared/api/client';
 import { useWebsites } from './useWebsites';
 
 interface WebsiteForm { url: string; name: string }

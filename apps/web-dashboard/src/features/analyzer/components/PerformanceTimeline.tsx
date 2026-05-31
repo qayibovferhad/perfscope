@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, forwardRef } from 'react';
 import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { useTimelineContext } from '../context/TimelineContext';
 import type { TimelineData, TimelineFrame } from '../types';
 

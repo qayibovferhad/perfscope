@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2, ShieldAlert, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Input } from '@/shared/components/ui/input';
-import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Button } from '@/shared/ui/button';
 import { ProgressStepper } from '../../analyzer/components/ProgressStepper';
 import { AuthAuditModal } from '../../analyzer/components/AuthAuditModal';
 import type { AnalysisResult, AnalysisProgress } from '../../analyzer/types';

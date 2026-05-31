@@ -4,10 +4,10 @@ import { motion } from 'framer-motion';
 import { Moon, Globe, Plus, X, Route, ExternalLink, Loader2, Settings2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/shared/components/ui/dialog';
-import { Input }       from '@/shared/components/ui/input';
-import { Button }      from '@/shared/components/ui/button';
-import { TimePicker }  from '@/shared/components/ui/time-picker';
+} from '@/shared/ui/dialog';
+import { Input }       from '@/shared/ui/input';
+import { Button }      from '@/shared/ui/button';
+import { TimePicker }  from '@/shared/ui/time-picker';
 import { useWebsites } from '@/features/dashboard/useWebsites';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';

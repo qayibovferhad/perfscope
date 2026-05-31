@@ -11,9 +11,9 @@ function ChromeIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-import { Surface }       from '@/shared/components/ui/surface';
-import { StatusPill }    from '@/shared/components/ui/status-pill';
-import { GradientIcon }  from '@/shared/components/ui/gradient-icon';
+import { Surface }       from '@/shared/ui/surface';
+import { StatusPill }    from '@/shared/ui/status-pill';
+import { GradientIcon }  from '@/shared/ui/gradient-icon';
 
 /* ─── Connection hook ──────────────────────────────────────────────────────── */
 

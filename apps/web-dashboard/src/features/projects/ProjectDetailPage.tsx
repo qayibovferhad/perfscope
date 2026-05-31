@@ -7,15 +7,15 @@ import {
   Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2, Moon,
 } from 'lucide-react';
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { CrossWebsitePicker } from './components/CrossWebsitePicker';
 import { setComparePreload } from '@/store/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';
 import { useWebsites } from '@/features/dashboard/useWebsites';
-import { Input }      from '@/shared/components/ui/input';
-import { Button }     from '@/shared/components/ui/button';
-import { TimePicker } from '@/shared/components/ui/time-picker';
+import { Input }      from '@/shared/ui/input';
+import { Button }     from '@/shared/ui/button';
+import { TimePicker } from '@/shared/ui/time-picker';
 import type { AnalysisResult } from '@/features/analyzer/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

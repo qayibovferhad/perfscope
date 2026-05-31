@@ -5,7 +5,7 @@ import { GoogleButton } from './GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore, type AuthUser } from '@/store/authStore';
-import { apiClient } from '@/api/client';
+import { apiClient } from '@/shared/api/client';
 
 
 interface FormValues {

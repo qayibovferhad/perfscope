@@ -1,6 +1,6 @@
 import { Clock, Maximize2, Layers, LayoutGrid, Zap, Timer } from 'lucide-react';
-import { Card, CardContent } from '@/shared/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/shared/ui/card';
+import { cn } from '@/shared/lib/utils';
 import type { CoreWebVitals } from '../types';
 
 const METRICS = [

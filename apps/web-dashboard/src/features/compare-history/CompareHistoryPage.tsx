@@ -6,7 +6,7 @@ import {
   Minus, ChevronRight, X, Zap, History, FileDown, Lightbulb,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from './useCompareHistory';
-import { ThemeToggle } from '@/shared/components/ThemeToggle';
+import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 

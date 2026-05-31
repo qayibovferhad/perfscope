@@ -17,7 +17,7 @@ import {
   Network, X, ExternalLink, Play, Pause,
 } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useTimelineContext } from '../context/TimelineContext';
 import { FlameChart } from './FlameChart';
 import type {

@@ -2,7 +2,7 @@ import {
   useRef, useEffect, useMemo, memo, useState, useLayoutEffect, useCallback,
 } from 'react';
 import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useTimelineContext } from '../context/TimelineContext';
 import type { ParsedResources, NetworkRequest, ResourceType } from '../types';
 

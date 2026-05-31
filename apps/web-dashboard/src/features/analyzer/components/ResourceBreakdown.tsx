@@ -4,9 +4,9 @@ import {
   FileCode2, Palette, ImageIcon, Type, Globe,
   ExternalLink, AlertTriangle, Info,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Badge } from '@/shared/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
+import { cn } from '@/shared/lib/utils';
 import type { ParsedResources, ResourceType, NetworkRequest } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
