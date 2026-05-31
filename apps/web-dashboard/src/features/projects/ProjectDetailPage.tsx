@@ -16,7 +16,7 @@ import { useWebsites } from '@/features/dashboard/useWebsites';
 import { Input }      from '@/shared/ui/input';
 import { Button }     from '@/shared/ui/button';
 import { TimePicker } from '@/shared/ui/time-picker';
-import type { AnalysisResult } from '@/features/analyzer/types';
+import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

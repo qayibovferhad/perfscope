@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Trophy, AlertTriangle, TrendingUp } from 'lucide-react';
-import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
+import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
 
 
 const PANEL: React.CSSProperties = {

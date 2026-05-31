@@ -1,6 +1,6 @@
 import { useEffect, useRef, memo, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-import type { DependencyGraph, DependencyNode, ResourceType } from '../types';
+import type { DependencyGraph, DependencyNode, ResourceType } from '@/entities/analysis';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

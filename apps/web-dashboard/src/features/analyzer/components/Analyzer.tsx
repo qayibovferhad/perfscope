@@ -22,7 +22,7 @@ import { CLSVisualizer } from './CLSVisualizer';
 import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import type { AnalysisResult, ParsedResources, DependencyGraph } from '../types';
+import type { AnalysisResult, ParsedResources, DependencyGraph } from '@/entities/analysis';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { usePrefetchStore } from '@/store/prefetchStore';
 import { useAuthAuditStore } from '@/store/authAuditStore';

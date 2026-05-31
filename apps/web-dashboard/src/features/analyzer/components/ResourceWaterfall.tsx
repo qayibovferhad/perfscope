@@ -4,7 +4,7 @@ import {
 import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useTimelineContext } from '../context/TimelineContext';
-import type { ParsedResources, NetworkRequest, ResourceType } from '../types';
+import type { ParsedResources, NetworkRequest, ResourceType } from '@/entities/analysis';
 
 const LEFT_W     = 320;
 const MAX_ROWS   = 120;

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { startAnalysis } from '@/shared/api/socket';
-import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@/features/analyzer/types';
+import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@/entities/analysis';
 
 export type PrefetchPartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
 

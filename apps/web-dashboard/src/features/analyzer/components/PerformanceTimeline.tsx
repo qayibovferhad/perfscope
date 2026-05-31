@@ -3,7 +3,7 @@ import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useTimelineContext } from '../context/TimelineContext';
-import type { TimelineData, TimelineFrame } from '../types';
+import type { TimelineData, TimelineFrame } from '@/entities/analysis';
 
 const METRICS = [
   { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    border: 'border-blue-500',    hex: '#3b82f6' },

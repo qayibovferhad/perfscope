@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/shared/api/socket';
 import { useAnalysisStore } from '@/store/analysisStore';
-import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '../types';
+import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@/entities/analysis';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 

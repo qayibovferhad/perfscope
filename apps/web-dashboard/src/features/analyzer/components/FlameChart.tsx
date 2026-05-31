@@ -1,7 +1,7 @@
 import { useEffect, useRef, memo } from 'react';
 import * as d3 from 'd3';
 import { useTimelineContext } from '../context/TimelineContext';
-import type { FlameChartData, FlameChartEvent } from '../types';
+import type { FlameChartData, FlameChartEvent } from '@/entities/analysis';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

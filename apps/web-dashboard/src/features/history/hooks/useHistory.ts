@@ -1,27 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
-import type { AnalysisResult } from '@/features/analyzer/types';
-
-export interface HistoryEntry {
-  id:        string;
-  shortId:   string;
-  url:       string;
-  timestamp: string;
-  scores: {
-    performance:   number;
-    accessibility: number;
-    bestPractices: number;
-    seo:           number;
-  };
-  metrics: {
-    fcp: number;
-    lcp: number;
-    tbt: number;
-    cls: number;
-    si:  number;
-    tti: number;
-  };
-}
+import type { AnalysisResult } from '@/entities/analysis';
+import type { HistoryEntry } from '@/entities/history';
 
 export function useHistory(url: string | null) {
   return useQuery<HistoryEntry[]>({

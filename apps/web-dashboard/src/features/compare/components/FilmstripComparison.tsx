@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Film, Play, Pause, Clock } from 'lucide-react';
-import type { AnalysisResult, TimelineData, TimelineFrame } from '../../analyzer/types';
+import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 

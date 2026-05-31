@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Info } from 'lucide-react';
-import type { CoreWebVitals } from '../../analyzer/types';
+import type { CoreWebVitals } from '@/entities/analysis';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ import { useEffect, useRef, useMemo, memo } from 'react';
 import * as d3 from 'd3';
 import { MemoryStick, TrendingUp, AlertTriangle, Activity } from 'lucide-react';
 import { useTimelineContext } from '../context/TimelineContext';
-import type { HeapMemoryData, HeapMemoryPoint } from '../types';
+import type { HeapMemoryData, HeapMemoryPoint } from '@/entities/analysis';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

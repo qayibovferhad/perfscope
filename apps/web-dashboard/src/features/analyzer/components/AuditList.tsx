@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { AuditItem } from '../types';
+import type { AuditItem } from '@/entities/analysis';
 
 const OTHER_STYLES: Record<string, string> = {
   high:   'border-orange-500/20 bg-orange-500/5',

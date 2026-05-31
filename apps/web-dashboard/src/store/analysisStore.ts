@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnalysisResult } from '@/features/analyzer/types';
+import type { AnalysisResult } from '@/entities/analysis';
 
 interface AnalysisStore {
   lastResult: AnalysisResult | null;

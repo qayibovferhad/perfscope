@@ -3,7 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { TimelineProvider } from '../../analyzer/context/TimelineContext';
 import { ScoreCard } from '../../analyzer/components/ScoreCard';
 import { CompareMetricsGrid } from './CompareMetricsGrid';
-import type { AnalysisResult } from '../../analyzer/types';
+import type { AnalysisResult } from '@/entities/analysis';
 
 type Side = 'target' | 'competitor';
 

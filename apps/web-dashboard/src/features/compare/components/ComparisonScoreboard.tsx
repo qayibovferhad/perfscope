@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Info, Zap, Star } from 'lucide-react';
-import type { AnalysisResult, CoreWebVitals } from '../../analyzer/types';
+import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
 
 
 const PANEL_BG  = 'var(--ps-panel-bg)';

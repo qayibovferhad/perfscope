@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
-import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@/features/analyzer/types';
+import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@/entities/analysis';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
 

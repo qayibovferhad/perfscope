@@ -1,4 +1,6 @@
-import type { AnalysisResult, WebsiteDoc, HistoryEntry } from '../types/analysis.js'
+import type { AnalysisResult } from '../types/analysis.js'
+import type { WebsiteDoc }     from '../types/website.js'
+import type { HistoryEntry }   from '../types/history.js'
 
 export interface ApiClientConfig {
   baseUrl: string

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Layers, Cpu, AlertTriangle, ExternalLink } from 'lucide-react';
-import type { AnalysisResult, FlameChartData } from '../../analyzer/types';
+import type { AnalysisResult, FlameChartData } from '@/entities/analysis';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 

@@ -1,27 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
+import type { Website, WebsiteSession, WebsiteAutomation } from '@/entities/website';
 
-export interface WebsiteSession {
-  capturedAt: string;
-  cookies: Array<{ name?: string; value?: string; domain?: string }>;
-  localStorage: Record<string, string>;
-}
-
-export interface WebsiteAutomation {
-  enabled:      boolean;
-  routes:       string[];
-  scheduleTime: string;
-  lastRunAt:    string | null;
-}
-
-export interface Website {
-  _id:        string;
-  url:        string;
-  name:       string;
-  createdAt:  string;
-  session:    WebsiteSession | null;
-  automation: WebsiteAutomation;
-}
+export type { Website, WebsiteSession, WebsiteAutomation };
 
 const KEY = ['websites'];
 

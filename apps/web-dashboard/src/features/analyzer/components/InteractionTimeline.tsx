@@ -18,7 +18,7 @@ import { Zap, Clock, AlertTriangle, MousePointerClick, Code2, Activity, ShieldCh
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { useTimelineContext } from '../context/TimelineContext';
-import type { InteractionData, InteractionEvent, LongTaskSegment } from '../types';
+import type { InteractionData, InteractionEvent, LongTaskSegment } from '@/entities/analysis';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 

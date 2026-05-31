@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '@/features/analyzer/types';
+import type { AnalysisResult } from '@/entities/analysis';
 
 interface ComparePreload {
   target:     AnalysisResult;

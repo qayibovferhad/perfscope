@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { AnalysisProgress } from '../types';
+import type { AnalysisProgress } from '@/entities/analysis';
 
 const STAGES = [
   { label: 'Launching',  threshold: 10  },

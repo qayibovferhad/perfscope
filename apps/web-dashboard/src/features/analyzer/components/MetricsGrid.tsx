@@ -1,7 +1,7 @@
 import { Clock, Maximize2, Layers, LayoutGrid, Zap, Timer } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { cn } from '@/shared/lib/utils';
-import type { CoreWebVitals } from '../types';
+import type { CoreWebVitals } from '@/entities/analysis';
 
 const METRICS = [
   { key: 'fcp' as const, abbr: 'FCP', label: 'First Contentful Paint',   icon: Clock,      fmt: ms,  good: (v: number) => v < 1800, hint: '< 1.8s'  },

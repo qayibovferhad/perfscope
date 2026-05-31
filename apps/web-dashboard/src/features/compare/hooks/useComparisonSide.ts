@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { startCompareAnalysis, startCompareAuthAudit } from '../api/compareSocket';
-import type { AnalysisResult, AnalysisProgress } from '../../analyzer/types';
+import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 

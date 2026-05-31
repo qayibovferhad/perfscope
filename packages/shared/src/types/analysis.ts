@@ -1,69 +1,246 @@
-// Core scores — 0-100 integers, mirroring what the backend's toScore() emits
+// ─── Categories & stages ─────────────────────────────────────────────────────
+
+export type AnalysisStage    = 'launching' | 'navigating' | 'auditing' | 'processing' | 'complete' | 'error'
+export type AnalysisCategory = 'performance' | 'accessibility' | 'best-practices' | 'seo'
+export type AuditImpact      = 'critical' | 'high' | 'medium' | 'low'
+export type ResourceType     = 'script' | 'stylesheet' | 'image' | 'font' | 'document' | 'media' | 'other'
+export type FlameCategory    = 'scripting' | 'rendering' | 'painting' | 'other'
+
+// ─── Scores & metrics ────────────────────────────────────────────────────────
+
 export interface PerformanceScores {
-  performance: number
+  performance:   number
   accessibility: number
   bestPractices: number
-  seo: number
+  seo:           number
 }
 
-// All timing in milliseconds; CLS is dimensionless
 export interface CoreWebVitals {
   fcp: number
   lcp: number
   tbt: number
   cls: number
-  si: number
+  si:  number
   tti: number
 }
 
+// ─── Audits ──────────────────────────────────────────────────────────────────
+
+export interface AuditItem {
+  id:           string
+  title:        string
+  description:  string
+  score:        number | null
+  displayValue: string | undefined
+  impact:       AuditImpact
+}
+
+export interface CategoryPartial {
+  analysisId: string
+  category:   AnalysisCategory
+  score:      number
+  metrics?:   CoreWebVitals
+  audits:     AuditItem[]
+}
+
+// ─── Resources / network ─────────────────────────────────────────────────────
+
+export interface ResourceTypeSummary {
+  requestCount: number
+  transferSize: number
+  resourceSize: number
+}
+
+export interface ResourceSummary {
+  script:     ResourceTypeSummary
+  stylesheet: ResourceTypeSummary
+  image:      ResourceTypeSummary
+  font:       ResourceTypeSummary
+  document:   ResourceTypeSummary
+  media:      ResourceTypeSummary
+  other:      ResourceTypeSummary
+  total:      ResourceTypeSummary
+}
+
+export interface NetworkRequest {
+  url:                 string
+  resourceType:        ResourceType
+  transferSize:        number
+  resourceSize:        number
+  statusCode:          number
+  mimeType:            string
+  isThirdParty:        boolean
+  detectedLibrary:     string | null
+  isCritical:          boolean
+  advice?:             string
+  /** Milliseconds from navigation start */
+  startTime:           number
+  /** Milliseconds from navigation start */
+  endTime:             number
+  /** Time to First Byte (ms) */
+  ttfb:                number
+  /** Content download duration (ms) */
+  contentDownloadTime: number
+}
+
+export interface DetectedLibrary {
+  name:         string
+  url:          string
+  transferSize: number
+  isThirdParty: boolean
+  isCritical:   boolean
+}
+
+export interface ParsedResources {
+  requests:           NetworkRequest[]
+  summary:            ResourceSummary
+  thirdPartyRequests: NetworkRequest[]
+  jsFiles:            NetworkRequest[]
+  detectedLibraries:  DetectedLibrary[]
+}
+
+// ─── Timeline / filmstrip ────────────────────────────────────────────────────
+
+export interface TimelineFrame {
+  /** ms from navigationStart */
+  timing: number
+  /** data: URL */
+  data:   string
+}
+
+export interface TimelineData {
+  frames:  TimelineFrame[]
+  metrics: { fcp: number; lcp: number; tti: number; tbt: number }
+  /** ms from navigationStart to the earliest network request */
+  networkOffsetMs: number
+}
+
+// ─── Interaction / INP ───────────────────────────────────────────────────────
+
+export interface InteractionEvent {
+  id:                   string
+  type:                 string
+  startMs:              number
+  inputDelayMs:         number
+  processingTimeMs:     number
+  presentationDelayMs:  number
+  totalDurationMs:      number
+  targetElement:        string
+  blockingFunctionName: string | null
+  isUserInput:          boolean
+  isINP:                boolean
+}
+
+export interface LongTaskSegment {
+  startMs:          number
+  durationMs:       number
+  topFunctionName?: string
+}
+
+export interface InteractionData {
+  events:              InteractionEvent[]
+  longTasks:           LongTaskSegment[]
+  inpMs:               number
+  avgInputDelayMs:     number
+  totalBlockingTimeMs: number
+}
+
+// ─── Heap memory ─────────────────────────────────────────────────────────────
+
+export interface HeapMemoryPoint {
+  timeMs:    number
+  heapMb:    number
+  isGC:      boolean
+  domNodes?: number
+}
+
+export interface HeapMemoryData {
+  points:    HeapMemoryPoint[]
+  averageMb: number
+  peakMb:    number
+}
+
+// ─── Flame chart ─────────────────────────────────────────────────────────────
+
+export interface FlameChartEvent {
+  name:       string
+  category:   FlameCategory
+  startMs:    number
+  durationMs: number
+  depth:      number
+  url?:       string
+  isLongTask: boolean
+}
+
+export interface FlameChartData {
+  events:     FlameChartEvent[]
+  maxDepth:   number
+  durationMs: number
+}
+
+// ─── CLS visualizer ──────────────────────────────────────────────────────────
+
+export interface CLSShiftElement {
+  selector:    string
+  snippet:     string
+  score:       number
+  impact:      'high' | 'medium' | 'low'
+  rootCause?:  string
+  rect?:       { topPct: number; leftPct: number; widthPct: number; heightPct: number }
+}
+
+export interface CLSData {
+  totalScore:     number
+  elements:       CLSShiftElement[]
+  viewportWidth:  number
+  viewportHeight: number
+}
+
+// ─── Dependency graph ────────────────────────────────────────────────────────
+
+export interface DependencyNode {
+  url:          string
+  label:        string
+  resourceType: ResourceType
+  transferSize: number
+}
+
+export interface DependencyLink {
+  source:       string
+  target:       string
+  transferSize: number
+}
+
+export interface DependencyGraph {
+  nodes: DependencyNode[]
+  links: DependencyLink[]
+}
+
+// ─── Result root + progress ──────────────────────────────────────────────────
+
 export interface AnalysisResult {
-  id: string
-  url: string
-  timestamp: string
-  scores: PerformanceScores
-  metrics: CoreWebVitals
-  aiInsights?: string
+  id:                    string
+  url:                   string
+  timestamp:             string
+  scores:                PerformanceScores
+  metrics:               CoreWebVitals
+  audits:                AuditItem[]
+  resources?:            ParsedResources
+  aiInsights?:           string
+  timelineData?:         TimelineData
+  flameChartData?:       FlameChartData
+  dependencyGraph?:      DependencyGraph
+  heapMemoryData?:       HeapMemoryData
+  interactionData?:      InteractionData
+  clsData?:              CLSData
+  /** Set when Lighthouse was redirected to an auth/login page instead of the requested URL. */
+  authRedirectDetected?: { finalUrl: string }
 }
 
-export interface WebsiteDoc {
-  _id: string
-  url: string
-  name: string
-  userId: string
-  createdAt: string
+export interface AnalysisProgress {
+  analysisId: string
+  stage:      AnalysisStage
+  progress:   number
+  message:    string
 }
 
-export interface HistoryEntry {
-  id: string
-  shortId: string
-  url: string
-  timestamp: string
-  scores: PerformanceScores
-  metrics: CoreWebVitals
-}
-
-export type ScoreRating = 'good' | 'needs-improvement' | 'poor'
-
-export function rateScore(score: number): ScoreRating {
-  if (score >= 90) return 'good'
-  if (score >= 50) return 'needs-improvement'
-  return 'poor'
-}
-
-export function rateLcp(ms: number): ScoreRating {
-  if (ms < 2500) return 'good'
-  if (ms < 4000) return 'needs-improvement'
-  return 'poor'
-}
-
-export function rateCls(value: number): ScoreRating {
-  if (value < 0.1) return 'good'
-  if (value < 0.25) return 'needs-improvement'
-  return 'poor'
-}
-
-export function rateTbt(ms: number): ScoreRating {
-  if (ms < 200) return 'good'
-  if (ms < 600) return 'needs-improvement'
-  return 'poor'
-}

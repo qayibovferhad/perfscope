@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { AlertTriangle, SkipForward, ChevronRight, Zap, Info } from 'lucide-react';
-import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '../types';
+import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 

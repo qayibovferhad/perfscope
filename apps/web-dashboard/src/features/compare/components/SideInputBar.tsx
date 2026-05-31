@@ -5,7 +5,7 @@ import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { ProgressStepper } from '../../analyzer/components/ProgressStepper';
 import { AuthAuditModal } from '../../analyzer/components/AuthAuditModal';
-import type { AnalysisResult, AnalysisProgress } from '../../analyzer/types';
+import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
 
 type Side = 'target' | 'competitor';
 

@@ -23,7 +23,7 @@ import { FlameChart } from './FlameChart';
 import type {
   ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
   FlameChartData,
-} from '../types';
+} from '@/entities/analysis';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
