@@ -6,16 +6,16 @@ import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-rea
 import { apiClient } from '@/shared/api/client';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { Button } from '@/shared/ui/button';
-import { useComparisonSide } from './hooks/useComparisonSide';
-import { useWebsites } from '../dashboard/useWebsites';
-import { useCompetitorSessions } from './hooks/useCompetitorSessions';
-import { SideInputBar } from './components/SideInputBar';
-import { ComparisonScoreboard } from './components/ComparisonScoreboard';
-import { DeepComparison } from './components/DeepComparison';
-import { ComparisonEngine } from './components/ComparisonEngine';
-import { FilmstripComparison } from './components/FilmstripComparison';
-import { WaterfallComparison } from './components/WaterfallComparison';
-import { ComparisonSide } from './components/ComparisonSide';
+import { useComparisonSide } from '@/features/compare/hooks/useComparisonSide';
+import { useWebsites } from '@/features/dashboard/useWebsites';
+import { useCompetitorSessions } from '@/features/compare/hooks/useCompetitorSessions';
+import { SideInputBar } from '@/features/compare/components/SideInputBar';
+import { ComparisonScoreboard } from '@/features/compare/components/ComparisonScoreboard';
+import { DeepComparison } from '@/features/compare/components/DeepComparison';
+import { ComparisonEngine } from '@/features/compare/components/ComparisonEngine';
+import { FilmstripComparison } from '@/features/compare/components/FilmstripComparison';
+import { WaterfallComparison } from '@/features/compare/components/WaterfallComparison';
+import { ComparisonSide } from '@/features/compare/components/ComparisonSide';
 
 function normalize(url: string): string {
   const t = url.trim();

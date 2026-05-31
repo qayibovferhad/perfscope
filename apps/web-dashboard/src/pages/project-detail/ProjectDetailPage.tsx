@@ -6,9 +6,9 @@ import {
   ChevronDown, ChevronRight, ExternalLink, Activity, BarChart3,
   Clock, Route, RefreshCw, X, GitCompareArrows, CheckSquare, Loader2, Moon,
 } from 'lucide-react';
-import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from './useProjectAudits';
+import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from '@/features/projects/useProjectAudits';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { CrossWebsitePicker } from './components/CrossWebsitePicker';
+import { CrossWebsitePicker } from '@/features/projects/components/CrossWebsitePicker';
 import { setComparePreload } from '@/store/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';

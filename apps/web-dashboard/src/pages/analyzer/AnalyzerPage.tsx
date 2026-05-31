@@ -5,28 +5,28 @@ import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock, Shie
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { useAnalysis, type PartialMap } from '../hooks/useAnalysis';
-import { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ScoreCard';
-import { MetricsGrid } from './MetricsGrid';
-import { AuditList } from './AuditList';
-import { AiInsights } from './AiInsights';
-import { ProgressStepper } from './ProgressStepper';
-import { ResourceBreakdown } from './ResourceBreakdown';
-import { ResourceWaterfall } from './ResourceWaterfall';
-import { PerformanceTimeline, PerformanceTimelineSkeleton } from './PerformanceTimeline';
-import { TimelineWaterfall } from './TimelineWaterfall';
-import { ChordDiagram } from './ChordDiagram';
-import { HeapMemoryChart } from './HeapMemoryChart';
-import { InteractionTimeline } from './InteractionTimeline';
-import { CLSVisualizer } from './CLSVisualizer';
-import { TimelineProvider, useTimelineContext } from '../context/TimelineContext';
+import { useAnalysis, type PartialMap } from '@/features/analyzer/hooks/useAnalysis';
+import { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from '@/features/analyzer/components/ScoreCard';
+import { MetricsGrid } from '@/features/analyzer/components/MetricsGrid';
+import { AuditList } from '@/features/analyzer/components/AuditList';
+import { AiInsights } from '@/features/analyzer/components/AiInsights';
+import { ProgressStepper } from '@/features/analyzer/components/ProgressStepper';
+import { ResourceBreakdown } from '@/features/analyzer/components/ResourceBreakdown';
+import { ResourceWaterfall } from '@/features/analyzer/components/ResourceWaterfall';
+import { PerformanceTimeline, PerformanceTimelineSkeleton } from '@/features/analyzer/components/PerformanceTimeline';
+import { TimelineWaterfall } from '@/features/analyzer/components/TimelineWaterfall';
+import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
+import { HeapMemoryChart } from '@/features/analyzer/components/HeapMemoryChart';
+import { InteractionTimeline } from '@/features/analyzer/components/InteractionTimeline';
+import { CLSVisualizer } from '@/features/analyzer/components/CLSVisualizer';
+import { TimelineProvider, useTimelineContext } from '@/features/analyzer/context/TimelineContext';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import type { AnalysisResult, ParsedResources, DependencyGraph } from '@/entities/analysis';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { usePrefetchStore } from '@/store/prefetchStore';
 import { useAuthAuditStore } from '@/store/authAuditStore';
-import { AuthAuditModal } from './AuthAuditModal';
+import { AuthAuditModal } from '@/features/analyzer/components/AuthAuditModal';
 import { Input } from '@/shared/ui/input';
 import { useWebsites } from '@/features/dashboard/useWebsites';
 
@@ -126,8 +126,7 @@ function ResourcesAlert({ resources }: { resources: ParsedResources }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function Analyzer() {
-  console.log('[Analyzer] render');
+export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl] = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');

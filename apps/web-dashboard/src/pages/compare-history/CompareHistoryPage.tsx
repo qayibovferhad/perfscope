@@ -5,7 +5,7 @@ import {
   GitCompareArrows, Trophy, Clock, Search, TrendingUp, TrendingDown,
   Minus, ChevronRight, X, Zap, History, FileDown, Lightbulb,
 } from 'lucide-react';
-import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from './useCompareHistory';
+import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from '@/features/compare-history/useCompareHistory';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────

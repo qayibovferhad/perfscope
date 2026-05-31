@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
-import { useHistory, useAllHistory, fetchHistoryResult, type HistoryEntry } from './hooks/useHistory';
-import { useWebsites } from '../dashboard/useWebsites';
-import { RegressionHistory, EvolutionChart } from './components/RegressionHistory';
-import { CompareHistoryPage } from '../compare-history/CompareHistoryPage';
+import { useHistory, useAllHistory, fetchHistoryResult, type HistoryEntry } from '@/features/history/hooks/useHistory';
+import { useWebsites } from '@/features/dashboard/useWebsites';
+import { RegressionHistory, EvolutionChart } from '@/features/history/components/RegressionHistory';
+import { CompareHistoryPage } from '@/pages/compare-history/CompareHistoryPage';
 import { useAnalysisStore } from '@/store/analysisStore';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────

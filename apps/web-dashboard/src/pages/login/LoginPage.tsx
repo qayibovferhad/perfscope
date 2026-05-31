@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { GoogleButton } from './GoogleButton';
+import { GoogleButton } from '@/features/auth/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore, type AuthUser } from '@/store/authStore';
@@ -9,7 +9,6 @@ import { apiClient } from '@/shared/api/client';
 
 
 interface FormValues {
-  name:     string;
   email:    string;
   password: string;
 }
@@ -27,12 +26,12 @@ const inputBase: React.CSSProperties = {
   transition:   'border-color 0.15s, box-shadow 0.15s',
 };
 
-export function RegisterPage() {
+export function LoginPage() {
   const { user, setAuth, setUser } = useAuthStore();
   const navigate = useNavigate();
 
-  const [showPass,  setShowPass]  = useState(false);
-  const [serverErr, setServerErr] = useState('');
+  const [showPass,   setShowPass]   = useState(false);
+  const [serverErr,  setServerErr]  = useState('');
 
   const {
     register,
@@ -47,12 +46,12 @@ export function RegisterPage() {
   async function onSubmit(data: FormValues) {
     setServerErr('');
     try {
-      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/register', data);
+      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/login', data);
       setAuth(res.data.user, res.data.token);
       navigate('/app', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
-        ?.response?.data?.error ?? 'Registration failed';
+        ?.response?.data?.error ?? 'Invalid credentials';
       setServerErr(msg);
     }
   }
@@ -92,28 +91,12 @@ export function RegisterPage() {
               <span style={{ color: 'var(--ps-text-heading)' }}>Perf</span>
               <span style={{ background: 'linear-gradient(135deg,var(--ps-accent),#c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Scope</span>
             </h1>
-            <p className="text-xs mt-1" style={{ color: 'var(--ps-text-muted)' }}>Create a new account</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--ps-text-muted)' }}>Sign in to your account</p>
           </div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-          {/* Name */}
-          <div className="flex flex-col gap-1">
-            <input
-              {...register('name', { required: 'Full name is required' })}
-              style={inputBase}
-              placeholder="Full name"
-              onFocus={(e) => { e.target.style.borderColor = 'var(--ps-accent-border)'; e.target.style.boxShadow = '0 0 0 3px var(--ps-accent-muted)'; }}
-              onBlur={(e)  => { e.target.style.borderColor = 'var(--ps-panel-border)';  e.target.style.boxShadow = 'none'; }}
-            />
-            {errors.name && (
-              <span className="text-[11px] px-1" style={{ color: 'var(--ps-regression)' }}>
-                {errors.name.message}
-              </span>
-            )}
-          </div>
-
           {/* Email */}
           <div className="flex flex-col gap-1">
             <input
@@ -164,13 +147,13 @@ export function RegisterPage() {
 
           <button type="submit" disabled={isSubmitting}
             className="ps-btn-primary flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold mt-1 disabled:opacity-60">
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
           </button>
 
           <p className="text-center text-xs" style={{ color: 'var(--ps-text-muted)' }}>
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold" style={{ color: 'var(--ps-accent)' }}>
-              Sign in
+            Don't have an account?{' '}
+            <Link to="/register" className="font-semibold" style={{ color: 'var(--ps-accent)' }}>
+              Register
             </Link>
           </p>
         </form>
