@@ -10,8 +10,8 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
-        /* Shadcn semantic tokens */
-        background: 'hsl(var(--background))',
+        /* ── Shadcn semantic tokens (kept for Shadcn primitives) ──────────── */
+        background:  'hsl(var(--background))',
         foreground:  'hsl(var(--foreground))',
         card: {
           DEFAULT:    'hsl(var(--card))',
@@ -41,27 +41,56 @@ export default {
         input:  'hsl(var(--input))',
         ring:   'hsl(var(--ring))',
 
-        /* PerfScope semantic palette — usable as text-ps-accent, bg-ps-accent, etc. */
-        'ps-accent':     'var(--ps-accent)',
-        'ps-amber':      'var(--ps-amber)',
-        'ps-healthy':    'var(--ps-healthy)',
-        'ps-regression': 'var(--ps-regression)',
-        'ps-page':       'var(--ps-page-bg)',
+        /* ── PerfScope Design System ─────────────────────────────────────── */
+        /* Surfaces & dividers */
+        'ps-page':             'var(--ps-page-bg)',
+        'ps-surface':          'var(--ps-panel-bg)',
+        'ps-surface-border':   'var(--ps-panel-border)',
+        'ps-divider':          'var(--ps-divider)',
+
+        /* Text scale */
+        'ps-heading':    'var(--ps-text-heading)',
+        'ps-body':       'var(--ps-text-primary)',
+        'ps-secondary':  'var(--ps-text-secondary)',
+        'ps-muted':      'var(--ps-text-muted)',
+        'ps-faint':      'var(--ps-text-faint)',
+
+        /* Accent — violet */
+        'ps-accent':         'var(--ps-accent)',
+        'ps-accent-muted':   'var(--ps-accent-muted)',
+        'ps-accent-hover':   'var(--ps-accent-hover)',
+        'ps-accent-border':  'var(--ps-accent-border)',
+
+        /* Amber */
+        'ps-amber':          'var(--ps-amber)',
+        'ps-amber-muted':    'var(--ps-amber-muted)',
+        'ps-amber-border':   'var(--ps-amber-border)',
+
+        /* Healthy / success */
+        'ps-healthy':         'var(--ps-healthy)',
+        'ps-healthy-muted':   'var(--ps-healthy-muted)',
+        'ps-healthy-border':  'var(--ps-healthy-border)',
+
+        /* Regression / danger */
+        'ps-regression':      'var(--ps-regression)',
+        'ps-reg-muted':       'var(--ps-reg-muted)',
+        'ps-reg-border':      'var(--ps-reg-border)',
       },
       fontFamily: {
-        /* Heading & UI: Inter */
         sans:    ['Inter', 'system-ui', 'sans-serif'],
         heading: ['Inter', 'system-ui', 'sans-serif'],
-        /* Data, metrics, code: JetBrains Mono */
         mono:    ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'ui-monospace', 'monospace'],
       },
+      backgroundImage: {
+        /* Brand gradient — single source of truth */
+        'ps-brand': 'linear-gradient(135deg, #4f46e5, #8B5CF6)',
+      },
       boxShadow: {
-        /* Neon glow helpers: shadow-glow-accent etc. */
-        'glow-accent': '0 0 32px var(--ps-accent-glow)',
-        'glow-accent-lg': '0 0 48px var(--ps-accent-glow-lg)',
-        'glow-reg':    '0 0 20px var(--ps-reg-glow)',
-        'glow-ok':     '0 0 20px var(--ps-healthy-glow)',
-        'glow-amber':  '0 0 20px var(--ps-amber-glow)',
+        'glow-accent':    '0 0 16px var(--ps-accent-glow)',
+        'glow-accent-lg': '0 0 32px var(--ps-accent-glow-lg)',
+        'glow-reg':       '0 0 16px var(--ps-reg-glow)',
+        'glow-ok':        '0 0 16px var(--ps-healthy-glow)',
+        'glow-amber':     '0 0 16px var(--ps-amber-glow)',
       },
     },
   },
