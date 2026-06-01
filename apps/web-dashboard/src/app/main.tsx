@@ -7,6 +7,13 @@ import './styles/index.css';
 import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
+import { configureApiToken } from '@/shared/api/client';
+import { configureSocketToken } from '@/shared/api/socket';
+import { useAuthStore } from '@/features/auth/model/authStore';
+
+const getToken = () => useAuthStore.getState().token;
+configureApiToken(getToken);
+configureSocketToken(getToken);
 
 const queryClient = new QueryClient({
   defaultOptions: {

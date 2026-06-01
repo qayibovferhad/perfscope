@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { consumeComparePreload } from '@/store/comparePreloadStore';
+import { consumeComparePreload } from '@/features/compare/model/comparePreloadStore';
 import { useMotionValue, motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';

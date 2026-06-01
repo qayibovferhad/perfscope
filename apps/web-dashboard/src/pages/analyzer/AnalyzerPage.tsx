@@ -10,8 +10,8 @@ import { AnalyzerSearchForm } from '@/features/analyzer/components/AnalyzerSearc
 import { StreamingScores } from '@/features/analyzer/components/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/components/StreamingMetrics';
 import { AuthAuditModal } from '@/features/analyzer/components/AuthAuditModal';
-import { useAuthAuditStore } from '@/store/authAuditStore';
-import { usePrefetchStore } from '@/store/prefetchStore';
+import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
+import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 

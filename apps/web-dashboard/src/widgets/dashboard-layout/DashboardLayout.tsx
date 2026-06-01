@@ -5,7 +5,7 @@ import {
   Activity, GitCompareArrows, History,
   LogOut, Menu, X, ChevronRight, Plus, Globe, Trash2, LayoutGrid, Moon, Puzzle,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/features/auth/model/authStore';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { useAllHistory } from '@/features/history/hooks/useHistory';
 import { AddWebsiteModal } from '@/features/dashboard/components/AddWebsiteModal';

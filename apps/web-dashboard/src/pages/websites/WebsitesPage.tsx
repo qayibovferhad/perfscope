@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useWebsites, type Website } from '@/features/dashboard/hooks/useWebsites';
 import { AddWebsiteModal } from '@/features/dashboard/components/AddWebsiteModal';
-import { usePrefetchStore } from '@/store/prefetchStore';
+import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
 
 const col = createColumnHelper<Website>();
 

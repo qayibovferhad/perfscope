@@ -1,5 +1,5 @@
 import { useGoogleLogin } from '@react-oauth/google';
-import type { AuthUser } from '@/store/authStore';
+import type { AuthUser } from '@/entities/user';
 
 function decodeJwt(token: string): AuthUser {
   const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');

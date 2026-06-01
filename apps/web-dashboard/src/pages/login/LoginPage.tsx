@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { GoogleButton } from '@/features/auth/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useAuthStore, type AuthUser } from '@/store/authStore';
+import { useAuthStore } from '@/features/auth/model/authStore';
+import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
 
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 // Loader2 used in launching state and checking state
 import { apiClient } from '@/shared/api/client';
-import { useAuthAuditStore } from '@/store/authAuditStore';
+import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import {

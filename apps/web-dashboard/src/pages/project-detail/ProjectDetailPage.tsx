@@ -9,9 +9,9 @@ import {
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from '@/features/projects/useProjectAudits';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { CrossWebsitePicker } from '@/features/projects/components/CrossWebsitePicker';
-import { setComparePreload } from '@/store/comparePreloadStore';
+import { setComparePreload } from '@/features/compare/model/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
-import { useAnalysisStore } from '@/store/analysisStore';
+import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { Input }      from '@/shared/ui/input';
 import { Button }     from '@/shared/ui/button';

@@ -1,14 +1,16 @@
 import { io, type Socket } from 'socket.io-client';
-import { useAuthStore } from '@/store/authStore';
 import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@/entities/analysis';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
+
+let _getToken: () => string | null = () => null;
+export function configureSocketToken(getter: () => string | null) { _getToken = getter; }
 
 let socket: Socket | null = null;
 
 function getSocket(): Socket {
   if (!socket) {
-    const token = useAuthStore.getState().token;
+    const token = _getToken();
     socket = io(BACKEND_URL, {
       autoConnect: false,
       auth: token ? { token } : {},

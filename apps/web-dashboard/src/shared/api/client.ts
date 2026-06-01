@@ -1,5 +1,7 @@
 import axios from 'axios';
-import { useAuthStore } from '@/store/authStore';
+
+let _getToken: () => string | null = () => null;
+export function configureApiToken(getter: () => string | null) { _getToken = getter; }
 
 export const apiClient = axios.create({
   baseURL: '/api',
@@ -8,7 +10,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+  const token = _getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
