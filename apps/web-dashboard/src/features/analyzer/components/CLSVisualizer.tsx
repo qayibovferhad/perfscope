@@ -551,7 +551,6 @@ export function CLSVisualizer({
   clsData: CLSData;
   timelineData: TimelineData;
 }) {
-  console.log('[CLSVisualizer] render');
   const frames  = timelineData.frames;
   const totalMs = frames.at(-1)?.timing ?? 0;
 

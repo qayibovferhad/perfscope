@@ -59,7 +59,6 @@ interface Props {
 }
 
 export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Props) {
-  console.log('[FlameChart] render', data.events.length, 'events');
   const wrapRef      = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
   const tooltipRef   = useRef<HTMLDivElement>(null);

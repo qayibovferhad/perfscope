@@ -46,7 +46,6 @@ interface Props {
 }
 
 export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
-  console.log('[HeapMemoryChart] render', data.points.length, 'points');
   const wrapRef    = useRef<HTMLDivElement>(null);
   const svgRef     = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);

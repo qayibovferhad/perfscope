@@ -1,6 +1,33 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+build/
+.output/
+.wxt/
+*.tsbuildinfo
+
+# Distributables
+*.zip
+apps/chrome-extension/.output/
+apps/chrome-extension/.wxt/
+packages/shared/dist/
+
+# Env
 .env
-*.log
+.env.local
+.env.*.local
+
+# Editor / system
 .DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Claude
 .claude/

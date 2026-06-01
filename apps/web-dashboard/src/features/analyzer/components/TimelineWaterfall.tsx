@@ -253,7 +253,6 @@ export function TimelineWaterfall({
   timelineData:    TimelineData;
   flameChartData?: FlameChartData;
 }) {
-  console.log('[TimelineWaterfall] render', resources.requests.length, 'requests');
   const ctx = useTimelineContext();
   const { frames, metrics, networkOffsetMs } = timelineData;
   const maxTiming = frames.at(-1)!.timing;
