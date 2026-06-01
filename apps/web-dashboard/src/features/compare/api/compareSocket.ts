@@ -1,15 +1,13 @@
 import { io } from 'socket.io-client';
-import { useAuthStore } from '@/features/auth/model/authStore';
 import type { AnalysisCallbacks } from '@/shared/api/socket';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
 
-/**
- * Creates a dedicated socket instance per analysis so concurrent compare-side
- * analyses don't share event listeners and mix up results.
- */
+let _getToken: () => string | null = () => null;
+export function configureCompareSocketToken(getter: () => string | null) { _getToken = getter; }
+
 function makeSocket() {
-  const token = useAuthStore.getState().token;
+  const token = _getToken();
   return io(BACKEND_URL, { autoConnect: false, auth: token ? { token } : {} });
 }
 

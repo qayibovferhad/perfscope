@@ -7,7 +7,7 @@ import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/histor
 import type { HistoryEntry } from '@/entities/history';
 import { computeRows } from '@/features/history/lib/computeRows';
 import { RegressionHistory } from '@/features/history/components/RegressionHistory';
-import { CompareHistoryPage } from '@/pages/compare-history/CompareHistoryPage';
+import { CompareHistoryPanel } from '@/features/compare-history/components/CompareHistoryPanel';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
 import { HistoryBreadcrumb } from '@/features/history/components/HistoryBreadcrumb';
@@ -168,7 +168,7 @@ export function HistoryPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
           >
-            <CompareHistoryPage asTab />
+            <CompareHistoryPanel />
           </motion.div>
         )}
 
