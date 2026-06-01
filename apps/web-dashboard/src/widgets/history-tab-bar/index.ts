@@ -1,1 +1,0 @@
-export { HistoryTabBar } from './HistoryTabBar';

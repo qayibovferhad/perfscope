@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/shared/ui/dialog';
 import { apiClient } from '@/shared/api/client';
-import { useWebsites } from './useWebsites';
+import { useWebsites } from '../hooks/useWebsites';
 
 interface WebsiteForm { url: string; name: string }
 

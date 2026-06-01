@@ -1,1 +1,0 @@
-export { HistoryEmptyState } from './HistoryEmptyState';

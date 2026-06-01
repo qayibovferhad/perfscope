@@ -3,7 +3,7 @@ import { LandingPage }            from '@/pages/landing/LandingPage';
 import { LoginPage }              from '@/pages/login/LoginPage';
 import { RegisterPage }           from '@/pages/register/RegisterPage';
 import { ProtectedRoute }         from '@/features/auth/ProtectedRoute';
-import { DashboardLayout }        from '@/features/dashboard/DashboardLayout';
+import { DashboardLayout }        from '@/widgets/dashboard-layout';
 import { AnalyzerPage }           from '@/pages/analyzer/AnalyzerPage';
 import { ComparisonPage }         from '@/pages/compare/ComparisonPage';
 import { HistoryPage }            from '@/pages/history/HistoryPage';

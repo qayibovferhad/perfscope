@@ -10,11 +10,11 @@ import { RegressionHistory } from '@/features/history/components/RegressionHisto
 import { CompareHistoryPage } from '@/pages/compare-history/CompareHistoryPage';
 import { useAnalysisStore } from '@/store/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
-import { HistoryBreadcrumb } from '@/widgets/history-breadcrumb';
-import { HistoryTabBar } from '@/widgets/history-tab-bar';
-import { HistoryPageHeader } from '@/widgets/history-page-header';
-import { HistoryDeepDiveTable } from '@/widgets/history-deep-dive-table';
-import { HistoryEmptyState } from '@/widgets/history-empty-state';
+import { HistoryBreadcrumb } from '@/features/history/components/HistoryBreadcrumb';
+import { HistoryTabBar } from '@/features/history/components/HistoryTabBar';
+import { HistoryPageHeader } from '@/features/history/components/HistoryPageHeader';
+import { HistoryDeepDiveTable } from '@/features/history/components/HistoryDeepDiveTable';
+import { HistoryEmptyState } from '@/features/history/components/HistoryEmptyState';
 import { HistoryWebsitesOverview } from '@/widgets/history-websites-overview';
 
 export function HistoryPage() {

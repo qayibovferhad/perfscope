@@ -12,7 +12,7 @@ import { CrossWebsitePicker } from '@/features/projects/components/CrossWebsiteP
 import { setComparePreload } from '@/store/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';
-import { useWebsites } from '@/features/dashboard/useWebsites';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { Input }      from '@/shared/ui/input';
 import { Button }     from '@/shared/ui/button';
 import { TimePicker } from '@/shared/ui/time-picker';

@@ -3,7 +3,7 @@ import { Globe, AlertTriangle, Download, FileText } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { isReg } from '@/features/history/lib/format';
 import { exportJson, exportCsv } from '@/features/history/lib/export';
-import { ScoreSparkline } from '@/widgets/score-sparkline';
+import { ScoreSparkline } from './ScoreSparkline';
 
 interface Props {
   url:     string;

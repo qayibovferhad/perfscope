@@ -1,1 +1,0 @@
-export { ScoreSparkline } from './ScoreSparkline';

@@ -13,8 +13,8 @@ import {
   Globe, Plus, Trash2, ExternalLink, Activity, PlayCircle,
   ArrowUpDown, ArrowUp, ArrowDown, Search, ShieldCheck, GitCompareArrows,
 } from 'lucide-react';
-import { useWebsites, type Website } from '@/features/dashboard/useWebsites';
-import { AddWebsiteModal } from '@/features/dashboard/AddWebsiteModal';
+import { useWebsites, type Website } from '@/features/dashboard/hooks/useWebsites';
+import { AddWebsiteModal } from '@/features/dashboard/components/AddWebsiteModal';
 import { usePrefetchStore } from '@/store/prefetchStore';
 
 const col = createColumnHelper<Website>();

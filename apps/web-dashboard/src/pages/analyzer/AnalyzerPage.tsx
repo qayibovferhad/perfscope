@@ -1,135 +1,24 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, GitCompareArrows, Download, TrendingUp, Lock, ShieldCheck, ShieldAlert } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
-import { Skeleton } from '@/shared/ui/skeleton';
-import { useAnalysis, type PartialMap } from '@/features/analyzer/hooks/useAnalysis';
-import { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from '@/features/analyzer/components/ScoreCard';
-import { MetricsGrid } from '@/features/analyzer/components/MetricsGrid';
-import { AuditList } from '@/features/analyzer/components/AuditList';
-import { AiInsights } from '@/features/analyzer/components/AiInsights';
-import { ProgressStepper } from '@/features/analyzer/components/ProgressStepper';
-import { ResourceBreakdown } from '@/features/analyzer/components/ResourceBreakdown';
-import { ResourceWaterfall } from '@/features/analyzer/components/ResourceWaterfall';
-import { PerformanceTimeline, PerformanceTimelineSkeleton } from '@/features/analyzer/components/PerformanceTimeline';
-import { TimelineWaterfall } from '@/features/analyzer/components/TimelineWaterfall';
-import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
-import { HeapMemoryChart } from '@/features/analyzer/components/HeapMemoryChart';
-import { InteractionTimeline } from '@/features/analyzer/components/InteractionTimeline';
-import { CLSVisualizer } from '@/features/analyzer/components/CLSVisualizer';
-import { TimelineProvider, useTimelineContext } from '@/features/analyzer/context/TimelineContext';
-import { Alert, AlertDescription, AlertTitle } from '@/shared/ui/alert';
-import { AlertTriangle } from 'lucide-react';
-import type { AnalysisResult, ParsedResources, DependencyGraph } from '@/entities/analysis';
-import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
-import { usePrefetchStore } from '@/store/prefetchStore';
-import { useAuthAuditStore } from '@/store/authAuditStore';
+import { useSearchParams } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '@/shared/ui/card';
+import { useAnalysis } from '@/features/analyzer/hooks/useAnalysis';
+import { PerformanceTimelineSkeleton } from '@/features/analyzer/components/PerformanceTimeline';
+import { AnalyzerHeader } from '@/features/analyzer/components/AnalyzerHeader';
+import { AnalyzerSearchForm } from '@/features/analyzer/components/AnalyzerSearchForm';
+import { StreamingScores } from '@/features/analyzer/components/StreamingScores';
+import { StreamingMetrics } from '@/features/analyzer/components/StreamingMetrics';
 import { AuthAuditModal } from '@/features/analyzer/components/AuthAuditModal';
-import { Input } from '@/shared/ui/input';
-import { useWebsites } from '@/features/dashboard/useWebsites';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-      {children}
-    </h2>
-  );
-}
-
-/** Connects ChordDiagram hover to TimelineContext.hoveredUrl */
-function ChordDiagramWithContext({ graph }: { graph: DependencyGraph }) {
-  const ctx = useTimelineContext();
-  const handleHover = ctx
-    ? (url: string) => ctx.hoveredUrl.set(url)
-    : undefined;
-  return <ChordDiagram graph={graph} onResourceHover={handleHover} />;
-}
-
-const SCORE_ITEMS: { categoryKey: string; label: ScoreLabel; scoreKey: keyof AnalysisResult['scores'] }[] = [
-  { categoryKey: 'performance',    label: 'Performance',     scoreKey: 'performance'   },
-  { categoryKey: 'accessibility',  label: 'Accessibility',   scoreKey: 'accessibility' },
-  { categoryKey: 'best-practices', label: 'Best Practices',  scoreKey: 'bestPractices' },
-  { categoryKey: 'seo',            label: 'SEO',             scoreKey: 'seo'           },
-];
-
-// ─── Streaming Scores Section ─────────────────────────────────────────────────
-
-function StreamingScores({ partials }: { partials: PartialMap }) {
-  return (
-    <section>
-      <SectionTitle>Scores</SectionTitle>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {SCORE_ITEMS.map(({ categoryKey, label }) => {
-          const partial = partials[categoryKey as keyof PartialMap];
-          return partial
-            ? <ScoreCard key={categoryKey} label={label} score={partial.score} />
-            : <ScoreCardSkeleton   key={categoryKey} label={label} />;
-        })}
-      </div>
-    </section>
-  );
-}
-
-// ─── Streaming Metrics Section ────────────────────────────────────────────────
-
-function StreamingMetrics({ partials }: { partials: PartialMap }) {
-  const metrics = partials['performance']?.metrics;
-  return (
-    <section>
-      <SectionTitle>Core Web Vitals</SectionTitle>
-      {metrics
-        ? <MetricsGrid metrics={metrics} />
-        : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="border-border">
-                <CardContent className="pt-4 pb-4 space-y-2">
-                  <Skeleton className="h-3 w-12" />
-                  <Skeleton className="h-6 w-20" />
-                  <Skeleton className="h-3 w-28" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )
-      }
-    </section>
-  );
-}
-
-// ─── Resources Alert ─────────────────────────────────────────────────────────
-
-function ResourcesAlert({ resources }: { resources: ParsedResources }) {
-  const criticalCount = resources.requests.filter(r => r.isCritical).length;
-  const hasAdvice = resources.requests.some(r => r.isCritical && r.advice);
-  if (criticalCount === 0) return null;
-  return (
-    <Alert variant="warning">
-      <AlertTriangle className="w-4 h-4" />
-      <AlertTitle>
-        {criticalCount} oversized {criticalCount === 1 ? 'resource' : 'resources'} detected
-      </AlertTitle>
-      <AlertDescription>
-        {criticalCount === 1
-          ? 'One resource exceeds the recommended size limit.'
-          : `${criticalCount} resources exceed recommended size limits (JS > 500 KB, images > 1 MB).`}
-        {hasAdvice && ' Hover the warning icons below for AI-powered optimization tips.'}{' '}
-        For accurate results, analyze your production URL — dev builds serve unminified assets.
-      </AlertDescription>
-    </Alert>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+import { useAuthAuditStore } from '@/store/authAuditStore';
+import { usePrefetchStore } from '@/store/prefetchStore';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 
 export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
-  const [url, setUrl] = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
+  const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
@@ -137,14 +26,13 @@ export function AnalyzerPage() {
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
-    const paramUrl   = searchParams.get('url');
-    const projectId  = searchParams.get('projectId') ?? undefined;
+    const paramUrl  = searchParams.get('url');
+    const projectId = searchParams.get('projectId') ?? undefined;
     if (!paramUrl || paramUrl === handledUrl.current) return;
     handledUrl.current = paramUrl;
     setUrl(paramUrl);
 
     const prefetch = usePrefetchStore.getState();
-
     if (prefetch.url === paramUrl) {
       if (prefetch.status === 'success' && prefetch.result) {
         bootstrap(prefetch.result, paramUrl);
@@ -163,9 +51,9 @@ export function AnalyzerPage() {
     analyze(normalized, projectId);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSubmit = (e: FormEvent) => {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmed = url.trim();
+    const trimmed    = url.trim();
     if (!trimmed) return;
     const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
     const projectId  = searchParams.get('projectId') ?? undefined;
@@ -175,18 +63,18 @@ export function AnalyzerPage() {
       reset();
       analyze(normalized, projectId);
     }
-  };
+  }
 
-  const handleExport = () => {
+  function handleExport() {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
+    const href = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
+    a.href     = href;
     a.download = `perfscope-${new URL(data.url).hostname}-${Date.now()}.json`;
     a.click();
-    URL.revokeObjectURL(url);
-  };
+    URL.revokeObjectURL(href);
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
@@ -194,85 +82,25 @@ export function AnalyzerPage() {
         open={authModalOpen}
         initialUrl={url}
         onClose={() => setAuthModalOpen(false)}
-        onSetUrl={(auditUrl) => setUrl(auditUrl)}
+        onSetUrl={setUrl}
       />
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">PerfScope</h1>
-          <p className="text-sm text-muted-foreground">Analyze any website's performance with Lighthouse</p>
-        </div>
-        <div className="flex items-center gap-2 pt-1 flex-wrap">
-          {data && (
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExport}>
-              <Download className="w-3.5 h-3.5" />
-              Export JSON
-            </Button>
-          )}
-          <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
-            <Link to="/compare">
-              <GitCompareArrows className="w-3.5 h-3.5" />
-              Compare Mode
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setAuthModalOpen(true)}>
-            <Lock className="w-3.5 h-3.5" />
-            Locked Page?
-          </Button>
-          <ThemeToggle />
-        </div>
-      </div>
 
-      {/* Form */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Enter a URL to analyze</CardTitle>
-            {activeSession && (
-              <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Session active
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isPending}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={isPending || !url.trim()} className="min-w-[130px] gap-2">
-              {authSessionId
-                ? <Lock className="w-4 h-4" />
-                : <Search className="w-4 h-4" />
-              }
-              {isPending ? 'Analyzing...' : 'Analyze'}
-            </Button>
-          </form>
+      <AnalyzerHeader
+        hasData={!!data}
+        onExport={handleExport}
+        onAuthModal={() => setAuthModalOpen(true)}
+      />
 
-          <AnimatePresence>
-            {isPending && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-5 overflow-hidden"
-              >
-                <ProgressStepper progress={progress ?? { analysisId: '', stage: 'launching', progress: 0, message: 'Connecting...' }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
+      <AnalyzerSearchForm
+        url={url}
+        setUrl={setUrl}
+        isPending={isPending}
+        authSessionId={authSessionId}
+        hasSession={!!activeSession}
+        progress={progress}
+        onSubmit={handleSubmit}
+      />
 
-      {/* Error */}
       {isError && (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="flex items-center gap-2 pt-4 pb-4 text-destructive">
@@ -282,151 +110,25 @@ export function AnalyzerPage() {
         </Card>
       )}
 
-      {/* Streaming skeleton + partial results */}
       {isPending && (
         <div className="space-y-8">
-          <StreamingScores partials={partials} />
-          <StreamingMetrics partials={partials} />
           <section>
-            <SectionTitle>Performance Timeline</SectionTitle>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Scores</h2>
+            <StreamingScores partials={partials} />
+          </section>
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Core Web Vitals</h2>
+            <StreamingMetrics partials={partials} />
+          </section>
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Performance Timeline</h2>
             <PerformanceTimelineSkeleton />
           </section>
         </div>
       )}
 
-      {/* Final complete results */}
       <AnimatePresence>
-        {data && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="space-y-8"
-          >
-            <p className="text-xs text-muted-foreground -mb-4">
-              Results for{' '}
-              <a href={data.url} target="_blank" rel="noreferrer"
-                className="font-medium text-foreground underline underline-offset-2">
-                {data.url}
-              </a>
-            </p>
-
-            {data.authRedirectDetected && (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm border"
-                style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)', color: '#f59e0b' }}>
-                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>
-                  This page redirected to a login screen — the results below are for the login page, not the URL you entered.{' '}
-                  <span className="opacity-70">Save a session for this website to audit protected pages.</span>
-                </span>
-              </div>
-            )}
-
-            <section>
-              <SectionTitle>Scores</SectionTitle>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {SCORE_ITEMS.map(({ label, scoreKey }) => (
-                  <ScoreCard key={label} label={label} score={data.scores[scoreKey]} />
-                ))}
-              </div>
-            </section>
-
-            {data.aiInsights && <AiInsights insights={data.aiInsights} />}
-
-            <section>
-              <SectionTitle>Core Web Vitals</SectionTitle>
-              <MetricsGrid metrics={data.metrics} />
-            </section>
-
-            {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData || data.interactionData) && (
-              <TimelineProvider>
-                {data.timelineData && data.resources ? (
-                  <section>
-                    <TimelineWaterfall
-                      timelineData={data.timelineData}
-                      resources={data.resources}
-                      flameChartData={data.flameChartData}
-                    />
-                    <div className="mt-3">
-                      <ResourceBreakdown resources={data.resources} />
-                    </div>
-                  </section>
-                ) : (
-                  <div className="space-y-8">
-                    {data.timelineData && (
-                      <section>
-                        <SectionTitle>Performance Timeline</SectionTitle>
-                        <PerformanceTimeline timelineData={data.timelineData} />
-                      </section>
-                    )}
-                    {data.resources && (
-                      <section className="space-y-3">
-                        <SectionTitle>Resources</SectionTitle>
-                        <ResourcesAlert resources={data.resources} />
-                        <ResourceWaterfall resources={data.resources} />
-                        <ResourceBreakdown resources={data.resources} />
-                      </section>
-                    )}
-                  </div>
-                )}
-
-                {data.dependencyGraph && data.dependencyGraph.links.length > 0 && (
-                  <section className="mt-8">
-                    <SectionTitle>Resource Dependency Chain</SectionTitle>
-                    <Card>
-                      <CardContent className="pt-4 pb-2 px-2">
-                        <ChordDiagramWithContext graph={data.dependencyGraph} />
-                      </CardContent>
-                    </Card>
-                  </section>
-                )}
-                {data.heapMemoryData && (
-                  <section className="mt-8">
-                    <SectionTitle>JS Heap Memory</SectionTitle>
-                    <Card>
-                      <CardContent className="pt-4 pb-4 px-4">
-                        <HeapMemoryChart data={data.heapMemoryData} />
-                      </CardContent>
-                    </Card>
-                  </section>
-                )}
-                {data.interactionData && (
-                  <section className="mt-8">
-                    <SectionTitle>Interaction Responsiveness (FID / INP)</SectionTitle>
-                    <InteractionTimeline data={data.interactionData} />
-                  </section>
-                )}
-
-                {data.clsData && data.timelineData && (
-                  <section className="mt-8">
-                    <SectionTitle>Layout Shift Visualizer (CLS)</SectionTitle>
-                    <CLSVisualizer clsData={data.clsData} timelineData={data.timelineData} />
-                  </section>
-                )}
-              </TimelineProvider>
-            )}
-
-            {data.audits.length > 0 && (
-              <section>
-                <SectionTitle>
-                  Critical ({data.audits.filter((a) => a.impact === 'critical').length}) · Other ({data.audits.filter((a) => a.impact !== 'critical').length})
-                </SectionTitle>
-                <AuditList audits={data.audits} />
-              </section>
-            )}
-
-            {/* View Full History button */}
-            <div className="flex justify-center pt-2">
-              <Link
-                to={`/history?url=${encodeURIComponent(data.url)}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ps-btn-ghost"
-              >
-                <TrendingUp className="w-4 h-4" />
-                View Full History
-              </Link>
-            </div>
-          </motion.div>
-        )}
+        {data && <AnalyzerResultsPanel data={data} />}
       </AnimatePresence>
     </div>
   );

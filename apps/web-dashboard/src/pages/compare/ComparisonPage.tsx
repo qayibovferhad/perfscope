@@ -7,7 +7,7 @@ import { apiClient } from '@/shared/api/client';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { Button } from '@/shared/ui/button';
 import { useComparisonSide } from '@/features/compare/hooks/useComparisonSide';
-import { useWebsites } from '@/features/dashboard/useWebsites';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { useCompetitorSessions } from '@/features/compare/hooks/useCompetitorSessions';
 import { SideInputBar } from '@/features/compare/components/SideInputBar';
 import { ComparisonScoreboard } from '@/features/compare/components/ComparisonScoreboard';

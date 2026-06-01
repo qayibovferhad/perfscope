@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { Clock } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
-import { useWebsites } from '@/features/dashboard/useWebsites';
-import { HistoryWebsiteCard } from '@/widgets/history-website-card';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { HistoryWebsiteCard } from '@/features/history/components/HistoryWebsiteCard';
 
 interface Props {
   allEntries: HistoryEntry[];

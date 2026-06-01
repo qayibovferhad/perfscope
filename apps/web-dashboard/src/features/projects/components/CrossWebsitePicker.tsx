@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
-import { useWebsites } from '@/features/dashboard/useWebsites';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { useProjectAudits, type ProjectAuditEntry } from '../useProjectAudits';
 
 interface Props {

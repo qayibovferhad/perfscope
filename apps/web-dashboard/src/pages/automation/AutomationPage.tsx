@@ -8,10 +8,10 @@ import {
 import { Input }       from '@/shared/ui/input';
 import { Button }      from '@/shared/ui/button';
 import { TimePicker }  from '@/shared/ui/time-picker';
-import { useWebsites } from '@/features/dashboard/useWebsites';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/store/analysisStore';
-import type { Website } from '@/features/dashboard/useWebsites';
+import type { Website } from '@/features/dashboard/hooks/useWebsites';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
