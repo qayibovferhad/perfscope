@@ -3,6 +3,7 @@ import { Gauge, Eye, Code2, Search } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
+import { SCORE_GOOD, SCORE_WARN, SCORE_BAD } from '@/entities/analysis';
 
 const ICONS = {
   Performance:     Gauge,
@@ -14,9 +15,9 @@ const ICONS = {
 export type ScoreLabel = keyof typeof ICONS;
 
 function colors(s: number) {
-  if (s >= 90) return { text: 'text-emerald-500', stroke: '#10b981', border: 'border-emerald-500/25', bg: 'bg-emerald-500/5' };
-  if (s >= 50) return { text: 'text-amber-500',   stroke: '#f59e0b', border: 'border-amber-500/25',   bg: 'bg-amber-500/5'   };
-  return         { text: 'text-red-500',    stroke: '#ef4444', border: 'border-red-500/25',    bg: 'bg-red-500/5'     };
+  if (s >= 90) return { text: 'text-emerald-500', stroke: SCORE_GOOD, border: 'border-emerald-500/25', bg: 'bg-emerald-500/5' };
+  if (s >= 50) return { text: 'text-amber-500',   stroke: SCORE_WARN, border: 'border-amber-500/25',   bg: 'bg-amber-500/5'   };
+  return         { text: 'text-red-500',    stroke: SCORE_BAD,  border: 'border-red-500/25',    bg: 'bg-red-500/5'     };
 }
 
 function scoreLabel(s: number) {

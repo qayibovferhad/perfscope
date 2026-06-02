@@ -6,3 +6,5 @@ export type {
   WebsiteSession,
   WebsiteAutomation,
 } from '@perfscope/shared'
+
+export { getHostname } from './lib'

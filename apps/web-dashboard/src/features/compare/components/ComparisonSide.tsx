@@ -4,6 +4,7 @@ import { TimelineProvider } from '../../analyzer/context/TimelineContext';
 import { ScoreCard } from '../../analyzer/components/ScoreCard';
 import { CompareMetricsGrid } from './CompareMetricsGrid';
 import type { AnalysisResult } from '@/entities/analysis';
+import { getHostname } from '@/entities/website';
 
 type Side = 'target' | 'competitor';
 
@@ -46,7 +47,7 @@ export function ComparisonSide({ side, data, sharedMotionMs }: Props) {
             onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
             onClick={(e) => e.stopPropagation()}
           >
-            {(() => { try { return new URL(data.url).hostname; } catch { return data.url; } })()}
+            {getHostname(data.url)}
             <ExternalLink className="w-2.5 h-2.5 ml-0.5 shrink-0" />
           </a>
         </div>

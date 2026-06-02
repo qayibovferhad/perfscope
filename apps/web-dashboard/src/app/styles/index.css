@@ -32,6 +32,11 @@
     --ps-panel-bg:      rgba(255, 255, 255, 0.82);
     --ps-panel-border:  rgba(0, 0, 0, 0.09);
     --ps-divider:       rgba(0, 0, 0, 0.07);
+    --ps-nav-bg:        rgba(255, 255, 255, 0.85);
+    --ps-glass-bg:      rgba(255, 255, 255, 0.06);
+    --ps-glass-border:  rgba(0, 0, 0, 0.08);
+    --ps-subtle-bg:     rgba(0, 0, 0, 0.03);
+    --ps-subtle-border: rgba(0, 0, 0, 0.08);
 
     /* ── Neon violet — primary accent ─────────────────────────────────────── */
     --ps-accent:          #8B5CF6;
@@ -103,6 +108,11 @@
     --ps-panel-bg:      rgba(17, 24, 39, 0.72);
     --ps-panel-border:  rgba(255, 255, 255, 0.08);
     --ps-divider:       rgba(255, 255, 255, 0.06);
+    --ps-nav-bg:        rgba(3, 7, 18, 0.72);
+    --ps-glass-bg:      rgba(255, 255, 255, 0.035);
+    --ps-glass-border:  rgba(255, 255, 255, 0.08);
+    --ps-subtle-bg:     rgba(255, 255, 255, 0.04);
+    --ps-subtle-border: rgba(255, 255, 255, 0.08);
 
     /* ── Neon violet (same hue, dark-mode opacity) ────────────────────────── */
     --ps-accent:          #8B5CF6;
@@ -291,5 +301,44 @@
     border-color: var(--ps-accent-border) !important;
     box-shadow: 0 0 0 3px var(--ps-accent-muted) !important;
     outline: none;
+  }
+
+  /* ── Glass card — lighter, more transparent surface ─────────────────────── */
+  .ps-glass {
+    background: var(--ps-glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--ps-glass-border);
+    border-radius: 0.875rem;
+  }
+
+  /* ── Navbar glass strip ──────────────────────────────────────────────────── */
+  .ps-navbar {
+    background: var(--ps-nav-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--ps-subtle-border);
+  }
+
+  /* ── Subtle surface (input bars, inset cards) ────────────────────────────── */
+  .ps-subtle {
+    background: var(--ps-subtle-bg);
+    border: 1px solid var(--ps-subtle-border);
+  }
+
+  /* ── Brand gradient text ─────────────────────────────────────────────────── */
+  .ps-gradient-text {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Logo gradient (violet → pink, 2-stop) ───────────────────────────────── */
+  .ps-logo-gradient {
+    background: linear-gradient(135deg, #8b5cf6 0%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

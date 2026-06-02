@@ -2,13 +2,12 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { getHostname } from '@/entities/website';
 
 interface Props { url: string }
 
 export function HistoryEmptyState({ url }: Props) {
-  const hostname = (() => {
-    try { return new URL(url).hostname; } catch { return url; }
-  })();
+  const hostname = getHostname(url);
 
   return (
     <motion.div

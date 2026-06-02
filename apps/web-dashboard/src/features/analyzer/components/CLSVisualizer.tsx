@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { AlertTriangle, SkipForward, ChevronRight, Zap, Info } from 'lucide-react';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
+import { SCORE_GOOD, SCORE_WARN, SCORE_BAD } from '@/entities/analysis';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -9,7 +10,7 @@ const RED        = 'rgba(255,50,50,1)';
 const RED_A      = 'rgba(255,50,50,0.35)';
 const RED_G      = 'rgba(255,50,50,0.18)';
 const RED_B      = 'rgba(255,50,50,0.55)';
-const RED_ALERT  = '#ef4444';             // intense alert red for peak state
+const RED_ALERT  = SCORE_BAD;
 
 // Logical dimensions used inside the SVG viewBox — the actual display is responsive.
 const PREVIEW_W = 380;
@@ -35,13 +36,13 @@ const GLASS_CARD: React.CSSProperties = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function scoreLabel(cls: number) {
-  if (cls < 0.1)  return { text: 'Good',       color: '#10b981' };
-  if (cls < 0.25) return { text: 'Needs Work', color: '#f59e0b' };
-  return                  { text: 'Poor',       color: RED_ALERT };
+  if (cls < 0.1)  return { text: 'Good',       color: SCORE_GOOD };
+  if (cls < 0.25) return { text: 'Needs Work', color: SCORE_WARN };
+  return                  { text: 'Poor',       color: SCORE_BAD };
 }
 
 function impactColor(impact: 'high' | 'medium' | 'low') {
-  return impact === 'high' ? RED_ALERT : impact === 'medium' ? '#f59e0b' : '#6b7280';
+  return impact === 'high' ? SCORE_BAD : impact === 'medium' ? SCORE_WARN : '#6b7280';
 }
 
 function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame {
@@ -533,9 +534,9 @@ function NoShiftsState() {
         className="w-10 h-10 rounded-full flex items-center justify-center"
         style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}
       >
-        <Info className="w-5 h-5" style={{ color: '#10b981' }} />
+        <Info className="w-5 h-5" className="text-ps-healthy" />
       </div>
-      <p className="text-sm font-semibold" style={{ color: '#10b981' }}>No layout shifts detected</p>
+      <p className="text-sm font-semibold" className="text-ps-healthy">No layout shifts detected</p>
       <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
         Lighthouse found no elements contributing to CLS. Your layout is stable.
       </p>

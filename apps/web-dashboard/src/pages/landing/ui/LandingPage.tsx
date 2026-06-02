@@ -1,0 +1,24 @@
+import { Navbar }           from '@/widgets/navbar';
+import { HeroSection }      from '@/widgets/hero';
+import { FeaturesSection }  from '@/widgets/features';
+import { BenchmarksSection } from '@/widgets/benchmarks';
+import { FinalCTASection }  from '@/widgets/final-cta';
+import { Footer }           from '@/widgets/footer';
+import { SectionDivider }   from '@/shared/ui/section-divider';
+
+export function LandingPage() {
+  return (
+    <div style={{ background: 'var(--ps-page-bg)', minHeight: '100vh' }}>
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <HeroSection />
+      </div>
+      <SectionDivider />
+      <FeaturesSection />
+      <SectionDivider />
+      <BenchmarksSection />
+      <FinalCTASection />
+      <Footer />
+    </div>
+  );
+}

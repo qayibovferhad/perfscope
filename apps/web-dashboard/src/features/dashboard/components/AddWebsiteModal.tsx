@@ -318,7 +318,7 @@ export function AddWebsiteModal({ open, onClose }: Props) {
           <div className="flex flex-col items-center gap-4 py-6 text-center">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
               style={{ background: 'rgba(34,197,94,0.12)' }}>
-              <CheckCircle2 className="w-6 h-6" style={{ color: '#22c55e' }} />
+              <CheckCircle2 className="w-6 h-6" className="text-ps-healthy" />
             </div>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--ps-text-heading)' }}>Session saved!</p>

@@ -9,6 +9,8 @@ import {
 import { useProjectAudits, type RouteGroup, type ProjectAuditEntry } from '@/features/projects/hooks/useProjectAudits';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { CrossWebsitePicker } from '@/widgets/cross-website-picker';
+import { getHostname } from '@/entities/website';
+import { scoreColor } from '@/entities/analysis';
 import { setComparePreload } from '@/features/compare/model/comparePreloadStore';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
@@ -20,11 +22,6 @@ import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function scoreColor(score: number): string {
-  if (score >= 90) return '#22c55e';
-  if (score >= 50) return '#f59e0b';
-  return '#ef4444';
-}
 
 function scoreLabel(score: number): string {
   if (score >= 90) return 'Excellent';
@@ -34,9 +31,9 @@ function scoreLabel(score: number): string {
 }
 
 function scoreBg(score: number): string {
-  if (score >= 90) return 'rgba(34,197,94,0.12)';
-  if (score >= 50) return 'rgba(245,158,11,0.12)';
-  return 'rgba(239,68,68,0.12)';
+  if (score >= 90) return 'var(--ps-healthy-muted)';
+  if (score >= 50) return 'var(--ps-amber-muted)';
+  return 'var(--ps-reg-muted)';
 }
 
 function formatLcp(ms: number): string {
@@ -64,14 +61,12 @@ function timeAgo(iso: string | null): string {
 
 function TrendBadge({ trend }: { trend: RouteGroup['trend'] }) {
   if (trend === 'improving') return (
-    <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
+    <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-ps-healthy-muted text-ps-healthy">
       <TrendingUp className="w-3 h-3" /> Improving
     </span>
   );
   if (trend === 'regressing') return (
-    <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+    <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-ps-reg-muted text-ps-regression">
       <TrendingDown className="w-3 h-3" /> Regressing
     </span>
   );
@@ -535,12 +530,12 @@ function AutomationCard({
                 className="h-8 text-xs font-mono"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
+                  border: `1px solid ${inputError ? 'var(--ps-regression)' : 'var(--ps-panel-border)'}`,
                   color: 'var(--ps-text-heading)',
                 }}
               />
               {inputError && (
-                <p className="absolute -bottom-4 left-0 text-[10px]" style={{ color: '#ef4444' }}>{inputError}</p>
+                <p className="absolute -bottom-4 left-0 text-[10px]" className="text-ps-regression">{inputError}</p>
               )}
             </div>
             <Button
@@ -651,7 +646,7 @@ export function ProjectDetailPage() {
   }
 
   const { project, groups, stats } = data;
-  const hostname = (() => { try { return new URL(project.url).hostname; } catch { return project.url; } })();
+  const hostname = getHostname(project.url);
 
   function toAnalysisResult(entry: ProjectAuditEntry): AnalysisResult {
     return { id: entry.id, url: entry.url, timestamp: entry.timestamp, scores: entry.scores, metrics: entry.metrics, audits: [] };

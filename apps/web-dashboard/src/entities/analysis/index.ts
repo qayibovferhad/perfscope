@@ -37,3 +37,5 @@ export type {
 
 export { rateScore, rateLcp, rateCls, rateTbt } from '@perfscope/shared'
 export type { ScoreRating } from '@perfscope/shared'
+
+export { scoreColor, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'

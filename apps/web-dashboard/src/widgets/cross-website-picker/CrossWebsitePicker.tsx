@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/hooks/useProjectAudits';
+import { scoreColor } from '@/entities/analysis';
 
 interface Props {
   excludeProjectId: string;
@@ -14,12 +15,6 @@ function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
     ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
-
-function scoreColor(s: number) {
-  if (s >= 90) return '#22c55e';
-  if (s >= 50) return '#f59e0b';
-  return '#ef4444';
 }
 
 function AuditList({ projectId, onSelect }: {

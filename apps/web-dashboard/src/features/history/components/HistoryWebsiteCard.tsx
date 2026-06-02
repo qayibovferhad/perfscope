@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { EvolutionChart } from '@/features/history/components/RegressionHistory';
+import { getHostname } from '@/entities/website';
 
 interface Props {
   siteUrl:  string;
@@ -18,9 +19,7 @@ const fmtMs = (ms: number): string =>
 export function HistoryWebsiteCard({ siteUrl, siteName, entries }: Props) {
   const navigate = useNavigate();
   const [hov, setHov] = useState<number | null>(null);
-  const hostname = (() => {
-    try { return new URL(siteUrl).hostname; } catch { return siteUrl; }
-  })();
+  const hostname = getHostname(siteUrl);
 
   const latest = entries[entries.length - 1];
   const prev   = entries.length >= 2 ? entries[entries.length - 2] : null;

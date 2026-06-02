@@ -19,6 +19,7 @@ import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { useTimelineContext } from '../context/TimelineContext';
 import type { InteractionData, InteractionEvent, LongTaskSegment } from '@/entities/analysis';
+import { SCORE_GOOD, SCORE_BAD } from '@/entities/analysis';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -30,9 +31,9 @@ const CIRCLE_R = 9;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function interactionColor(ms: number) {
-  if (ms < 100) return '#22c55e';
+  if (ms < 100) return SCORE_GOOD;
   if (ms < 300) return '#f97316';
-  return '#ef4444';
+  return SCORE_BAD;
 }
 
 function interactionBg(ms: number) {
@@ -441,8 +442,8 @@ export const InteractionTimeline = memo(function InteractionTimeline({
 
   const inpColor = interactionColor(data.inpMs);
   const avgColor = interactionColor(data.avgInputDelayMs);
-  const tbtColor = data.totalBlockingTimeMs > 600 ? '#ef4444'
-    : data.totalBlockingTimeMs > 200 ? '#f97316' : '#22c55e';
+  const tbtColor = data.totalBlockingTimeMs > 600 ? SCORE_BAD
+    : data.totalBlockingTimeMs > 200 ? '#f97316' : SCORE_GOOD;
 
   return (
     <div className="space-y-4">

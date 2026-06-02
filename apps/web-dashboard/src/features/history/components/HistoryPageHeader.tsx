@@ -4,6 +4,7 @@ import type { HistoryEntry } from '@/entities/history';
 import { isReg } from '@/features/history/lib/format';
 import { exportJson, exportCsv } from '@/features/history/lib/export';
 import { ScoreSparkline } from './ScoreSparkline';
+import { getHostname } from '@/entities/website';
 
 interface Props {
   url:     string;
@@ -11,9 +12,7 @@ interface Props {
 }
 
 export function HistoryPageHeader({ url, entries }: Props) {
-  const hostname = (() => {
-    try { return new URL(url).hostname; } catch { return url; }
-  })();
+  const hostname = getHostname(url);
 
   const regCount = useMemo(() => {
     let n = 0;

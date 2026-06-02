@@ -5,6 +5,7 @@ import { GitCompareArrows } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import type { HistoryEntry } from '@/entities/history';
+import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';
 import { RegressionHistory } from '@/features/history/components/RegressionHistory';
 import { CompareHistoryPanel } from '@/features/compare-history/components/CompareHistoryPanel';
@@ -30,7 +31,7 @@ export function HistoryPage() {
   const { data: allEntries = [], isLoading: allLoading  } = useAllHistory();
 
   const allRows  = useMemo(() => computeRows(urlEntries), [urlEntries]);
-  const hostname = (() => { try { return new URL(url).hostname; } catch { return ''; } })();
+  const hostname = getHostname(url, '');
 
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const navigate  = useNavigate();

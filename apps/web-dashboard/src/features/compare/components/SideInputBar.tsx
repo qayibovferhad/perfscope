@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { ProgressStepper } from '../../analyzer/components/ProgressStepper';
 import { AuthAuditModal } from '../../analyzer/components/AuthAuditModal';
 import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
+import { getHostname } from '@/entities/website';
 
 type Side = 'target' | 'competitor';
 
@@ -114,7 +115,7 @@ export function SideInputBar({
             onClick={() => setAuthModalOpen(true)}
             className="shrink-0 px-2.5 rounded-md border transition-colors relative"
             style={hasAuthSession
-              ? { borderColor: 'rgba(34,197,94,0.4)', color: '#22c55e', background: 'rgba(34,197,94,0.08)' }
+              ? { borderColor: 'var(--ps-healthy-border)', color: 'var(--ps-healthy)', background: 'var(--ps-healthy-muted)' }
               : { borderColor: 'rgba(255,255,255,0.1)', color: 'var(--ps-text-muted)' }
             }
           >
@@ -194,7 +195,7 @@ export function SideInputBar({
 
       {/* ── Auth redirect warning ── */}
       {isSuccess && data?.authRedirectDetected && (
-        <div className="flex items-start gap-2 text-xs bg-amber-500/10 border border-amber-500/25 rounded-md px-3 py-2" style={{ color: '#f59e0b' }}>
+        <div className="flex items-start gap-2 text-xs bg-amber-500/10 border border-amber-500/25 rounded-md px-3 py-2" className="text-ps-amber">
           <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
             This page redirected to a login screen. Results are for the login page, not the URL you requested.{' '}
@@ -210,7 +211,7 @@ export function SideInputBar({
         <div className="flex items-center gap-2 text-[11px] text-emerald-400">
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">
-            Ready — <span className="font-medium opacity-80">{(() => { try { return new URL(data.url).hostname; } catch { return data.url; } })()}</span>
+            Ready — <span className="font-medium opacity-80">{getHostname(data.url)}</span>
           </span>
         </div>
       )}

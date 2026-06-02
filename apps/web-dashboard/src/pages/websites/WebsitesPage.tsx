@@ -80,8 +80,8 @@ export function WebsitesPage() {
         if (!session) return <span className="text-xs" style={{ color: 'var(--ps-text-muted)' }}>—</span>;
         return (
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5" style={{ color: '#22c55e' }} />
-            <span className="text-xs" style={{ color: '#22c55e' }}>Saved</span>
+            <ShieldCheck className="w-3.5 h-3.5" className="text-ps-healthy" />
+            <span className="text-xs" className="text-ps-healthy">Saved</span>
           </div>
         );
       },

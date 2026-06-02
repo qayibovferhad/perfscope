@@ -47,6 +47,11 @@ export default {
         'ps-surface':          'var(--ps-panel-bg)',
         'ps-surface-border':   'var(--ps-panel-border)',
         'ps-divider':          'var(--ps-divider)',
+        'ps-nav':              'var(--ps-nav-bg)',
+        'ps-glass':            'var(--ps-glass-bg)',
+        'ps-glass-border':     'var(--ps-glass-border)',
+        'ps-subtle':           'var(--ps-subtle-bg)',
+        'ps-subtle-border':    'var(--ps-subtle-border)',
 
         /* Text scale */
         'ps-heading':    'var(--ps-text-heading)',

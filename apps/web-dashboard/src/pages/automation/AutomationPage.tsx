@@ -9,6 +9,7 @@ import { Input }       from '@/shared/ui/input';
 import { Button }      from '@/shared/ui/button';
 import { TimePicker }  from '@/shared/ui/time-picker';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { getHostname } from '@/entities/website';
 import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { Website } from '@/features/dashboard/hooks/useWebsites';
@@ -32,9 +33,6 @@ function nextRunAt(scheduleTime: string): string {
   return next.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function hostname(url: string): string {
-  try { return new URL(url).hostname; } catch { return url; }
-}
 
 // ─── Setup Modal (Shadcn Dialog) ──────────────────────────────────────────────
 
@@ -85,7 +83,7 @@ function SetupModal({
             <div>
               <DialogTitle style={{ color: 'var(--ps-text-heading)' }}>Set up Automation</DialogTitle>
               <p className="text-[10px] font-mono mt-0.5" style={{ color: 'var(--ps-text-muted)' }}>
-                {hostname(site.url)}
+                {getHostname(site.url)}
               </p>
             </div>
           </div>
@@ -109,12 +107,12 @@ function SetupModal({
                   className="h-8 text-xs font-mono"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
+                    border: `1px solid ${inputError ? 'var(--ps-regression)' : 'var(--ps-panel-border)'}`,
                     color: 'var(--ps-text-heading)',
                   }}
                 />
                 {inputError && (
-                  <p className="absolute -bottom-4 left-0 text-[10px]" style={{ color: '#ef4444' }}>
+                  <p className="absolute -bottom-4 left-0 text-[10px]" className="text-ps-regression">
                     {inputError}
                   </p>
                 )}
@@ -220,10 +218,10 @@ function UnconfiguredRow({ site, onSetup }: { site: Website; onSetup: () => void
         </div>
         <div>
           <p className="text-xs font-semibold" style={{ color: 'var(--ps-text-secondary)' }}>
-            {site.name || hostname(site.url)}
+            {site.name || getHostname(site.url)}
           </p>
           <p className="text-[10px] font-mono" style={{ color: 'var(--ps-text-muted)' }}>
-            {hostname(site.url)}
+            {getHostname(site.url)}
           </p>
         </div>
       </div>
@@ -288,10 +286,10 @@ function WebsiteAutomationCard({ site }: { site: Website }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate" style={{ color: 'var(--ps-text-heading)' }}>
-              {site.name || hostname(site.url)}
+              {site.name || getHostname(site.url)}
             </p>
             <p className="text-[10px] font-mono truncate" style={{ color: 'var(--ps-text-muted)' }}>
-              {hostname(site.url)}
+              {getHostname(site.url)}
             </p>
           </div>
         </div>
@@ -366,12 +364,12 @@ function WebsiteAutomationCard({ site }: { site: Website }) {
                 className="h-8 text-xs font-mono"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${inputError ? '#ef4444' : 'var(--ps-panel-border)'}`,
+                  border: `1px solid ${inputError ? 'var(--ps-regression)' : 'var(--ps-panel-border)'}`,
                   color: 'var(--ps-text-heading)',
                 }}
               />
               {inputError && (
-                <p className="absolute -bottom-4 left-0 text-[10px]" style={{ color: '#ef4444' }}>{inputError}</p>
+                <p className="absolute -bottom-4 left-0 text-[10px]" className="text-ps-regression">{inputError}</p>
               )}
             </div>
             <Button
