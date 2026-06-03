@@ -7,23 +7,19 @@ interface ThemeContextValue {
   toggle: () => void;
 }
 
-const ThemeCtx = createContext<ThemeContextValue>({ theme: 'dark', toggle: () => {} });
+const ThemeCtx = createContext<ThemeContextValue>({ theme: 'light', toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      return (localStorage.getItem('perfscope-theme') as Theme) ?? 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.removeAttribute('data-theme');
     } else {
       root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
     }
     localStorage.setItem('perfscope-theme', theme);
   }, [theme]);

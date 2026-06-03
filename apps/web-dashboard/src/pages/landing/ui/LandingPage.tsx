@@ -1,5 +1,4 @@
-import { NavBar }             from './NavBar';
-import { HeroSection }        from './HeroSection';
+import { HeroSection }        from '@/widgets/hero';
 import { WhySection }         from './WhySection';
 import { HowItWorksSection }  from './HowItWorksSection';
 import { FeaturesSection }    from './FeaturesSection';
@@ -11,6 +10,7 @@ import { OpenSourceSection }  from './OpenSourceSection';
 import { SubscribeSection }   from './SubscribeSection';
 import { FooterSection }      from './FooterSection';
 import { useScrollReveal }    from '../lib/useScrollReveal';
+import { Navbar } from '@/widgets/navbar';
 
 export function LandingPage() {
   useScrollReveal('.landing-page');
@@ -21,7 +21,7 @@ export function LandingPage() {
       id="top"
       style={{ fontFamily: "'Geist', system-ui, sans-serif", background: 'var(--ld-bg)', color: 'var(--ld-text)', lineHeight: 1.5, overflowX: 'hidden' }}
     >
-      <NavBar />
+      <Navbar />
       <HeroSection />
       <WhySection />
       <HowItWorksSection />

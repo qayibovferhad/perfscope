@@ -5,25 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/shared/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[11px] text-sm font-semibold transition-[transform,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ld-accent-line)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "bg-[image:var(--ld-grad)] text-white font-bold shadow-[0_18px_60px_-20px_rgba(20,192,138,.45)] hover:-translate-y-px hover:shadow-[0_20px_44px_-16px_rgba(20,192,138,.6)]",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-[var(--ps-regression)] text-white hover:opacity-90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-[var(--ld-border-strong)] bg-[var(--ld-surface)] text-[var(--ld-text)] hover:bg-[var(--ld-surface-hover)] hover:border-[var(--ld-accent-line)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-[var(--ps-accent-muted)] text-[var(--ps-accent)] border border-[var(--ps-accent-border)] hover:bg-[var(--ps-accent-hover)]",
+        ghost:
+          "text-[var(--ld-text-2)] hover:bg-[var(--ld-surface-hover)] hover:text-[var(--ld-text)]",
+        link: "text-[var(--ps-accent)] underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-11 px-6 py-3 text-[14.5px]",
+        sm:      "h-8 px-3 text-xs rounded-[9px]",
+        lg:      "h-12 px-6 text-[15.5px] rounded-[13px]",
+        icon:    "h-10 w-10",
       },
     },
     defaultVariants: {

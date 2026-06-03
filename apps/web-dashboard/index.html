@@ -11,12 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
     <!-- Landing page fonts: Geist + Geist Mono -->
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <!-- Prevent FOUC: apply saved theme before React loads -->
+    <!-- Prevent FOUC: always start in light mode -->
     <script>
-      (function () {
-        var t = localStorage.getItem('perfscope-theme');
-        if (t !== 'light') document.documentElement.classList.add('dark');
-      })();
+      document.documentElement.setAttribute('data-theme', 'light');
     </script>
   </head>
   <body>
