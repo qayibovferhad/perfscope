@@ -1,3 +1,11 @@
+import { SCORE_GOOD, SCORE_WARN, SCORE_BAD } from '@/entities/analysis';
+
+export const SCORE_MAP: Record<string, { card: string; text: string }> = {
+  [SCORE_GOOD]: { card: 'bg-ps-healthy-muted border-ps-healthy-border', text: 'text-ps-healthy'    },
+  [SCORE_WARN]: { card: 'bg-ps-amber-muted   border-ps-amber-border',   text: 'text-ps-amber'      },
+  [SCORE_BAD]:  { card: 'bg-ps-reg-muted     border-ps-reg-border',     text: 'text-ps-regression' },
+};
+
 export type DeltaStatus = 'healthy' | 'accent' | 'warning' | 'danger';
 
 export const STATUS_CLASSES: Record<DeltaStatus, string> = {

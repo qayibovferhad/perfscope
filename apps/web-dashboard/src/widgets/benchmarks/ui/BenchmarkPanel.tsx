@@ -1,16 +1,11 @@
 import { SCORE_GOOD, SCORE_WARN, SCORE_BAD } from '@/entities/analysis';
+import { SCORE_MAP } from '../model/deltas';
 import { ScoreGauge } from './ScoreGauge';
 
 interface Props {
   label: string; tag: string; tagColor: string;
   perf: number; cls: string; lcp: string; tbt: string;
 }
-
-const SCORE_MAP: Record<string, { card: string; text: string }> = {
-  [SCORE_GOOD]: { card: 'bg-ps-healthy-muted border-ps-healthy-border', text: 'text-ps-healthy'    },
-  [SCORE_WARN]: { card: 'bg-ps-amber-muted   border-ps-amber-border',   text: 'text-ps-amber'      },
-  [SCORE_BAD]:  { card: 'bg-ps-reg-muted     border-ps-reg-border',     text: 'text-ps-regression' },
-};
 
 const DEFAULT = SCORE_MAP[SCORE_BAD];
 

@@ -8,7 +8,7 @@ import { SectionDivider }   from '@/shared/ui/section-divider';
 
 export function LandingPage() {
   return (
-    <div style={{ background: 'var(--ps-page-bg)', minHeight: '100vh' }}>
+    <div className="bg-ps-page min-h-screen">
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <HeroSection />
