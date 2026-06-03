@@ -49,7 +49,7 @@ export function ScoreCardSkeleton({ label }: { label: ScoreLabel }) {
 export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }) {
   const r = 30;
   const circ = 2 * Math.PI * r;
-  const { text, stroke, border, bg, label } = getScore(score);
+  const { text, stroke, border, bg, label: rating } = getScore(score);
   const Icon = ICONS[label];
 
   return (
@@ -83,7 +83,7 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
               <Icon className={cn('w-3.5 h-3.5', text)} />
               <p className="text-sm font-semibold text-foreground">{label}</p>
             </div>
-            <p className={cn('text-xs', text)}>{label}</p>
+            <p className={cn('text-xs', text)}>{rating}</p>
           </div>
         </CardContent>
       </Card>

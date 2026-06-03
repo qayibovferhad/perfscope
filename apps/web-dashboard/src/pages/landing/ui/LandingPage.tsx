@@ -1,24 +1,38 @@
-import { Navbar }           from '@/widgets/navbar';
-import { HeroSection }      from '@/widgets/hero';
-import { FeaturesSection }  from '@/widgets/features';
-import { BenchmarksSection } from '@/widgets/benchmarks';
-import { FinalCTASection }  from '@/widgets/final-cta';
-import { Footer }           from '@/widgets/footer';
-import { SectionDivider }   from '@/shared/ui/section-divider';
+import { NavBar }             from './NavBar';
+import { HeroSection }        from './HeroSection';
+import { WhySection }         from './WhySection';
+import { HowItWorksSection }  from './HowItWorksSection';
+import { FeaturesSection }    from './FeaturesSection';
+import { ResultsSection }     from './ResultsSection';
+import { ScheduledSection }   from './ScheduledSection';
+import { ExtensionSection }   from './ExtensionSection';
+import { FAQSection }         from './FAQSection';
+import { OpenSourceSection }  from './OpenSourceSection';
+import { SubscribeSection }   from './SubscribeSection';
+import { FooterSection }      from './FooterSection';
+import { useScrollReveal }    from '../lib/useScrollReveal';
 
 export function LandingPage() {
+  useScrollReveal('.landing-page');
+
   return (
-    <div className="bg-ps-page min-h-screen">
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <HeroSection />
-      </div>
-      <SectionDivider />
+    <div
+      className="landing-page"
+      id="top"
+      style={{ fontFamily: "'Geist', system-ui, sans-serif", background: 'var(--ld-bg)', color: 'var(--ld-text)', lineHeight: 1.5, overflowX: 'hidden' }}
+    >
+      <NavBar />
+      <HeroSection />
+      <WhySection />
+      <HowItWorksSection />
       <FeaturesSection />
-      <SectionDivider />
-      <BenchmarksSection />
-      <FinalCTASection />
-      <Footer />
+      <ResultsSection />
+      <ScheduledSection />
+      <ExtensionSection />
+      <FAQSection />
+      <OpenSourceSection />
+      <SubscribeSection />
+      <FooterSection />
     </div>
   );
 }
