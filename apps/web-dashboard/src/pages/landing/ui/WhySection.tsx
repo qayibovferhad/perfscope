@@ -1,99 +1,75 @@
+import { ArrowRight } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
+
+const STATS = [
+  {
+    num: '53', unit: '%',
+    copy: 'of people abandon a mobile visit when a page takes longer than three seconds to load.',
+    src: 'Google / SOASTA mobile research',
+    accent: false,
+  },
+  {
+    num: '7', unit: '%',
+    copy: 'drop in conversions can follow from just one tenth of a second of extra delay at checkout.',
+    src: 'Akamai performance study',
+    accent: false,
+  },
+  {
+    num: '3', unit: '',
+    copy: 'Core Web Vitals — LCP, INP and CLS — feed directly into how Google ranks your page.',
+    src: 'Google Search ranking signals',
+    accent: true,
+  },
+] as const;
+
 export function WhySection() {
   return (
-    <section style={{ borderBlock: '1px solid var(--ld-border)', background: 'var(--ld-bg-2)', padding: 'clamp(64px, 9vw, 110px) 0' }}>
+    <section className="border-y border-[var(--ld-border)] bg-[var(--ld-bg-2)] py-[clamp(64px,9vw,110px)]">
       <div className="ld-wrap">
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '0.92fr 1.08fr',
-          gap: 'clamp(36px, 6vw, 80px)',
-          alignItems: 'center',
-        }} className="ld-why-grid">
+        <div className="grid grid-cols-1 min-[980px]:grid-cols-[0.92fr_1.08fr] gap-[clamp(36px,6vw,80px)] items-center">
 
           {/* Left */}
           <div className="reveal">
-            <span className="ld-eyebrow" style={{ display: 'block', marginBottom: 18 }}>Why it matters</span>
-            <h2 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.04, color: 'var(--ld-text)' }}>
+            <span className="ld-eyebrow block mb-[18px]">Why it matters</span>
+            <h2 className="text-[clamp(28px,3.6vw,44px)] font-extrabold tracking-[-0.03em] leading-[1.04] text-[var(--ld-text)]">
               A slow page isn't a bug report.<br />It's a quiet leak.
             </h2>
-            <p style={{ color: 'var(--ld-text-2)', fontSize: 'clamp(15px, 1.4vw, 17.5px)', marginTop: 20, maxWidth: '46ch' }}>
-              Nobody files a ticket because a page felt sluggish — they just leave, and you never hear about it. Speed is the part of the product your visitors feel before they read a single word. Here's what's actually at stake.
+            <p className="text-[var(--ld-text-2)] text-[clamp(15px,1.4vw,17.5px)] mt-5 max-w-[46ch]">
+              Nobody files a ticket because a page felt sluggish — they just leave, and you never
+              hear about it. Speed is the part of the product your visitors feel before they read a
+              single word. Here's what's actually at stake.
             </p>
-            <a
-              href="#proof"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 26, fontWeight: 600, fontSize: 15, color: 'var(--ld-accent)', transition: 'gap .2s', textDecoration: 'none' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.gap = '13px'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.gap = '8px'; }}
+            <Button
+              variant="ghost"
+              className="mt-[26px] px-0 text-[var(--ld-accent)] hover:bg-transparent hover:text-[var(--ld-accent-2)] gap-2 group"
+              onClick={() => document.getElementById('proof')?.scrollIntoView({ behavior: 'smooth' })}
             >
               See a real before &amp; after
-              <svg viewBox="0 0 24 24" fill="none" style={{ width: 17, height: 17 }}>
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
+              <ArrowRight className="w-[17px] h-[17px] transition-transform duration-200 group-hover:translate-x-1" />
+            </Button>
           </div>
 
           {/* Right: stat cards */}
-          <div style={{ display: 'grid', gap: 14 }}>
-            {[
-              { num: '53', unit: '%', copy: 'of people abandon a mobile visit when a page takes longer than three seconds to load.', src: 'Google / SOASTA mobile research', accent: false },
-              { num: '7', unit: '%', copy: 'drop in conversions can follow from just one tenth of a second of extra delay at checkout.', src: 'Akamai performance study', accent: false },
-              { num: '3', unit: '', copy: 'Core Web Vitals — LCP, INP and CLS — feed directly into how Google ranks your page.', src: 'Google Search ranking signals', accent: true },
-            ].map(({ num, unit, copy, src, accent }) => (
+          <div className="grid gap-[14px]">
+            {STATS.map(({ num, unit, copy, src, accent }) => (
               <div
                 key={num}
-                className="reveal"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr',
-                  gap: '6px 22px',
-                  alignItems: 'baseline',
-                  padding: '24px 26px',
-                  borderRadius: 16,
-                  border: '1px solid var(--ld-border)',
-                  background: 'var(--ld-surface)',
-                  transition: 'border-color .25s, transform .25s, background .25s',
-                  cursor: 'default',
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.borderColor = 'var(--ld-accent-line)';
-                  el.style.transform = 'translateX(4px)';
-                  el.style.background = 'var(--ld-surface-2)';
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.borderColor = 'var(--ld-border)';
-                  el.style.transform = '';
-                  el.style.background = 'var(--ld-surface)';
-                }}
+                className="reveal grid grid-cols-[auto_1fr] gap-x-[22px] gap-y-[6px] items-baseline px-[26px] py-6 rounded-2xl border border-[var(--ld-border)] bg-[var(--ld-surface)] cursor-default transition-[border-color,transform,background] duration-[250ms] hover:border-[var(--ld-accent-line)] hover:translate-x-1 hover:bg-[var(--ld-surface-2)]"
               >
-                <div style={{ gridRow: 'span 2' }}>
-                  <b style={{
-                    fontFamily: "'Geist Mono', monospace",
-                    fontSize: 'clamp(40px, 5vw, 56px)',
-                    fontWeight: 600,
-                    lineHeight: .9,
-                    letterSpacing: '-.04em',
-                    color: accent ? 'var(--ld-accent-2)' : 'var(--ld-text)',
-                    display: 'inline-flex',
-                    alignItems: 'flex-start',
-                  }}>
+                <div className="row-span-2">
+                  <b className={`font-mono text-[clamp(40px,5vw,56px)] font-semibold leading-[0.9] tracking-[-0.04em] inline-flex items-start ${accent ? 'text-[var(--ld-accent-2)]' : 'text-[var(--ld-text)]'}`}>
                     {num}
-                    {unit && <i style={{ fontStyle: 'normal', fontSize: '.5em', color: 'var(--ld-text-3)', marginTop: '.25em', marginLeft: 1 }}>{unit}</i>}
+                    {unit && <i className="not-italic text-[0.5em] text-[var(--ld-text-3)] mt-[0.25em] ml-[1px]">{unit}</i>}
                   </b>
                 </div>
-                <p style={{ color: 'var(--ld-text)', fontSize: 15, lineHeight: 1.5, alignSelf: 'center', margin: 0 }}>{copy}</p>
-                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, letterSpacing: '.04em', color: 'var(--ld-text-3)', gridColumn: 2 }}>{src}</span>
+                <p className="text-[var(--ld-text)] text-[15px] leading-[1.5] self-center m-0">{copy}</p>
+                <span className="font-mono text-[11px] tracking-[0.04em] text-[var(--ld-text-3)] col-start-2">{src}</span>
               </div>
             ))}
           </div>
+
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 980px) {
-          .ld-why-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
-        }
-      `}</style>
     </section>
   );
 }

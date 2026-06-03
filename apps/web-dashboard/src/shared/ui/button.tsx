@@ -20,6 +20,7 @@ const buttonVariants = cva(
         ghost:
           "text-[var(--ld-text-2)] hover:bg-[var(--ld-surface-hover)] hover:text-[var(--ld-text)]",
         link: "text-[var(--ps-accent)] underline-offset-4 hover:underline",
+        dark: "bg-[#04130d] text-[#eafff5] font-bold shadow-none hover:-translate-y-px hover:shadow-none",
       },
       size: {
         default: "h-11 px-6 py-3 text-[14.5px]",

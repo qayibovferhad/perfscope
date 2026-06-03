@@ -216,9 +216,9 @@
     --ps-text-faint:      rgba(8, 50, 36, 0.28);
 
     /* ── Fonts ────────────────────────────────────────────────────────────── */
-    --ps-font-sans:     'Inter', system-ui, sans-serif;
-    --ps-font-heading:  'Inter', system-ui, sans-serif;
-    --ps-font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+    --ps-font-sans:     'Geist', 'Inter', system-ui, sans-serif;
+    --ps-font-heading:  'Geist', 'Inter', system-ui, sans-serif;
+    --ps-font-mono:     'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
     /* ── Mesh gradient blobs ──────────────────────────────────────────────── */
     --ps-blob-tl: radial-gradient(ellipse at 0% 0%, rgba(10,158,111,0.09) 0%, transparent 62%);
@@ -292,9 +292,9 @@
     --ps-text-faint:      rgba(180, 230, 205, 0.18);
 
     /* ── Fonts (same across modes) ────────────────────────────────────────── */
-    --ps-font-sans:     'Inter', system-ui, sans-serif;
-    --ps-font-heading:  'Inter', system-ui, sans-serif;
-    --ps-font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+    --ps-font-sans:     'Geist', 'Inter', system-ui, sans-serif;
+    --ps-font-heading:  'Geist', 'Inter', system-ui, sans-serif;
+    --ps-font-mono:     'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
     /* ── Mesh blobs ───────────────────────────────────────────────────────── */
     --ps-blob-tl: radial-gradient(ellipse at 0% 0%, rgba(20,192,138,0.13) 0%, transparent 62%);
