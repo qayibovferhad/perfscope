@@ -1,38 +1,9 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, TrendingUp } from 'lucide-react';
 import { SCORE_GOOD, SCORE_BAD } from '@/entities/analysis';
+import { fadeUp, stagger, scaleIn } from '../lib/animations';
+import { DELTAS, STATUS_CLASSES } from '../model/deltas';
 import { BenchmarkPanel } from './BenchmarkPanel';
-
-const fadeUp = {
-  hidden:  { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } },
-};
-
-const stagger = (delay = 0.11) => ({
-  hidden:  {},
-  visible: { transition: { staggerChildren: delay } },
-});
-
-const scaleIn = {
-  hidden:  { opacity: 0, scale: 0.93 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
-};
-
-type DeltaStatus = 'healthy' | 'accent' | 'warning' | 'danger';
-
-const STATUS_CLASSES: Record<DeltaStatus, string> = {
-  healthy: 'bg-ps-healthy-muted border-ps-healthy-border text-ps-healthy',
-  accent:  'bg-ps-accent-muted  border-ps-accent-border  text-ps-accent',
-  warning: 'bg-ps-amber-muted   border-ps-amber-border   text-ps-amber',
-  danger:  'bg-ps-reg-muted     border-ps-reg-border     text-ps-regression',
-};
-
-const DELTAS: { label: string; delta: string; status: DeltaStatus }[] = [
-  { label: 'Performance', delta: '+52 pts', status: 'healthy' },
-  { label: 'CLS',         delta: '−82%',    status: 'accent'  },
-  { label: 'LCP',         delta: '−75%',    status: 'warning' },
-  { label: 'TBT',         delta: '−83%',    status: 'danger'  },
-];
 
 export function BenchmarksSection() {
   return (

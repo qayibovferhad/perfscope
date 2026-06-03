@@ -14,16 +14,14 @@ const ICONS = {
 
 export type ScoreLabel = keyof typeof ICONS;
 
-function colors(s: number) {
-  if (s >= 90) return { text: 'text-emerald-500', stroke: SCORE_GOOD, border: 'border-emerald-500/25', bg: 'bg-emerald-500/5' };
-  if (s >= 50) return { text: 'text-amber-500',   stroke: SCORE_WARN, border: 'border-amber-500/25',   bg: 'bg-amber-500/5'   };
-  return         { text: 'text-red-500',    stroke: SCORE_BAD,  border: 'border-red-500/25',    bg: 'bg-red-500/5'     };
-}
+const SCORE_MAP = [
+  { min: 90, text: 'text-emerald-500', stroke: SCORE_GOOD, border: 'border-emerald-500/25', bg: 'bg-emerald-500/5', label: 'Good'             },
+  { min: 50, text: 'text-amber-500',   stroke: SCORE_WARN, border: 'border-amber-500/25',   bg: 'bg-amber-500/5',   label: 'Needs Improvement' },
+  { min:  0, text: 'text-red-500',     stroke: SCORE_BAD,  border: 'border-red-500/25',     bg: 'bg-red-500/5',     label: 'Poor'              },
+] as const;
 
-function scoreLabel(s: number) {
-  if (s >= 90) return 'Good';
-  if (s >= 50) return 'Needs Improvement';
-  return 'Poor';
+function getScore(s: number) {
+  return SCORE_MAP.find(({ min }) => s >= min) ?? SCORE_MAP[2];
 }
 
 // ─── Skeleton state ───────────────────────────────────────────────────────────
@@ -51,7 +49,7 @@ export function ScoreCardSkeleton({ label }: { label: ScoreLabel }) {
 export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }) {
   const r = 30;
   const circ = 2 * Math.PI * r;
-  const { text, stroke, border, bg } = colors(score);
+  const { text, stroke, border, bg, label } = getScore(score);
   const Icon = ICONS[label];
 
   return (
@@ -85,7 +83,7 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
               <Icon className={cn('w-3.5 h-3.5', text)} />
               <p className="text-sm font-semibold text-foreground">{label}</p>
             </div>
-            <p className={cn('text-xs', text)}>{scoreLabel(score)}</p>
+            <p className={cn('text-xs', text)}>{label}</p>
           </div>
         </CardContent>
       </Card>

@@ -23,18 +23,19 @@ import type { AnalysisResult } from '@/entities/analysis';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
-function scoreLabel(score: number): string {
-  if (score >= 90) return 'Excellent';
-  if (score >= 75) return 'Good';
-  if (score >= 50) return 'Needs Work';
-  return 'Poor';
+const SCORE_MAP = [
+  { min: 90, label: 'Excellent',  bg: 'var(--ps-healthy-muted)' },
+  { min: 75, label: 'Good',       bg: 'var(--ps-healthy-muted)' },
+  { min: 50, label: 'Needs Work', bg: 'var(--ps-amber-muted)'   },
+  { min:  0, label: 'Poor',       bg: 'var(--ps-reg-muted)'     },
+] as const;
+
+function getScore(score: number) {
+  return SCORE_MAP.find(({ min }) => score >= min) ?? SCORE_MAP[3];
 }
 
-function scoreBg(score: number): string {
-  if (score >= 90) return 'var(--ps-healthy-muted)';
-  if (score >= 50) return 'var(--ps-amber-muted)';
-  return 'var(--ps-reg-muted)';
-}
+function scoreLabel(score: number) { return getScore(score).label; }
+function scoreBg(score: number)    { return getScore(score).bg;    }
 
 function formatLcp(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
