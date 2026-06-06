@@ -1,14 +1,3 @@
-/**
- * TimelineWaterfall — Unified Performance Timeline + Network Waterfall
- *
- * Sticky header contains:
- *   • Play controls + mini video player
- *   • Scrubber with metric markers
- *   • Time-axis thumbnails (one frame per tick)
- *   • Axis ghost line (blue, syncs with scrubber)
- *
- * Body: compact waterfall rows + full-height ghost line
- */
 import {
   useRef, useEffect, useMemo, memo, useState, useLayoutEffect, useCallback,
 } from 'react';
@@ -32,25 +21,52 @@ const MAX_ROWS   = 120;
 const TICK_COUNT = 6;
 const TICK_MS    = 50;
 const THUMB_W    = 80;
-const THUMB_H    = 45;   // ~16:9
+const THUMB_H    = 45;
 
 const METRICS_CFG = [
-  { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    hex: '#3b82f6' },
-  { key: 'lcp' as const, label: 'LCP', bg: 'bg-emerald-500', text: 'text-emerald-400', hex: '#10b981' },
-  { key: 'tti' as const, label: 'TTI', bg: 'bg-orange-500',  text: 'text-orange-400',  hex: '#f97316' },
+  {
+    key: 'fcp' as const, label: 'FCP',
+    color: 'var(--ld-teal)',
+    chipStyle: {
+      color: 'var(--ld-teal)',
+      borderColor: 'rgba(22,200,200,.30)',
+      background: 'rgba(22,200,200,.08)',
+    } as React.CSSProperties,
+  },
+  {
+    key: 'lcp' as const, label: 'LCP',
+    color: 'var(--ld-accent)',
+    chipStyle: {
+      color: 'var(--ld-accent-2)',
+      borderColor: 'var(--ld-accent-line)',
+      background: 'var(--ld-accent-soft)',
+    } as React.CSSProperties,
+  },
+  {
+    key: 'tti' as const, label: 'TTI',
+    color: 'var(--ld-amber)',
+    chipStyle: {
+      color: 'var(--ld-amber)',
+      borderColor: 'rgba(230,162,60,.30)',
+      background: 'rgba(230,162,60,.08)',
+    } as React.CSSProperties,
+  },
 ] as const;
 
-const TYPE_CFG: Record<
-  ResourceType,
-  { label: string; icon: React.ElementType; barLight: string; barDark: string; badge: string }
-> = {
-  script:     { label: 'JS',    icon: FileCode2, barLight: 'bg-indigo-400',  barDark: 'bg-indigo-600',  badge: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'   },
-  stylesheet: { label: 'CSS',   icon: Palette,   barLight: 'bg-violet-400',  barDark: 'bg-violet-600',  badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30'   },
-  image:      { label: 'IMG',   icon: ImageIcon, barLight: 'bg-emerald-400', barDark: 'bg-emerald-600', badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  font:       { label: 'FONT',  icon: Type,      barLight: 'bg-amber-400',   barDark: 'bg-amber-600',   badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30'       },
-  document:   { label: 'DOC',   icon: FileCode2, barLight: 'bg-sky-400',     barDark: 'bg-sky-600',     badge: 'bg-sky-500/20 text-sky-400 border-sky-500/30'             },
-  media:      { label: 'MEDIA', icon: ImageIcon, barLight: 'bg-pink-400',    barDark: 'bg-pink-600',    badge: 'bg-pink-500/20 text-pink-400 border-pink-500/30'          },
-  other:      { label: 'XHR',   icon: Globe,     barLight: 'bg-slate-400',   barDark: 'bg-slate-600',   badge: 'bg-slate-500/20 text-slate-400 border-slate-500/30'       },
+interface TypeCfg {
+  label: string; icon: React.ElementType;
+  barWait: string; barDl: string;
+  badgeBg: string; badgeText: string; badgeBorder: string;
+}
+
+const TYPE_CFG: Record<ResourceType, TypeCfg> = {
+  script:     { label: 'JS',    icon: FileCode2, barWait: 'var(--ld-border-strong)', barDl: 'var(--ld-accent)',   badgeBg: 'rgba(230,162,60,.12)',    badgeText: 'var(--ld-amber)',   badgeBorder: 'rgba(230,162,60,.25)'   },
+  stylesheet: { label: 'CSS',   icon: Palette,   barWait: 'var(--ld-border-strong)', barDl: 'var(--ld-accent)',   badgeBg: 'rgba(22,200,200,.12)',    badgeText: 'var(--ld-teal)',    badgeBorder: 'rgba(22,200,200,.25)'   },
+  image:      { label: 'IMG',   icon: ImageIcon, barWait: 'var(--ld-accent-soft)',   barDl: 'var(--ld-accent)',   badgeBg: 'var(--ld-accent-soft)',   badgeText: 'var(--ld-accent-2)', badgeBorder: 'var(--ld-accent-line)'  },
+  font:       { label: 'FONT',  icon: Type,      barWait: 'var(--ld-border-strong)', barDl: 'var(--ld-accent)',   badgeBg: 'rgba(176,139,224,.14)',   badgeText: '#b08be0',           badgeBorder: 'rgba(176,139,224,.30)'  },
+  document:   { label: 'DOC',   icon: FileCode2, barWait: 'var(--ld-accent-line)',   barDl: 'var(--ld-accent)',   badgeBg: 'rgba(242,100,122,.12)',   badgeText: 'var(--ld-rose)',    badgeBorder: 'rgba(242,100,122,.25)'  },
+  media:      { label: 'MEDIA', icon: ImageIcon, barWait: 'var(--ld-border-strong)', barDl: 'var(--ld-accent)',   badgeBg: 'rgba(244,114,182,.10)',   badgeText: '#f472b6',           badgeBorder: 'rgba(244,114,182,.30)'  },
+  other:      { label: 'XHR',   icon: Globe,     barWait: 'var(--ld-border)',        barDl: 'var(--ld-accent)',   badgeBg: 'transparent',            badgeText: 'var(--ld-text-3)', badgeBorder: 'var(--ld-border-strong)' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -114,43 +130,53 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
   ];
 
   return (
-    <div className="absolute left-2 right-2 z-30 mt-0.5 rounded-lg border border-slate-600 bg-slate-800 shadow-2xl shadow-black/60 text-xs">
-      <div className="flex items-start gap-2 px-3 py-2.5 border-b border-slate-700">
-        <span className={cn('shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border mt-0.5', cfg.badge)}>
+    <div className="absolute left-2 right-2 z-30 mt-0.5 rounded-[12px] border border-ld-border-strong bg-ld-surface-2 shadow-ld-shadow-card text-xs">
+      <div className="flex items-start gap-2 px-3 py-2.5 border-b border-ld-border">
+        <span
+          className="shrink-0 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border mt-0.5"
+          style={{ background: cfg.badgeBg, color: cfg.badgeText, borderColor: cfg.badgeBorder }}
+        >
           {cfg.label}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-100 truncate" title={name}>{name}</p>
-          <a href={req.url} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1 text-[10px] font-mono text-slate-400 hover:text-slate-200 truncate mt-0.5 transition-colors"
-            title={req.url}>
+          <p className="font-semibold text-ld-text truncate" title={name}>{name}</p>
+          <a
+            href={req.url} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1 text-[10px] font-mono text-ld-text-3 hover:text-ld-text truncate mt-0.5 transition-colors"
+            title={req.url}
+          >
             <ExternalLink className="w-2.5 h-2.5 shrink-0" />
             <span className="truncate">{req.url}</span>
           </a>
         </div>
-        <button onClick={onClose} className="shrink-0 text-slate-500 hover:text-slate-200 transition-colors">
+        <button onClick={onClose} className="shrink-0 text-ld-text-3 hover:text-ld-text transition-colors cursor-pointer">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
+
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 px-3 py-2.5">
         {stats.map(({ label, value, mono, bold }) => (
           <div key={label} className="flex justify-between items-center gap-2">
-            <span className="text-slate-500 shrink-0">{label}</span>
-            <span className={cn('text-slate-200 tabular-nums', mono && 'font-mono', bold && 'font-semibold text-white')}>
+            <span className="text-ld-text-3 shrink-0">{label}</span>
+            <span className={cn('text-ld-text-2 tabular-nums', mono && 'font-mono', bold && 'font-semibold text-ld-text')}>
               {value}
             </span>
           </div>
         ))}
       </div>
+
       {duration > 0 && (
         <div className="px-3 pb-3 space-y-1">
-          <div className="flex text-[9px] text-slate-500 justify-between">
+          <div className="flex text-[9px] text-ld-text-3 justify-between">
             <span>TTFB ({fmtMs(req.ttfb)})</span>
             <span>Download ({fmtMs(req.contentDownloadTime)})</span>
           </div>
-          <div className="flex h-1.5 rounded-full overflow-hidden gap-px bg-slate-700">
-            <div className={cn('rounded-l-full', cfg.barLight)} style={{ width: `${Math.min((req.ttfb / duration) * 100, 100)}%` }} />
-            <div className={cn('rounded-r-full flex-1', cfg.barDark)} />
+          <div className="flex h-1.5 rounded-full overflow-hidden gap-px" style={{ background: 'var(--ld-border)' }}>
+            <div
+              className="rounded-l-full"
+              style={{ width: `${Math.min((req.ttfb / duration) * 100, 100)}%`, backgroundColor: cfg.barWait }}
+            />
+            <div className="rounded-r-full flex-1" style={{ backgroundColor: cfg.barDl }} />
           </div>
         </div>
       )}
@@ -158,7 +184,7 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
   );
 }
 
-// ─── WaterfallRow (compact) ───────────────────────────────────────────────────
+// ─── WaterfallRow ─────────────────────────────────────────────────────────────
 
 interface RowProps {
   req:        NetworkRequest;
@@ -196,41 +222,52 @@ const WaterfallRow = memo(function WaterfallRow({
         onMouseEnter={() => ctx?.hoveredUrl.set(req.url)}
         onMouseLeave={() => ctx?.hoveredUrl.set('')}
         className={cn(
-          'flex items-center border-b border-slate-800/60 cursor-pointer select-none',
+          'flex items-center border-b border-ld-border cursor-pointer select-none',
           'transition-[opacity,filter] duration-200 ease-in-out',
-          'data-[state=pending]:opacity-[0.2] data-[state=pending]:grayscale',
-          index % 2 === 0 ? 'bg-slate-900' : 'bg-slate-900/40',
-          isSelected && 'ring-1 ring-inset ring-blue-500/40 bg-blue-950/20',
+          'data-[state=pending]:opacity-20 data-[state=pending]:grayscale',
+          index % 2 === 0 ? 'bg-ld-surface' : 'bg-ld-bg',
+          isSelected && 'ring-1 ring-inset ring-ld-accent-line bg-ld-accent-soft',
         )}
         style={{ willChange: 'opacity, filter' }}
       >
-        {/* Label column */}
+        {/* Name column */}
         <div
-          className="flex items-center gap-2 px-3 py-1 shrink-0 border-r border-slate-800/60"
+          className="flex items-center gap-2 px-3 py-1 shrink-0 border-r border-ld-border"
           style={{ width: LEFT_W }}
         >
-          <Icon className="w-3 h-3 shrink-0 text-slate-500" />
-          <span className="font-mono text-[11px] text-slate-300 truncate flex-1 leading-none" title={req.url}>
+          <Icon className="w-3 h-3 shrink-0 text-ld-text-3" />
+          <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
             {name}
           </span>
-          <span className={cn('text-[9px] font-bold px-1 py-0.5 rounded border font-mono shrink-0', cfg.badge)}>
+          <span
+            className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] shrink-0"
+            style={{ color: cfg.badgeText, background: cfg.badgeBg, border: `1px solid ${cfg.badgeBorder}` }}
+          >
             {cfg.label}
           </span>
-          <span className="text-[10px] text-slate-500 tabular-nums shrink-0 w-11 text-right font-mono">
+          <span className="text-[10px] text-ld-text-3 tabular-nums shrink-0 w-11 text-right font-mono">
             {fmtBytes(req.transferSize)}
           </span>
         </div>
 
-        {/* Bar column */}
+        {/* Lane */}
         <div className="flex-1 relative h-5 flex items-center">
-          <div className="absolute inset-x-0 h-px bg-slate-800/80" />
+          <div className="absolute inset-x-0 h-px" style={{ background: 'var(--ld-border)' }} />
           {barWidth > 0 && (
             <div
               className="absolute h-2.5 rounded-sm flex overflow-hidden"
               style={{ left: `${barLeft}%`, width: `${barWidth}%` }}
             >
-              <div ref={ttfbRef} className={cn('h-full transition-opacity duration-150', cfg.barLight)} style={{ width: `${ttfbPct}%` }} />
-              <div ref={dlRef}   className={cn('h-full flex-1 transition-opacity duration-150', cfg.barDark)} />
+              <div
+                ref={ttfbRef}
+                className="h-full transition-opacity duration-150"
+                style={{ width: `${ttfbPct}%`, backgroundColor: cfg.barWait }}
+              />
+              <div
+                ref={dlRef}
+                className="h-full flex-1 transition-opacity duration-150"
+                style={{ backgroundColor: cfg.barDl }}
+              />
               <div ref={shimRef} className="wf-shim absolute inset-0 rounded-sm pointer-events-none" />
             </div>
           )}
@@ -280,7 +317,7 @@ export function TimelineWaterfall({
   const handleSelect   = useCallback((i: number) => setSelectedIdx(p => p === i ? null : i), []);
   const handleDeselect = useCallback(() => setSelectedIdx(null), []);
 
-  // ── MotionValues for scrubber visuals
+  // ── MotionValues for scrubber
   const motionMs      = useMotionValue(0);
   const progressWidth = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
   const playheadLeft  = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
@@ -326,7 +363,6 @@ export function TimelineWaterfall({
     return () => ro.disconnect();
   }, []);
 
-  // ── Scrub
   function handleScrubInternal(ms: number) {
     motionMs.set(ms);
     ctx?.motionMs.set(ms);
@@ -410,12 +446,10 @@ export function TimelineWaterfall({
     return unsub;
   }, [ctx, rows, motionMs]);
 
-  // preload frames
   useEffect(() => {
     for (const f of frames) { const img = new Image(); img.src = f.data; }
   }, [frames]);
 
-  // axis ticks: one frame per tick
   const axisTicks = useMemo(() =>
     Array.from({ length: TICK_COUNT + 1 }, (_, i) => {
       const ms  = (i / TICK_COUNT) * axisMs;
@@ -426,19 +460,17 @@ export function TimelineWaterfall({
 
   if (rows.length === 0 || wfMs === 0) {
     return (
-      <div className="rounded-xl border border-slate-700/60 bg-slate-900 px-4 py-8 text-center">
-        <Network className="w-5 h-5 text-slate-600 mx-auto mb-2" />
-        <p className="text-xs text-slate-500">No network timing data available.</p>
+      <div className="rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card px-4 py-8 text-center">
+        <Network className="w-5 h-5 text-ld-text-3 mx-auto mb-2" />
+        <p className="text-[12.5px] text-ld-text-3">No network timing data available.</p>
       </div>
     );
   }
 
-
-  // axis row height: thumbnail + tick mark + label + top padding
-  const AXIS_ROW_H = 8 + THUMB_H + 6 + 16 + 8; // 83px
+  const AXIS_ROW_H = 8 + THUMB_H + 6 + 16 + 8;
 
   return (
-    <div ref={rootRef} className="rounded-xl border border-slate-700/60">
+    <div ref={rootRef} className="rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card overflow-hidden">
       <style>{`
         @keyframes wf-shimmer {
           0%   { transform: translateX(-100%); opacity: 0; }
@@ -450,89 +482,118 @@ export function TimelineWaterfall({
         .wf-shim-active::after {
           content: '';
           position: absolute; inset: 0;
-          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
+          background: linear-gradient(90deg, transparent 0%, rgba(20,192,138,0.22) 50%, transparent 100%);
           animation: wf-shimmer 1.3s ease-in-out infinite;
         }
       `}</style>
 
       {/* ══════════ STICKY HEADER ══════════════════════════════════════════ */}
-      <div className="sticky top-0 z-50 bg-[#0b1121] rounded-t-xl border-b border-slate-700/60">
+      <div className="sticky top-0 z-50 bg-ld-surface rounded-t-[18px] border-b border-ld-border">
 
-        {/* ── Controls row ─────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 px-4 py-2.5">
-          <Network className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className="text-sm font-semibold text-slate-200 tracking-tight">Network Waterfall</span>
-          <span className="text-[11px] text-slate-500 font-mono tabular-nums">
-            {rows.length} req · {fmtMs(wfMs)}
+        {/* ── Panel head (icon tile + title + meta + controls + chips + video) */}
+        <div className="flex items-center gap-[10px] px-[18px] py-[14px] flex-wrap">
+
+          {/* Icon tile */}
+          <span className="w-[34px] h-[34px] rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border [&_svg]:w-[17px] [&_svg]:h-[17px] text-[var(--ld-accent)] shrink-0">
+            <Network />
           </span>
 
-          <div className="w-px h-4 bg-slate-700 mx-1 shrink-0" />
+          <h3 className="text-[16.5px] font-bold text-ld-text tracking-tight">Network Waterfall</h3>
+          <span className="font-mono text-[12px] text-ld-text-3">{rows.length} req · {fmtMs(wfMs)}</span>
 
-          <button
-            onClick={togglePlay}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold transition-colors shrink-0"
-          >
-            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          {/* Controls */}
+          <div className="flex items-center gap-[8px]">
+            <button
+              onClick={togglePlay}
+              className="flex items-center gap-[6px] px-[10px] py-[6px] rounded-[8px] bg-ld-accent-soft hover:bg-ld-accent-line border border-ld-accent-line text-[var(--ld-accent)] text-[12px] font-semibold transition-colors shrink-0 cursor-pointer"
+            >
+              {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
 
-          <div className="flex rounded-md overflow-hidden border border-slate-700 text-xs font-mono shrink-0">
-            {([0.5, 1] as const).map(s => (
-              <button key={s} onClick={() => setPlaySpeed(s)}
-                className={`px-2 py-1.5 transition-colors ${playSpeed === s ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300 bg-slate-800'}`}>
-                {s}x
-              </button>
-            ))}
+            <div className="flex rounded-[8px] overflow-hidden border border-ld-border text-[11px] font-mono shrink-0">
+              {([0.5, 1] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setPlaySpeed(s)}
+                  className={cn(
+                    'px-[8px] py-[5px] transition-colors cursor-pointer',
+                    playSpeed === s
+                      ? 'bg-ld-accent-soft text-[var(--ld-accent)] font-semibold'
+                      : 'text-ld-text-3 hover:text-ld-text-2 bg-transparent',
+                  )}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+
+            <span
+              ref={curLabelRef}
+              className="text-[11px] font-mono font-bold tabular-nums px-[8px] py-[5px] rounded-[7px] border shrink-0"
+              style={{ color: 'var(--ld-accent)', background: 'var(--ld-accent-soft)', borderColor: 'var(--ld-accent-line)' }}
+            >
+              0ms
+            </span>
+            <span className="text-[10px] text-ld-text-3 font-mono shrink-0">/ {fmtMs(maxTiming)}</span>
           </div>
 
-          <span ref={curLabelRef}
-            className="text-[11px] font-mono font-bold text-blue-300 tabular-nums bg-slate-800 px-2 py-1 rounded border border-blue-500/20 shrink-0">
-            0ms
-          </span>
-          <span className="text-[10px] text-slate-600 font-mono shrink-0">/ {fmtMs(maxTiming)}</span>
+          {/* Right: metric chips + video player */}
+          <div className="ml-auto flex items-center gap-[8px]">
+            {METRICS_CFG.map(m => {
+              const val = metrics[m.key];
+              if (!val) return null;
+              return (
+                <span
+                  key={m.key}
+                  className="inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border"
+                  style={m.chipStyle}
+                >
+                  <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: 'currentColor' }} />
+                  {m.label} {fmtSec(val)}
+                </span>
+              );
+            })}
 
-          {METRICS_CFG.map(m => {
-            const val = metrics[m.key];
-            if (!val) return null;
-            return (
-              <div key={m.key} className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800 border border-slate-700/50 shrink-0">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.bg}`} />
-                <span className={`text-[10px] font-bold ${m.text}`}>{m.label}</span>
-                <span className={`text-[10px] font-mono ${m.text} opacity-80 tabular-nums`}>{fmtSec(val)}</span>
+            {/* Mini video */}
+            <div
+              className="relative rounded-[10px] overflow-hidden border border-ld-border-strong bg-ld-bg shrink-0"
+              style={{ width: 120, height: 68 }}
+            >
+              <img
+                src={frames[activeFrameIdx].data}
+                alt=""
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+              <div className="absolute bottom-1 right-1 text-[8px] font-mono text-ld-text-3 bg-ld-surface/80 px-1 rounded tabular-nums">
+                {fmtSec(frames[activeFrameIdx].timing)}
               </div>
-            );
-          })}
-
-          {/* Mini video player */}
-          <div className="ml-auto relative rounded-lg overflow-hidden border border-slate-600/60 bg-slate-950 shrink-0"
-            style={{ width: 120, height: 68 }}>
-            <img
-              src={frames[activeFrameIdx].data}
-              alt=""
-              className="w-full h-full object-contain"
-              draggable={false}
-            />
-            <div className="absolute bottom-1 right-1 text-[8px] font-mono text-slate-400 bg-slate-900/80 px-1 rounded tabular-nums">
-              {fmtSec(frames[activeFrameIdx].timing)}
             </div>
           </div>
         </div>
 
-        {/* ── Scrubber row — left-aligned with chart area ──────────────── */}
-        <div className="pb-2" style={{ paddingLeft: LEFT_W, paddingRight: 16 }}>
+        {/* ── Scrubber ─────────────────────────────────────────────────── */}
+        <div className="pb-3" style={{ paddingLeft: LEFT_W + 18, paddingRight: 18 }}>
+
           {/* Metric labels above track */}
           <div className="relative h-5 mb-0.5">
             {METRICS_CFG.map(m => {
               const val = metrics[m.key];
               if (!val) return null;
               return (
-                <div key={m.key}
+                <div
+                  key={m.key}
                   className="absolute bottom-0 flex flex-col items-center gap-0.5 -translate-x-1/2 pointer-events-none"
-                  style={{ left: `${(val / maxTiming) * 100}%` }}>
-                  <div className={`flex items-center gap-0.5 px-1 rounded text-[9px] font-bold ${m.text} bg-slate-800 border border-slate-700/60`}>
+                  style={{ left: `${(val / maxTiming) * 100}%` }}
+                >
+                  <div
+                    className="flex items-center gap-0.5 px-1 rounded text-[9px] font-bold font-mono border"
+                    style={{ color: m.color, borderColor: m.color + '40', background: 'var(--ld-surface)' }}
+                  >
                     {m.label}
                   </div>
-                  <div className="w-px h-1.5" style={{ background: m.hex }} />
+                  <div className="w-px h-1.5" style={{ background: m.color }} />
                 </div>
               );
             })}
@@ -540,20 +601,30 @@ export function TimelineWaterfall({
 
           {/* Track */}
           <div className="relative h-4 flex items-center">
-            <div className="absolute inset-x-0 h-1 rounded-full bg-slate-700" />
-            <motion.div className="absolute left-0 h-1 rounded-full bg-slate-400" style={{ width: progressWidth }} />
+            <div className="absolute inset-x-0 h-1 rounded-full" style={{ background: 'var(--ld-border-strong)' }} />
+            <motion.div
+              className="absolute left-0 h-1 rounded-full"
+              style={{ width: progressWidth, background: 'var(--ld-accent)' }}
+            />
             {METRICS_CFG.map(m => {
               const val = metrics[m.key];
               if (!val) return null;
               return (
-                <div key={m.key}
+                <div
+                  key={m.key}
                   className="absolute w-0.5 h-3 rounded-full -translate-x-1/2 pointer-events-none z-10"
-                  style={{ left: `${(val / maxTiming) * 100}%`, background: m.hex }} />
+                  style={{ left: `${(val / maxTiming) * 100}%`, background: m.color }}
+                />
               );
             })}
             <motion.div
-              className="absolute w-3.5 h-3.5 rounded-full bg-white shadow-lg border-2 border-slate-300 -translate-x-1/2 z-20"
-              style={{ left: playheadLeft }}
+              className="absolute w-3.5 h-3.5 rounded-full shadow-lg -translate-x-1/2 z-20 border-2"
+              style={{
+                left: playheadLeft,
+                background: 'var(--ld-accent)',
+                borderColor: 'var(--ld-accent-2)',
+                boxShadow: '0 0 10px var(--ld-accent)',
+              }}
             />
             <input
               ref={rangeRef}
@@ -568,12 +639,10 @@ export function TimelineWaterfall({
           </div>
         </div>
 
-        {/* ── Column headers + time axis with thumbnails ────────────────── */}
-        <div className="flex border-t border-slate-800/60 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-
-          {/* Left column label */}
+        {/* ── Column headers + filmstrip axis ──────────────────────────── */}
+        <div className="flex border-t border-ld-border text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
           <div
-            className="shrink-0 flex items-center gap-4 px-3 border-r border-slate-800"
+            className="shrink-0 flex items-center gap-4 px-3 border-r border-ld-border"
             style={{ width: LEFT_W, height: AXIS_ROW_H }}
           >
             <span>Resource</span>
@@ -581,43 +650,40 @@ export function TimelineWaterfall({
             <span className="w-11 text-right">Size</span>
           </div>
 
-          {/* Axis area with thumbnails + ghost line */}
           <div className="flex-1 relative overflow-hidden" style={{ height: AXIS_ROW_H }}>
             {axisTicks.map(({ i, ms, frame }) => (
               <div
                 key={i}
                 className={cn(
                   'absolute flex flex-col',
-                  i === 0
-                    ? 'items-start translate-x-0'
-                    : i === TICK_COUNT
-                    ? 'items-end -translate-x-full'
-                    : 'items-center -translate-x-1/2',
+                  i === 0 ? 'items-start translate-x-0' :
+                  i === TICK_COUNT ? 'items-end -translate-x-full' :
+                  'items-center -translate-x-1/2',
                 )}
                 style={{ left: `${(i / TICK_COUNT) * 100}%`, top: 8 }}
               >
                 <img
                   src={frame.data}
                   alt=""
-                  className="rounded-sm border border-slate-700/40 object-cover"
-                  style={{ width: THUMB_W, height: THUMB_H, opacity: 0.75 }}
+                  className="rounded-[5px] border border-ld-border object-cover"
+                  style={{ width: THUMB_W, height: THUMB_H, opacity: 0.8 }}
                   draggable={false}
                 />
-                <div className="h-1.5 w-px bg-slate-700 mt-0.5" />
-                <span className="text-[9px] font-mono text-slate-500 tabular-nums mt-0.5 normal-case tracking-normal font-normal">
+                <div className="h-1.5 w-px mt-0.5" style={{ background: 'var(--ld-border-strong)' }} />
+                <span className="text-[9px] font-mono text-ld-text-3 tabular-nums mt-0.5 normal-case tracking-normal font-normal">
                   {fmtMs(ms)}
                 </span>
               </div>
             ))}
 
-            {/* Axis ghost line — positioned within flex-1 */}
+            {/* Axis ghost line */}
             <div
               ref={axisLineRef}
               className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-10"
               style={{
                 transform: 'translateX(0)',
                 willChange: 'transform',
-                background: 'linear-gradient(to bottom, #60a5fa 0%, #60a5fa55 100%)',
+                background: 'linear-gradient(to bottom, var(--ld-accent) 0%, rgba(20,192,138,.4) 100%)',
               }}
             />
           </div>
@@ -625,7 +691,7 @@ export function TimelineWaterfall({
       </div>
 
       {/* ══════════ WATERFALL ROWS ═════════════════════════════════════════ */}
-      <div className="rounded-b-xl overflow-hidden bg-slate-900">
+      <div className="rounded-b-[18px] overflow-hidden bg-ld-bg">
         <div className="relative">
 
           {/* Grid lines */}
@@ -633,10 +699,24 @@ export function TimelineWaterfall({
             {Array.from({ length: TICK_COUNT - 1 }, (_, i) => (
               <div
                 key={i}
-                className="absolute top-0 bottom-0 w-px bg-slate-800/60"
-                style={{ left: `${((i + 1) / TICK_COUNT) * 100}%` }}
+                className="absolute top-0 bottom-0 w-px"
+                style={{ left: `${((i + 1) / TICK_COUNT) * 100}%`, background: 'var(--ld-border)' }}
               />
             ))}
+
+            {/* FCP/LCP/TTI vertical markers */}
+            {METRICS_CFG.map(m => {
+              const val = metrics[m.key];
+              if (!val) return null;
+              const pct = Math.min(val / axisMs, 1) * 100;
+              return (
+                <div
+                  key={m.key}
+                  className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-10"
+                  style={{ left: `${pct}%`, background: m.color, opacity: 0.5 }}
+                />
+              );
+            })}
           </div>
 
           {/* Rows */}
@@ -664,35 +744,47 @@ export function TimelineWaterfall({
             style={{
               transform: `translateX(${LEFT_W}px)`,
               willChange: 'transform',
-              background: 'linear-gradient(to bottom, #60a5fa 0%, #60a5fa88 80%, transparent 100%)',
+              background: 'linear-gradient(to bottom, var(--ld-accent) 0%, rgba(20,192,138,.5) 80%, transparent 100%)',
             }}
           >
             <div className="absolute -top-px left-1/2 -translate-x-1/2">
-              <div className="w-2 h-2 rounded-full bg-blue-400 ring-2 ring-blue-400/30 shadow-lg shadow-blue-400/40" />
+              <div
+                className="w-2 h-2 rounded-full ring-2"
+                style={{ background: 'var(--ld-accent)', ringColor: 'var(--ld-accent-line)', boxShadow: '0 0 8px var(--ld-accent)' }}
+              />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-slate-800 bg-slate-900/40 flex items-center justify-between">
-          <p className="text-[10px] text-slate-600">
-            Scrub timeline or press Play to animate · Click a row for details
+        <div className="px-[18px] py-[10px] border-t border-ld-border flex items-center justify-between">
+          <p className="text-[10.5px] text-ld-text-3">
+            Scrub the timeline or press Play to animate · Click a row for details
           </p>
           {selectedIdx !== null && (
-            <button onClick={handleDeselect} className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">
+            <button
+              onClick={handleDeselect}
+              className="text-[11px] text-ld-text-3 hover:text-ld-text transition-colors cursor-pointer"
+            >
               Close detail
             </button>
           )}
         </div>
 
-        {/* ── CPU FLAME CHART ────────────────────────────────────────────── */}
+        {/* ── CPU FLAME CHART ──────────────────────────────────────────── */}
         {flameChartData && flameChartData.events.length > 0 && (
-          <div className="border-t border-slate-700/60">
-            {/* Section header */}
-            <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800/60 bg-slate-900/60">
-              <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-              <span className="text-sm font-semibold text-slate-200 tracking-tight">CPU Main Thread</span>
-              <span className="text-[11px] text-slate-500 font-mono tabular-nums">
+          <div className="border-t border-ld-border">
+            <div className="flex items-center gap-[10px] px-[18px] py-[12px] border-b border-ld-border">
+              <span
+                className="w-[28px] h-[28px] rounded-[7px] grid place-items-center border shrink-0"
+                style={{ background: 'rgba(230,162,60,.12)', borderColor: 'rgba(230,162,60,.3)', color: 'var(--ld-amber)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+              </span>
+              <span className="text-[14px] font-bold text-ld-text tracking-tight">CPU Main Thread</span>
+              <span className="font-mono text-[11px] text-ld-text-3">
                 {flameChartData.events.length} events ·{' '}
                 {flameChartData.events.filter(e => e.isLongTask).length} long tasks ·{' '}
                 {flameChartData.maxDepth} call stack levels

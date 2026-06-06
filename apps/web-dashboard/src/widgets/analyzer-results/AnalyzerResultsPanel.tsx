@@ -2,12 +2,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
-import { ScoreCard, type ScoreLabel } from '@/features/analyzer/components/ScoreCard';
-import { MetricsGrid } from '@/features/analyzer/components/MetricsGrid';
+import { ScoreCard, MetricsGrid, type ScoreLabel } from '@/entities/analysis';
 import { AuditList } from '@/features/analyzer/components/AuditList';
 import { AiInsights } from '@/features/analyzer/components/AiInsights';
 import { ResourceBreakdown } from '@/features/analyzer/components/ResourceBreakdown';
-import { ResourceWaterfall } from '@/features/analyzer/components/ResourceWaterfall';
+import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { PerformanceTimeline } from '@/features/analyzer/components/PerformanceTimeline';
 import { TimelineWaterfall } from '@/features/analyzer/components/TimelineWaterfall';
 import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
@@ -22,9 +21,9 @@ import type { AnalysisResult, DependencyGraph } from '@/entities/analysis';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+    <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">
       {children}
-    </h2>
+    </p>
   );
 }
 
@@ -76,7 +75,7 @@ export function AnalyzerResultsPanel({ data }: Props) {
 
       <section>
         <SectionTitle>Scores</SectionTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-[14px]">
           {SCORE_ITEMS.map(({ label, scoreKey }) => (
             <ScoreCard key={label} label={label} score={data.scores[scoreKey]} />
           ))}
