@@ -8,7 +8,7 @@ import { AiInsights } from '@/features/analyzer/components/AiInsights';
 import { ResourceBreakdown } from '@/features/analyzer/components/ResourceBreakdown';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { PerformanceTimeline } from '@/features/analyzer/components/PerformanceTimeline';
-import { TimelineWaterfall } from '@/features/analyzer/components/TimelineWaterfall';
+import { TimelineWaterfall } from '@/features/analyzer/ui/TimelineWaterfall';
 import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
 import { HeapMemoryChart } from '@/features/analyzer/components/HeapMemoryChart';
 import { InteractionTimeline } from '@/features/analyzer/components/InteractionTimeline';
