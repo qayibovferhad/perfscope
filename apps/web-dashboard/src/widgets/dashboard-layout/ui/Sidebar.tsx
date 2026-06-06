@@ -1,0 +1,192 @@
+import { useMemo } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronRight, Globe, LogOut, Plus, Trash2, X } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
+import { useAuthStore } from '@/features/auth/model/authStore';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { useAllHistory } from '@/features/history/hooks/useHistory';
+import { NAV } from '../model/navItems';
+
+interface SidebarProps {
+  onClose?: () => void;
+  onAddWebsite: () => void;
+}
+
+export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { user, logout } = useAuthStore();
+  const { websites, remove } = useWebsites();
+  const { data: allHistory = [] } = useAllHistory();
+
+  const sortedWebsites = useMemo(() => {
+    if (!allHistory.length) return websites;
+    const lastAuditAt: Record<string, number> = {};
+    for (const entry of allHistory) {
+      const t = new Date(entry.timestamp).getTime();
+      if (!lastAuditAt[entry.url] || t > lastAuditAt[entry.url]) {
+        lastAuditAt[entry.url] = t;
+      }
+    }
+    return [...websites].sort((a, b) => (lastAuditAt[b.url] ?? 0) - (lastAuditAt[a.url] ?? 0));
+  }, [websites, allHistory]);
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
+
+  function openProject(id: string) {
+    onClose?.();
+    navigate(`/projects/${id}`);
+  }
+
+  return (
+    <aside className="flex flex-col w-72 h-screen sticky top-0 overflow-y-auto border-r border-ld-border bg-ld-bg-2 px-5 py-6">
+
+      {/* Brand */}
+      <div className="flex items-center gap-2.5 px-1 pb-5">
+        <Link to="/" className="flex items-center gap-2.5 flex-1 min-w-0">
+          <span className="w-[30px] h-[30px] rounded-[9px] grid place-items-center bg-ld-grad shadow-ld-glow shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" className="w-[17px] h-[17px]">
+              <path d="M3 12h3l2.5-7 4 14 3-9 2 2H21" stroke="#04130d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+          <span className="font-bold text-[17px] tracking-[-0.02em] text-ld-text">
+            Perf<b className="text-ld-accent-2 font-extrabold">Scope</b>
+          </span>
+        </Link>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="shrink-0 text-ld-text-3 hover:text-ld-text transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Add Website */}
+      <Button className="w-full" onClick={() => { onAddWebsite(); onClose?.(); }}>
+        <Plus className="w-[17px] h-[17px]" />
+        Add Website
+      </Button>
+
+      {/* My Websites */}
+      {sortedWebsites.length > 0 && (
+        <>
+          <p className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-ld-text-3 pt-[22px] pb-2.5 px-1">
+            My Websites
+          </p>
+          <div>
+            {sortedWebsites.slice(0, 3).map((site) => {
+              const isActive = pathname === `/projects/${site._id}`;
+              return (
+                <div
+                  key={site._id}
+                  onClick={() => openProject(site._id)}
+                  className={`group flex items-center gap-[11px] px-2.5 py-[9px] rounded-[10px] cursor-pointer transition-all duration-200 ${
+                    isActive
+                      ? 'bg-ld-accent-soft shadow-ld-ring-accent'
+                      : 'hover:bg-ld-surface-hover'
+                  }`}
+                >
+                  <span className={`w-[26px] h-[26px] rounded-[7px] grid place-items-center border shrink-0 transition-colors duration-200 ${
+                    isActive
+                      ? 'border-ld-accent-line text-ld-accent bg-ld-surface-2'
+                      : 'border-ld-border bg-ld-surface-2 text-ld-text-3'
+                  }`}>
+                    <Globe className="w-[14px] h-[14px]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block text-[13.5px] font-semibold text-ld-text truncate">
+                      {site.name || new URL(site.url).hostname}
+                    </b>
+                    <span className="block text-[11.5px] text-ld-text-3 font-mono truncate">
+                      {new URL(site.url).hostname}
+                    </span>
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); remove.mutate(site._id); }}
+                    title="Remove"
+                    className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-ld-text-3 hover:text-ld-rose"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            {sortedWebsites.length > 3 && (
+              <Link
+                to="/websites"
+                onClick={onClose}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 mt-1 rounded-lg text-[11px] font-medium text-ld-accent hover:bg-ld-accent-soft transition-colors"
+              >
+                <ChevronRight className="w-3 h-3" />
+                View all {sortedWebsites.length} websites
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Workspace nav */}
+      <p className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-ld-text-3 pt-[22px] pb-2.5 px-1">
+        Workspace
+      </p>
+      <nav className="flex flex-col gap-0.5 flex-1">
+        {NAV.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onClose}
+            className={({ isActive }) =>
+              `group flex items-center gap-[11px] px-2.5 py-[9px] rounded-[10px] text-[14px] font-medium no-underline transition-colors duration-200 ${
+                isActive
+                  ? 'bg-ld-surface text-ld-text shadow-ld-ring-border'
+                  : 'text-ld-text-2 hover:bg-ld-surface-hover hover:text-ld-text'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon className={`w-[17px] h-[17px] shrink-0 transition-colors duration-200 ${
+                  isActive
+                    ? 'text-ld-accent'
+                    : 'text-ld-text-3 group-hover:text-ld-accent'
+                }`} />
+                {label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* User footer */}
+      <div className="mt-auto flex items-center gap-2.5 px-1 pt-4 border-t border-ld-border">
+        {user?.picture
+          ? <img
+              src={user.picture}
+              alt={user.name ?? ''}
+              className="w-8 h-8 rounded-[9px] shrink-0 object-cover"
+              referrerPolicy="no-referrer"
+            />
+          : <span className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-grad text-[#04130d] font-extrabold text-[14px] shrink-0">
+              {user?.name?.[0]?.toUpperCase() ?? 'U'}
+            </span>
+        }
+        <span className="min-w-0 flex-1">
+          <b className="block text-[13px] font-semibold text-ld-text truncate">{user?.name}</b>
+          <span className="block text-[11px] text-ld-text-3 font-mono truncate">{user?.email}</span>
+        </span>
+        <button
+          onClick={handleLogout}
+          aria-label="Sign out"
+          className="w-[30px] h-[30px] rounded-lg grid place-items-center text-ld-text-3 border border-transparent bg-transparent cursor-pointer transition-all duration-200 hover:text-ld-rose hover:border-ld-border"
+        >
+          <LogOut className="w-[15px] h-[15px]" />
+        </button>
+      </div>
+    </aside>
+  );
+}

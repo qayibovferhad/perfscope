@@ -10,6 +10,22 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        /* ── Sidebar / Layout design tokens (--ld-* CSS vars) ────────────── */
+        'ld-bg-2':          'var(--ld-bg-2)',
+        'ld-surface':       'var(--ld-surface)',
+        'ld-surface-2':     'var(--ld-surface-2)',
+        'ld-surface-hover': 'var(--ld-surface-hover)',
+        'ld-border':        'var(--ld-border)',
+        'ld-border-strong': 'var(--ld-border-strong)',
+        'ld-text':          'var(--ld-text)',
+        'ld-text-2':        'var(--ld-text-2)',
+        'ld-text-3':        'var(--ld-text-3)',
+        'ld-accent':        'var(--ld-accent)',
+        'ld-accent-2':      'var(--ld-accent-2)',
+        'ld-accent-soft':   'var(--ld-accent-soft)',
+        'ld-accent-line':   'var(--ld-accent-line)',
+        'ld-rose':          'var(--ld-rose)',
+
         /* ── Shadcn semantic tokens (kept for Shadcn primitives) ──────────── */
         background:  'hsl(var(--background))',
         foreground:  'hsl(var(--foreground))',
@@ -87,8 +103,8 @@ export default {
         mono:    ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'ui-monospace', 'monospace'],
       },
       backgroundImage: {
-        /* Brand gradient — single source of truth */
         'ps-brand': 'linear-gradient(135deg, #4f46e5, #8B5CF6)',
+        'ld-grad':  'var(--ld-grad)',
       },
       boxShadow: {
         'glow-accent':    '0 0 16px var(--ps-accent-glow)',
@@ -96,6 +112,9 @@ export default {
         'glow-reg':       '0 0 16px var(--ps-reg-glow)',
         'glow-ok':        '0 0 16px var(--ps-healthy-glow)',
         'glow-amber':     '0 0 16px var(--ps-amber-glow)',
+        'ld-glow':        'var(--ld-glow)',
+        'ld-ring-accent': 'inset 0 0 0 1px var(--ld-accent-line)',
+        'ld-ring-border': 'inset 0 0 0 1px var(--ld-border)',
       },
     },
   },
