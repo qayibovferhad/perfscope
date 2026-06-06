@@ -8,7 +8,7 @@ import {
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { useTimelineContext } from '../context/TimelineContext';
-import { FlameChart } from './FlameChart';
+import { FlameChart } from '../components/FlameChart';
 import type {
   ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
   FlameChartData,
