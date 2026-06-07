@@ -1,7 +1,7 @@
 import type { MotionValue } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 import { TimelineProvider } from '../../analyzer/context/TimelineContext';
-import { ScoreCard } from '../../analyzer/components/ScoreCard';
+import { ScoreCard } from '@/entities/analysis';
 import { CompareMetricsGrid } from './CompareMetricsGrid';
 import type { AnalysisResult } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';

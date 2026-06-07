@@ -5,14 +5,16 @@ interface InputProps extends React.ComponentProps<'input'> {
   icon?: React.ReactNode;
   error?: boolean;
   mono?: boolean;
+  wrapperClassName?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, icon, error, mono, ...props }, ref) => {
+  ({ className, icon, error, mono, wrapperClassName, ...props }, ref) => {
     if (icon) {
       return (
         <div className={cn(
           'group flex items-center gap-[10px] px-[14px] rounded-[12px] border bg-ld-bg-2 transition-all duration-200',
+          wrapperClassName,
           error
             ? 'border-ld-rose shadow-[0_0_0_4px_rgba(242,100,122,0.13)]'
             : 'border-ld-border-strong focus-within:border-ld-accent focus-within:shadow-[0_0_0_4px_var(--ld-accent-soft)]',

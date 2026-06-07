@@ -24,7 +24,11 @@ export default {
         'ld-accent-2':      'var(--ld-accent-2)',
         'ld-accent-soft':   'var(--ld-accent-soft)',
         'ld-accent-line':   'var(--ld-accent-line)',
+        'ld-teal':          'var(--ld-teal)',
+        'ld-amber':         'var(--ld-amber)',
         'ld-rose':          'var(--ld-rose)',
+        'ld-grad-text':     'var(--ld-grad-text)',
+        'ld-score-good':    'var(--ld-score-good)',
 
         /* ── Shadcn semantic tokens (kept for Shadcn primitives) ──────────── */
         background:  'hsl(var(--background))',
@@ -113,6 +117,7 @@ export default {
         'glow-ok':        '0 0 16px var(--ps-healthy-glow)',
         'glow-amber':     '0 0 16px var(--ps-amber-glow)',
         'ld-glow':        'var(--ld-glow)',
+        'ld-shadow-card': 'var(--ld-shadow-card)',
         'ld-ring-accent': 'inset 0 0 0 1px var(--ld-accent-line)',
         'ld-ring-border': 'inset 0 0 0 1px var(--ld-border)',
       },

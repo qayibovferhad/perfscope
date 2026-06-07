@@ -2,17 +2,17 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
-import { ScoreCard, MetricsGrid, type ScoreLabel } from '@/entities/analysis';
-import { AuditList } from '@/features/analyzer/components/AuditList';
+import { Button } from '@/shared/ui/button';
+import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
 import { AiInsights } from '@/features/analyzer/components/AiInsights';
-import { ResourceBreakdown } from '@/features/analyzer/components/ResourceBreakdown';
+import { ResourceBreakdown } from '@/features/analyzer/ui/ResourceBreakdown';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { PerformanceTimeline } from '@/features/analyzer/components/PerformanceTimeline';
 import { TimelineWaterfall } from '@/features/analyzer/ui/TimelineWaterfall';
 import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
-import { HeapMemoryChart } from '@/features/analyzer/components/HeapMemoryChart';
-import { InteractionTimeline } from '@/features/analyzer/components/InteractionTimeline';
-import { CLSVisualizer } from '@/features/analyzer/components/CLSVisualizer';
+import { HeapMemoryChart } from '@/features/analyzer/ui/HeapMemoryChart';
+import { InteractionTimeline } from '@/features/analyzer/ui/InteractionTimeline';
+import { CLSVisualizer } from '@/features/analyzer/ui/CLSVisualizer';
 import { ResourcesAlert } from '@/features/analyzer/components/ResourcesAlert';
 import { TimelineProvider, useTimelineContext } from '@/features/analyzer/context/TimelineContext';
 import type { AnalysisResult, DependencyGraph } from '@/entities/analysis';
@@ -134,25 +134,18 @@ export function AnalyzerResultsPanel({ data }: Props) {
 
           {data.heapMemoryData && (
             <section className="mt-8">
-              <SectionTitle>JS Heap Memory</SectionTitle>
-              <Card>
-                <CardContent className="pt-4 pb-4 px-4">
                   <HeapMemoryChart data={data.heapMemoryData} />
-                </CardContent>
-              </Card>
             </section>
           )}
 
           {data.interactionData && (
             <section className="mt-8">
-              <SectionTitle>Interaction Responsiveness (FID / INP)</SectionTitle>
               <InteractionTimeline data={data.interactionData} />
             </section>
           )}
 
           {data.clsData && data.timelineData && (
             <section className="mt-8">
-              <SectionTitle>Layout Shift Visualizer (CLS)</SectionTitle>
               <CLSVisualizer clsData={data.clsData} timelineData={data.timelineData} />
             </section>
           )}
@@ -161,21 +154,17 @@ export function AnalyzerResultsPanel({ data }: Props) {
 
       {data.audits.length > 0 && (
         <section>
-          <SectionTitle>
-            Critical ({data.audits.filter(a => a.impact === 'critical').length}) · Other ({data.audits.filter(a => a.impact !== 'critical').length})
-          </SectionTitle>
           <AuditList audits={data.audits} />
         </section>
       )}
 
       <div className="flex justify-center pt-2">
-        <Link
-          to={`/history?url=${encodeURIComponent(data.url)}`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ps-btn-ghost"
-        >
-          <TrendingUp className="w-4 h-4" />
-          View Full History
-        </Link>
+        <Button asChild>
+          <Link to={`/history?url=${encodeURIComponent(data.url)}`}>
+            <TrendingUp />
+            View Full History
+          </Link>
+        </Button>
       </div>
     </motion.div>
   );

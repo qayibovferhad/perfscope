@@ -28,7 +28,9 @@
   --ld-amber:         #e6a23c;
   --ld-rose:          #f2647a;
 
+  --ld-score-good:  var(--ld-accent-2);
   --ld-grad:        linear-gradient(100deg, #0c8f66 0%, #14c08a 45%, #2fd3bb 100%);
+  --ld-grad-text:   #04130d;
   --ld-glow:        0 0 0 1px var(--ld-accent-line), 0 18px 60px -20px rgba(20, 192, 138, 0.45);
   --ld-shadow-card: 0 1px 0 0 rgba(255,255,255,0.02) inset, 0 24px 60px -30px rgba(0,0,0,0.8);
   --ld-ring:        0 0 0 4px var(--ld-accent-soft);
@@ -60,7 +62,9 @@
   --ld-amber:         #b9791a;
   --ld-rose:          #d63a57;
 
+  --ld-score-good:  var(--ld-accent);
   --ld-grad:        linear-gradient(100deg, #07875e 0%, #0a9e6f 50%, #14b89a 100%);
+  --ld-grad-text:   #ffffff;
   --ld-glow:        0 0 0 1px var(--ld-accent-line), 0 18px 50px -22px rgba(10, 158, 111, 0.40);
   --ld-shadow-card: 0 1px 2px rgba(8,50,36,0.04), 0 18px 44px -28px rgba(8,50,36,0.20);
   --ld-ring:        0 0 0 4px var(--ld-accent-soft);

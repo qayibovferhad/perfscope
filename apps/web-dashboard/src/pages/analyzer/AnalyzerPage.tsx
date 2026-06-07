@@ -5,10 +5,10 @@ import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { useAnalysis } from '@/features/analyzer/hooks/useAnalysis';
 import { PerformanceTimelineSkeleton } from '@/features/analyzer/components/PerformanceTimeline';
-import { AnalyzerHeader } from '@/features/analyzer/components/AnalyzerHeader';
-import { AnalyzerSearchForm } from '@/features/analyzer/components/AnalyzerSearchForm';
-import { StreamingScores } from '@/features/analyzer/components/StreamingScores';
-import { StreamingMetrics } from '@/features/analyzer/components/StreamingMetrics';
+import { AnalyzerHeader } from '@/widgets/analyzer-header';
+import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
+import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
+import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
 import { AuthAuditModal } from '@/features/analyzer/components/AuthAuditModal';
 import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
 import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
@@ -111,17 +111,17 @@ export function AnalyzerPage() {
       )}
 
       {isPending && (
-        <div className="space-y-8">
+        <div className="space-y-2">
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Scores</h2>
+            <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Scores</p>
             <StreamingScores partials={partials} />
           </section>
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Core Web Vitals</h2>
+            <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Core Web Vitals</p>
             <StreamingMetrics partials={partials} />
           </section>
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Performance Timeline</h2>
+            <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Performance Timeline</p>
             <PerformanceTimelineSkeleton />
           </section>
         </div>
