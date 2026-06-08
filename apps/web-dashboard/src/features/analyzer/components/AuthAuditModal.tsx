@@ -1,18 +1,11 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
-// Loader2 used in launching state and checking state
 import { apiClient } from '@/shared/api/client';
 import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/shared/ui/dialog';
+import { Modal, ModalHeader } from '@/shared/ui/modal';
 
 type Step = 'checking' | 'setup' | 'ready';
 
@@ -107,28 +100,21 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
   }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-              <Lock className="w-3.5 h-3.5 text-white" />
-            </div>
-            Authenticated Audit
-          </DialogTitle>
-          <DialogDescription>
-            Analyze pages behind login — ERP systems, CRM dashboards, admin panels.
-          </DialogDescription>
-        </DialogHeader>
+    <Modal open={open} onClose={onClose}>
+      <ModalHeader
+        icon={<Lock className="w-[22px] h-[22px] text-ld-grad-text" />}
+        title="Authenticated Audit"
+        subtitle="Analyze pages behind login — ERP systems, CRM dashboards, admin panels."
+      />
 
+      <div className="mt-[22px]">
         <AnimatePresence mode="wait" initial={false}>
 
           {/* ── Checking stored session ──────────────────────────────── */}
           {step === 'checking' && (
             <motion.div key="checking"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground"
+              className="flex items-center justify-center py-8 gap-2 text-sm text-ld-text-3"
             >
               <Loader2 className="w-4 h-4 animate-spin" />
               Checking session…
@@ -143,7 +129,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
             >
               <form onSubmit={handleOpenBrowser} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Starting URL</label>
+                  <label className="text-sm font-medium text-ld-text">Starting URL</label>
                   <Input
                     type="text"
                     placeholder="https://app.example.com"
@@ -152,13 +138,13 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
                     disabled={launching}
                     autoFocus
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-ld-text-3">
                     Browser opens here so you can log in. Session stays active until you end it.
                   </p>
                 </div>
 
                 {error && (
-                  <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+                  <p className="text-xs text-ld-rose bg-[rgba(242,100,122,.1)] px-3 py-2 rounded-[10px]">
                     {error}
                   </p>
                 )}
@@ -181,26 +167,21 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
               className="space-y-4"
             >
               {/* Session badge */}
-              <div className="rounded-xl p-3 flex items-center justify-between"
-                style={{ background: 'var(--ps-accent-muted)', border: '1px solid var(--ps-accent-border)' }}>
+              <div className="rounded-[12px] p-3 flex items-center justify-between bg-ld-accent-soft border border-ld-accent-line">
                 <div className="flex items-center gap-2.5">
                   <div className="relative shrink-0">
-                    <ShieldCheck className="w-5 h-5" style={{ color: 'var(--ps-accent)' }} />
+                    <ShieldCheck className="w-5 h-5 text-ld-accent" />
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--ps-text-heading)' }}>
-                      Session active
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--ps-text-secondary)' }}>
-                      Audit any page — no need to log in again.
-                    </p>
+                    <p className="text-sm font-semibold text-ld-text">Session active</p>
+                    <p className="text-xs text-ld-text-2">Audit any page — no need to log in again.</p>
                   </div>
                 </div>
                 <button
                   onClick={handleEndSession}
                   title="End session"
-                  className="p-1.5 rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                  className="p-1.5 rounded-[8px] transition-colors text-ld-text-3 hover:text-ld-rose hover:bg-[rgba(242,100,122,.1)]"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
@@ -208,7 +189,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
 
               {/* Audit URL */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <label className="text-xs font-medium text-ld-text-3 flex items-center gap-1.5">
                   <Globe className="w-3 h-3" /> Page to audit
                 </label>
                 <Input
@@ -224,7 +205,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
               {/* New session button */}
               <button
                 onClick={() => setStep('setup')}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 text-xs text-ld-text-3 hover:text-ld-text transition-colors"
               >
                 <RefreshCw className="w-3 h-3" /> Open a new browser / re-login
               </button>
@@ -240,7 +221,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
           )}
 
         </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Modal>
   );
 }

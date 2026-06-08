@@ -40,7 +40,6 @@ export function AnalyzerHeader({ hasData, onExport, onAuthModal }: Props) {
           Locked Page?
         </Button>
 
-        <ThemeToggle />
       </div>
     </div>
   );

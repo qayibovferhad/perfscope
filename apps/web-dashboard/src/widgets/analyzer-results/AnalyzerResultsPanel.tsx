@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert } from 'lucide-react';
-import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
 import { AiInsights } from '@/features/analyzer/components/AiInsights';
@@ -9,13 +8,13 @@ import { ResourceBreakdown } from '@/features/analyzer/ui/ResourceBreakdown';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { PerformanceTimeline } from '@/features/analyzer/components/PerformanceTimeline';
 import { TimelineWaterfall } from '@/features/analyzer/ui/TimelineWaterfall';
-import { ChordDiagram } from '@/features/analyzer/components/ChordDiagram';
+import { ResourceDependencyChain } from '@/features/analyzer/ui/ResourceDependencyChain';
 import { HeapMemoryChart } from '@/features/analyzer/ui/HeapMemoryChart';
 import { InteractionTimeline } from '@/features/analyzer/ui/InteractionTimeline';
 import { CLSVisualizer } from '@/features/analyzer/ui/CLSVisualizer';
 import { ResourcesAlert } from '@/features/analyzer/components/ResourcesAlert';
-import { TimelineProvider, useTimelineContext } from '@/features/analyzer/context/TimelineContext';
-import type { AnalysisResult, DependencyGraph } from '@/entities/analysis';
+import { TimelineProvider } from '@/features/analyzer/context/TimelineContext';
+import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────
 
@@ -27,11 +26,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ChordDiagramWithContext({ graph }: { graph: DependencyGraph }) {
-  const ctx = useTimelineContext();
-  const handleHover = ctx ? (url: string) => ctx.hoveredUrl.set(url) : undefined;
-  return <ChordDiagram graph={graph} onResourceHover={handleHover} />;
-}
 
 const SCORE_ITEMS: { label: ScoreLabel; scoreKey: keyof AnalysisResult['scores'] }[] = [
   { label: 'Performance',    scoreKey: 'performance'   },
@@ -123,12 +117,10 @@ export function AnalyzerResultsPanel({ data }: Props) {
 
           {data.dependencyGraph && data.dependencyGraph.links.length > 0 && (
             <section className="mt-8">
-              <SectionTitle>Resource Dependency Chain</SectionTitle>
-              <Card>
-                <CardContent className="pt-4 pb-2 px-2">
-                  <ChordDiagramWithContext graph={data.dependencyGraph} />
-                </CardContent>
-              </Card>
+              <ResourceDependencyChain
+                graph={data.dependencyGraph}
+                resources={data.resources?.requests}
+              />
             </section>
           )}
 

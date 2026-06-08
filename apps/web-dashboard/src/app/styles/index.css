@@ -488,4 +488,40 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  /* ── Resource Dependency Chain — tree connectors ─────────────────────────── */
+  .dep-indent-line::before {
+    content: "";
+    position: absolute;
+    left: 11px; top: -9px; bottom: -9px;
+    width: 1.5px;
+    background: var(--ld-border-strong);
+  }
+  .dep-elbow-conn::before {
+    content: "";
+    position: absolute;
+    left: 11px; top: -9px;
+    height: calc(50% + 9px);
+    width: 1.5px;
+    background: var(--ld-border-strong);
+  }
+  .dep-elbow-conn::after {
+    content: "";
+    position: absolute;
+    left: 11px; top: 50%;
+    width: 10px; height: 1.5px;
+    background: var(--ld-border-strong);
+  }
+  .dep-elbow-last::before { bottom: auto; }
+
+  /* ── Responsive: collapse Transfer + Size columns below 760 px ───────────── */
+  @media (max-width: 760px) {
+    .dep-chain-grid {
+      grid-template-columns: 1fr 70px !important;
+    }
+    .dep-chain-transfer,
+    .dep-chain-size {
+      display: none !important;
+    }
+  }
 }
