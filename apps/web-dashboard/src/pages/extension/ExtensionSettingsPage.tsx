@@ -1,201 +1,140 @@
-import { useEffect, useState } from 'react';
-import {
-  Download, CheckCircle2, Circle, Copy, Check,
-  Zap, BarChart3, GitCompareArrows, History, ExternalLink,
-} from 'lucide-react';
+import { Download, CheckCircle2, Circle, ExternalLink, Lightbulb, ArrowRight } from 'lucide-react';
+import { useExtensionConnected }      from '@/features/extension/model/useExtensionConnected';
+import { CopySnippet }                from '@/shared/ui/copy-snippet';
+import { Button }                     from '@/shared/ui/button';
+import { FeatureCard }                from './ui/FeatureCard';
+import { StepRow }                    from './ui/StepRow';
+import { FEATURES, INSTALL_STEPS, HOW_IT_WORKS } from './config';
 
 function ChromeIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 3.5A4.5 4.5 0 0 1 16.5 10H21a9 9 0 0 1-4.72 7.91L14 12.83A4.5 4.5 0 0 1 12 15.5a4.5 4.5 0 0 1-2-.47l-2.29 3.96A9 9 0 0 1 3 12h4.5A4.5 4.5 0 0 1 12 5.5z" />
     </svg>
   );
 }
-import { Surface }       from '@/shared/ui/surface';
-import { StatusPill }    from '@/shared/ui/status-pill';
-import { GradientIcon }  from '@/shared/ui/gradient-icon';
-
-/* ─── Connection hook ──────────────────────────────────────────────────────── */
-
-function useExtensionConnected() {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  useEffect(() => {
-    setConnected(localStorage.getItem('perfscope-auth') !== null);
-    const handler = () => setConnected(localStorage.getItem('perfscope-auth') !== null);
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
-  return connected;
-}
-
-/* ─── CopySnippet ──────────────────────────────────────────────────────────── */
-
-function CopySnippet({ text }: { text: string }) {
-  const [ok, setOk] = useState(false);
-  return (
-    <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-black/30 border border-white/[0.06]">
-      <code className="flex-1 text-xs font-mono text-ps-accent truncate">{text}</code>
-      <button
-        onClick={() => { navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 2000); }}
-        className="shrink-0 p-1 rounded-lg transition-colors hover:bg-white/5 text-ps-secondary data-[ok=true]:text-ps-healthy"
-        data-ok={ok}
-        title="Copy"
-      >
-        {ok ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      </button>
-    </div>
-  );
-}
-
-/* ─── Data ─────────────────────────────────────────────────────────────────── */
-
-const FEATURES = [
-  { icon: <Zap              className="w-4 h-4" />, tone: 'accent'  as const, title: 'One-click Audit',     desc: 'Run a full Lighthouse analysis on any page without leaving the browser.' },
-  { icon: <BarChart3        className="w-4 h-4" />, tone: 'healthy' as const, title: 'Auto-save Results',   desc: 'Audits are saved to your account and linked to the right project automatically.' },
-  { icon: <GitCompareArrows className="w-4 h-4" />, tone: 'amber'   as const, title: 'Competitor Compare', desc: 'Benchmark any site against your own — LCP, CLS, TBT side by side.' },
-  { icon: <History          className="w-4 h-4" />, tone: 'accent'  as const, title: 'Deep-link Reports',  desc: 'Jump from the extension to the full analysis in PerfScope.' },
-];
-
-const INSTALL_STEPS = [
-  { n: 1, title: 'Download the extension', body: 'Click the download button above to get the latest build.' as React.ReactNode },
-  { n: 2, title: 'Open Chrome Extensions',  body: <span>Go to <code className="text-ps-accent text-[11px]">chrome://extensions</code> and enable <strong className="text-ps-body">Developer mode</strong>.</span> },
-  { n: 3, title: 'Extract & load',          body: <span>Unzip the file, click <strong className="text-ps-body">Load unpacked</strong>, and select the extracted folder.</span> },
-  { n: 4, title: 'Connect your account',    body: 'Keep this PerfScope page open. The extension detects your session and syncs automatically.' },
-];
-
-const HOW_IT_WORKS = [
-  { icon: '🔍', text: 'Click the PS icon on any page to open the extension popup' },
-  { icon: '⚡', text: 'Quick Audit runs a full Lighthouse analysis on the active tab' },
-  { icon: '💾', text: 'Results are saved to your history and linked to the matching project' },
-  { icon: '📊', text: 'Compare tab benchmarks any competitor page against your own sites' },
-  { icon: '🔗', text: '"View full report" opens the audit directly in the PerfScope analyzer' },
-];
-
-/* ─── Reusable bits ────────────────────────────────────────────────────────── */
-
-function FeatureCard({ icon, tone, title, desc }: typeof FEATURES[number]) {
-  return (
-    <Surface padding="md" className="flex flex-col gap-2.5">
-      <Surface tone={tone} padding="none" className="w-8 h-8 flex items-center justify-center rounded-xl">
-        <span className={`text-ps-${tone === 'accent' ? 'accent' : tone === 'amber' ? 'amber' : 'healthy'}`}>
-          {icon}
-        </span>
-      </Surface>
-      <div>
-        <p className="text-sm font-semibold mb-0.5 text-ps-heading">{title}</p>
-        <p className="text-xs leading-relaxed text-ps-secondary">{desc}</p>
-      </div>
-    </Surface>
-  );
-}
-
-function StepRow({ n, title, body, isLast }: { n: number; title: string; body: React.ReactNode; isLast: boolean }) {
-  return (
-    <div className="flex gap-4">
-      <div className="flex flex-col items-center gap-1 shrink-0">
-        <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                         bg-ps-accent-muted border border-ps-accent-border text-ps-accent">
-          {n}
-        </span>
-        {!isLast && <div className="flex-1 w-px min-h-5 bg-ps-accent-border" />}
-      </div>
-      <div className="flex flex-col gap-1 pb-1">
-        <p className="text-sm font-medium text-ps-body">{title}</p>
-        <p className="text-xs leading-relaxed text-ps-secondary">{body}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Page ─────────────────────────────────────────────────────────────────── */
 
 export function ExtensionSettingsPage() {
   const connected = useExtensionConnected();
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-10">
+    <div className="max-w-[820px] mx-auto px-6 py-10 pb-20 flex flex-col gap-[18px]">
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col items-center text-center gap-5">
-        <GradientIcon size="lg">PS</GradientIcon>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col items-center text-center mb-4">
 
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight text-ps-heading">PerfScope Companion</h1>
-          <p className="text-sm max-w-md text-ps-secondary">
-            Audit any webpage, save results to your account, and compare against your sites —
-            all without leaving the browser.
-          </p>
+        {/* Logo tile */}
+        <div className="w-[84px] h-[84px] rounded-[22px] grid place-items-center font-mono font-bold text-[30px] tracking-tight mb-[22px] bg-ld-grad text-ld-grad-text shadow-ld-glow">
+          PS
         </div>
 
-        <StatusPill tone="accent">
-          <ChromeIcon className="w-3.5 h-3.5" />
+        <h1 className="text-[clamp(28px,4vw,40px)] font-extrabold tracking-[-0.03em] text-ld-text">
+          PerfScope Companion
+        </h1>
+        <p className="text-ld-text-2 text-[16px] max-w-[46ch] mt-[14px] leading-[1.55] mx-auto">
+          Audit any webpage, save results to your account, and compare against your sites —
+          all without leaving the browser.
+        </p>
+
+        {/* Chrome tag */}
+        <div className="inline-flex items-center gap-2 font-mono text-[12.5px] font-semibold px-[14px] py-[7px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2 mt-[22px]">
+          <ChromeIcon className="w-[14px] h-[14px]" />
           Chrome · Manifest V3
-        </StatusPill>
+        </div>
 
-        <a
-          href="/perfscope-companion.zip"
-          download="perfscope-companion.zip"
-          className="flex items-center gap-2.5 px-6 py-3 rounded-2xl text-sm font-semibold text-white
-                     bg-ps-brand shadow-glow-accent-lg
-                     transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Download className="w-4 h-4" />
-          Download Extension
-          <span className="text-ps-accent-muted text-xs font-normal opacity-90">v1.0.0 · 81 KB</span>
-        </a>
+        {/* Download + status */}
+        <div className="flex flex-col items-center gap-[14px] mt-[22px]">
+          <Button asChild size="lg">
+            <a href="/perfscope-companion.zip" download="perfscope-companion.zip">
+              <Download />
+              Download Extension
+              <span className="text-[12px] font-normal opacity-80">v1.0.0 · 81 KB</span>
+            </a>
+          </Button>
 
-        {connected
-          ? <StatusPill tone="success"><CheckCircle2 className="w-3.5 h-3.5" />Extension connected to this account</StatusPill>
-          : <StatusPill tone="neutral"><Circle className="w-3.5 h-3.5" />Extension not connected</StatusPill>
-        }
+          {connected === true ? (
+            <div className="inline-flex items-center gap-[9px] text-[13.5px] font-semibold text-ld-accent-2 px-[16px] py-[9px] rounded-full border border-ld-accent-line bg-ld-accent-soft">
+              <CheckCircle2 className="w-4 h-4" />
+              Extension connected to this account
+            </div>
+          ) : connected === false ? (
+            <div className="inline-flex items-center gap-[9px] text-[13.5px] font-semibold text-ld-text-3 px-[16px] py-[9px] rounded-full border border-ld-border">
+              <Circle className="w-4 h-4" />
+              Not connected yet
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* ── Features ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* ── Feature grid ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
         {FEATURES.map(f => <FeatureCard key={f.title} {...f} />)}
       </div>
 
       {/* ── Installation guide ────────────────────────────────────────────── */}
-      <Surface padding="lg" className="flex flex-col gap-6">
-        <h2 className="text-sm font-semibold text-ps-heading">Installation Guide</h2>
+      <div
+        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
+      >
+        <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
+          Installation guide
+        </h2>
 
-        <div className="flex flex-col gap-5">
+        <div>
           {INSTALL_STEPS.map((step, i) => (
             <StepRow key={step.n} {...step} isLast={i === INSTALL_STEPS.length - 1} />
           ))}
         </div>
 
-        <Surface tone="amber" padding="sm" className="flex items-start gap-2 text-xs">
-          <span className="text-ps-amber shrink-0 mt-0.5">💡</span>
-          <span className="text-ps-secondary">
+        {/* Amber tip */}
+        <div className="flex gap-3 items-start mt-[22px] px-4 py-[14px] rounded-[12px] bg-ps-amber-muted border border-ps-amber-border">
+          <Lightbulb className="w-[18px] h-[18px] text-ld-amber shrink-0 mt-[1px]" />
+          <p className="text-[13px] text-ld-text-2 leading-[1.55]">
             After a PerfScope update, download again and reload the extension in{' '}
-            <code className="text-ps-amber">chrome://extensions</code> to get the latest version.
-          </span>
-        </Surface>
-      </Surface>
+            <code className="font-mono text-[12px] text-ld-amber">chrome://extensions</code>
+            {' '}to get the latest version.
+          </p>
+        </div>
+      </div>
 
       {/* ── Developer: load from source ───────────────────────────────────── */}
-      <Surface padding="lg" className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-ps-heading">Developer: Load from Source</h2>
-        <p className="text-xs text-ps-secondary">
+      <div
+        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
+      >
+        <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
+          Developer: load from source
+        </h2>
+        <p className="text-[14px] text-ld-text-2 leading-[1.5] mb-4">
           If you are running PerfScope locally you can load the extension directly from the build output:
         </p>
         <CopySnippet text="apps/chrome-extension/.output/chrome-mv3" />
+      </div>
 
-        <h3 className="text-sm font-semibold text-ps-heading mt-2">How it works</h3>
-        <ul className="flex flex-col gap-2.5">
-          {HOW_IT_WORKS.map(({ icon, text }) => (
-            <li key={text} className="flex items-start gap-2.5 text-xs text-ps-secondary">
-              <span className="shrink-0 mt-0.5">{icon}</span>{text}
+      {/* ── How it works ──────────────────────────────────────────────────── */}
+      <div
+        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
+      >
+        <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
+          How it works
+        </h2>
+
+        <ul className="flex flex-col gap-[13px]">
+          {HOW_IT_WORKS.map((item, i) => (
+            <li key={i} className="flex items-center gap-[13px] text-[14px] text-ld-text-2">
+              <item.Icon className="w-[18px] h-[18px] text-ld-accent shrink-0" />
+              <span>{item.text}</span>
             </li>
           ))}
         </ul>
 
-        <a href="/history" className="flex items-center gap-1.5 text-xs text-ps-accent hover:opacity-80 transition-opacity w-fit mt-1">
-          <ExternalLink className="w-3.5 h-3.5" />
+        <a
+          href="/history"
+          className="inline-flex items-center gap-2 text-[14px] font-semibold text-ld-accent mt-5 transition-all duration-200 hover:gap-3"
+        >
           View your audit history
+          <ArrowRight className="w-[15px] h-[15px]" />
         </a>
-      </Surface>
+      </div>
 
     </div>
   );
