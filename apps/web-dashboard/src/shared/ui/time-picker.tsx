@@ -3,8 +3,8 @@ import {
 } from './select';
 
 interface TimePickerProps {
-  value: string;          // "HH:MM"
-  onChange: (value: string) => void;
+  value:     string;
+  onChange:  (value: string) => void;
   className?: string;
 }
 
@@ -14,56 +14,38 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 export function TimePicker({ value, onChange, className }: TimePickerProps) {
   const [hh, mm] = (value ?? '00:00').split(':');
 
-  function handleHour(h: string)   { onChange(`${h}:${mm ?? '00'}`); }
-  function handleMinute(m: string) { onChange(`${hh ?? '00'}:${m}`); }
+  const handleHour   = (h: string) => onChange(`${h}:${mm ?? '00'}`);
+  const handleMinute = (m: string) => onChange(`${hh ?? '00'}:${m}`);
 
-  const triggerStyle = {
-    background:  '#151d33',
-    border:      '1px solid var(--ps-panel-border)',
-    color:       'var(--ps-accent)',
-    fontFamily:  'var(--ps-font-mono)',
-    fontWeight:  600,
-    fontSize:    '0.75rem',
-  };
-
-  const contentStyle = {
-    background: '#0f1629',
-    border:     '1px solid var(--ps-panel-border)',
-    color:      'var(--ps-text-heading)',
-    maxHeight:  220,
-    minWidth:   56,
-    width:      56,
-    overflowY:  'auto' as const,
-  };
+  const triggerCls = 'w-[68px] h-9 font-mono text-[18px] font-semibold text-ld-accent-2 bg-ld-bg-2 border-ld-border-strong rounded-[10px]';
+  const contentCls = 'bg-ld-bg-2 border-ld-border min-w-[68px] w-[68px] max-h-[220px] overflow-y-auto';
 
   return (
-    <div className={`flex items-center gap-1.5 ${className ?? ''}`}>
+    <div className={`flex items-center gap-2 ${className ?? ''}`}>
       <Select value={hh} onValueChange={handleHour}>
-        <SelectTrigger className="w-14 h-8" style={triggerStyle}>
+        <SelectTrigger className={triggerCls}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent position="item-aligned" style={contentStyle}>
+        <SelectContent position="item-aligned" className={contentCls}>
           {HOURS.map(h => (
             <SelectItem key={h} value={h}
-              className="text-xs font-mono font-semibold cursor-pointer focus:bg-indigo-500/20 focus:text-white"
-              style={{ color: 'var(--ps-text-heading)' }}>
+              className="text-xs font-mono font-semibold cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent">
               {h}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
-      <span className="text-sm font-bold" style={{ color: 'var(--ps-text-muted)' }}>:</span>
+      <span className="font-mono text-[20px] font-bold text-ld-text-3">:</span>
 
       <Select value={mm} onValueChange={handleMinute}>
-        <SelectTrigger className="w-14 h-8" style={triggerStyle}>
+        <SelectTrigger className={triggerCls}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent position="item-aligned" style={contentStyle}>
+        <SelectContent position="item-aligned" className={contentCls}>
           {MINUTES.map(m => (
             <SelectItem key={m} value={m}
-              className="text-xs font-mono font-semibold cursor-pointer focus:bg-indigo-500/20 focus:text-white"
-              style={{ color: 'var(--ps-text-heading)' }}>
+              className="text-xs font-mono font-semibold cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent">
               {m}
             </SelectItem>
           ))}
