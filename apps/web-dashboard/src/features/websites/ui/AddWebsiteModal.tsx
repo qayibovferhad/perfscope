@@ -6,7 +6,7 @@ import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { apiClient } from '@/shared/api/client';
-import { useWebsites } from '../hooks/useWebsites';
+import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 
 interface WebsiteForm { url: string; name: string }
 type Step = 'form' | 'launching' | 'browser-open' | 'capturing' | 'done';
@@ -98,7 +98,6 @@ export function AddWebsiteModal({ open, onClose }: Props) {
           />
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-[18px]">
 
-          {/* Site name */}
           <div className="flex flex-col gap-[7px]">
             <label className="text-[13px] font-semibold text-ld-text flex items-center gap-[7px]">
               Site name
@@ -113,7 +112,6 @@ export function AddWebsiteModal({ open, onClose }: Props) {
             <span className="text-[11.5px] text-ld-text-3">A friendly label — defaults to the domain if left blank.</span>
           </div>
 
-          {/* Website URL */}
           <div className="flex flex-col gap-[7px]">
             <label className="text-[13px] font-semibold text-ld-text">Website URL</label>
             <Input
@@ -135,7 +133,6 @@ export function AddWebsiteModal({ open, onClose }: Props) {
             )}
           </div>
 
-          {/* Auth toggle */}
           <button
             type="button"
             onClick={() => setRequiresLogin(v => !v)}

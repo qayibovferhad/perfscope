@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
-import { AddWebsiteModal } from '@/features/dashboard/components/AddWebsiteModal';
+import { AddWebsiteModal } from '@/features/websites/ui/AddWebsiteModal';
 import { Sidebar } from './ui/Sidebar';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
