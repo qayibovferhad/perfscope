@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { GitCompareArrows, History } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
-import { CompareHistoryPanel } from '@/features/compare-history/components/CompareHistoryPanel';
+import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 
 const T_HEX  = 'var(--ps-accent)';
 const T_GLOW = 'var(--ps-accent-glow-lg)';

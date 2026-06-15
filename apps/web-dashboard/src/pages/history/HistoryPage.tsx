@@ -8,7 +8,7 @@ import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';
 import { RegressionHistory } from '@/features/history/components/RegressionHistory';
-import { CompareHistoryPanel } from '@/features/compare-history/components/CompareHistoryPanel';
+import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
 import { HistoryBreadcrumb } from '@/features/history/components/HistoryBreadcrumb';

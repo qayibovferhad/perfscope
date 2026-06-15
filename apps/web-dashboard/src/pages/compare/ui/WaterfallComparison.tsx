@@ -3,8 +3,8 @@ import { useMotionValue } from 'framer-motion';
 import { motion } from 'framer-motion';
 import { Layers, Zap, Play, Pause, Clock } from 'lucide-react';
 import type { AnalysisResult } from '@/entities/analysis';
-import { TimelineProvider } from '../../analyzer/context/TimelineContext';
-import { ResourceWaterfall } from '../../analyzer/components/ResourceWaterfall';
+import { TimelineProvider } from '@/features/analyzer/context/TimelineContext';
+import { ResourceWaterfall } from '@/features/analyzer/components/ResourceWaterfall';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 
