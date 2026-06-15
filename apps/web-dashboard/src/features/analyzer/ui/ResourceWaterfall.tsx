@@ -183,16 +183,14 @@ const WaterfallRow = memo(function WaterfallRow({
         onClick={onSelect}
         className={cn(
           'flex items-center border-b border-ld-border cursor-pointer select-none',
-          'transition-[opacity,filter] duration-200 ease-in-out',
+          'transition-[opacity,filter] duration-200 ease-in-out [will-change:opacity,filter]',
           'data-[state=pending]:opacity-20 data-[state=pending]:grayscale',
           index % 2 === 0 ? 'bg-ld-surface' : 'bg-ld-bg',
           isSelected && 'ring-1 ring-inset ring-ld-accent-line bg-ld-accent-soft',
         )}
-        style={{ willChange: 'opacity, filter' }}
       >
         <div
-          className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-r border-ld-border"
-          style={{ width: LEFT_W }}
+          className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-r border-ld-border w-[320px]"
         >
           <Icon className="w-3 h-3 shrink-0 text-ld-text-3" />
           <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
@@ -210,7 +208,7 @@ const WaterfallRow = memo(function WaterfallRow({
         </div>
 
         <div className="flex-1 relative h-7 flex items-center">
-          <div className="absolute inset-x-0 h-px" style={{ background: 'var(--ld-border)' }} />
+          <div className="absolute inset-x-0 h-px bg-ld-border" />
           {barWidth > 0 && (
             <div
               className="absolute h-3.5 rounded-sm flex overflow-hidden"
@@ -254,7 +252,7 @@ function TimeAxis({ axisMs, metrics }: { axisMs: number; metrics?: CoreWebVitals
           }`}
           style={{ left: `${(i / TICK_COUNT) * 100}%` }}
         >
-          <div className="h-2 w-px" style={{ background: 'var(--ld-border-strong)' }} />
+          <div className="h-2 w-px bg-ld-border-strong" />
           <span className="text-[9px] font-mono text-ld-text-3 tabular-nums mt-0.5">
             {fmtMs((i / TICK_COUNT) * axisMs)}
           </span>
@@ -271,7 +269,7 @@ function TimeAxis({ axisMs, metrics }: { axisMs: number; metrics?: CoreWebVitals
             className="absolute bottom-0 flex flex-col items-center -translate-x-1/2 pointer-events-none"
             style={{ left: `${pct}%` }}
           >
-            <span className="text-[8.5px] font-mono font-bold tabular-nums px-1 py-px rounded" style={{ color, background: 'var(--ld-surface)' }}>
+            <span className="text-[8.5px] font-mono font-bold tabular-nums px-1 py-px rounded bg-ld-surface" style={{ color }}>
               {label}
             </span>
           </div>
@@ -287,10 +285,12 @@ export function ResourceWaterfall({
   resources,
   timelineDuration,
   metrics,
+  showHeader = true,
 }: {
   resources:         ParsedResources;
   timelineDuration?: number;
   metrics?:          CoreWebVitals;
+  showHeader?:       boolean;
 }) {
   const ctx = useTimelineContext();
 
@@ -422,22 +422,24 @@ export function ResourceWaterfall({
         }
       `}</style>
 
-      <PanelHeader
-        icon={<Network />}
-        title="Network Waterfall"
-        meta={`${rows.length} / ${allRows.length} requests · ${fmtMs(wfMs)}`}
-      >
-        <div className="flex items-center gap-[5px] ml-2">
-          {FILTER_CHIPS.map(({ key, label }) => (
-            <Chip key={key} active={typeFilter === key} onClick={() => setTypeFilter(key)}>
-              {label}
-            </Chip>
-          ))}
-        </div>
-      </PanelHeader>
+      {showHeader && (
+        <PanelHeader
+          icon={<Network />}
+          title="Network Waterfall"
+          meta={`${rows.length} / ${allRows.length} requests · ${fmtMs(wfMs)}`}
+        >
+          <div className="flex items-center gap-[5px] ml-2">
+            {FILTER_CHIPS.map(({ key, label }) => (
+              <Chip key={key} active={typeFilter === key} onClick={() => setTypeFilter(key)}>
+                {label}
+              </Chip>
+            ))}
+          </div>
+        </PanelHeader>
+      )}
 
       <div className="flex border-b border-ld-border bg-ld-bg text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
-        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border" style={{ width: LEFT_W }}>
+        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border w-[320px]">
           <span>Resource</span>
           <span className="ml-auto">Type</span>
           <span className="w-11 text-right">Size</span>
@@ -448,16 +450,13 @@ export function ResourceWaterfall({
       </div>
 
       <div className="relative">
-        <div
-          className="overflow-y-auto"
-          style={{ maxHeight: 420, scrollbarWidth: 'thin', scrollbarColor: 'var(--ld-border-strong) transparent' }}
-        >
-          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: LEFT_W, right: 0 }}>
+        <div className="max-h-[420px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:var(--ld-border-strong)_transparent]">
+          <div className="absolute top-0 bottom-0 left-[320px] right-0 pointer-events-none">
             {Array.from({ length: TICK_COUNT - 1 }, (_, i) => (
               <div
                 key={i}
-                className="absolute top-0 bottom-0 w-px"
-                style={{ left: `${((i + 1) / TICK_COUNT) * 100}%`, background: 'var(--ld-border)' }}
+                className="absolute top-0 bottom-0 w-px bg-ld-border"
+                style={{ left: `${((i + 1) / TICK_COUNT) * 100}%` }}
               />
             ))}
 
@@ -496,22 +495,17 @@ export function ResourceWaterfall({
           <div
             ref={indicatorRef}
             aria-hidden
-            className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20"
+            className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20 [will-change:transform]"
             style={{
               transform: `translateX(${LEFT_W}px)`,
-              willChange: 'transform',
               background: 'linear-gradient(to bottom, var(--ld-accent) 0%, rgba(20,192,138,0.4) 80%, transparent 100%)',
             }}
           >
             <div className="absolute -top-px left-1/2 -translate-x-1/2 flex flex-col items-center">
-              <div
-                className="w-2 h-2 rounded-full ring-2"
-                style={{ backgroundColor: 'var(--ld-accent)', boxShadow: '0 0 8px var(--ld-accent)', borderColor: 'var(--ld-accent-line)' }}
-              />
+              <div className="w-2 h-2 rounded-full ring-2 bg-ld-accent shadow-[0_0_8px_var(--ld-accent)] ring-[var(--ld-accent-line)]" />
               <span
                 ref={labelRef}
-                className="mt-0.5 text-[9px] font-mono font-bold tabular-nums whitespace-nowrap px-1 py-px rounded border select-none"
-                style={{ color: 'var(--ld-accent)', background: 'var(--ld-surface)', borderColor: 'var(--ld-accent-line)' }}
+                className="mt-0.5 text-[9px] font-mono font-bold tabular-nums whitespace-nowrap px-1 py-px rounded border select-none text-ld-accent bg-ld-surface border-ld-accent-line"
               >
                 0ms
               </span>

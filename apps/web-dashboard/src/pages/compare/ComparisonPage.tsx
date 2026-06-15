@@ -240,6 +240,13 @@ export function ComparisonPage() {
         )}
       </AnimatePresence>
 
+      {/* ── Category Scores + Core Web Vitals ────────────────────────────── */}
+      <AnimatePresence>
+        {bothLoaded && target.data && competitor.data && (
+          <ComparisonSide target={target.data} competitor={competitor.data} />
+        )}
+      </AnimatePresence>
+
       {/* ── Comparison Engine ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
@@ -265,13 +272,6 @@ export function ComparisonPage() {
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
           <WaterfallComparison target={target.data} competitor={competitor.data} />
-        )}
-      </AnimatePresence>
-
-      {/* ── Category Scores + Core Web Vitals ────────────────────────────── */}
-      <AnimatePresence>
-        {bothLoaded && target.data && competitor.data && (
-          <ComparisonSide target={target.data} competitor={competitor.data} />
         )}
       </AnimatePresence>
     </div>
