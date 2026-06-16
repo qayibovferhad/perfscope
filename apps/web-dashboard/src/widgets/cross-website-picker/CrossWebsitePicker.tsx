@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/hooks/useProjectAudits';
 import { scoreColor } from '@/entities/analysis';
+import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
 
 interface Props {
   excludeProjectId: string;

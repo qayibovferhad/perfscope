@@ -1,0 +1,128 @@
+import { useNavigate } from 'react-router-dom';
+import { RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import type { ProjectAuditEntry } from '@/entities/history';
+import { Button } from '@/shared/ui/button';
+import { formatAuditDate, formatMs, formatTbt } from '../lib/formatters';
+
+// ─── CWV band helpers ─────────────────────────────────────────────────────────
+
+type Band = 'g' | 'w' | 'p';
+
+function lcpBand(ms: number): Band  { return ms <= 2500 ? 'g' : ms <= 4000 ? 'w' : 'p'; }
+function clsBand(v: number): Band   { return v  <= 0.1  ? 'g' : v  <= 0.25  ? 'w' : 'p'; }
+function tbtBand(ms: number): Band  { return ms <= 200  ? 'g' : ms <= 600   ? 'w' : 'p'; }
+function fcpBand(ms: number): Band  { return ms <= 1800 ? 'g' : ms <= 3000  ? 'w' : 'p'; }
+function scoreBand(s: number): Band { return s  >= 90   ? 'g' : s  >= 50    ? 'w' : 'p'; }
+
+const BAND: Record<Band, string> = {
+  g: 'text-ld-accent-2',
+  w: 'text-ld-amber',
+  p: 'text-ld-rose',
+};
+
+// ─── Audit row ────────────────────────────────────────────────────────────────
+
+export function AuditRow({
+  entry, projectId, compareMode, isSelected, onToggleSelect, onOpen, loadingId,
+}: {
+  entry: ProjectAuditEntry;
+  projectId: string;
+  compareMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (entry: ProjectAuditEntry) => void;
+  onOpen: (entry: ProjectAuditEntry) => void;
+  loadingId: string | null;
+}) {
+  const navigate  = useNavigate();
+  const perf      = entry.scores.performance;
+  const isLoading = loadingId === entry.id;
+  const m         = entry.metrics;
+
+  function handleRowClick() {
+    if (compareMode) onToggleSelect(entry);
+  }
+
+  return (
+    <tr
+      className={`transition-[background] duration-[150ms] hover:bg-ld-surface-2 ${compareMode ? 'cursor-pointer' : ''}`}
+      onClick={handleRowClick}
+    >
+      {/* Compare checkbox */}
+      {compareMode && (
+        <td className="py-[13px] px-[10px] border-b border-ld-border w-8">
+          <div
+            className="w-4 h-4 rounded flex items-center justify-center transition-all"
+            style={{
+              border:     isSelected ? '2px solid var(--ld-accent)' : '2px solid var(--ld-border-strong)',
+              background: isSelected ? 'var(--ld-accent)' : 'transparent',
+            }}
+          >
+            {isSelected && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+          </div>
+        </td>
+      )}
+
+      {/* Date */}
+      <td className="py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] text-ld-text font-medium whitespace-nowrap">
+        {formatAuditDate(entry.timestamp)}
+      </td>
+
+      {/* LCP */}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[lcpBand(m.lcp)]}`}>
+        {formatMs(m.lcp)}
+      </td>
+
+      {/* CLS */}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[clsBand(m.cls)]}`}>
+        {m.cls.toFixed(2)}
+      </td>
+
+      {/* TBT — hidden under 680px */}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[tbtBand(m.tbt)]}`}>
+        {formatTbt(m.tbt)}
+      </td>
+
+      {/* FCP — hidden under 680px */}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[fcpBand(m.fcp)]}`}>
+        {formatMs(m.fcp)}
+      </td>
+
+      {/* Score */}
+      <td className="py-[13px] px-[10px] border-b border-ld-border">
+        <span className={`font-mono text-[14px] font-bold ${BAND[scoreBand(perf)]}`}>{perf}</span>
+      </td>
+
+      {/* Actions */}
+      <td className="py-[13px] px-[10px] border-b border-ld-border">
+        {!compareMode && (
+          <div className="flex items-center gap-[8px] justify-end">
+            {/* Re-audit ghost */}
+            <Button
+              variant="outline"
+              size="icon"
+              title="Re-audit"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/app?url=${encodeURIComponent(entry.url)}&projectId=${projectId}`);
+              }}
+            >
+              <RefreshCw />
+            </Button>
+
+            {/* Report primary */}
+            <Button
+              size="sm"
+              disabled={isLoading}
+              onClick={(e) => { e.stopPropagation(); onOpen(entry); }}
+            >
+              {isLoading
+                ? <Loader2 className="w-[14px] h-[14px] animate-spin" />
+                : <ExternalLink className="w-[14px] h-[14px]" />}
+              Report
+            </Button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}

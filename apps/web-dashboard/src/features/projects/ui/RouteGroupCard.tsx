@@ -1,0 +1,149 @@
+import { useState } from 'react';
+import { ChevronRight, Link as LinkIcon } from 'lucide-react';
+import type { RouteGroup, ProjectAuditEntry } from '@/entities/history';
+import { AuditRow }  from './AuditRow';
+import { timeAgo }   from '../lib/formatters';
+
+// ─── Score ring ───────────────────────────────────────────────────────────────
+
+const CIRC = 2 * Math.PI * 19; // ≈ 119.38
+
+type Band = 'good' | 'warn' | 'poor';
+function band(s: number): Band { return s >= 90 ? 'good' : s >= 50 ? 'warn' : 'poor'; }
+
+const RING_STROKE: Record<Band, string> = { good: 'stroke-ld-accent',   warn: 'stroke-ld-amber', poor: 'stroke-ld-rose' };
+const RING_NUM:    Record<Band, string> = { good: 'text-ld-accent-2',    warn: 'text-ld-amber',   poor: 'text-ld-rose'   };
+
+function ScoreRing({ score }: { score: number }) {
+  const b = band(score);
+  return (
+    <div className="relative w-[44px] h-[44px] shrink-0">
+      <svg viewBox="0 0 44 44" className="w-[44px] h-[44px] -rotate-90">
+        <circle cx="22" cy="22" r="19" fill="none" strokeWidth={5} className="stroke-ld-border" />
+        <circle
+          cx="22" cy="22" r="19" fill="none"
+          strokeWidth={5} strokeLinecap="round"
+          strokeDasharray={CIRC}
+          strokeDashoffset={CIRC * (1 - score / 100)}
+          className={RING_STROKE[b]}
+        />
+      </svg>
+      <span className={`absolute inset-0 grid place-items-center font-mono text-[14px] font-semibold ${RING_NUM[b]}`}>
+        {score}
+      </span>
+    </div>
+  );
+}
+
+// ─── Header sparkline ─────────────────────────────────────────────────────────
+
+function Sparkline({ entries }: { entries: ProjectAuditEntry[] }) {
+  const recent = entries.slice(-6);
+  if (recent.length < 2) return null;
+  const scores = recent.map(e => e.scores.performance);
+  const avg    = scores.reduce((s, v) => s + v, 0) / scores.length;
+  const max    = Math.max(...scores, 1);
+  return (
+    <span className="flex items-end gap-[3px] h-[26px] shrink-0">
+      {scores.map((s, i) => (
+        <i
+          key={i}
+          className={`w-[5px] rounded-sm not-italic transition-[height] ${s < avg ? 'bg-ld-border-strong' : 'bg-ld-accent-line'}`}
+          style={{ height: `${Math.max(Math.round((s / max) * 100), 12)}%` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+// ─── Route group card ─────────────────────────────────────────────────────────
+
+export function RouteGroupCard({
+  group, projectId, compareMode, selectedIds, onToggleSelect, onOpen, loadingId, initialOpen = false,
+}: {
+  group: RouteGroup;
+  projectId: string;
+  compareMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (entry: ProjectAuditEntry) => void;
+  onOpen: (entry: ProjectAuditEntry) => void;
+  loadingId: string | null;
+  initialOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(compareMode || initialOpen);
+  const isOpen     = compareMode ? true : open;
+  const lastEntry  = group.entries.at(-1);
+  const auditLabel = `${group.entries.length} audit${group.entries.length !== 1 ? 's' : ''} · last ${timeAgo(lastEntry?.timestamp ?? null)}`;
+
+  return (
+    <div className={`rounded-[16px] border bg-ld-surface overflow-hidden transition-[border-color] duration-[250ms] ${isOpen ? 'border-ld-accent-line' : 'border-ld-border'}`}>
+
+      {/* Route row */}
+      <button
+        className="w-full flex items-center gap-[13px] px-[20px] py-[16px] cursor-pointer bg-transparent border-none text-left transition-[background] duration-[180ms] hover:bg-ld-surface-2"
+        onClick={() => !compareMode && setOpen(v => !v)}
+      >
+        <span className={`w-[22px] h-[22px] shrink-0 grid place-items-center transition-[transform,color] duration-[280ms] ${isOpen ? 'rotate-90 text-ld-accent' : 'text-ld-text-3'}`}>
+          <ChevronRight className="w-[16px] h-[16px]" />
+        </span>
+
+        <span className="w-[38px] h-[38px] rounded-[11px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
+          <LinkIcon className="w-[18px] h-[18px]" />
+        </span>
+
+        <span className="flex-1 min-w-0 text-left">
+          <b className="block font-mono text-[15px] font-semibold text-ld-text truncate">
+            {group.routePath}
+          </b>
+          <span className="block text-[12px] text-ld-text-3 mt-[2px]">{auditLabel}</span>
+        </span>
+
+        <Sparkline entries={group.entries} />
+        <ScoreRing score={group.lastScore} />
+      </button>
+
+      {/* Collapsible body — CSS max-height toggle, no JS measurement */}
+      <div
+        className={`overflow-hidden transition-[max-height] duration-[350ms] ease-in-out ${isOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
+      >
+        <div className="px-[20px] pb-[18px] pt-[4px] border-t border-ld-border">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                {compareMode && (
+                  <th className="py-[12px] px-[10px] pb-[10px] w-8 border-b border-ld-border" />
+                )}
+                {(['Date', 'LCP', 'CLS', 'TBT', 'FCP', 'Score', ''] as const).map((h, i) => (
+                  <th
+                    key={`${h}-${i}`}
+                    className={[
+                      'py-[12px] px-[10px] pb-[10px] font-mono text-[10px] tracking-[.1em] uppercase text-ld-text-3 font-semibold border-b border-ld-border',
+                      h === '' ? 'text-right' : 'text-left',
+                      h === 'TBT' || h === 'FCP' ? 'max-[680px]:hidden' : '',
+                    ].join(' ')}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...group.entries].reverse().map((entry) => (
+                <AuditRow
+                  key={entry.id}
+                  entry={entry}
+                  projectId={projectId}
+                  compareMode={compareMode}
+                  isSelected={selectedIds.has(entry.id)}
+                  onToggleSelect={onToggleSelect}
+                  onOpen={onOpen}
+                  loadingId={loadingId}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
