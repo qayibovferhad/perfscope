@@ -1,21 +1,21 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompareArrows } from 'lucide-react';
+import { GitCompareArrows, TrendingUp } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
-import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/history/hooks/useHistory';
+import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/history/model/useHistory';
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';
-import { RegressionHistory } from '@/features/history/components/RegressionHistory';
+import { RegressionHistory } from '@/features/history/ui/RegressionHistory';
 import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
-import { HistoryBreadcrumb } from '@/features/history/components/HistoryBreadcrumb';
-import { HistoryTabBar } from '@/features/history/components/HistoryTabBar';
-import { HistoryPageHeader } from '@/features/history/components/HistoryPageHeader';
-import { HistoryDeepDiveTable } from '@/features/history/components/HistoryDeepDiveTable';
-import { HistoryEmptyState } from '@/features/history/components/HistoryEmptyState';
+import { HistoryBreadcrumb } from '@/features/history/ui/HistoryBreadcrumb';
+import { HistoryTabBar } from '@/features/history/ui/HistoryTabBar';
+import { HistoryPageHeader } from '@/features/history/ui/HistoryPageHeader';
+import { HistoryDeepDiveTable } from '@/features/history/ui/HistoryDeepDiveTable';
+import { HistoryEmptyState } from '@/features/history/ui/HistoryEmptyState';
 import { HistoryWebsitesOverview } from '@/widgets/history-websites-overview';
 
 export function HistoryPage() {
@@ -42,10 +42,7 @@ export function HistoryPage() {
     const openId = params.get('open');
     if (!openId) return;
     fetchHistoryResult(openId)
-      .then(result => {
-        setResult(result, result.url as string);
-        navigate('/app');
-      })
+      .then(result => { setResult(result, result.url as string); navigate('/app'); })
       .catch(() => undefined);
   }, []);
 
@@ -89,30 +86,30 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
+    <div className="w-[min(1120px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] flex flex-col gap-[22px]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {/* ── Top bar: breadcrumb + theme toggle ─────────── */}
+      <div className="flex items-center justify-between gap-[12px] flex-wrap">
         {tab === 'analysis'
           ? <HistoryBreadcrumb hostname={hostname} />
           : (
-            <nav className="flex items-center gap-1.5 text-sm select-none">
-              <span className="font-semibold text-ps-heading">History</span>
-              <span className="text-ps-faint text-base">›</span>
-              <div className="flex items-center gap-1.5">
-                <GitCompareArrows className="w-3.5 h-3.5 text-ps-accent" />
-                <span className="font-semibold text-ps-heading">Compare</span>
-              </div>
+            <nav className="flex items-center gap-[10px] text-[14px]">
+              <span className="font-semibold text-ld-text">History</span>
+              <span className="text-ld-text-3 opacity-50 text-[16px] leading-none">›</span>
+              <span className="inline-flex items-center gap-[7px] font-semibold text-ld-text">
+                <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
+                Compare
+              </span>
             </nav>
           )
         }
         <ThemeToggle />
       </div>
 
-      {/* Tab Bar */}
+      {/* ── Tab bar ────────────────────────────────────── */}
       <HistoryTabBar active={tab} onChange={setTab} />
 
-      {/* Content */}
+      {/* ── Content ────────────────────────────────────── */}
       <AnimatePresence mode="wait">
 
         {tab === 'analysis' && (
@@ -122,7 +119,7 @@ export function HistoryPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="space-y-6"
+            className="flex flex-col gap-[22px]"
           >
             {!url ? (
               <HistoryWebsitesOverview allEntries={allEntries} isLoading={allLoading} />
@@ -130,31 +127,34 @@ export function HistoryPage() {
               <>
                 {urlLoading && (
                   <div className="flex items-center justify-center py-28">
-                    <div
-                      className="w-6 h-6 rounded-full border-2 animate-spin"
-                      style={{ borderColor: 'rgba(139,92,246,0.18)', borderTopColor: 'var(--ps-accent)' }}
-                    />
+                    <div className="w-6 h-6 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
                   </div>
                 )}
-                {!urlLoading && (
-                  urlEntries.length === 0
-                    ? <HistoryEmptyState url={url} />
-                    : (
-                      <>
-                        <HistoryPageHeader url={url} entries={urlEntries} />
-                        <RegressionHistory entries={urlEntries} />
-                        <HistoryDeepDiveTable
-                          allRows={allRows}
-                          status={status}
-                          sort={sort}
-                          order={order}
-                          onStatus={handleStatus}
-                          onSort={handleSort}
-                          onOpen={handleOpenInAnalyzer}
-                          loadingId={loadingId}
-                        />
-                      </>
-                    )
+
+                {!urlLoading && urlEntries.length === 0 && (
+                  <HistoryEmptyState url={url} />
+                )}
+
+                {!urlLoading && urlEntries.length > 0 && (
+                  <>
+                    {/* Header card + evolution chart — one visual card */}
+                    <div className="rounded-[20px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
+                      <HistoryPageHeader url={url} entries={urlEntries} />
+                      <RegressionHistory entries={urlEntries} />
+                    </div>
+
+                    {/* Deep dive table */}
+                    <HistoryDeepDiveTable
+                      allRows={allRows}
+                      status={status}
+                      sort={sort}
+                      order={order}
+                      onStatus={handleStatus}
+                      onSort={handleSort}
+                      onOpen={handleOpenInAnalyzer}
+                      loadingId={loadingId}
+                    />
+                  </>
                 )}
               </>
             )}

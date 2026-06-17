@@ -4,7 +4,7 @@ import {
   Globe, TrendingUp, TrendingDown, Minus, AlertTriangle, ArrowRight,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
-import { EvolutionChart } from '@/features/history/components/RegressionHistory';
+import { EvolutionChart } from '@/features/history/ui/EvolutionChart';
 import { getHostname } from '@/entities/website';
 
 interface Props {

@@ -6,7 +6,7 @@ import { Toggle }             from '@/shared/ui/toggle';
 import { TimePicker }         from '@/shared/ui/time-picker';
 import { useAutomation }      from '@/features/automation/model/useAutomation';
 import { fmtDate, nextRunAt } from '@/features/automation/model/utils';
-import { fetchHistoryResult } from '@/features/history/hooks/useHistory';
+import { fetchHistoryResult } from '@/features/history/model/useHistory';
 import { useAnalysisStore }   from '@/features/analyzer/model/analysisStore';
 import { getHostname }        from '@/entities/website';
 import type { Website }       from '@/entities/website';

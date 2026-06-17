@@ -4,7 +4,7 @@ import { ChevronRight, Globe, LogOut, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { useAuthStore } from '@/features/auth/model/authStore';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { useAllHistory } from '@/features/history/hooks/useHistory';
+import { useAllHistory } from '@/features/history/model/useHistory';
 import { NAV } from '../model/navItems';
 
 interface SidebarProps {

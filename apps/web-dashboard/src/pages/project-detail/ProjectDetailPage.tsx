@@ -9,7 +9,7 @@ import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/mo
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
 import { getHostname }          from '@/entities/website';
 import { setComparePreload }    from '@/features/compare/model/comparePreloadStore';
-import { fetchHistoryResult }   from '@/features/history/hooks/useHistory';
+import { fetchHistoryResult }   from '@/features/history/model/useHistory';
 import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
 import { useWebsites }          from '@/features/dashboard/hooks/useWebsites';
 import { Button }               from '@/shared/ui/button';

@@ -1,5 +1,5 @@
 import { useMemo }         from 'react';
-import { useAllHistory }  from '@/features/history/hooks/useHistory';
+import { useAllHistory }  from '@/features/history/model/useHistory';
 import type { HistoryEntry } from '@/entities/history';
 
 export interface SiteScoreInfo {

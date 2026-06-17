@@ -5,7 +5,7 @@ import { Clock } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { HistoryWebsiteCard } from '@/features/history/components/HistoryWebsiteCard';
+import { HistoryWebsiteCard } from '@/features/history/ui/HistoryWebsiteCard';
 
 interface Props {
   allEntries: HistoryEntry[];
