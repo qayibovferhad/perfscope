@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Filter, Activity, Clock, GitCommit, AlertTriangle, CheckCircle2,
-  ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2,
+  Filter, BarChart2, Clock, GitCommit, AlertTriangle, CheckCircle2,
+  ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Lightbulb, Minus,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '@/features/history/model/types';
 import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct, isReg } from '@/features/history/lib/format';
 import { sortRows } from '@/features/history/lib/computeRows';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   allRows:   RowData[];
@@ -20,48 +21,115 @@ interface Props {
   loadingId: string | null;
 }
 
-// ─── Internal sub-components ─────────────────────────────────────────────────
+// ─── Senior Insight ───────────────────────────────────────────────────────────
 
-const STATUS_OPTS: { value: StatusFilter; label: string; cls?: string; chip?: string }[] = [
-  { value: 'all',        label: 'All' },
-  { value: 'regression', label: 'Regression', cls: 'bg-ps-reg-muted     border-ps-reg-border     text-ps-regression  shadow-glow-reg',   chip: 'bg-ps-reg-muted     text-ps-regression'  },
-  { value: 'improved',   label: 'Improved',   cls: 'bg-ps-healthy-muted border-ps-healthy-border text-ps-healthy    shadow-glow-ok',    chip: 'bg-ps-healthy-muted text-ps-healthy'    },
-  { value: 'stable',     label: 'Stable' },
+interface InsightData { label: string; message: string }
+
+const ADVICE: Record<string, string> = {
+  lcp: 'likely caused by a new unoptimised image or late-loading hero asset inflating paint time. Compressing media, converting to WebP, or lazy-loading offscreen resources should recover most of the lost score.',
+  tbt: 'a newly shipped synchronous script or heavy third-party tag is blocking the main thread. Deferring or chunking that work will restore interactivity and lift the overall score.',
+  cls: 'layout shift jumped — a missing width/height on a late-loaded image or an injected ad slot is the typical cause. Reserve space for dynamic content with explicit dimensions or an aspect-ratio rule.',
+  fcp: 'a render-blocking stylesheet or font without font-display:swap is delaying initial paint. Inlining critical CSS and preloading key fonts will get content on screen faster.',
+  tti: 'heavy JS evaluation is delaying interactivity. Code-splitting the entry bundle and deferring non-critical scripts cuts parse time and makes the page responsive sooner.',
+};
+
+function getInsight(rows: RowData[]): InsightData | null {
+  const regRow = [...rows].reverse().find(r => r.status === 'regression');
+  if (!regRow?.prev) return null;
+
+  const { entry: e, prev: p } = regRow;
+  const checks = [
+    { key: 'lcp', label: 'LCP spike', delta: deltaPct(e.metrics.lcp, p.metrics.lcp) },
+    { key: 'tbt', label: 'TBT spike', delta: deltaPct(e.metrics.tbt, p.metrics.tbt) },
+    { key: 'cls', label: 'CLS jump',  delta: deltaPct(e.metrics.cls, p.metrics.cls) },
+    { key: 'fcp', label: 'FCP drop',  delta: deltaPct(e.metrics.fcp, p.metrics.fcp) },
+    { key: 'tti', label: 'TTI jump',  delta: deltaPct(e.metrics.tti, p.metrics.tti) },
+  ].filter(c => c.delta > 10).sort((a, b) => b.delta - a.delta);
+
+  if (!checks.length) return null;
+
+  const { key, label, delta } = checks[0]!;
+  return {
+    label:   `${label} (+${delta.toFixed(0)}%)`,
+    message: ADVICE[key] ?? ADVICE['lcp']!,
+  };
+}
+
+function SeniorInsight({ rows }: { rows: RowData[] }) {
+  const insight = useMemo(() => getInsight(rows), [rows]);
+  if (!insight) return null;
+
+  return (
+    <div className="flex gap-[12px] px-[18px] py-[16px] rounded-[16px] bg-ld-surface-2 border border-ld-border">
+      <span className="text-ld-accent shrink-0 mt-[1px]">
+        <Lightbulb className="w-[19px] h-[19px]" />
+      </span>
+      <div>
+        <div className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-accent font-semibold mb-[6px]">
+          Senior Insight
+        </div>
+        <p className="text-[14px] text-ld-text-2 leading-[1.55]">
+          The latest regression is primarily driven by a{' '}
+          <b className="text-ld-amber font-bold">{insight.label}</b>
+          {' '}— {insight.message}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Status filter bar ────────────────────────────────────────────────────────
+
+type FilterOpt = { value: StatusFilter; label: string };
+
+const FILTER_OPTS: FilterOpt[] = [
+  { value: 'all',        label: 'All'        },
+  { value: 'regression', label: 'Regression' },
+  { value: 'improved',   label: 'Improved'   },
+  { value: 'stable',     label: 'Stable'     },
 ];
 
-function FilterBar({ rows, status, onStatus }: {
+function FilterBar({
+  rows, status, onStatus,
+}: {
   rows: RowData[]; status: StatusFilter; onStatus: (s: StatusFilter) => void;
 }) {
   const counts = useMemo(() => {
     const c: Record<StatusFilter, number> = { all: rows.length, regression: 0, improved: 0, stable: 0 };
     for (const r of rows) {
-      if (r.status === 'regression') c.regression++;
-      else if (r.status === 'improved') c.improved++;
-      else c.stable++;
+      if      (r.status === 'regression') c.regression++;
+      else if (r.status === 'improved')   c.improved++;
+      else                                c.stable++;
     }
     return c;
   }, [rows]);
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1.5 mr-1">
-        <Filter className="w-3 h-3 text-ps-muted" />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-ps-muted">Status</span>
-      </div>
-      {STATUS_OPTS.map(opt => {
+    <div className="flex items-center gap-[8px] px-[22px] py-[16px] flex-wrap border-b border-ld-border">
+      <span className="inline-flex items-center gap-[6px] font-mono text-[10.5px] tracking-[.10em] uppercase text-ld-text-3 mr-[4px]">
+        <Filter className="w-[13px] h-[13px]" />
+        Status
+      </span>
+      {FILTER_OPTS.map(opt => {
         const active = status === opt.value;
-        const activeCls = opt.cls ?? 'bg-ps-accent-hover border-ps-accent-border text-ps-accent shadow-glow-accent';
-        const chipCls   = opt.chip ?? (active ? 'bg-ps-accent-hover text-ps-accent' : 'bg-white/[0.06] text-ps-faint');
         return (
           <button
             key={opt.value}
             onClick={() => onStatus(opt.value)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150 border ${
-              active ? activeCls : 'bg-white/[0.04] border-white/[0.08] text-ps-secondary'
+            className={`inline-flex items-center gap-[7px] text-[13px] font-medium px-[13px] py-[7px] rounded-[9px] border transition-all duration-[180ms] ${
+              active
+                ? 'bg-ld-accent-soft text-ld-accent-2 font-semibold [box-shadow:inset_0_0_0_1px_var(--ld-accent-line)] border-transparent'
+                : 'border-transparent text-ld-text-2 bg-transparent hover:bg-ld-surface-2'
             }`}
           >
             {opt.label}
-            <span className={`text-[9px] px-1.5 py-0 rounded-full tabular-nums ${active ? chipCls : 'bg-white/[0.06] text-ps-faint'}`}>
+            <span
+              className={`font-mono text-[11px] px-[7px] py-[1px] rounded-[6px] ${
+                active
+                  ? 'bg-ld-accent text-[#04130d]'
+                  : 'bg-ld-surface-2 text-ld-text-3'
+              }`}
+            >
               {counts[opt.value]}
             </span>
           </button>
@@ -71,73 +139,142 @@ function FilterBar({ rows, status, onStatus }: {
   );
 }
 
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
 function StatusBadge({ status }: { status: RowStatus }) {
-  if (status === 'baseline') return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.05] text-ps-faint">Baseline</span>;
-  if (status === 'regression') return (
-    <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-ps-reg-muted border border-ps-reg-border text-ps-regression">
-      <AlertTriangle className="w-2.5 h-2.5" /> Regression
+  if (status === 'baseline') {
+    return (
+      <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full border border-ld-border-strong text-ld-text-2">
+        Baseline
+      </span>
+    );
+  }
+  if (status === 'regression') {
+    return (
+      <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)] text-ld-rose">
+        <AlertTriangle className="w-[12px] h-[12px]" /> Regression
+      </span>
+    );
+  }
+  if (status === 'improved') {
+    return (
+      <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
+        <CheckCircle2 className="w-[12px] h-[12px]" /> Improved
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full text-ld-text-3">
+      <Minus className="w-[12px] h-[12px]" /> Stable
     </span>
   );
-  if (status === 'improved') return (
-    <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-ps-healthy-muted border border-ps-healthy-border text-ps-healthy">
-      <CheckCircle2 className="w-2.5 h-2.5" /> Improved
-    </span>
-  );
-  return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/[0.04] text-ps-faint">Stable</span>;
 }
 
-function MetricCell({ curr, prev, fmt, lowerIsBetter = true }: {
-  curr: number; prev: number | null; fmt: (v: number) => string; lowerIsBetter?: boolean;
+// ─── Metric cell ──────────────────────────────────────────────────────────────
+
+// "up" = metric got worse (rose delta); "down" = got better (emerald delta)
+function MetricCell({
+  value, prev, fmt, lowerIsBetter = true, isBad = false,
+}: {
+  value: number; prev: number | null; fmt: (v: number) => string;
+  lowerIsBetter?: boolean; isBad?: boolean;
 }) {
-  const reg = prev !== null && (lowerIsBetter ? isReg(curr, prev) : isReg(prev, curr));
-  const pct = prev !== null ? deltaPct(curr, prev) : null;
+  const pct = prev !== null ? deltaPct(value, prev) : null;
+
+  let dir: 'up' | 'down' | null = null;
+  if (pct !== null && Math.abs(pct) >= 0.05) {
+    dir = lowerIsBetter
+      ? (pct > 0 ? 'up' : 'down')   // higher is worse for LCP/TBT/etc.
+      : (pct > 0 ? 'down' : 'up');  // higher is better for Score
+  }
+
+  const deltaCls = dir === 'up' ? 'text-ld-rose' : dir === 'down' ? 'text-ld-accent-2' : 'text-ld-text-3';
+
   return (
-    <div className="flex flex-col items-end gap-0.5">
-      <span
-        className={`text-[12px] font-bold tabular-nums ${reg ? 'text-ps-regression' : 'text-ps-body'}`}
-        style={reg ? { textShadow: '0 0 8px var(--ps-reg-glow)' } : undefined}
-      >
-        {fmt(curr)}
+    <div className="font-mono flex flex-col items-end gap-[2px]">
+      <span className={`text-[13.5px] font-semibold ${isBad ? 'text-ld-rose' : 'text-ld-text'}`}>
+        {fmt(value)}
       </span>
-      {pct !== null && (
-        <span className={`text-[9px] tabular-nums ${reg ? 'text-ps-regression' : pct < -3 ? 'text-ps-healthy' : 'text-ps-faint'}`}>
+      {pct !== null ? (
+        <span className={`text-[10.5px] ${deltaCls}`}>
           {fmtPct(pct)}
         </span>
+      ) : (
+        <span className="text-[10.5px] text-ld-text-3">—</span>
       )}
     </div>
   );
 }
 
-function SortIcon({ col, sort, order }: { col: SortKey; sort: SortKey; order: SortOrder }) {
-  if (col !== sort) return <ChevronsUpDown className="w-3 h-3 opacity-25" />;
-  return order === 'asc'
-    ? <ChevronUp   className="w-3 h-3 text-ps-accent" />
-    : <ChevronDown className="w-3 h-3 text-ps-accent" />;
+function ScoreCell({
+  value, prev,
+}: {
+  value: number; prev: number | null;
+}) {
+  const pct  = prev !== null ? deltaPct(value, prev) : null;
+  const isBad = value < 50;
+  let dir: 'up' | 'down' | null = null;
+  if (pct !== null && Math.abs(pct) >= 0.05) {
+    dir = pct > 0 ? 'down' : 'up'; // score increase = good = down(emerald)
+  }
+  const deltaCls = dir === 'up' ? 'text-ld-rose' : dir === 'down' ? 'text-ld-accent-2' : 'text-ld-text-3';
+
+  return (
+    <div className="font-mono flex flex-col items-end gap-[2px]">
+      <span className={`text-[16px] font-bold ${isBad ? 'text-ld-rose' : 'text-ld-text'}`}>
+        {Math.round(value)}
+      </span>
+      {pct !== null ? (
+        <span className={`text-[10.5px] ${deltaCls}`}>{fmtPct(pct)}</span>
+      ) : (
+        <span className="text-[10.5px] text-ld-text-3">—</span>
+      )}
+    </div>
+  );
 }
 
-function SortTh({ label, col, sort, order, onSort, align = 'right' }: {
+// ─── Sort header ──────────────────────────────────────────────────────────────
+
+function SortTh({
+  label, col, sort, order, onSort, align = 'right',
+}: {
   label: string; col: SortKey; sort: SortKey; order: SortOrder;
-  onSort: (c: SortKey) => void; align?: 'left' | 'right' | 'center';
+  onSort: (c: SortKey) => void; align?: 'left' | 'right';
 }) {
   const active = col === sort;
+  const Icon = active
+    ? order === 'asc' ? ChevronUp : ChevronDown
+    : ChevronsUpDown;
+
   return (
-    <th className="px-4 py-2.5 text-[9px]" style={{ textAlign: align }}>
+    <th
+      className={`px-[14px] py-[12px] font-mono text-[10px] tracking-[.10em] uppercase text-ld-text-3 font-semibold whitespace-nowrap border-t border-b border-ld-border ${align === 'right' ? 'text-right' : 'text-left'}`}
+    >
       <button
         onClick={() => onSort(col)}
-        className={`flex items-center gap-1 font-bold uppercase tracking-widest transition-colors duration-150 ${
-          active ? 'text-ps-accent' : 'text-ps-faint'
-        }`}
-        style={{ marginLeft: align === 'right' ? 'auto' : undefined }}
+        className={`inline-flex items-center gap-[4px] transition-colors duration-150 ${
+          active ? 'text-ld-accent' : 'text-ld-text-3 hover:text-ld-text-2'
+        } ${align === 'right' ? 'ml-auto' : ''}`}
       >
-        {align === 'right' && <SortIcon col={col} sort={sort} order={order} />}
+        {align === 'right' && <Icon className="w-[12px] h-[12px]" />}
         {label}
-        {align !== 'right' && <SortIcon col={col} sort={sort} order={order} />}
+        {align === 'left'  && <Icon className="w-[12px] h-[12px]" />}
       </button>
     </th>
   );
 }
 
-// ─── Main widget ─────────────────────────────────────────────────────────────
+// ─── Bad-value thresholds ─────────────────────────────────────────────────────
+
+const BAD: Record<string, (v: number) => boolean> = {
+  lcp: v => v > 4000,
+  tbt: v => v > 600,
+  cls: v => v > 0.25,
+  fcp: v => v > 3000,
+  tti: v => v > 7300,
+};
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function HistoryDeepDiveTable({
   allRows, status, sort, order, onStatus, onSort, onOpen, loadingId,
@@ -148,101 +285,154 @@ export function HistoryDeepDiveTable({
       : allRows.filter(r =>
           status === 'regression' ? r.status === 'regression'
           : status === 'improved' ? r.status === 'improved'
-          : r.status === 'stable' || r.status === 'baseline');
+          : r.status === 'stable' || r.status === 'baseline'
+        );
     return sortRows(filtered, sort, order);
   }, [allRows, status, sort, order]);
 
+  // Newest first for display; allRows is chronological for insight
+  const reversedRows = useMemo(() => [...allRows].reverse(), [allRows]);
+
   return (
-    <div className="rounded-2xl overflow-hidden bg-ps-surface border border-ps-surface-border backdrop-blur-md">
-      {/* Header + filters */}
-      <div className="px-6 py-4 space-y-3 border-b border-ps-divider">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-ps-accent" />
-          <span className="text-sm font-semibold text-ps-body">Deep Dive</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-ps-muted">
+    <div className="flex flex-col gap-[16px]">
+
+      {/* Senior Insight */}
+      <SeniorInsight rows={reversedRows} />
+
+      {/* Deep Dive card */}
+      <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
+
+        {/* Card head */}
+        <div className="flex items-center gap-[11px] px-[22px] pt-[20px] pb-0">
+          <span className="w-[30px] h-[30px] rounded-[8px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
+            <BarChart2 className="w-[15px] h-[15px]" />
+          </span>
+          <h3 className="text-[16px] font-bold text-ld-text">Deep Dive</h3>
+          <span className="font-mono text-[12px] text-ld-text-3">
             {displayed.length} of {allRows.length} runs
           </span>
         </div>
-        <FilterBar rows={allRows} status={status} onStatus={onStatus} />
-      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-[11px]" style={{ borderCollapse: 'collapse' }}>
-          <thead>
-            <tr className="border-b border-ps-divider">
-              <SortTh label="Date & Time" col="date"  sort={sort} order={order} onSort={onSort} align="left" />
-              <th className="px-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-widest text-ps-faint">Commit</th>
-              <SortTh label="Score" col="score" sort={sort} order={order} onSort={onSort} />
-              <SortTh label="LCP"   col="lcp"   sort={sort} order={order} onSort={onSort} />
-              <SortTh label="TBT"   col="tbt"   sort={sort} order={order} onSort={onSort} />
-              <SortTh label="CLS"   col="cls"   sort={sort} order={order} onSort={onSort} />
-              <SortTh label="FCP"   col="fcp"   sort={sort} order={order} onSort={onSort} />
-              <SortTh label="TTI"   col="tti"   sort={sort} order={order} onSort={onSort} />
-              <th className="px-4 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-ps-faint">Status</th>
-              <th className="px-4 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence mode="popLayout" initial={false}>
+        {/* Filter bar */}
+        <FilterBar rows={allRows} status={status} onStatus={onStatus} />
+
+        {/* Scrollable table */}
+        <div className="overflow-x-auto">
+          <table className="w-full [border-collapse:collapse] min-w-[860px]">
+            <thead>
+              <tr>
+                <SortTh label="Date & Time" col="date"  sort={sort} order={order} onSort={onSort} align="left" />
+                <th className="px-[14px] py-[12px] text-left font-mono text-[10px] tracking-[.10em] uppercase text-ld-text-3 font-semibold border-t border-b border-ld-border whitespace-nowrap">
+                  Commit
+                </th>
+                <SortTh label="Score" col="score" sort={sort} order={order} onSort={onSort} />
+                <SortTh label="LCP"   col="lcp"   sort={sort} order={order} onSort={onSort} />
+                <SortTh label="TBT"   col="tbt"   sort={sort} order={order} onSort={onSort} />
+                <SortTh label="CLS"   col="cls"   sort={sort} order={order} onSort={onSort} />
+                <SortTh label="FCP"   col="fcp"   sort={sort} order={order} onSort={onSort} />
+                <SortTh label="TTI"   col="tti"   sort={sort} order={order} onSort={onSort} />
+                <th className="px-[14px] py-[12px] text-center font-mono text-[10px] tracking-[.10em] uppercase text-ld-text-3 font-semibold border-t border-b border-ld-border whitespace-nowrap">
+                  Status
+                </th>
+                <th className="px-[14px] py-[12px] border-t border-b border-ld-border" />
+              </tr>
+            </thead>
+            <tbody>
               {displayed.length === 0 ? (
-                <motion.tr key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <td colSpan={9} className="px-6 py-10 text-center text-[12px] text-ps-faint">
+                <tr>
+                  <td colSpan={10} className="px-[22px] py-[40px] text-center text-[13px] text-ld-text-3">
                     No runs match the selected filter.
                   </td>
-                </motion.tr>
+                </tr>
               ) : (
-                displayed.map((row, ri) => {
+                displayed.map(row => {
                   const { entry, prev, status: rowStatus } = row;
-                  const rowReg = rowStatus === 'regression';
+                  const isRegRow = rowStatus === 'regression';
+                  const m = entry.metrics;
+                  const pm = prev?.metrics ?? null;
+
                   return (
-                    <motion.tr
+                    <tr
                       key={entry.id}
-                      layout
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -16 }}
-                      transition={{ duration: 0.18, delay: ri * 0.02 }}
-                      className={`border-b border-ps-divider ${rowReg ? 'bg-ps-reg-muted' : ri % 2 === 0 ? 'bg-white/[0.012]' : ''}`}
+                      className={`border-b border-ld-border transition-[background] duration-[150ms] ${
+                        isRegRow
+                          ? 'bg-[rgba(242,100,122,.05)] hover:bg-[rgba(242,100,122,.09)]'
+                          : 'hover:bg-ld-surface-2'
+                      }`}
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3 shrink-0 text-ps-faint" />
-                          <span className="text-ps-secondary">{fmtDateFull(entry.timestamp)}</span>
-                        </div>
+                      {/* Date */}
+                      <td className="px-[14px] py-[13px] text-left">
+                        <span className="flex items-center gap-[9px]">
+                          <Clock className="w-[14px] h-[14px] text-ld-text-3 shrink-0" />
+                          <b className="font-mono text-[13px] font-medium text-ld-text whitespace-nowrap">
+                            {fmtDateFull(entry.timestamp)}
+                          </b>
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <GitCommit className="w-3 h-3 shrink-0 text-ps-faint" />
-                          <span className="font-mono text-ps-accent">#{entry.shortId}</span>
-                        </div>
+
+                      {/* Commit */}
+                      <td className="px-[14px] py-[13px] text-left">
+                        <span className="inline-flex items-center gap-[7px] font-mono text-[12.5px] text-ld-text-2">
+                          <GitCommit className="w-[13px] h-[13px] text-ld-text-3" />
+                          #{entry.shortId}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.scores.performance} prev={prev?.scores.performance ?? null} fmt={v => `${Math.round(v)}`} lowerIsBetter={false} /></td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.metrics.lcp} prev={prev?.metrics.lcp ?? null} fmt={fmtMs} /></td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.metrics.tbt} prev={prev?.metrics.tbt ?? null} fmt={fmtMs} /></td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.metrics.cls} prev={prev?.metrics.cls ?? null} fmt={fmtCls} /></td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.metrics.fcp} prev={prev?.metrics.fcp ?? null} fmt={fmtMs} /></td>
-                      <td className="px-4 py-3 text-right"><MetricCell curr={entry.metrics.tti} prev={prev?.metrics.tti ?? null} fmt={fmtMs} /></td>
-                      <td className="px-4 py-3 text-center"><StatusBadge status={rowStatus} /></td>
-                      <td className="px-3 py-3 text-right">
+
+                      {/* Score */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <ScoreCell value={entry.scores.performance} prev={prev?.scores.performance ?? null} />
+                      </td>
+
+                      {/* LCP */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <MetricCell value={m.lcp} prev={pm?.lcp ?? null} fmt={fmtMs} isBad={BAD['lcp']!(m.lcp)} />
+                      </td>
+
+                      {/* TBT */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <MetricCell value={m.tbt} prev={pm?.tbt ?? null} fmt={fmtMs} isBad={BAD['tbt']!(m.tbt)} />
+                      </td>
+
+                      {/* CLS */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <MetricCell value={m.cls} prev={pm?.cls ?? null} fmt={fmtCls} isBad={BAD['cls']!(m.cls)} />
+                      </td>
+
+                      {/* FCP */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <MetricCell value={m.fcp} prev={pm?.fcp ?? null} fmt={fmtMs} isBad={BAD['fcp']!(m.fcp)} />
+                      </td>
+
+                      {/* TTI */}
+                      <td className="px-[14px] py-[13px] text-right">
+                        <MetricCell value={m.tti} prev={pm?.tti ?? null} fmt={fmtMs} isBad={BAD['tti']!(m.tti)} />
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-[14px] py-[13px] text-center">
+                        <StatusBadge status={rowStatus} />
+                      </td>
+
+                      {/* Open */}
+                      <td className="px-[14px] py-[13px] text-right">
                         <button
                           onClick={() => onOpen(entry)}
                           disabled={loadingId === entry.id}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all duration-150 disabled:opacity-50 bg-ps-accent-muted border border-ps-accent-border text-ps-accent"
-                          title="Open full result in Analyzer"
+                          className="inline-flex items-center gap-[6px] text-[12.5px] font-semibold text-ld-text-2 px-[13px] py-[7px] rounded-[9px] border border-ld-border-strong bg-ld-surface transition-[color,border-color,background] duration-[180ms] disabled:opacity-50 hover:text-ld-accent hover:border-ld-accent-line hover:bg-ld-accent-soft"
                         >
                           {loadingId === entry.id
-                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : <ExternalLink className="w-3 h-3" />}
+                            ? <Loader2 className="w-[13px] h-[13px] animate-spin" />
+                            : <ExternalLink className="w-[13px] h-[13px]" />}
                           Open
                         </button>
                       </td>
-                    </motion.tr>
+                    </tr>
                   );
                 })
               )}
-            </AnimatePresence>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

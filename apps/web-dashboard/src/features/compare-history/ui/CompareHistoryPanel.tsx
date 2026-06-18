@@ -151,9 +151,14 @@ function CompareRow({
         </span>
       </div>
 
-      {/* Score (rival's) */}
-      <div className="font-mono text-[19px] font-semibold text-ld-text text-center min-w-[44px] max-[820px]:[grid-column:1] max-[820px]:justify-self-start max-[820px]:text-left">
-        {cs}
+      {/* Scores: you · rival */}
+      <div className="text-center min-w-[88px] max-[820px]:[grid-column:1] max-[820px]:justify-self-start max-[820px]:text-left">
+        <p className="font-mono text-[9px] tracking-[.10em] uppercase text-ld-text-3 mb-[5px]">Performance</p>
+        <div className="inline-flex items-baseline gap-[6px]">
+          <span className="font-mono text-[17px] font-semibold text-ld-accent-2">{ys}</span>
+          <span className="font-mono text-[11px] text-ld-text-3">·</span>
+          <span className="font-mono text-[17px] font-semibold" style={{ color: 'var(--ld-amber)' }}>{cs}</span>
+        </div>
       </div>
 
       {/* Delta */}
@@ -201,37 +206,46 @@ function CompareRow({
 
 // ─── Pair Chart ───────────────────────────────────────────────────────────────
 
-const VW = 1000; const VH = 220;
-const X0 = 55;   const X1 = 935; const XW = X1 - X0;
-const YTOP = 20; const YBOT = 200; const YH = YBOT - YTOP;
-const GRID_YS = [YTOP + YH * 0.20, YTOP + YH * 0.50, YTOP + YH * 0.80];
+const PC_VW  = 1000; const PC_VH = 300;
+const PC_PAD = { top: 24, right: 32, bottom: 58, left: 56 } as const;
+const PC_IW  = PC_VW - PC_PAD.left - PC_PAD.right;
+const PC_IH  = PC_VH - PC_PAD.top  - PC_PAD.bottom;
+const PC_MONO = "'Geist Mono', ui-monospace, monospace";
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 function PairChart({ entries }: { entries: CompareEntry[] }) {
   const n = entries.length;
   if (!n) return null;
 
-  const xOf   = (i: number) => n === 1 ? (X0 + X1) / 2 : X0 + (i / (n - 1)) * XW;
+  const xOf     = (i: number) => PC_PAD.left + (n === 1 ? PC_IW / 2 : (i / (n - 1)) * PC_IW);
   const yScores = entries.map(e => perf(e, 'source'));
   const rScores = entries.map(e => perf(e, 'competitor'));
   const all     = [...yScores, ...rScores];
   const sMin    = Math.min(...all) * 0.88;
-  const sMax    = Math.max(...all) * 1.05;
-  const yOf     = (v: number) => YTOP + YH - ((v - sMin) / (sMax - sMin || 1)) * YH;
+  const sMax    = Math.max(...all) * 1.06;
+  const baseline = PC_PAD.top + PC_IH;
+  const yOf     = (v: number) => PC_PAD.top + PC_IH - ((v - sMin) / (sMax - sMin || 1)) * PC_IH;
 
-  const polyPts = (vals: number[]) =>
-    vals.map((v, i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
-  const area = (vals: number[]) => {
+  const linePath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+  const areaPath = (vals: number[]) => {
     const l   = vals.length;
     const pts = vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
-    return `${pts} L${xOf(l - 1).toFixed(1)},${YBOT} L${xOf(0).toFixed(1)},${YBOT} Z`;
+    return `${pts} L${xOf(l - 1).toFixed(1)},${baseline} L${xOf(0).toFixed(1)},${baseline} Z`;
   };
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => ({
+    y: PC_PAD.top + PC_IH * (1 - t),
+    v: Math.round(sMin + t * (sMax - sMin)),
+  }));
 
   return (
     <svg
-      viewBox={`0 0 ${VW} ${VH}`}
-      preserveAspectRatio="none"
-      className="w-full block"
-      style={{ height: 240, overflow: 'visible' }}
+      viewBox={`0 0 ${PC_VW} ${PC_VH}`}
+      style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}
       aria-label="Score comparison over time"
     >
       <defs>
@@ -245,20 +259,43 @@ function PairChart({ entries }: { entries: CompareEntry[] }) {
         </linearGradient>
       </defs>
 
-      {GRID_YS.map((y, i) => (
-        <line key={i} x1={0} y1={y} x2={VW} y2={y} stroke="var(--ld-border)" strokeWidth="1" strokeDasharray="4 5" />
+      {/* Y-axis grid + labels */}
+      {yTicks.map((t, i) => (
+        <g key={i}>
+          <line
+            x1={PC_PAD.left} y1={t.y} x2={PC_VW - PC_PAD.right} y2={t.y}
+            stroke="var(--ld-border)" strokeWidth="1" strokeDasharray="4 5"
+          />
+          <text
+            x={PC_PAD.left - 8} y={t.y + 4}
+            textAnchor="end" fill="var(--ld-text-3)"
+            fontSize="11" fontFamily={PC_MONO}
+          >
+            {t.v}
+          </text>
+        </g>
       ))}
 
-      <path d={area(rScores)} fill="url(#pairRivalFill)" />
-      <polyline points={polyPts(rScores)} fill="none" stroke="var(--ld-amber)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Rival area + line */}
+      <path d={areaPath(rScores)} fill="url(#pairRivalFill)" />
+      <path d={linePath(rScores)} fill="none" stroke="var(--ld-amber)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
-      <path d={area(yScores)} fill="url(#pairYouFill)" />
-      <polyline points={polyPts(yScores)} fill="none" stroke="var(--ld-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* You area + line */}
+      <path d={areaPath(yScores)} fill="url(#pairYouFill)" />
+      <path d={linePath(yScores)} fill="none" stroke="var(--ld-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
-      {entries.map((_, i) => (
+      {/* Per-point dots + x-axis labels */}
+      {entries.map((entry, i) => (
         <g key={i}>
           <circle cx={xOf(i)} cy={yOf(rScores[i]!)} r="4.5" fill="var(--ld-surface)" stroke="var(--ld-amber)"  strokeWidth="2" />
           <circle cx={xOf(i)} cy={yOf(yScores[i]!)} r="4.5" fill="var(--ld-surface)" stroke="var(--ld-accent)" strokeWidth="2" />
+          <text
+            x={xOf(i)} y={baseline + 18}
+            textAnchor="middle" fill="var(--ld-text-3)"
+            fontSize="11" fontFamily={PC_MONO}
+          >
+            {fmtDate(entry.timestamp)}
+          </text>
         </g>
       ))}
     </svg>

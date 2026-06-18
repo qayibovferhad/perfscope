@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitCompareArrows, TrendingUp } from 'lucide-react';
-import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/history/model/useHistory';
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
@@ -88,23 +87,20 @@ export function HistoryPage() {
   return (
     <div className="w-[min(1120px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] flex flex-col gap-[22px]">
 
-      {/* ── Top bar: breadcrumb + theme toggle ─────────── */}
-      <div className="flex items-center justify-between gap-[12px] flex-wrap">
-        {tab === 'analysis'
-          ? <HistoryBreadcrumb hostname={hostname} />
-          : (
-            <nav className="flex items-center gap-[10px] text-[14px]">
-              <span className="font-semibold text-ld-text">History</span>
-              <span className="text-ld-text-3 opacity-50 text-[16px] leading-none">›</span>
-              <span className="inline-flex items-center gap-[7px] font-semibold text-ld-text">
-                <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
-                Compare
-              </span>
-            </nav>
-          )
-        }
-        <ThemeToggle />
-      </div>
+      {/* ── Top bar: breadcrumb ────────────────────────── */}
+      {tab === 'analysis'
+        ? <HistoryBreadcrumb hostname={hostname} />
+        : (
+          <nav className="flex items-center gap-[10px] text-[14px]">
+            <span className="font-semibold text-ld-text">History</span>
+            <span className="text-ld-text-3 opacity-50 text-[16px] leading-none">›</span>
+            <span className="inline-flex items-center gap-[7px] font-semibold text-ld-text">
+              <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
+              Compare
+            </span>
+          </nav>
+        )
+      }
 
       {/* ── Tab bar ────────────────────────────────────── */}
       <HistoryTabBar active={tab} onChange={setTab} />
