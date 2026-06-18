@@ -1,0 +1,181 @@
+import chalk from 'chalk';
+
+const W = 62;
+const LINE = chalk.dim('─'.repeat(W));
+const DIVIDER = (label) => {
+  const pad = W - label.length - 4;
+  const l = Math.floor(pad / 2);
+  const r = pad - l;
+  return chalk.dim('─'.repeat(l) + '─ ') + chalk.bold.dim(label) + chalk.dim(' ' + '─'.repeat(r));
+};
+
+// ── Score helpers ────────────────────────────────────────
+
+function scoreColor(n) {
+  if (n >= 90) return chalk.greenBright;
+  if (n >= 50) return chalk.yellow;
+  return chalk.redBright;
+}
+
+function scoreLabel(n) {
+  if (n >= 90) return chalk.dim.green('GOOD');
+  if (n >= 50) return chalk.dim.yellow('NEEDS IMPROVEMENT');
+  return chalk.dim.red('POOR');
+}
+
+function scoreBar(n) {
+  const filled = Math.round(n / 10);
+  const empty  = 10 - filled;
+  const color  = scoreColor(n);
+  return chalk.dim('[') + color('█'.repeat(filled)) + chalk.dim('░'.repeat(empty)) + chalk.dim(']');
+}
+
+// ── Metric helpers ───────────────────────────────────────
+
+const BANDS = {
+  lcp: { good: 2500,  ni: 4000,  unit: 'ms', label: 'LCP' },
+  tbt: { good: 200,   ni: 600,   unit: 'ms', label: 'TBT' },
+  cls: { good: 0.1,   ni: 0.25,  unit: '',   label: 'CLS' },
+  fcp: { good: 1800,  ni: 3000,  unit: 'ms', label: 'FCP' },
+  tti: { good: 3800,  ni: 7300,  unit: 'ms', label: 'TTI' },
+};
+
+function metricStatus(key, value) {
+  const b = BANDS[key];
+  if (!b) return { label: '●  Unknown', color: chalk.dim };
+  if (value <= b.good) return { label: '✓  Good',              color: chalk.greenBright };
+  if (value <= b.ni)   return { label: '⚠  Needs Improvement', color: chalk.yellow };
+  return               { label: '✗  Poor',              color: chalk.redBright };
+}
+
+function fmtMetric(key, value) {
+  if (key === 'cls') return value.toFixed(3);
+  if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
+  return `${Math.round(value)} ms`;
+}
+
+// ── Layout helpers ───────────────────────────────────────
+
+function pad(str, width) {
+  const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
+  return str + ' '.repeat(Math.max(0, width - visible.length));
+}
+
+function row(label, value, extra = '') {
+  return `  ${chalk.dim(pad(label, 16))} ${value}  ${extra}`;
+}
+
+// ── Main export ──────────────────────────────────────────
+
+export function printReport(result, originalUrl) {
+  const { url, scores, metrics, aiInsights, timestamp } = result;
+
+  const date = timestamp
+    ? new Date(timestamp).toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      })
+    : new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      });
+
+  const displayUrl = originalUrl || url || '—';
+
+  console.log('');
+  console.log(chalk.bold.greenBright('  ╔' + '═'.repeat(W) + '╗'));
+  console.log(chalk.bold.greenBright('  ║') + chalk.bold('  ⚡ PerfScope  ·  Performance Audit Report' + ' '.repeat(W - 43)) + chalk.bold.greenBright('║'));
+  console.log(chalk.bold.greenBright('  ╚' + '═'.repeat(W) + '╝'));
+  console.log('');
+  console.log(row('URL', chalk.cyan(displayUrl)));
+  console.log(row('Audited', chalk.dim(date)));
+  console.log('');
+
+  // ── Scores ──────────────────────────────────────────────
+  console.log('  ' + DIVIDER('SCORES'));
+  console.log('');
+
+  const scoreMap = [
+    ['Performance',    scores?.performance   ?? 0],
+    ['Accessibility',  scores?.accessibility  ?? 0],
+    ['Best Practices', scores?.bestPractices  ?? 0],
+    ['SEO',            scores?.seo            ?? 0],
+  ];
+
+  for (const [label, val] of scoreMap) {
+    const n     = Math.round(val > 1 ? val : val * 100);
+    const color = scoreColor(n);
+    console.log(`  ${pad(chalk.dim(label), 22)} ${scoreBar(n)} ${color(pad(String(n), 4))} ${scoreLabel(n)}`);
+  }
+
+  console.log('');
+
+  // ── Core Web Vitals ──────────────────────────────────────
+  console.log('  ' + DIVIDER('CORE WEB VITALS'));
+  console.log('');
+  console.log(chalk.dim('  Metric     Value          Status'));
+  console.log('  ' + LINE);
+
+  for (const key of ['lcp', 'tbt', 'cls', 'fcp', 'tti']) {
+    const raw   = metrics?.[key];
+    if (raw == null) continue;
+    const label = BANDS[key]?.label ?? key.toUpperCase();
+    const fmt   = fmtMetric(key, raw);
+    const { label: statusLabel, color } = metricStatus(key, raw);
+    console.log(`  ${pad(chalk.dim(label), 10)} ${pad(fmt, 15)} ${color(statusLabel)}`);
+  }
+
+  console.log('');
+
+  // ── AI Insight ───────────────────────────────────────────
+  if (aiInsights && typeof aiInsights === 'string' && aiInsights.trim()) {
+    console.log('  ' + DIVIDER('SENIOR INSIGHT'));
+    console.log('');
+
+    const words   = aiInsights.trim().split(/\s+/);
+    const maxCols = W - 8;
+    let   line    = '';
+    const lines   = [];
+
+    for (const word of words) {
+      if ((line + ' ' + word).trim().length > maxCols) {
+        if (line) lines.push(line.trim());
+        line = word;
+      } else {
+        line = line ? line + ' ' + word : word;
+      }
+    }
+    if (line) lines.push(line.trim());
+
+    console.log(`  ${chalk.yellow('💡')} ${chalk.italic(lines[0] ?? '')}`);
+    for (let i = 1; i < lines.length; i++) {
+      console.log(`     ${chalk.dim(lines[i])}`);
+    }
+    console.log('');
+  }
+
+  // ── Next Steps ───────────────────────────────────────────
+  console.log('  ' + DIVIDER('NEXT STEPS'));
+  console.log('');
+  console.log(`  ${chalk.dim('→')} Full history  ${chalk.cyan('https://app.perfscope.com/history')}`);
+  console.log(`  ${chalk.dim('→')} Run again     ${chalk.dim(`npx perfscope --url ${displayUrl}`)}`);
+  console.log('');
+  console.log('  ' + LINE);
+  console.log('');
+}
+
+export function printJson(result) {
+  console.log(JSON.stringify(result, null, 2));
+}
+
+export function printMinimal(result) {
+  const scores  = result?.scores ?? {};
+  const metrics = result?.metrics ?? {};
+  const perf    = Math.round((scores.performance ?? 0) > 1 ? scores.performance : (scores.performance ?? 0) * 100);
+  console.log(
+    chalk.bold(`performance:${perf}`) +
+    chalk.dim(`  lcp:${fmtMetric('lcp', metrics.lcp ?? 0)}`) +
+    chalk.dim(`  tbt:${fmtMetric('tbt', metrics.tbt ?? 0)}`) +
+    chalk.dim(`  cls:${fmtMetric('cls', metrics.cls ?? 0)}`)
+  );
+}

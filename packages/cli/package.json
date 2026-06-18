@@ -1,0 +1,42 @@
+{
+  "name": "@perfscope/cli",
+  "version": "1.0.0",
+  "description": "PerfScope CLI — lightweight performance auditing companion",
+  "type": "module",
+  "bin": {
+    "perfscope": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "localtunnel": "^2.0.2",
+    "ora": "^8.1.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qayibovferhad/perfscope.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "perfscope",
+    "performance",
+    "lighthouse",
+    "cli",
+    "audit",
+    "web-vitals",
+    "core-web-vitals"
+  ],
+  "license": "MIT"
+}
