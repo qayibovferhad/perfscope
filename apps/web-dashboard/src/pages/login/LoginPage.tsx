@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { GoogleButton } from '@/features/auth/components/GoogleButton';
 import { motion } from 'framer-motion';
@@ -30,6 +30,8 @@ const inputBase: React.CSSProperties = {
 export function LoginPage() {
   const { user, setAuth, setUser } = useAuthStore();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const redirectTo = params.get('redirect') || '/app';
 
   const [showPass,   setShowPass]   = useState(false);
   const [serverErr,  setServerErr]  = useState('');
@@ -41,15 +43,15 @@ export function LoginPage() {
   } = useForm<FormValues>();
 
   useEffect(() => {
-    if (user) navigate('/app', { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   async function onSubmit(data: FormValues) {
     setServerErr('');
     try {
       const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/login', data);
       setAuth(res.data.user, res.data.token);
-      navigate('/app', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
         ?.response?.data?.error ?? 'Invalid credentials';
@@ -59,7 +61,7 @@ export function LoginPage() {
 
   function onGoogleSuccess(user: AuthUser) {
     setUser(user);
-    navigate('/app', { replace: true });
+    navigate(redirectTo, { replace: true });
   }
 
   return (
