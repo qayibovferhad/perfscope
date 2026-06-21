@@ -5,6 +5,7 @@ import ora from 'ora';
 import axios from 'axios';
 import http from 'node:http';
 import net  from 'node:net';
+import readline from 'node:readline';
 import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'module';
@@ -158,6 +159,127 @@ async function loginCmd(opts) {
   spinner.fail(chalk.red('Login timed out (5 min). Run `perfscope login` to try again.'));
 }
 
+// ── Website picker ───────────────────────────────────────
+
+function ask(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => rl.question(question, ans => { rl.close(); resolve(ans.trim()); }));
+}
+
+async function pickUrl(apiUrl, apiKey, customUrl = '') {
+  let websites;
+  const spinner = ora({ text: chalk.dim('Loading your websites…'), color: 'green' }).start();
+  try {
+    const { data } = await axios.get(`${apiUrl}/api/websites`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 8000,
+    });
+    websites = data;
+    spinner.stop();
+  } catch {
+    spinner.fail(chalk.red('Could not fetch websites. Check --api-url and make sure you are logged in.'));
+    process.exit(1);
+  }
+
+  console.log('');
+  console.log(chalk.bold('  Your websites:'));
+  console.log('');
+
+  websites.forEach((w, i) => {
+    const name = w.name ? chalk.white(w.name) + chalk.dim(` (${w.url})`) : chalk.white(w.url);
+    console.log(`  ${chalk.dim(`${i + 1}.`)} ${name}`);
+  });
+
+  // Custom URL option
+  const customIdx = websites.length + 1;
+  console.log(`  ${chalk.dim(`${customIdx}.`)} ${chalk.dim('Custom URL')}${customUrl ? chalk.dim(` [${customUrl}]`) : ''}`);
+  console.log('');
+
+  const raw = await ask(chalk.dim(`  Select (1-${customIdx}${customUrl ? `, or Enter to use ${customUrl}` : ''}): `));
+
+  const parts = raw.split('.');
+  const siteIdx = parseInt(parts[0], 10) - 1;
+
+  // Custom URL chosen (or Enter with --url pre-fill)
+  const useCustom = (!raw && customUrl) || siteIdx === customIdx - 1;
+  if (useCustom) {
+    const input = (!raw && customUrl) ? customUrl : (customUrl || await ask(chalk.dim('  URL: ')));
+    if (!input) { console.error(chalk.red('No URL entered.')); process.exit(1); }
+
+    let finalUrl;
+    try { new URL(input); finalUrl = input; }
+    catch { finalUrl = 'https://' + input; }
+
+    // Check if already in the list (exact match)
+    const exactMatch = websites.find(w => w.url === finalUrl);
+
+    if (!exactMatch) {
+      let inputOrigin, inputPath;
+      try { const u = new URL(finalUrl); inputOrigin = u.origin; inputPath = u.pathname; } catch { inputOrigin = ''; inputPath = '/'; }
+
+      // Check if this is a sub-route of an existing website
+      const parent = inputPath !== '/' && websites.find(w => {
+        try { return new URL(w.url).origin === inputOrigin; } catch { return false; }
+      });
+
+      if (parent) {
+        // Add as a route to the parent website
+        const existingRoutes = parent.automation?.routes ?? [];
+        if (!existingRoutes.includes(inputPath)) {
+          const saveSpinner = ora({ text: chalk.dim('Adding route…'), color: 'green' }).start();
+          try {
+            await axios.patch(`${apiUrl}/api/websites/${parent._id}/automation`,
+              { routes: [...existingRoutes, inputPath] },
+              { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 8000 },
+            );
+            saveSpinner.succeed(chalk.greenBright(`Route ${inputPath} added`) + chalk.dim(` to ${parent.url}`));
+          } catch {
+            saveSpinner.warn(chalk.yellow('Could not save route — proceeding anyway.'));
+          }
+        }
+      } else {
+        // Brand new website
+        const name = await ask(chalk.dim('  Website name (press Enter to skip): '));
+        const saveSpinner = ora({ text: chalk.dim('Saving website…'), color: 'green' }).start();
+        try {
+          await axios.post(`${apiUrl}/api/websites`,
+            { url: finalUrl, name: name || undefined },
+            { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 8000 },
+          );
+          saveSpinner.succeed(chalk.greenBright('Website saved') + chalk.dim(` — ${finalUrl}`));
+        } catch {
+          saveSpinner.warn(chalk.yellow('Could not save website — proceeding anyway.'));
+        }
+      }
+    }
+
+    return finalUrl;
+  }
+
+  if (isNaN(siteIdx) || siteIdx < 0 || siteIdx >= websites.length) {
+    console.error(chalk.red('Invalid selection.'));
+    process.exit(1);
+  }
+
+  const site = websites[siteIdx];
+  const routes = site.automation?.routes ?? [];
+
+  if (parts[1] !== undefined) {
+    const routeIdx = parseInt(parts[1], 10) - 1;
+    if (isNaN(routeIdx) || routeIdx < 0 || routeIdx >= routes.length) {
+      console.error(chalk.red('Invalid route selection.')); process.exit(1);
+    }
+    return site.url.replace(/\/$/, '') + routes[routeIdx];
+  }
+
+  // Ask for a route path to audit on this website
+  console.log('');
+  const routeRaw = await ask(chalk.dim(`  Route path (Enter for /): `));
+  if (!routeRaw || routeRaw === '/') return site.url;
+  const routePath = routeRaw.startsWith('/') ? routeRaw : `/${routeRaw}`;
+  return site.url.replace(/\/$/, '') + routePath;
+}
+
 // ── Audit ────────────────────────────────────────────────
 
 async function audit(targetUrl, opts) {
@@ -186,7 +308,8 @@ async function audit(targetUrl, opts) {
   const spinner = ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start();
 
   // ── Tunnel for local URLs ──────────────────────────────
-  if (isLocal(targetUrl) && opts.tunnel !== false) {
+  // Skip tunnel when API is also local — backend can reach the target directly
+  if (isLocal(targetUrl) && opts.tunnel !== false && !isLocal(apiUrl)) {
     const port = portOf(targetUrl);
     spinner.text = chalk.dim(`Opening tunnel on port ${port}…`);
     try {
@@ -304,20 +427,23 @@ ${chalk.bold('Quick start:')}
   ${chalk.dim('$')} npx perfscope --url http://localhost:3000
   `)
   .action(async (opts) => {
-    if (!opts.url) {
-      program.help();
-      return;
+    // Resolve API key early so picker can use it
+    let apiKey = opts.key || process.env.PERFSCOPE_API_KEY || '';
+    if (!apiKey) {
+      const creds = loadCredentials();
+      if (creds?.token) {
+        apiKey = creds.token;
+      } else {
+        console.error(chalk.red('Not logged in.') + chalk.dim(' Run ') + chalk.white('perfscope login') + chalk.dim(' first.'));
+        process.exit(1);
+      }
     }
 
-    let url = opts.url;
-    try {
-      new URL(url);
-    } catch {
-      try { new URL('https://' + url); url = 'https://' + url; }
-      catch { console.error(chalk.red(`Invalid URL: ${opts.url}`)); process.exit(1); }
-    }
+    const apiUrl = opts.apiUrl.replace(/\/$/, '');
+    const url = await pickUrl(apiUrl, apiKey, opts.url);
+    console.log(chalk.dim(`  Auditing → ${chalk.white(url)}\n`));
 
-    await audit(url, { ...opts, url });
+    await audit(url, { ...opts, url, key: apiKey });
   });
 
 // ── Graceful shutdown ────────────────────────────────────

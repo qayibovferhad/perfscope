@@ -1,8 +1,17 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 
-const CONFIG_DIR = join(homedir(), '.config', 'perfscope');
+function getConfigDir() {
+  const home = homedir();
+  switch (platform()) {
+    case 'win32':  return join(process.env.APPDATA ?? join(home, 'AppData', 'Roaming'), 'perfscope');
+    case 'darwin': return join(home, 'Library', 'Application Support', 'perfscope');
+    default:       return join(process.env.XDG_CONFIG_HOME ?? join(home, '.config'), 'perfscope');
+  }
+}
+
+const CONFIG_DIR = getConfigDir();
 const CREDS_FILE = join(CONFIG_DIR, 'credentials.json');
 
 export function getConfigPath() {
@@ -23,6 +32,7 @@ export function saveCredentials(token, email) {
   writeFileSync(
     CREDS_FILE,
     JSON.stringify({ token, email, savedAt: new Date().toISOString() }, null, 2),
+    // 0o600 = only owner can read/write (ignored on Windows, handled by NTFS ACL)
     { mode: 0o600 },
   );
 }
