@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock } from 'lucide-react';
+import { ArrowRight, Clock } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
+import { getHostname } from '@/entities/website';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { HistoryWebsiteCard } from '@/features/history/ui/HistoryWebsiteCard';
+import { hasResult } from '@/features/history/lib/hasResult';
+import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard';
 
 interface Props {
   allEntries: HistoryEntry[];
@@ -15,24 +17,30 @@ interface Props {
 export function HistoryWebsitesOverview({ allEntries, isLoading }: Props) {
   const { websites } = useWebsites();
 
+  // Keyed by hostname, not by full URL. Audits run per route, so a site saved as
+  // "https://x.com" is audited as "https://x.com/" or "https://x.com/requests" — keying
+  // on the exact URL left such a site out of this list entirely.
   const grouped = useMemo(() => {
     const map: Record<string, HistoryEntry[]> = {};
     for (const e of allEntries) {
-      if (!map[e.url]) map[e.url] = [];
-      map[e.url].push(e);
+      if (!hasResult(e)) continue;
+      const host = getHostname(e.url, '');
+      if (!host) continue;
+      if (!map[host]) map[host] = [];
+      map[host]!.push(e);
     }
-    for (const url of Object.keys(map)) {
-      map[url].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    for (const host of Object.keys(map)) {
+      map[host]!.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
     return map;
   }, [allEntries]);
 
   const sitesWithHistory = useMemo(() =>
     websites
-      .filter(s => grouped[s.url]?.length > 0)
+      .filter(s => (grouped[getHostname(s.url, '')]?.length ?? 0) > 0)
       .sort((a, b) => {
-        const la = grouped[a.url]?.at(-1)?.timestamp ?? '';
-        const lb = grouped[b.url]?.at(-1)?.timestamp ?? '';
+        const la = grouped[getHostname(a.url, '')]?.at(-1)?.timestamp ?? '';
+        const lb = grouped[getHostname(b.url, '')]?.at(-1)?.timestamp ?? '';
         return lb.localeCompare(la);
       }),
   [websites, grouped]);
@@ -80,10 +88,16 @@ export function HistoryWebsitesOverview({ allEntries, isLoading }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.06 }}
         >
-          <HistoryWebsiteCard
-            siteUrl={site.url}
-            siteName={site.name}
-            entries={grouped[site.url]}
+          <HistoryEvolutionCard
+            url={site.url}
+            entries={grouped[getHostname(site.url, '')]!}
+            action={
+              <Button variant="outline" size="md" asChild>
+                <Link to={`/history?url=${encodeURIComponent(site.url)}`}>
+                  View Details <ArrowRight />
+                </Link>
+              </Button>
+            }
           />
         </motion.div>
       ))}

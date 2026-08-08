@@ -43,6 +43,20 @@ historyRouter.get('/history/:id', requireAuth, async (req: AuthRequest, res: Res
   }
 });
 
+// DELETE /api/history/:id  — remove a single audit
+historyRouter.delete('/history/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const deleted = await HistoryService.remove(String(req.params['id']), req.userId!);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: 'Audit not found' });
+      return;
+    }
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ success: false, error: 'Failed to delete audit' });
+  }
+});
+
 // GET /api/projects/:id/audits  — project audit history grouped by route
 historyRouter.get('/projects/:id/audits', requireAuth, async (req: AuthRequest, res: Response) => {
   try {

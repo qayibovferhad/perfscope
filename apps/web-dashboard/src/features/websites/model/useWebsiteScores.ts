@@ -1,35 +1,31 @@
 import { useMemo }         from 'react';
 import { useAllHistory }  from '@/features/history/model/useHistory';
+import { hasResult }      from '@/features/history/lib/hasResult';
+import { getHostname }    from '@/entities/website';
 import type { HistoryEntry } from '@/entities/history';
 
 export interface SiteScoreInfo {
-  latestScore:   number | null;
+  /** Mean performance across every successful audit of the site — the same figure the
+   *  project detail page shows as "Avg Score" and the summary strip averages. */
+  avgScore:      number | null;
   recentScores:  number[];
   lastAuditedAt: string | null;
-}
-
-/**
- * A run that failed (unreachable host, Chrome crash, timeout) is still persisted,
- * but with every score and metric at 0. Those carry no signal, so they must not
- * be reported as a score of 0 — a real page always moves at least one of these.
- */
-function hasResult(entry: HistoryEntry): boolean {
-  const { performance, accessibility, bestPractices, seo } = entry.scores;
-  if (performance || accessibility || bestPractices || seo) return true;
-
-  const { fcp, lcp, tbt, cls, si, tti } = entry.metrics;
-  return Boolean(fcp || lcp || tbt || cls || si || tti);
 }
 
 export function useWebsiteScores() {
   const { data: entries = [], isLoading } = useAllHistory();
 
-  const byUrl = useMemo(() => {
+  // Keyed by hostname, not by full URL: audits are recorded per route, so a site saved
+  // as "https://x.com" is audited as "https://x.com/" or "https://x.com/requests".
+  // Matching exactly would leave every such site looking unaudited.
+  const byHost = useMemo(() => {
     const map = new Map<string, HistoryEntry[]>();
     for (const e of entries) {
       if (!hasResult(e)) continue;
-      if (!map.has(e.url)) map.set(e.url, []);
-      map.get(e.url)!.push(e);
+      const host = getHostname(e.url, '');
+      if (!host) continue;
+      if (!map.has(host)) map.set(host, []);
+      map.get(host)!.push(e);
     }
     for (const list of map.values()) {
       list.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -38,11 +34,16 @@ export function useWebsiteScores() {
   }, [entries]);
 
   function getInfo(url: string): SiteScoreInfo {
-    const list = byUrl.get(url) ?? [];
-    if (!list.length) return { latestScore: null, recentScores: [], lastAuditedAt: null };
-    const latest = list[list.length - 1];
+    const list = byHost.get(getHostname(url, '')) ?? [];
+    if (!list.length) return { avgScore: null, recentScores: [], lastAuditedAt: null };
+
+    const latest = list[list.length - 1]!;
+    const runs   = list.map(e => e.scores.performance);
+
     return {
-      latestScore:   Math.round(latest.scores.performance),
+      // Rounded once at the end, matching how the server computes it — rounding each run
+      // first would drift the two apart by a point.
+      avgScore:      Math.round(runs.reduce((sum, s) => sum + s, 0) / runs.length),
       recentScores:  list.slice(-6).map(e => Math.round(e.scores.performance)),
       lastAuditedAt: latest.timestamp,
     };

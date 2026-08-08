@@ -8,6 +8,11 @@ import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '@/fea
 import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct, isReg } from '@/features/history/lib/format';
 import { sortRows } from '@/features/history/lib/computeRows';
 
+/** "/requests" — the audited path, since the table now spans every route of a site. */
+function routeOf(url: string): string {
+  try { return new URL(url).pathname || '/'; } catch { return url; }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -323,6 +328,9 @@ export function HistoryDeepDiveTable({
               <tr>
                 <SortTh label="Date & Time" col="date"  sort={sort} order={order} onSort={onSort} align="left" />
                 <th className="px-[14px] py-[12px] text-left font-mono text-[10px] tracking-[.10em] uppercase text-ld-text-3 font-semibold border-t border-b border-ld-border whitespace-nowrap">
+                  Route
+                </th>
+                <th className="px-[14px] py-[12px] text-left font-mono text-[10px] tracking-[.10em] uppercase text-ld-text-3 font-semibold border-t border-b border-ld-border whitespace-nowrap">
                   Commit
                 </th>
                 <SortTh label="Score" col="score" sort={sort} order={order} onSort={onSort} />
@@ -340,7 +348,7 @@ export function HistoryDeepDiveTable({
             <tbody>
               {displayed.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-[22px] py-[40px] text-center text-[13px] text-ld-text-3">
+                  <td colSpan={11} className="px-[22px] py-[40px] text-center text-[13px] text-ld-text-3">
                     No runs match the selected filter.
                   </td>
                 </tr>
@@ -367,6 +375,13 @@ export function HistoryDeepDiveTable({
                           <b className="font-mono text-[13px] font-medium text-ld-text whitespace-nowrap">
                             {fmtDateFull(entry.timestamp)}
                           </b>
+                        </span>
+                      </td>
+
+                      {/* Route — the list spans every route of the site, so name it */}
+                      <td className="px-[14px] py-[13px] text-left">
+                        <span className="font-mono text-[12.5px] text-ld-text-2 truncate max-w-[220px] inline-block align-middle" title={entry.url}>
+                          {routeOf(entry.url)}
                         </span>
                       </td>
 

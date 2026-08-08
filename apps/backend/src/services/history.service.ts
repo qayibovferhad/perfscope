@@ -29,6 +29,20 @@ function extractRoutePath(url: string): string {
   }
 }
 
+/**
+ * A run that failed (unreachable host, Chrome crash, timeout) is still persisted, but
+ * with every score and metric at 0. Such a run carries no signal, so it must stay out of
+ * every score-derived stat — otherwise one failure drags a site's average toward zero.
+ * It is still listed in the audit table: the user should see that a run happened.
+ */
+function hasResult(entry: HistoryEntry): boolean {
+  const { performance, accessibility, bestPractices, seo } = entry.scores;
+  if (performance || accessibility || bestPractices || seo) return true;
+
+  const { fcp, lcp, tbt, cls, si, tti } = entry.metrics;
+  return Boolean(fcp || lcp || tbt || cls || si || tti);
+}
+
 function computeTrend(entries: ProjectAuditEntry[]): RouteGroup['trend'] {
   if (entries.length < 2) return 'single';
   const scores = entries.map((e) => e.scores.performance);
@@ -88,12 +102,24 @@ export const HistoryService = {
     }
   },
 
+  /**
+   * Every audit belonging to the site, across all of its routes.
+   *
+   * Matching normalizedUrl exactly would scope this to a single route, so the drill-down
+   * showed a different chart from the site card that links to it — one point instead of
+   * seven for a site whose audits all live under sub-routes. Failed runs are dropped for
+   * the same reason: charted, they draw a cliff to zero.
+   */
   async get(url: string): Promise<HistoryEntry[]> {
+    let host: string;
+    try { host = new URL(url).hostname; } catch { host = normalizeUrl(url).split('/')[0]!; }
+
     const docs = await HistoryModel
-      .find({ normalizedUrl: normalizeUrl(url) })
+      .find({ normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`) })
       .sort({ createdAt: 1 })
       .lean();
-    return docs.map(toEntry);
+
+    return docs.map(toEntry).filter(hasResult);
   },
 
   async getAll(userId: string): Promise<HistoryEntry[]> {
@@ -111,6 +137,12 @@ export const HistoryService = {
       .select('fullResult')
       .lean();
     return (doc?.fullResult as Record<string, any> | undefined) ?? null;
+  },
+
+  /** Scoped to the owner, so one user can never delete another's audit. */
+  async remove(analysisId: string, userId: string): Promise<boolean> {
+    const { deletedCount } = await HistoryModel.deleteOne({ analysisId, userId });
+    return deletedCount > 0;
   },
 
   async getByProject(projectId: string, userId: string): Promise<ProjectAuditsResult | null> {
@@ -136,17 +168,20 @@ export const HistoryService = {
       const sorted = [...routeEntries].sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
       );
+      // Failed runs stay in `entries` so the table still shows them, but the headline
+      // score and the trend arrow are computed from the runs that actually produced one.
+      const scored = sorted.filter(hasResult);
       groups.push({
         routePath,
         entries:   sorted,
-        trend:     computeTrend(sorted),
-        lastScore: sorted[sorted.length - 1]!.scores.performance,
+        trend:     computeTrend(scored),
+        lastScore: scored[scored.length - 1]?.scores.performance ?? 0,
       });
     }
 
     groups.sort((a, b) => a.routePath.localeCompare(b.routePath));
 
-    const allScores    = entries.map((e) => e.scores.performance);
+    const allScores    = entries.filter(hasResult).map((e) => e.scores.performance);
     const avgPerformance = allScores.length
       ? Math.round(allScores.reduce((s, v) => s + v, 0) / allScores.length)
       : 0;

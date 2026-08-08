@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import { RefreshCw, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import type { ProjectAuditEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
+import { ConfirmModal } from '@/shared/ui/modal';
+import { useDeleteAudit } from '@/features/history/model/useHistory';
 import { formatAuditDate, formatMs, formatTbt } from '../lib/formatters';
 
 // ─── CWV band helpers ─────────────────────────────────────────────────────────
@@ -37,6 +40,9 @@ export function AuditRow({
   const perf      = entry.scores.performance;
   const isLoading = loadingId === entry.id;
   const m         = entry.metrics;
+  const remove    = useDeleteAudit();
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function handleRowClick() {
     if (compareMode) onToggleSelect(entry);
@@ -120,6 +126,40 @@ export function AuditRow({
                 : <ExternalLink className="w-[14px] h-[14px]" />}
               Report
             </Button>
+
+            {/* Delete audit */}
+            <Button
+              variant="outline"
+              size="icon"
+              title="Delete this audit"
+              disabled={remove.isPending}
+              className="hover:text-ld-rose hover:border-ld-rose"
+              onClick={(e) => { e.stopPropagation(); setConfirmOpen(true); }}
+            >
+              {remove.isPending ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            </Button>
+
+            <ConfirmModal
+              open={confirmOpen}
+              title="Delete this audit?"
+              subtitle="This cannot be undone."
+              confirmLabel="Delete audit"
+              confirmIcon={<Trash2 />}
+              isPending={remove.isPending}
+              onClose={() => setConfirmOpen(false)}
+              onConfirm={() => remove.mutate(entry.id, { onSettled: () => setConfirmOpen(false) })}
+            >
+              <div className="flex flex-col gap-[3px] p-4 rounded-[13px] border border-ld-border bg-ld-surface-2">
+                <b className="font-mono text-[13px] text-ld-text truncate">{entry.url}</b>
+                <span className="font-mono text-[12px] text-ld-text-3">
+                  {formatAuditDate(entry.timestamp)} · performance {perf}
+                </span>
+              </div>
+              <p className="text-[13px] text-ld-text-2 leading-[1.55]">
+                The audit disappears from this table, from the site's history and from the
+                score averages. The website itself is untouched.
+              </p>
+            </ConfirmModal>
           </div>
         )}
       </td>

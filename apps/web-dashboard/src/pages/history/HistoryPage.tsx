@@ -6,13 +6,12 @@ import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/histor
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';
-import { RegressionHistory } from '@/features/history/ui/RegressionHistory';
+import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard';
 import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
 import { HistoryBreadcrumb } from '@/features/history/ui/HistoryBreadcrumb';
 import { HistoryTabBar } from '@/features/history/ui/HistoryTabBar';
-import { HistoryPageHeader } from '@/features/history/ui/HistoryPageHeader';
 import { HistoryDeepDiveTable } from '@/features/history/ui/HistoryDeepDiveTable';
 import { HistoryEmptyState } from '@/features/history/ui/HistoryEmptyState';
 import { HistoryWebsitesOverview } from '@/widgets/history-websites-overview';
@@ -133,11 +132,7 @@ export function HistoryPage() {
 
                 {!urlLoading && urlEntries.length > 0 && (
                   <>
-                    {/* Header card + evolution chart — one visual card */}
-                    <div className="rounded-[20px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
-                      <HistoryPageHeader url={url} entries={urlEntries} />
-                      <RegressionHistory entries={urlEntries} />
-                    </div>
+                    <HistoryEvolutionCard url={url} entries={urlEntries} />
 
                     {/* Deep dive table */}
                     <HistoryDeepDiveTable

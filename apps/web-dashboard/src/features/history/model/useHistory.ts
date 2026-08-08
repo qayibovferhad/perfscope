@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
 import type { AnalysisResult } from '@/entities/analysis';
 import type { HistoryEntry } from '@/entities/history';
@@ -14,6 +14,24 @@ export function useHistory(url: string | null) {
       return res.data.data ?? [];
     },
     staleTime: 0,
+  });
+}
+
+/**
+ * Deletes a single audit. Invalidates every view built on history — the project detail
+ * table, the history page, and the websites list, whose score rings and summary strip are
+ * derived from the same entries.
+ */
+export function useDeleteAudit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (analysisId: string) =>
+      apiClient.delete(`/history/${encodeURIComponent(analysisId)}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['project-audits'] });
+      qc.invalidateQueries({ queryKey: ['websites'] });
+    },
   });
 }
 

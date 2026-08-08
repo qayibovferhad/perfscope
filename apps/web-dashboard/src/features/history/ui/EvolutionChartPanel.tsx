@@ -83,7 +83,14 @@ function HoverTooltip({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function RegressionHistory({ entries }: { entries: HistoryEntry[] }) {
+/**
+ * Title + regression badge + legend + chart + hover tooltip.
+ *
+ * Shared so the website card on the history overview and the per-URL drill-down render
+ * the identical panel — they used to wrap the same EvolutionChart in two different,
+ * hand-rolled legends built on different token families.
+ */
+export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const hasRegression = useMemo(() => {
@@ -96,79 +103,61 @@ export function RegressionHistory({ entries }: { entries: HistoryEntry[] }) {
     return false;
   }, [entries]);
 
-  const last        = entries.at(-1);
   const hoveredEntry = hoveredIdx !== null ? entries[hoveredIdx] ?? null : null;
   const hoveredPrev  = hoveredIdx !== null && hoveredIdx > 0 ? entries[hoveredIdx - 1] ?? null : null;
 
-  if (!last) return null;
-
   return (
-    <>
-      {/* ── Chart section ────────────────────────────────────────────── */}
-      <div className="px-[24px] py-[22px]">
+    <div className="px-[24px] py-[22px]">
 
-        {/* Title row */}
-        <div className="flex items-center justify-between gap-[12px] mb-[14px] flex-wrap">
-          <h3 className="font-mono text-[12px] tracking-[.10em] uppercase text-ld-text-2 font-semibold flex items-center gap-[8px]">
-            <TrendingUp className="w-[15px] h-[15px] text-ld-accent" />
-            Performance Evolution
-          </h3>
-          {hasRegression && (
-            <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)]">
-              <AlertTriangle className="w-[13px] h-[13px]" />
-              Regression Detected
-            </span>
+      {/* Title row */}
+      <div className="flex items-center justify-between gap-[12px] mb-[14px] flex-wrap">
+        <h3 className="font-mono text-[12px] tracking-[.10em] uppercase text-ld-text-2 font-semibold flex items-center gap-[8px]">
+          <TrendingUp className="w-[15px] h-[15px] text-ld-accent" />
+          Performance Evolution
+        </h3>
+        {hasRegression && (
+          <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)]">
+            <AlertTriangle className="w-[13px] h-[13px]" />
+            Regression Detected
+          </span>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-[18px] mb-[16px] flex-wrap">
+        <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
+          <i className="w-[16px] h-[3px] rounded-sm bg-ld-accent block not-italic" />
+          LCP
+        </span>
+        <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
+          <i className="w-[16px] h-[3px] rounded-sm bg-ld-amber block not-italic" />
+          TBT
+        </span>
+        <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
+          <i className="w-[10px] h-[10px] rounded-full border-2 border-ld-rose bg-[rgba(242,100,122,0.25)] block not-italic" />
+          Regression
+        </span>
+        <span className="ml-auto inline-flex items-center gap-[5px] text-[10px] text-ld-text-3 opacity-60">
+          <Info className="w-[11px] h-[11px]" /> Hover a point to inspect
+        </span>
+      </div>
+
+      {/* SVG chart + floating tooltip */}
+      <div className="relative">
+        <EvolutionChart
+          entries={entries}
+          hoveredIdx={hoveredIdx}
+          onHover={setHoveredIdx}
+        />
+
+        <AnimatePresence>
+          {hoveredEntry && (
+            <div className="absolute top-[8px] right-0 z-20 pointer-events-none">
+              <HoverTooltip entry={hoveredEntry} prev={hoveredPrev} />
+            </div>
           )}
-        </div>
-
-        {/* Legend */}
-        <div className="flex gap-[18px] mb-[16px] flex-wrap">
-          <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
-            <i className="w-[16px] h-[3px] rounded-sm bg-ld-accent block not-italic" />
-            LCP
-          </span>
-          <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
-            <i className="w-[16px] h-[3px] rounded-sm bg-ld-amber block not-italic" />
-            TBT
-          </span>
-          <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
-            <i className="w-[10px] h-[10px] rounded-full border-2 border-ld-rose bg-[rgba(242,100,122,0.25)] block not-italic" />
-            Regression
-          </span>
-          <span className="ml-auto inline-flex items-center gap-[5px] text-[10px] text-ld-text-3 opacity-60">
-            <Info className="w-[11px] h-[11px]" /> Hover a point to inspect
-          </span>
-        </div>
-
-        {/* SVG chart + floating tooltip */}
-        <div className="relative">
-          <EvolutionChart
-            entries={entries}
-            hoveredIdx={hoveredIdx}
-            onHover={setHoveredIdx}
-          />
-
-          <AnimatePresence>
-            {hoveredEntry && (
-              <div className="absolute top-[8px] right-0 z-20 pointer-events-none">
-                <HoverTooltip entry={hoveredEntry} prev={hoveredPrev} />
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
+        </AnimatePresence>
       </div>
-
-      {/* ── Footer ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-[24px] py-[14px] border-t border-ld-border bg-ld-surface-2 flex-wrap gap-[12px]">
-        <span className="font-mono text-[12.5px] text-ld-text-3">
-          Last run: {new Date(last.timestamp).toLocaleString('en-US', {
-            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-          })}
-        </span>
-        <span className="font-mono text-[11px] text-ld-text-3 opacity-60">
-          Regression threshold: &gt;15% degradation vs previous run
-        </span>
-      </div>
-    </>
+    </div>
   );
 }
