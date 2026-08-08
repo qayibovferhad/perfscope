@@ -171,6 +171,18 @@ async function run(): Promise<void> {
     // Extract compact devtools network events for dependency graph (all categories)
     const networkEvents = extractCompactNetworkEvents(arts);
 
+    // Lighthouse does not throw when the page fails to load — it returns an LHR whose
+    // runtimeError is set and whose category scores are all null. Left alone, toScore()
+    // turns those nulls into 0 and the failure gets stored as a legitimate 0-score audit.
+    const runtimeError = (result.lhr as { runtimeError?: { code?: string; message?: string } }).runtimeError;
+    if (runtimeError?.code && runtimeError.code !== 'NO_ERROR') {
+      parentPort!.postMessage({
+        type:    'error',
+        message: runtimeError.message ?? `Lighthouse could not analyze the page (${runtimeError.code})`,
+      } satisfies WorkerMessage);
+      return;
+    }
+
     const msg: WorkerMessage = {
       type: 'result',
       lhr: result.lhr,

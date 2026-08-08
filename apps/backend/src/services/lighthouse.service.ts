@@ -347,6 +347,15 @@ export class LighthouseService extends EventEmitter {
       });
 
       if (!result) throw new Error('Lighthouse returned no result');
+
+      // A page that fails to load does not throw — Lighthouse reports it inside the LHR
+      // with every category score null, which toScore() would flatten to 0 and store as
+      // a real audit. Surface it as an error instead. Mirrors the check in the worker.
+      const runtimeError = (result.lhr as { runtimeError?: { code?: string; message?: string } }).runtimeError;
+      if (runtimeError?.code && runtimeError.code !== 'NO_ERROR') {
+        throw new Error(runtimeError.message ?? `Lighthouse could not analyze the page (${runtimeError.code})`);
+      }
+
       return result;
     });
   }
