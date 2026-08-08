@@ -1,5 +1,6 @@
-import { Globe, Link2, ShieldCheck, Clock, Zap, GitCompareArrows, ExternalLink, Trash2 } from 'lucide-react';
+import { Globe, Link2, ShieldCheck, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight } from 'lucide-react';
 import { motion }          from 'framer-motion';
+import { Link }            from 'react-router-dom';
 import { getHostname }     from '@/entities/website';
 import type { Website }    from '@/entities/website';
 import type { SiteScoreInfo } from '@/features/websites/model/useWebsiteScores';
@@ -25,32 +26,45 @@ interface Props {
 }
 
 export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onDelete }: Props) {
-  const hostname = getHostname(site.url);
+  const hostname   = getHostname(site.url);
+  const detailPath = `/projects/${site._id}`;
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`group relative overflow-hidden rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card
+      className={`group relative overflow-hidden rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card cursor-pointer
                   transition-[border-color,transform,box-shadow] duration-[280ms]
                   hover:border-ld-accent-line hover:-translate-y-[3px]
                   hover:shadow-[0_0_0_1px_var(--ld-accent-soft),_0_26px_56px_-32px_rgba(20,192,138,0.5)]
                   ${isList ? 'flex items-center gap-[18px] px-5 py-[14px]' : 'p-5'}`}
     >
       {/* Gradient accent line — top in grid, left in list */}
-      <div className={`absolute bg-ld-grad transition-transform duration-[400ms] ease-in-out
+      <div className={`absolute pointer-events-none bg-ld-grad transition-transform duration-[400ms] ease-in-out
                        ${isList
                          ? 'top-0 bottom-0 left-0 w-[3px] scale-y-0 group-hover:scale-y-100 origin-top'
                          : 'top-0 left-0 right-0 h-[3px] scale-x-0 group-hover:scale-x-100 origin-left'}`}
       />
 
+      {/* Whole-card navigation target. Sits beneath the action buttons, which are
+          lifted with z-10 so they keep their own click handlers. */}
+      <Link
+        to={detailPath}
+        aria-label={`Open ${site.name || hostname} details`}
+        className="absolute inset-0 rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ld-accent-line"
+      />
+
       {/* ── Top ──────────────────────────────────────────────────────── */}
       <div className={`flex gap-[13px] ${isList ? 'flex-1 min-w-0 items-center' : 'items-start'}`}>
-        <div className="w-[44px] h-[44px] rounded-[12px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
-          <Globe className="w-[21px] h-[21px]" />
+        {/* Leading tile — swaps to an arrow on hover so it reads as "opens the detail page" */}
+        <div className="w-[44px] h-[44px] rounded-[12px] shrink-0 grid place-items-center border transition-colors duration-200
+                        bg-ld-surface-2 border-ld-border text-ld-accent
+                        group-hover:bg-ld-grad group-hover:border-transparent group-hover:text-white">
+          <Globe className="w-[21px] h-[21px] col-start-1 row-start-1 transition-all duration-200 group-hover:opacity-0 group-hover:scale-75" />
+          <ArrowRight className="w-[21px] h-[21px] col-start-1 row-start-1 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[17px] font-bold tracking-[-0.01em] text-ld-text truncate">
+          <h3 className="text-[17px] font-bold tracking-[-0.01em] text-ld-text truncate transition-colors duration-200 group-hover:text-ld-accent">
             {site.name || hostname}
           </h3>
           <span className="flex items-center gap-[6px] font-mono text-[12.5px] text-ld-text-3 mt-[3px]">
@@ -82,8 +96,8 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
         </div>
       )}
 
-      {/* ── Actions ──────────────────────────────────────────────────── */}
-      <div className={`flex gap-2 ${isList ? 'shrink-0' : 'mt-[18px] pt-4 border-t border-ld-border'}`}>
+      {/* ── Actions — z-10 keeps them clickable above the full-card link ─ */}
+      <div className={`relative z-10 flex gap-2 ${isList ? 'shrink-0' : 'mt-[18px] pt-4 border-t border-ld-border'}`}>
         <Button
           size="md"
           onClick={onAnalyze}

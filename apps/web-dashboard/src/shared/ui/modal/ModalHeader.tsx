@@ -2,12 +2,19 @@ interface ModalHeaderProps {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
+  /** `danger` tints the icon tile red — use it for destructive confirmations. */
+  tone?: 'accent' | 'danger';
 }
 
-export function ModalHeader({ icon, title, subtitle }: ModalHeaderProps) {
+const TONE_CLS: Record<'accent' | 'danger', string> = {
+  accent: 'bg-ld-grad shadow-ld-glow',
+  danger: 'bg-ld-rose shadow-[0_0_28px_rgba(242,100,122,0.38)]',
+};
+
+export function ModalHeader({ icon, title, subtitle, tone = 'accent' }: ModalHeaderProps) {
   return (
     <div className="flex gap-[14px] items-start">
-      <span className="w-[46px] h-[46px] rounded-[13px] flex-shrink-0 grid place-items-center bg-ld-grad shadow-ld-glow">
+      <span className={`w-[46px] h-[46px] rounded-[13px] flex-shrink-0 grid place-items-center ${TONE_CLS[tone]}`}>
         {icon}
       </span>
       <div className="pt-0.5">

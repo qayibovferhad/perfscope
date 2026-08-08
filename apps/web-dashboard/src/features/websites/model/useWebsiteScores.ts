@@ -8,12 +8,26 @@ export interface SiteScoreInfo {
   lastAuditedAt: string | null;
 }
 
+/**
+ * A run that failed (unreachable host, Chrome crash, timeout) is still persisted,
+ * but with every score and metric at 0. Those carry no signal, so they must not
+ * be reported as a score of 0 — a real page always moves at least one of these.
+ */
+function hasResult(entry: HistoryEntry): boolean {
+  const { performance, accessibility, bestPractices, seo } = entry.scores;
+  if (performance || accessibility || bestPractices || seo) return true;
+
+  const { fcp, lcp, tbt, cls, si, tti } = entry.metrics;
+  return Boolean(fcp || lcp || tbt || cls || si || tti);
+}
+
 export function useWebsiteScores() {
   const { data: entries = [], isLoading } = useAllHistory();
 
   const byUrl = useMemo(() => {
     const map = new Map<string, HistoryEntry[]>();
     for (const e of entries) {
+      if (!hasResult(e)) continue;
       if (!map.has(e.url)) map.set(e.url, []);
       map.get(e.url)!.push(e);
     }

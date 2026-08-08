@@ -1,4 +1,4 @@
-import { useState, useMemo }        from 'react';
+import { useState, useEffect }      from 'react';
 import {
   Globe, Plus, Loader2,
   LayoutGrid, List, Search,
@@ -6,10 +6,16 @@ import {
 } from 'lucide-react';
 import { Input }                     from '@/shared/ui/input';
 import { useWebsites }              from '@/features/dashboard/hooks/useWebsites';
+import { useWebsitesPage, useWebsitesSummary } from '@/features/websites/model/useWebsitesQuery';
 import { useWebsiteScores }         from '@/features/websites/model/useWebsiteScores';
 import { useWebsiteActions }        from '@/features/websites/model/useWebsiteActions';
 import { AddWebsiteModal }          from '@/features/websites/ui/AddWebsiteModal';
+import { DeleteWebsiteModal }       from '@/features/websites/ui/DeleteWebsiteModal';
 import { WebsiteCard }              from './ui/WebsiteCard';
+import { Pagination }               from './ui/Pagination';
+import type { Website }             from '@/entities/website';
+
+const PAGE_SIZE = 12;
 
 // ── Local summary tile ────────────────────────────────────────────────────────
 
@@ -50,38 +56,43 @@ function SumCard({ icon, value, label, variant = 'default' }: {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function WebsitesPage() {
-  const { websites, isLoading, remove } = useWebsites();
-  const { getInfo }                     = useWebsiteScores();
-  const { quickAudit, startCompare }    = useWebsiteActions();
+  const { remove }                   = useWebsites();
+  const { getInfo }                  = useWebsiteScores();
+  const { quickAudit, startCompare } = useWebsiteActions();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [search,    setSearch]    = useState('');
-  const [view,      setView]      = useState<'grid' | 'list'>(() =>
+  const [modalOpen,     setModalOpen]     = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Website | null>(null);
+  const [search,        setSearch]        = useState('');
+  const [debouncedQ,    setDebouncedQ]    = useState('');
+  const [page,          setPage]          = useState(1);
+  const [view,          setView]          = useState<'grid' | 'list'>(() =>
     (localStorage.getItem('ps-websites-view') as 'grid' | 'list') ?? 'grid'
   );
+
+  // Debounce so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // A new filter invalidates the current page number.
+  useEffect(() => { setPage(1); }, [debouncedQ]);
+
+  const { data: pageData, isPending, isFetching } = useWebsitesPage({
+    q: debouncedQ, page, limit: PAGE_SIZE,
+  });
+  const { data: summary } = useWebsitesSummary();
+
+  const items      = pageData?.items ?? [];
+  const totalPages = pageData?.totalPages ?? 1;
+  const total      = pageData?.total ?? 0;
+  const isLoading  = isPending;
+  const isFiltering = debouncedQ.length > 0;
 
   function switchView(v: 'grid' | 'list') {
     setView(v);
     localStorage.setItem('ps-websites-view', v);
   }
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return websites;
-    return websites.filter(w =>
-      (w.name ?? '').toLowerCase().includes(q) || w.url.toLowerCase().includes(q)
-    );
-  }, [websites, search]);
-
-  // Summary stats
-  const audited   = websites.filter(w => getInfo(w.url).latestScore !== null);
-  const avgScore  = audited.length > 0
-    ? Math.round(audited.reduce((s, w) => s + (getInfo(w.url).latestScore ?? 0), 0) / audited.length)
-    : 0;
-  const needsAttn = websites.filter(w => {
-    const s = getInfo(w.url).latestScore;
-    return s !== null && s < 50;
-  }).length;
 
   return (
     <div className="px-[clamp(22px,4vw,48px)] py-[34px] pb-20 w-[min(1180px,100%)] mx-auto">
@@ -95,7 +106,7 @@ export function WebsitesPage() {
           <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
             Your websites{' '}
             <em className="not-italic font-bold text-ld-text-3">
-              · {websites.length} tracked
+              · {summary?.total ?? total} tracked
             </em>
           </h1>
           <p className="text-[14.5px] text-ld-text-2 mt-[6px]">
@@ -112,18 +123,20 @@ export function WebsitesPage() {
         </button>
       </div>
 
-      {/* ── Summary strip ──────────────────────────────────────────────── */}
-      {!isLoading && websites.length > 0 && (
+      {/* ── Summary strip — account-wide counts from the server. Independent of
+             the filter, so it stays put even when a search matches nothing ─ */}
+      {summary && summary.total > 0 && (
         <div className="grid grid-cols-4 gap-[14px] mb-[26px] max-sm:grid-cols-2 max-[520px]:grid-cols-1">
-          <SumCard icon={<Layers    className="w-[19px] h-[19px]" />} value={websites.length} label="Total sites" />
-          <SumCard icon={<CheckSquare className="w-[19px] h-[19px]" />} value={audited.length} label="Audited" variant="good" />
-          <SumCard icon={<Gauge     className="w-[19px] h-[19px]" />} value={audited.length ? avgScore : '—'} label="Avg score" />
-          <SumCard icon={<AlertTriangle className="w-[19px] h-[19px]" />} value={needsAttn} label="Needs attention" variant={needsAttn > 0 ? 'warn' : 'default'} />
+          <SumCard icon={<Layers        className="w-[19px] h-[19px]" />} value={summary.total}   label="Total sites" />
+          <SumCard icon={<CheckSquare   className="w-[19px] h-[19px]" />} value={summary.audited} label="Audited" variant="good" />
+          <SumCard icon={<Gauge         className="w-[19px] h-[19px]" />} value={summary.audited ? summary.avgScore : '—'} label="Avg score" />
+          <SumCard icon={<AlertTriangle className="w-[19px] h-[19px]" />} value={summary.needsAttention} label="Needs attention" variant={summary.needsAttention > 0 ? 'warn' : 'default'} />
         </div>
       )}
 
-      {/* ── Toolbar ────────────────────────────────────────────────────── */}
-      {!isLoading && websites.length > 0 && (
+      {/* ── Toolbar — stays mounted while filtering so an empty result set
+             can still be cleared ──────────────────────────────────────── */}
+      {!isLoading && (total > 0 || isFiltering) && (
         <div className="flex items-center gap-3 mb-[18px] flex-wrap">
           <Input
             icon={<Search />}
@@ -161,8 +174,8 @@ export function WebsitesPage() {
         </div>
       )}
 
-      {/* ── Empty state (no websites) ──────────────────────────────────── */}
-      {!isLoading && websites.length === 0 && (
+      {/* ── Empty state (no websites at all) ───────────────────────────── */}
+      {!isLoading && total === 0 && !isFiltering && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-14 h-14 rounded-[16px] grid place-items-center mb-4 bg-ld-accent-soft">
             <Globe className="w-7 h-7 text-ld-accent" />
@@ -180,30 +193,54 @@ export function WebsitesPage() {
       )}
 
       {/* ── Cards grid / list ──────────────────────────────────────────── */}
-      {!isLoading && filtered.length > 0 && (
-        <div className={`grid gap-4 ${view === 'grid' ? 'grid-cols-2 max-[860px]:grid-cols-1' : 'grid-cols-1'}`}>
-          {filtered.map(site => (
-            <WebsiteCard
-              key={site._id}
-              site={site}
-              scoreInfo={getInfo(site.url)}
-              isList={view === 'list'}
-              onAnalyze={() => quickAudit(site.url, site._id)}
-              onCompare={() => startCompare(site.url)}
-              onDelete={() => remove.mutate(site._id)}
-            />
-          ))}
-        </div>
+      {!isLoading && items.length > 0 && (
+        <>
+          <div className={`grid gap-4 transition-opacity duration-200 ${isFetching ? 'opacity-60' : ''} ${
+            view === 'grid' ? 'grid-cols-2 max-[860px]:grid-cols-1' : 'grid-cols-1'
+          }`}>
+            {items.map(site => (
+              <WebsiteCard
+                key={site._id}
+                site={site}
+                scoreInfo={getInfo(site.url)}
+                isList={view === 'list'}
+                onAnalyze={() => quickAudit(site.url, site._id)}
+                onCompare={() => startCompare(site.url)}
+                onDelete={() => setPendingDelete(site)}
+              />
+            ))}
+          </div>
+
+          <Pagination
+            page={pageData?.page ?? page}
+            totalPages={totalPages}
+            total={total}
+            limit={PAGE_SIZE}
+            onChange={setPage}
+          />
+        </>
       )}
 
       {/* ── No search results ──────────────────────────────────────────── */}
-      {!isLoading && websites.length > 0 && filtered.length === 0 && (
+      {!isLoading && items.length === 0 && isFiltering && (
         <p className="text-center text-[14px] text-ld-text-3 py-10">
-          No websites match your search.
+          No websites match “{debouncedQ}”.
         </p>
       )}
 
       <AddWebsiteModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <DeleteWebsiteModal
+        open={!!pendingDelete}
+        name={pendingDelete?.name}
+        url={pendingDelete?.url ?? ''}
+        isPending={remove.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          remove.mutate(pendingDelete._id, { onSettled: () => setPendingDelete(null) });
+        }}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

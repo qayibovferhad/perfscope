@@ -1,31 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Globe, ArrowRight, Lock, Loader2, CheckCircle2, MonitorSmartphone, User } from 'lucide-react';
+import { Globe, ArrowRight, Lock, Loader2, User } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { apiClient } from '@/shared/api/client';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { SessionCaptureModal } from '@/features/auth-audit/ui/SessionCaptureModal';
 
 interface WebsiteForm { url: string; name: string }
-type Step = 'form' | 'launching' | 'browser-open' | 'capturing' | 'done';
 
 interface Props { open: boolean; onClose: () => void; }
 
 export function AddWebsiteModal({ open, onClose }: Props) {
   const navigate = useNavigate();
-  const { add, saveSession } = useWebsites();
+  const { add } = useWebsites();
 
   const nameRef = useRef<HTMLInputElement | null>(null);
   const { register, handleSubmit, reset, clearErrors, formState: { errors } } = useForm<WebsiteForm>();
   const nameReg = register('name');
 
   const [requiresLogin, setRequiresLogin] = useState(false);
-  const [step, setStep]         = useState<Step>('form');
-  const [websiteId, setWebsiteId] = useState('');
-  const [sessionId, setSessionId] = useState('');
-  const [error, setError]       = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // Set once the website exists and the login flow should take over.
+  const [sessionTarget, setSessionTarget] = useState<{ id: string; url: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -36,62 +34,45 @@ export function AddWebsiteModal({ open, onClose }: Props) {
   async function onSubmit({ url, name }: WebsiteForm) {
     setError(null);
     const normalized = url.startsWith('http') ? url : `https://${url}`;
-    const website = await add.mutateAsync({ url: normalized, name });
-    setWebsiteId(website._id);
-    if (!requiresLogin) {
-      navigate(`/projects/${website._id}`);
-      handleClose();
-      return;
-    }
-    setStep('launching');
     try {
-      const { data } = await apiClient.post<{ sessionId: string }>('/auth-audit/session', { url: normalized });
-      setSessionId(data.sessionId);
-      setStep('browser-open');
-    } catch {
-      setError('Failed to open browser. Make sure the backend is running.');
-      setStep('form');
-    }
-  }
-
-  async function handleSessionDone() {
-    setStep('capturing');
-    setError(null);
-    try {
-      const { data: sessionData } = await apiClient.get<{ cookies: unknown[]; localStorage: Record<string, string> }>(
-        `/auth-audit/session/${sessionId}/extract`,
-      );
-      await saveSession.mutateAsync({ id: websiteId, sessionData });
-      setStep('done');
+      const website = await add.mutateAsync({ url: normalized, name });
+      if (!requiresLogin) {
+        navigate(`/projects/${website._id}`);
+        handleClose();
+        return;
+      }
+      setSessionTarget({ id: website._id, url: normalized });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg ?? 'Failed to capture session. Please try again.');
-      setStep('browser-open');
+      setError(msg ?? 'Could not save the website. Please try again.');
     }
-  }
-
-  function handleFinish() {
-    navigate(`/projects/${websiteId}`);
-    handleClose();
   }
 
   function handleClose() {
     reset();
-    setStep('form');
-    setWebsiteId('');
-    setSessionId('');
+    setSessionTarget(null);
     setError(null);
     setRequiresLogin(false);
     onClose();
   }
 
+  if (sessionTarget) {
+    return (
+      <SessionCaptureModal
+        open
+        websiteId={sessionTarget.id}
+        url={sessionTarget.url}
+        doneLabel="Go to Project"
+        onDone={() => { navigate(`/projects/${sessionTarget.id}`); handleClose(); }}
+        onClose={handleClose}
+      />
+    );
+  }
+
   return (
     <Modal open={open} onClose={handleClose}>
 
-      {/* ── Step: form ─────────────────────────────────────────────── */}
-      {step === 'form' && (
-        <>
-          <ModalHeader
+      <ModalHeader
             icon={<Globe className="w-[23px] h-[23px] text-[#04130d]" />}
             title="Add a website"
             subtitle="Save a site to track its performance over time."
@@ -175,86 +156,6 @@ export function AddWebsiteModal({ open, onClose }: Props) {
             </Button>
           </div>
         </form>
-        </>
-      )}
-
-      {/* ── Step: launching ────────────────────────────────────────── */}
-      {step === 'launching' && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-grad shadow-ld-glow">
-            <Loader2 className="w-[23px] h-[23px] text-[#04130d] animate-spin" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Opening browser…</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">A Chrome window will open at your website.</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step: browser-open ─────────────────────────────────────── */}
-      {step === 'browser-open' && (
-        <>
-          <ModalHeader
-            icon={<MonitorSmartphone className="w-[23px] h-[23px] text-[#04130d]" />}
-            title="Sign in to your website"
-            subtitle="Log in in the Chrome window, then confirm below."
-          />
-          <div className="flex flex-col gap-[18px] mt-[18px]">
-          <div className="flex flex-col gap-3 p-4 rounded-[13px] border border-ld-border bg-ld-surface-2">
-            {[
-              'Log in to your account in the Chrome window.',
-              'Navigate to any page that requires authentication.',
-              'Come back here and click "Session Captured".',
-            ].map((text, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="w-5 h-5 rounded-full grid place-items-center text-[11px] font-bold shrink-0 mt-0.5 bg-ld-grad text-[#04130d]">
-                  {i + 1}
-                </span>
-                <p className="text-[13px] text-ld-text-2">{text}</p>
-              </div>
-            ))}
-          </div>
-          {error && <p className="text-[12px] text-ld-rose">{error}</p>}
-          <div className="flex gap-[10px]">
-            <Button type="button" variant="outline" onClick={handleClose}>Skip</Button>
-            <Button type="button" className="flex-1" onClick={handleSessionDone}>
-              <CheckCircle2 /> Session Captured
-            </Button>
-          </div>
-          </div>
-        </>
-      )}
-
-      {/* ── Step: capturing ────────────────────────────────────────── */}
-      {step === 'capturing' && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-grad shadow-ld-glow">
-            <Loader2 className="w-[23px] h-[23px] text-[#04130d] animate-spin" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Saving session…</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">Capturing cookies and localStorage from the browser.</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step: done ─────────────────────────────────────────────── */}
-      {step === 'done' && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-accent-soft shadow-ld-ring-accent">
-            <CheckCircle2 className="w-[23px] h-[23px] text-ld-accent" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Session saved!</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">
-              Cookies and localStorage have been saved with this website.
-            </p>
-          </div>
-          <Button onClick={handleFinish}>
-            Go to Project <ArrowRight />
-          </Button>
-        </div>
-      )}
 
     </Modal>
   );

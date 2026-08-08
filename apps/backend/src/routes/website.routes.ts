@@ -1,15 +1,115 @@
 import { Router, type Response } from 'express';
+import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
+import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 
 export const websiteRouter = Router();
 
-// GET /api/websites
+const MAX_LIMIT = 100;
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Owner scope plus an optional free-text filter over the site's label and URL.
+ * `requireAuth` guarantees userId, but its type stays optional on the request.
+ */
+function ownedFilter(userId: string | undefined, q?: string): QueryFilter<Record<string, unknown>> {
+  const filter: QueryFilter<Record<string, unknown>> = { userId };
+  const term = q?.trim();
+  if (term) {
+    const rx = new RegExp(escapeRegex(term), 'i');
+    filter['$or'] = [{ name: rx }, { url: rx }];
+  }
+  return filter;
+}
+
+/**
+ * A run that failed is still persisted, but with every score and metric at 0.
+ * Those must not count as an audited site — mirrors `hasResult` on the client.
+ */
+const HAS_RESULT = {
+  $or: [
+    { 'scores.performance':   { $gt: 0 } },
+    { 'scores.accessibility': { $gt: 0 } },
+    { 'scores.bestPractices': { $gt: 0 } },
+    { 'scores.seo':           { $gt: 0 } },
+    { 'metrics.fcp': { $gt: 0 } },
+    { 'metrics.lcp': { $gt: 0 } },
+    { 'metrics.tbt': { $gt: 0 } },
+    { 'metrics.cls': { $gt: 0 } },
+    { 'metrics.si':  { $gt: 0 } },
+    { 'metrics.tti': { $gt: 0 } },
+  ],
+};
+
+// GET /api/websites?q=&page=&limit=
+// Without any of those params this returns the plain array it always has, so the
+// sidebar, compare picker and automation page keep working untouched.
 websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const websites = await Website.find({ userId: req.userId }).sort({ createdAt: -1 });
-    return res.json(websites);
+    const { q, page: rawPage, limit: rawLimit } = req.query as Record<string, string | undefined>;
+    const filter = ownedFilter(req.userId, q);
+
+    const paginated = rawPage !== undefined || rawLimit !== undefined || q !== undefined;
+    if (!paginated) {
+      const websites = await Website.find(filter).sort({ createdAt: -1 });
+      return res.json(websites);
+    }
+
+    const limit     = Math.min(Math.max(parseInt(rawLimit ?? '12', 10) || 12, 1), MAX_LIMIT);
+    const requested = Math.max(parseInt(rawPage ?? '1', 10) || 1, 1);
+
+    // Count first so an out-of-range page is clamped before the skip is computed —
+    // otherwise the response reports the last page but returns an empty list.
+    const total      = await Website.countDocuments(filter);
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const page       = Math.min(requested, totalPages);
+
+    const items = await Website.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    return res.json({ items, total, page, limit, totalPages });
+  } catch {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/websites/summary — account-wide headline numbers.
+// Deliberately ignores the list's search term so the strip stays put while the
+// user types and does not vanish when a filter matches nothing.
+websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const filter = ownedFilter(req.userId);
+
+    const sites = await Website.find(filter).select('url').lean();
+    if (!sites.length) {
+      return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });
+    }
+
+    const urls = sites.map((s) => s.url);
+    const entries = await HistoryModel
+      .find({ userId: req.userId, url: { $in: urls }, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
+      .select('url scores.performance createdAt')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // Last entry wins — the query is sorted ascending, so a plain overwrite keeps the newest.
+    const latestByUrl = new Map<string, number>();
+    for (const e of entries) latestByUrl.set(e.url, Math.round(e.scores.performance));
+
+    const scores         = [...latestByUrl.values()];
+    const needsAttention = scores.filter((s) => s < 50).length;
+    const avgScore       = scores.length
+      ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+      : 0;
+
+    return res.json({ total: sites.length, audited: scores.length, avgScore, needsAttention });
   } catch {
     return res.status(500).json({ error: 'Server error' });
   }
