@@ -12,6 +12,7 @@ import { WebsitesPage }           from '@/pages/websites/WebsitesPage';
 import { ProjectDetailPage }      from '@/pages/project-detail/ProjectDetailPage';
 import { AutomationPage }         from '@/pages/automation/AutomationPage';
 import { ExtensionSettingsPage }  from '@/pages/extension/ExtensionSettingsPage';
+import { SettingsPage }           from '@/pages/settings/SettingsPage';
 import { CliAuthPage }            from '@/pages/cli-auth/CliAuthPage';
 
 function DashboardRoute({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/projects/:id"    element={<DashboardRoute><ProjectDetailPage /></DashboardRoute>} />
         <Route path="/automation"      element={<DashboardRoute><AutomationPage /></DashboardRoute>} />
         <Route path="/extension"       element={<DashboardRoute><ExtensionSettingsPage /></DashboardRoute>} />
+        <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
         <Route path="/cli-auth"        element={<CliAuthPage />} />
       </Routes>
     </>
