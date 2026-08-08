@@ -13,6 +13,10 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function hostOf(url: string): string {
+  try { return new URL(url).hostname; } catch { return ''; }
+}
+
 /**
  * Owner scope plus an optional free-text filter over the site's label and URL.
  * `requireAuth` guarantees userId, but its type stays optional on the request.
@@ -92,18 +96,34 @@ websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res
       return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });
     }
 
-    const urls = sites.map((s) => s.url);
+    // Audits are recorded per route, so a site's score cannot be found by matching its
+    // URL exactly: "https://x.com" never equals the stored "https://x.com/" or
+    // "https://x.com/requests". History keeps normalizedUrl as "host/path", so match on
+    // the host prefix instead and collect every route belonging to the site.
+    const hosts = [...new Set(sites.map((s) => hostOf(s.url)).filter(Boolean))];
+    if (!hosts.length) {
+      return res.json({ total: sites.length, audited: 0, avgScore: 0, needsAttention: 0 });
+    }
+
+    const hostRx = new RegExp(`^(${hosts.map(escapeRegex).join('|')})(/|$)`);
     const entries = await HistoryModel
-      .find({ userId: req.userId, url: { $in: urls }, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
-      .select('url scores.performance createdAt')
-      .sort({ createdAt: 1 })
+      .find({ userId: req.userId, normalizedUrl: hostRx, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
+      .select('normalizedUrl scores.performance')
       .lean();
 
-    // Last entry wins — the query is sorted ascending, so a plain overwrite keeps the newest.
-    const latestByUrl = new Map<string, number>();
-    for (const e of entries) latestByUrl.set(e.url, Math.round(e.scores.performance));
+    const runsByHost = new Map<string, number[]>();
+    for (const e of entries) {
+      const host = e.normalizedUrl.split('/')[0]!;
+      const runs = runsByHost.get(host) ?? [];
+      runs.push(e.scores.performance);
+      runsByHost.set(host, runs);
+    }
 
-    const scores         = [...latestByUrl.values()];
+    // A site's score is the mean of all its successful audits — the same definition the
+    // project detail page shows as "Avg Score", so the two pages cannot disagree.
+    const scores = [...runsByHost.values()].map(
+      (runs) => Math.round(runs.reduce((sum, s) => sum + s, 0) / runs.length),
+    );
     const needsAttention = scores.filter((s) => s < 50).length;
     const avgScore       = scores.length
       ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
@@ -143,7 +163,13 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
 
     const website = await Website.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
-      { session: { cookies, localStorage: ls, capturedAt: new Date() } },
+      {
+        session: { cookies, localStorage: ls, capturedAt: new Date() },
+        // Capturing a session is the answer to the login-wall warning, so clear it now
+        // rather than making the user re-audit just to dismiss it. A later audit that
+        // still lands on the login screen sets it again — that is the expiry signal.
+        requiresLogin: null,
+      },
       { returnDocument: 'after' },
     );
     if (!website) return res.status(404).json({ error: 'Website not found' });

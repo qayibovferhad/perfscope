@@ -39,6 +39,71 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
+/** The user's website that owns this URL, matched on hostname since audits run per route. */
+async function findWebsiteByHost(userId: string, url: string) {
+  let host: string;
+  try { host = new URL(url).hostname; } catch { return null; }
+
+  return Website.findOne({
+    userId,
+    url: { $regex: `^https?://${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`, $options: 'i' },
+  });
+}
+
+/**
+ * The client sends projectId from the page's query string, which goes stale as soon as
+ * the user edits the URL in the analyzer: the audit then gets filed under whichever
+ * project they happened to open last, or under none at all. Since the project detail page
+ * queries strictly by projectId, such an audit shows up on the wrong site or nowhere.
+ *
+ * The audited URL is the reliable signal, so derive the project from it and only fall
+ * back to the supplied id when no website matches.
+ */
+async function resolveProjectId(
+  userId: string | undefined,
+  url: string,
+  provided: string | undefined,
+): Promise<string | undefined> {
+  if (!userId) return provided;
+  try {
+    const site = await findWebsiteByHost(userId, url);
+    return site ? String(site._id) : provided;
+  } catch {
+    return provided;
+  }
+}
+
+/**
+ * Remembers on the Website document whether an audit hit a login screen, so the
+ * dashboard can flag the site instead of the warning living only in the one analysis
+ * result the user happened to be looking at.
+ *
+ * Self-correcting: the flag records which URL was walled off, and a later clean audit of
+ * that same URL clears it. Auditing some other route never clears another route's wall.
+ */
+async function recordLoginWall(
+  userId: string | undefined,
+  url: string,
+  detected: { finalUrl: string } | undefined,
+): Promise<void> {
+  if (!userId) return;
+
+  const site = await findWebsiteByHost(userId, url);
+  if (!site) return;
+
+  if (detected) {
+    site.set('requiresLogin', { url, loginUrl: detected.finalUrl, detectedAt: new Date() });
+    await site.save();
+    return;
+  }
+
+  const current = site.get('requiresLogin') as { url?: string } | null;
+  if (current && current.url === url) {
+    site.set('requiresLogin', null);
+    await site.save();
+  }
+}
+
 export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
@@ -120,6 +185,10 @@ export function registerAnalysisSocket(io: TypedServer): void {
           }
         }
 
+        // Derived from the audited URL — see resolveProjectId for why the client's value
+        // cannot be trusted on its own.
+        const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
+
         HistoryService.save({
           id:        result.id,
           shortId:   result.id.slice(0, 7),
@@ -128,7 +197,10 @@ export function registerAnalysisSocket(io: TypedServer): void {
           scores:    result.scores,
           metrics:   result.metrics,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }, userId, projectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
+        }, userId, ownerProjectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
+
+        recordLoginWall(userId, result.url, result.authRedirectDetected)
+          .catch(err => console.warn('[Website] Login-wall flag failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {
@@ -175,12 +247,14 @@ export function registerAnalysisSocket(io: TypedServer): void {
         } else {
           Website.find({ userId }).lean().then(async (sites) => {
             const match = sites.find(w => url.startsWith(w.url as string));
+            // Same rule as PATCH /websites/:id/session — a captured session answers the
+            // login-wall warning, so it is cleared here too.
             if (match) {
-              await Website.findByIdAndUpdate(match._id, { session: sessionPayload });
+              await Website.findByIdAndUpdate(match._id, { session: sessionPayload, requiresLogin: null });
             } else {
               await Website.findOneAndUpdate(
                 { userId, url: origin },
-                { $set: { session: sessionPayload, name: hostname } },
+                { $set: { session: sessionPayload, name: hostname, requiresLogin: null } },
                 { upsert: true, new: true },
               );
             }
@@ -225,6 +299,10 @@ export function registerAnalysisSocket(io: TypedServer): void {
         }
 
         const userId = extractUserId(socket);
+        // Derived from the audited URL — see resolveProjectId for why the client's value
+        // cannot be trusted on its own.
+        const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
+
         HistoryService.save({
           id:        result.id,
           shortId:   result.id.slice(0, 7),
@@ -233,7 +311,10 @@ export function registerAnalysisSocket(io: TypedServer): void {
           scores:    result.scores,
           metrics:   result.metrics,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }, userId, projectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
+        }, userId, ownerProjectId, result as unknown as Record<string, any>).catch(err => console.warn('[History] Save failed:', err));
+
+        recordLoginWall(userId, result.url, result.authRedirectDetected)
+          .catch(err => console.warn('[Website] Login-wall flag failed:', err));
 
         socket.emit('analysis:complete', result);
       } catch (err) {

@@ -1,4 +1,4 @@
-import { Globe, Link2, ShieldCheck, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight } from 'lucide-react';
+import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight } from 'lucide-react';
 import { motion }          from 'framer-motion';
 import { Link }            from 'react-router-dom';
 import { getHostname }     from '@/entities/website';
@@ -72,7 +72,7 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
             <span className="truncate">{hostname}</span>
           </span>
         </div>
-        <ScoreRing score={scoreInfo.latestScore} size={isList ? 44 : 58} />
+        <ScoreRing score={scoreInfo.avgScore} size={isList ? 44 : 58} />
       </div>
 
       {/* ── Meta — hidden in list mode ────────────────────────────── */}
@@ -81,6 +81,15 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           {site.session && (
             <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
               <ShieldCheck className="w-[13px] h-[13px]" /> Saved
+            </span>
+          )}
+          {/* The last audit landed on a login screen — the scores are for that screen. */}
+          {site.requiresLogin && (
+            <span
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)] text-ld-amber"
+              title={`Audit was redirected to ${site.requiresLogin.loginUrl}`}
+            >
+              <ShieldAlert className="w-[13px] h-[13px]" /> Login required
             </span>
           )}
           {scoreInfo.lastAuditedAt ? (

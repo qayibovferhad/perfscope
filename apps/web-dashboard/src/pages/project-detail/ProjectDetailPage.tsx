@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
-  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck,
+  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert,
 } from 'lucide-react';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
@@ -17,7 +17,6 @@ import { StatCard }             from '@/features/projects/ui/StatCard';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
 import { SessionCaptureModal }  from '@/features/auth-audit/ui/SessionCaptureModal';
-import { AutomationCard }       from '@/features/automation/ui/AutomationCard';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects/lib/formatters';
@@ -213,6 +212,30 @@ export function ProjectDetailPage() {
             </Button>
           </div>
         </div>
+
+        {/* Last audit was redirected to a login screen — the scores below describe that
+            screen, not the page that was asked for. */}
+        {website?.requiresLogin && (
+          <div className="flex items-start gap-[12px] px-[16px] py-[13px] rounded-[13px] border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.08)]">
+            <ShieldAlert className="w-[17px] h-[17px] text-ld-amber shrink-0 mt-[1px]" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13.5px] font-semibold text-ld-text">This site requires login</p>
+              <p className="text-[12.5px] text-ld-text-2 mt-[3px] leading-[1.5]">
+                An audit of{' '}
+                <span className="font-mono text-ld-text-3">{website.requiresLogin.url}</span>{' '}
+                was redirected to{' '}
+                <span className="font-mono text-ld-text-3">{website.requiresLogin.loginUrl}</span>
+                {website.session
+                  ? ' — the saved session may have expired.'
+                  : ' — capture a login session to audit the real page.'}
+              </p>
+            </div>
+            <Button variant="outline" size="md" className="shrink-0" onClick={() => setSessionOpen(true)}>
+              <Lock className="w-[14px] h-[14px]" />
+              {website.session ? 'Refresh session' : 'Set up login'}
+            </Button>
+          </div>
+        )}
         </div>{/* end header section */}
 
         {/* ── Summary strip ─────────────────────────────── */}
@@ -278,16 +301,6 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Automation Settings */}
-        {website && (
-          <AutomationCard
-            websiteId={project.id}
-            enabled={website.automation?.enabled ?? false}
-            lastRunAt={website.automation?.lastRunAt ?? null}
-            scheduleTime={website.automation?.scheduleTime ?? '00:00'}
-            savedRoutes={website.automation?.routes ?? []}
-          />
-        )}
       </div>
 
       {/* Floating compare bar */}

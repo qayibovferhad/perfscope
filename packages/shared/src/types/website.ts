@@ -20,12 +20,20 @@ export interface WebsiteAutomation {
   lastRunAt:    string | null
 }
 
+/** Set when an audit was redirected to a login screen; cleared once that same URL audits cleanly. */
+export interface WebsiteLoginWall {
+  url:        string
+  loginUrl:   string
+  detectedAt: string
+}
+
 export interface WebsiteDoc {
-  _id:         string
-  userId:      string
-  url:         string
-  name:        string
-  session?:    WebsiteSession | null
-  automation?: WebsiteAutomation
-  createdAt:   string
+  _id:            string
+  userId:         string
+  url:            string
+  name:           string
+  session?:       WebsiteSession | null
+  requiresLogin?: WebsiteLoginWall | null
+  automation?:    WebsiteAutomation
+  createdAt:      string
 }

@@ -27,13 +27,25 @@ const automationSchema = new Schema(
   { _id: false },
 );
 
+// Remembers that an audit hit a login screen, so the dashboard can flag the site
+// instead of the warning living only in that one analysis result.
+const requiresLoginSchema = new Schema(
+  {
+    url:        { type: String },  // the URL that was requested when the wall was hit
+    loginUrl:   { type: String },  // where it landed instead
+    detectedAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const websiteSchema = new Schema(
   {
-    userId:     { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    url:        { type: String, required: true, trim: true },
-    name:       { type: String, trim: true, default: '' },
-    session:    { type: sessionSchema, default: null },
-    automation: { type: automationSchema, default: () => ({ enabled: false, lastRunAt: null }) },
+    userId:        { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    url:           { type: String, required: true, trim: true },
+    name:          { type: String, trim: true, default: '' },
+    session:       { type: sessionSchema, default: null },
+    requiresLogin: { type: requiresLoginSchema, default: null },
+    automation:    { type: automationSchema, default: () => ({ enabled: false, lastRunAt: null }) },
   },
   { timestamps: true },
 );
