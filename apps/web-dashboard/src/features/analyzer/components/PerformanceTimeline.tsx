@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, forwardRef } from 'react';
 import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
-import { Skeleton } from '@/shared/ui/skeleton';
 import { useTimelineContext } from '../context/TimelineContext';
 import type { TimelineData, TimelineFrame } from '@/entities/analysis';
 
@@ -225,27 +224,6 @@ const FilmstripItem = memo(
     );
   }),
 );
-
-export function PerformanceTimelineSkeleton() {
-  return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-5 w-40 bg-slate-800" />
-        <Skeleton className="h-7 w-28 bg-slate-800" />
-      </div>
-      <Skeleton className="w-full rounded-lg bg-slate-800" style={{ aspectRatio: '16/9' }} />
-      <Skeleton className="h-10 w-full rounded-lg bg-slate-800" />
-      <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
-            <Skeleton className="rounded-md bg-slate-800" style={{ width: THUMB_W, height: THUMB_H }} />
-            <Skeleton className="w-10 h-3 rounded bg-slate-800" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function PerformanceTimeline({ timelineData }: { timelineData: TimelineData }) {
   const { frames, metrics, networkOffsetMs } = timelineData;

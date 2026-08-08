@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
-  Clock, Route, GitCompareArrows, CheckSquare,
+  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck,
 } from 'lucide-react';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
@@ -16,6 +16,7 @@ import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/features/projects/ui/StatCard';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
+import { SessionCaptureModal }  from '@/features/auth-audit/ui/SessionCaptureModal';
 import { AutomationCard }       from '@/features/automation/ui/AutomationCard';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
@@ -29,6 +30,7 @@ export function ProjectDetailPage() {
   const { websites } = useWebsites();
 
   const [auditOpen,     setAuditOpen]     = useState(false);
+  const [sessionOpen,   setSessionOpen]   = useState(false);
   const [compareMode,   setCompareMode]   = useState(false);
   const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
   const [crossSiteOpen, setCrossSiteOpen] = useState(false);
@@ -114,6 +116,15 @@ export function ProjectDetailPage() {
         onClose={() => setAuditOpen(false)}
       />
 
+      {sessionOpen && (
+        <SessionCaptureModal
+          open
+          websiteId={project.id}
+          url={project.url}
+          onClose={() => setSessionOpen(false)}
+        />
+      )}
+
       <AnimatePresence>
         {crossSiteOpen && (
           <CrossWebsitePicker
@@ -188,6 +199,13 @@ export function ProjectDetailPage() {
                 {compareMode ? 'Exit Compare' : 'Compare'}
               </Button>
             )}
+
+            {/* Login session — capture or refresh the cookies used for authenticated audits */}
+            <Button variant="outline" onClick={() => setSessionOpen(true)}>
+              {website?.session
+                ? <><ShieldCheck className="w-[15px] h-[15px] text-ld-accent" /> Session saved</>
+                : <><Lock className="w-[15px] h-[15px]" /> Set up login</>}
+            </Button>
 
             {/* New Audit */}
             <Button onClick={() => setAuditOpen(true)}>

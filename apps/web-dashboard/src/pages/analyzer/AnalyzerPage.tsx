@@ -4,13 +4,13 @@ import { AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { useAnalysis } from '@/features/analyzer/hooks/useAnalysis';
-import { PerformanceTimelineSkeleton } from '@/features/analyzer/components/PerformanceTimeline';
+import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfall';
 import { AnalyzerHeader } from '@/widgets/analyzer-header';
 import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
 import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
-import { AuthAuditModal } from '@/features/analyzer/components/AuthAuditModal';
-import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
+import { AuthAuditModal } from '@/features/auth-audit/ui/AuthAuditModal';
+import { useAuthAuditStore } from '@/features/auth-audit/model/authAuditStore';
 import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
 import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
@@ -121,8 +121,8 @@ export function AnalyzerPage() {
             <StreamingMetrics partials={partials} />
           </section>
           <section>
-            <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Performance Timeline</p>
-            <PerformanceTimelineSkeleton />
+            <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Network Waterfall</p>
+            <TimelineWaterfallSkeleton />
           </section>
         </div>
       )}

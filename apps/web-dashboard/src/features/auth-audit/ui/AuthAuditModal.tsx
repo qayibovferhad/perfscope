@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';
-import { useAuthAuditStore } from '@/features/analyzer/model/authAuditStore';
+import { useAuthAuditStore } from '@/features/auth-audit/model/authAuditStore';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
