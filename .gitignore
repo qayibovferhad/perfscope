@@ -31,3 +31,6 @@ pnpm-debug.log*
 
 # Claude
 .claude/
+
+# Turborepo
+.turbo/
