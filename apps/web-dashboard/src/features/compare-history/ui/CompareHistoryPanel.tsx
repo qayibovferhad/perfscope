@@ -6,11 +6,10 @@ import {
   TrendingUp, TrendingDown, Minus, Zap, Lightbulb, FileText,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from '../model/useCompareHistory';
+import { fmtMs, fmtCls } from '@/shared/lib/format';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmtMs  = (ms: number) => ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
-const fmtCls = (v: number)  => v.toFixed(3);
 const perf   = (e: CompareEntry, side: 'source' | 'competitor') =>
   Math.round(e[side].scores['performance'] ?? 0);
 

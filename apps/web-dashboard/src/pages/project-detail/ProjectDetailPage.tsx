@@ -20,7 +20,7 @@ import { SessionCaptureModal }  from '@/features/auth-audit';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects/lib/formatters';
-import type { AnalysisResult }  from '@/entities/analysis';
+import { scoreBand, type AnalysisResult } from '@/entities/analysis';
 
 export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
@@ -174,7 +174,7 @@ export function ProjectDetailPage() {
             {/* Avg performance badge */}
             {stats.totalAudits > 0 && (() => {
               const s = stats.avgPerformance;
-              const band = s >= 90 ? 'good' : s >= 50 ? 'warn' : 'poor';
+              const band = scoreBand(s);
               const cls = band === 'good'
                 ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft [data-theme=light]_:text-ld-accent'
                 : band === 'warn'

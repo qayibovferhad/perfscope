@@ -9,6 +9,7 @@ import * as d3 from 'd3';
 import { MemoryStick, Activity, AlertTriangle } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
+import { fmtMs } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { HeapMemoryData, HeapMemoryPoint } from '@/entities/analysis';
 
@@ -24,9 +25,6 @@ function fmtMb(mb: number): string {
   return mb >= 100 ? `${mb.toFixed(0)} MB` : `${mb.toFixed(1)} MB`;
 }
 
-function fmtMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms.toFixed(0)}ms`;
-}
 
 function fmtPct(pct: number): string {
   const sign = pct >= 0 ? '+' : '';

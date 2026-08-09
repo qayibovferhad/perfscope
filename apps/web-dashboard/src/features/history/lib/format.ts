@@ -1,10 +1,7 @@
 /** Threshold (percent) at which a metric delta is treated as a regression. */
 export const REGRESSION_THRESHOLD_PCT = 15;
 
-export const fmtMs  = (ms: number): string =>
-  ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
-
-export const fmtCls = (v: number): string => v.toFixed(3);
+export { fmtMs, fmtCls } from '@/shared/lib/format';
 
 export const fmtPct = (n: number): string => `${n > 0 ? '+' : ''}${n.toFixed(1)}%`;
 

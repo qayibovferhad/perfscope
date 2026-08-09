@@ -1,14 +1,14 @@
 import { create } from 'zustand';
+import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis } from '../api/analysisSocket';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@perfscope/shared';
 
 export type PrefetchPartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
 
-type Status = 'idle' | 'loading' | 'success' | 'error';
 
 interface PrefetchStore {
   url:      string | null;
-  status:   Status;
+  status:   AsyncStatus;
   result:   AnalysisResult | null;
   partials: PrefetchPartialMap;
   progress: AnalysisProgress | null;

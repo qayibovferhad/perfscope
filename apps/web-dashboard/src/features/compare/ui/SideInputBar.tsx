@@ -55,9 +55,8 @@ export function SideInputBar({
 
   return (
     <>
-    {/* The competitor side repaints --ld-accent amber. Everything inside inherits it, so
-        the shared auth modal is rendered as a sibling below — otherwise its emerald
-        "Session active" badge turns amber on this side only. */}
+    {/* The competitor side repaints --ld-accent amber, which anything nested would
+        inherit. Kept a sibling of the themed card; Modal additionally portals to <body>. */}
     <div
       className={`relative rounded-[16px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card
         ${rival ? '[--ld-accent:var(--ld-amber)] [--ld-accent-soft:rgba(230,162,60,0.13)] [--ld-accent-line:rgba(230,162,60,0.34)]' : ''}`}

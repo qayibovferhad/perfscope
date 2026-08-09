@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight, Globe, LogOut, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { ConfirmModal } from '@/shared/ui/modal';
 import { useAuthStore } from '@/features/auth/model/authStore';
-import { useWebsites } from '@/entities/website';
+import { useWebsites, getHostname } from '@/entities/website';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '../model/navItems';
 
@@ -31,7 +32,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
     return [...websites].sort((a, b) => (lastAuditAt[b.url] ?? 0) - (lastAuditAt[a.url] ?? 0));
   }, [websites, allHistory]);
 
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
   function handleLogout() {
+    setLogoutOpen(false);
     logout();
     navigate('/login', { replace: true });
   }
@@ -100,10 +104,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className="block text-[13.5px] font-semibold text-ld-text truncate">
-                      {site.name || new URL(site.url).hostname}
+                      {site.name || getHostname(site.url)}
                     </b>
                     <span className="block text-[11.5px] text-ld-text-3 font-mono truncate">
-                      {new URL(site.url).hostname}
+                      {getHostname(site.url)}
                     </span>
                   </span>
                   <button
@@ -180,13 +184,39 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
           <span className="block text-[11px] text-ld-text-3 font-mono truncate">{user?.email}</span>
         </span>
         <button
-          onClick={handleLogout}
+          onClick={() => setLogoutOpen(true)}
           aria-label="Sign out"
           className="w-[30px] h-[30px] rounded-lg grid place-items-center text-ld-text-3 border border-transparent bg-transparent cursor-pointer transition-all duration-200 hover:text-ld-rose hover:border-ld-border"
         >
           <LogOut className="w-[15px] h-[15px]" />
         </button>
       </div>
+
+      <ConfirmModal
+        open={logoutOpen}
+        title="Sign out?"
+        subtitle="You will need to sign in again to run audits."
+        confirmLabel="Sign out"
+        confirmIcon={<LogOut />}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={handleLogout}
+      >
+        <div className="flex items-center gap-[12px] p-4 rounded-[13px] border border-ld-border bg-ld-surface-2">
+          {user?.picture
+            ? <img src={user.picture} alt="" className="w-9 h-9 rounded-[10px] shrink-0 object-cover" referrerPolicy="no-referrer" />
+            : <span className="w-9 h-9 rounded-[10px] grid place-items-center bg-ld-grad text-[#04130d] font-extrabold text-[15px] shrink-0">
+                {user?.name?.[0]?.toUpperCase() ?? 'U'}
+              </span>
+          }
+          <span className="min-w-0">
+            <b className="block text-[13.5px] font-semibold text-ld-text truncate">{user?.name}</b>
+            <span className="block font-mono text-[12px] text-ld-text-3 truncate">{user?.email}</span>
+          </span>
+        </div>
+        <p className="text-[13px] text-ld-text-2 leading-[1.55]">
+          Your websites and audit history stay on your account — nothing is deleted.
+        </p>
+      </ConfirmModal>
     </aside>
   );
 }

@@ -9,13 +9,11 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
 import { configureApiToken, configureUnauthorizedHandler } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
-import { configureCompareSocketToken } from '@/features/compare/api/compareSocket';
 import { useAuthStore } from '@/features/auth/model/authStore';
 
 const getToken = () => useAuthStore.getState().token;
 configureApiToken(getToken);
 configureSocketToken(getToken);
-configureCompareSocketToken(getToken);
 
 // A dead token leaves the UI looking logged in while every request 401s.
 // Drop the stored session and bounce to /login, keeping the current page as redirect target.

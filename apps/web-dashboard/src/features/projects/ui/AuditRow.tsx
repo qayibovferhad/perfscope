@@ -5,22 +5,15 @@ import type { ProjectAuditEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { useDeleteAudit } from '@/entities/history';
+import { scoreBand, vitalBand, type ScoreBand } from '@/entities/analysis';
 import { formatAuditDate, formatMs, formatTbt } from '../lib/formatters';
 
-// ─── CWV band helpers ─────────────────────────────────────────────────────────
+// ─── CWV band styling ─────────────────────────────────────────────────────────
 
-type Band = 'g' | 'w' | 'p';
-
-function lcpBand(ms: number): Band  { return ms <= 2500 ? 'g' : ms <= 4000 ? 'w' : 'p'; }
-function clsBand(v: number): Band   { return v  <= 0.1  ? 'g' : v  <= 0.25  ? 'w' : 'p'; }
-function tbtBand(ms: number): Band  { return ms <= 200  ? 'g' : ms <= 600   ? 'w' : 'p'; }
-function fcpBand(ms: number): Band  { return ms <= 1800 ? 'g' : ms <= 3000  ? 'w' : 'p'; }
-function scoreBand(s: number): Band { return s  >= 90   ? 'g' : s  >= 50    ? 'w' : 'p'; }
-
-const BAND: Record<Band, string> = {
-  g: 'text-ld-accent-2',
-  w: 'text-ld-amber',
-  p: 'text-ld-rose',
+const BAND: Record<ScoreBand, string> = {
+  good: 'text-ld-accent-2',
+  warn: 'text-ld-amber',
+  poor: 'text-ld-rose',
 };
 
 // ─── Audit row ────────────────────────────────────────────────────────────────
@@ -74,22 +67,22 @@ export function AuditRow({
       </td>
 
       {/* LCP */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[lcpBand(m.lcp)]}`}>
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[vitalBand('lcp', m.lcp)]}`}>
         {formatMs(m.lcp)}
       </td>
 
       {/* CLS */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[clsBand(m.cls)]}`}>
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[vitalBand('cls', m.cls)]}`}>
         {m.cls.toFixed(2)}
       </td>
 
       {/* TBT — hidden under 680px */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[tbtBand(m.tbt)]}`}>
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[vitalBand('tbt', m.tbt)]}`}>
         {formatTbt(m.tbt)}
       </td>
 
       {/* FCP — hidden under 680px */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[fcpBand(m.fcp)]}`}>
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[vitalBand('fcp', m.fcp)]}`}>
         {formatMs(m.fcp)}
       </td>
 

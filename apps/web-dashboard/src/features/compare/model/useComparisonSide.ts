@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
+import type { AsyncStatus } from '@/shared/lib/types';
 import { startCompareAnalysis, startCompareAuthAudit } from '../api/compareSocket';
 import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
 
-type Status = 'idle' | 'loading' | 'success' | 'error';
 
 interface State {
-  status:   Status;
+  status:   AsyncStatus;
   data:     AnalysisResult | null;
   progress: AnalysisProgress | null;
   error:    string | null;

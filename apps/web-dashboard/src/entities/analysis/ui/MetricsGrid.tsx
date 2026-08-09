@@ -1,95 +1,34 @@
 import { motion } from 'framer-motion';
 import { Clock, Maximize2, Layers, LayoutGrid, Zap, Timer } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { CoreWebVitals } from '@perfscope/shared';
+import { fmtSec, fmtCls } from '@/shared/lib/format';
+import { VITAL_THRESHOLDS, type CoreWebVitals } from '@perfscope/shared';
+import { vitalBand, type ScoreBand } from '../lib';
 
-type Status = 'good' | 'warn' | 'poor';
-
-function ms(v: number) { return `${(v / 1000).toFixed(1)}s`; }
 function clamp(v: number) { return Math.min(100, Math.max(0, v)); }
 
-function getStatus(value: number, good: number, poor: number): Status {
-  if (value < good) return 'good';
-  if (value < poor) return 'warn';
-  return 'poor';
-}
-
 const VITALS = [
-  {
-    key:   'fcp' as const,
-    abbr:  'FCP',
-    label: 'First Contentful Paint',
-    icon:  Clock,
-    fmt:   ms,
-    hint:  'good < 1.8s',
-    good:  1800,  poor: 3000,
-    severity: (v: number) => clamp(v / 3000 * 100),
-  },
-  {
-    key:   'lcp' as const,
-    abbr:  'LCP',
-    label: 'Largest Contentful Paint',
-    icon:  Maximize2,
-    fmt:   ms,
-    hint:  'good < 2.5s',
-    good:  2500,  poor: 4000,
-    severity: (v: number) => clamp(v / 4000 * 100),
-  },
-  {
-    key:   'tbt' as const,
-    abbr:  'TBT',
-    label: 'Total Blocking Time',
-    icon:  Layers,
-    fmt:   (v: number) => `${Math.round(v)}ms`,
-    hint:  'good < 200ms',
-    good:  200,   poor: 600,
-    severity: (v: number) => clamp(v / 600 * 100),
-  },
-  {
-    key:   'cls' as const,
-    abbr:  'CLS',
-    label: 'Cumulative Layout Shift',
-    icon:  LayoutGrid,
-    fmt:   (v: number) => v.toFixed(3),
-    hint:  'good < 0.1',
-    good:  0.1,   poor: 0.25,
-    severity: (v: number) => clamp(v / 0.25 * 100),
-  },
-  {
-    key:   'si' as const,
-    abbr:  'SI',
-    label: 'Speed Index',
-    icon:  Zap,
-    fmt:   ms,
-    hint:  'good < 3.4s',
-    good:  3400,  poor: 5800,
-    severity: (v: number) => clamp(v / 5800 * 100),
-  },
-  {
-    key:   'tti' as const,
-    abbr:  'TTI',
-    label: 'Time to Interactive',
-    icon:  Timer,
-    fmt:   ms,
-    hint:  'good < 3.8s',
-    good:  3800,  poor: 7300,
-    severity: (v: number) => clamp(v / 7300 * 100),
-  },
+  { key: 'fcp' as const, abbr: 'FCP', label: 'First Contentful Paint',   icon: Clock,      fmt: fmtSec, hint: 'good < 1.8s'   },
+  { key: 'lcp' as const, abbr: 'LCP', label: 'Largest Contentful Paint', icon: Maximize2,  fmt: fmtSec, hint: 'good < 2.5s'   },
+  { key: 'tbt' as const, abbr: 'TBT', label: 'Total Blocking Time',      icon: Layers,     fmt: (v: number) => `${Math.round(v)}ms`, hint: 'good < 200ms' },
+  { key: 'cls' as const, abbr: 'CLS', label: 'Cumulative Layout Shift',  icon: LayoutGrid, fmt: fmtCls, hint: 'good < 0.1'    },
+  { key: 'si'  as const, abbr: 'SI',  label: 'Speed Index',              icon: Zap,        fmt: fmtSec, hint: 'good < 3.4s'   },
+  { key: 'tti' as const, abbr: 'TTI', label: 'Time to Interactive',      icon: Timer,      fmt: fmtSec, hint: 'good < 3.8s'   },
 ] as const;
 
-const VAL_COLOR: Record<Status, string> = {
+const VAL_COLOR: Record<ScoreBand, string> = {
   good: 'text-[var(--ld-score-good)]',
   warn: 'text-[var(--ld-amber)]',
   poor: 'text-[var(--ld-rose)]',
 };
 
-const TILE_CLS: Record<Status, string> = {
+const TILE_CLS: Record<ScoreBand, string> = {
   good: 'text-[var(--ld-accent)] border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
   warn: 'text-[var(--ld-amber)] border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.1)]',
   poor: 'text-[var(--ld-rose)] border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]',
 };
 
-const BAR_CLS: Record<Status, string> = {
+const BAR_CLS: Record<ScoreBand, string> = {
   good: 'bg-[var(--ld-accent)]',
   warn: 'bg-[var(--ld-amber)]',
   poor: 'bg-[var(--ld-rose)]',
@@ -98,10 +37,10 @@ const BAR_CLS: Record<Status, string> = {
 export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
-      {VITALS.map(({ key, abbr, label, icon: Icon, fmt, hint, good, poor, severity }) => {
+      {VITALS.map(({ key, abbr, label, icon: Icon, fmt, hint }) => {
         const value  = metrics[key];
-        const status = getStatus(value, good, poor);
-        const barW   = severity(value);
+        const status = vitalBand(key, value);
+        const barW   = clamp(value / VITAL_THRESHOLDS[key].poor * 100);
 
         return (
           <div

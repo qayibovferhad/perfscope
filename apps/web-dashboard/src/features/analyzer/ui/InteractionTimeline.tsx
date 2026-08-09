@@ -12,6 +12,7 @@ import {
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
+import { fmtMs } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { InteractionData, InteractionEvent, LongTaskSegment } from '@/entities/analysis';
 
@@ -48,9 +49,6 @@ function ratingLabel(ms: number): string {
   return 'Slow';
 }
 
-function fmtMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms.toFixed(0)}ms`;
-}
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

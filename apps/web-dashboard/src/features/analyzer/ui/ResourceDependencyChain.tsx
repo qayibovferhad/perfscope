@@ -2,6 +2,7 @@ import { useMemo, memo } from 'react'
 import { GitBranch, AlertTriangle } from 'lucide-react'
 import { Panel, PanelHeader } from '@/shared/ui/panel'
 import { cn } from '@/shared/lib/utils'
+import { fmtMs, fmtBytes } from '@/shared/lib/format'
 import type { DependencyGraph, DependencyNode, ResourceType, NetworkRequest } from '@/entities/analysis'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -14,22 +15,24 @@ const INDENT_PX = 22
 
 interface TypeCfg { tag: string; dotCls: string; tagCls: string }
 
+// Colors follow the shared resource palette (see ResourceWaterfall):
+// script indigo, stylesheet violet, image accent, font amber, document sky, media pink.
 const TYPE_CFG: Record<ResourceType, TypeCfg> = {
-  document:   { tag: 'DOC',   dotCls: 'bg-ld-rose',   tagCls: 'text-ld-rose bg-[rgba(242,100,122,.12)]'   },
-  script:     { tag: 'JS',    dotCls: 'bg-ld-amber',  tagCls: 'text-ld-amber bg-[rgba(230,162,60,.14)]'   },
-  stylesheet: { tag: 'CSS',   dotCls: 'bg-ld-teal',   tagCls: 'text-ld-teal bg-[rgba(22,200,200,.14)]'    },
-  font:       { tag: 'FONT',  dotCls: 'bg-[#b08be0]', tagCls: 'text-[#b08be0] bg-[rgba(176,139,224,.16)]' },
-  image:      { tag: 'IMG',   dotCls: 'bg-ld-accent', tagCls: 'text-ld-accent-2 bg-ld-accent-soft'        },
-  media:      { tag: 'MEDIA', dotCls: 'bg-ld-accent', tagCls: 'text-ld-accent-2 bg-ld-accent-soft'        },
-  other:      { tag: 'XHR',   dotCls: 'bg-ld-amber',  tagCls: 'text-ld-amber bg-[rgba(230,162,60,.14)]'   },
+  document:   { tag: 'DOC',   dotCls: 'bg-[#38bdf8]',        tagCls: 'text-[#38bdf8] bg-[rgba(56,189,248,.12)]'  },
+  script:     { tag: 'JS',    dotCls: 'bg-[#818cf8]',        tagCls: 'text-[#818cf8] bg-[rgba(99,102,241,.14)]'  },
+  stylesheet: { tag: 'CSS',   dotCls: 'bg-[#a78bfa]',        tagCls: 'text-[#a78bfa] bg-[rgba(167,139,250,.14)]' },
+  font:       { tag: 'FONT',  dotCls: 'bg-ld-amber',         tagCls: 'text-ld-amber bg-[rgba(230,162,60,.14)]'   },
+  image:      { tag: 'IMG',   dotCls: 'bg-ld-accent',        tagCls: 'text-ld-accent-2 bg-ld-accent-soft'        },
+  media:      { tag: 'MEDIA', dotCls: 'bg-[#f472b6]',        tagCls: 'text-[#f472b6] bg-[rgba(244,114,182,.14)]' },
+  other:      { tag: 'XHR',   dotCls: 'bg-ld-border-strong', tagCls: 'text-ld-text-3 bg-transparent'             },
 }
 
 const LEGEND: { label: string; cls: string }[] = [
-  { label: 'Document',   cls: 'bg-ld-rose'    },
-  { label: 'Script',     cls: 'bg-ld-amber'   },
-  { label: 'Stylesheet', cls: 'bg-ld-teal'    },
-  { label: 'Font',       cls: 'bg-[#b08be0]'  },
-  { label: 'Image',      cls: 'bg-ld-accent'  },
+  { label: 'Document',   cls: 'bg-[#38bdf8]' },
+  { label: 'Script',     cls: 'bg-[#818cf8]' },
+  { label: 'Stylesheet', cls: 'bg-[#a78bfa]' },
+  { label: 'Font',       cls: 'bg-ld-amber'  },
+  { label: 'Image',      cls: 'bg-ld-accent' },
 ]
 
 // ─── Internal types ───────────────────────────────────────────────────────────
@@ -62,16 +65,6 @@ function shortLabel(url: string): string {
   } catch {
     return url.split('/').pop()?.replace(/\?.*$/, '') ?? url
   }
-}
-
-function fmtBytes(b: number): string {
-  if (b >= 1_048_576) return `${(b / 1_048_576).toFixed(1)} MB`
-  if (b >= 1024)      return `${(b / 1024).toFixed(1)} KB`
-  return `${b} B`
-}
-
-function fmtMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`
 }
 
 // ─── Tree building ────────────────────────────────────────────────────────────

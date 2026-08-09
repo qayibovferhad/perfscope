@@ -39,7 +39,7 @@ const COPY: Record<Variant, { title: string; body: string; pick: string }> = {
   compare: {
     title: 'Nothing to compare yet',
     body:  'Fill both sides above, then launch the analysis.',
-    pick:  'Or drop one of your sites into the left side',
+    pick:  'Or start from one of your sites',
   },
 };
 

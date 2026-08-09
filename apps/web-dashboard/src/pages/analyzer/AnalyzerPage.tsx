@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
+import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer/model/useAnalysis';
 import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfall';
 import { AnalyzerHeader } from '@/widgets/analyzer-header';
@@ -13,6 +14,7 @@ import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
 import { usePrefetchStore } from '@/entities/analysis';
 import { useWebsites } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
+import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
 export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
@@ -45,16 +47,15 @@ export function AnalyzerPage() {
       }
     }
 
-    const normalized = paramUrl.startsWith('http') ? paramUrl : `https://${paramUrl}`;
+    const normalized = normalizeUrl(paramUrl);
     reset();
     analyze(normalized, projectId);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const trimmed    = url.trim();
-    if (!trimmed) return;
-    const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+    if (!url.trim()) return;
+    const normalized = normalizeUrl(url);
     const projectId  = searchParams.get('projectId') ?? undefined;
     if (authSessionId) {
       startAuthAudit(authSessionId, normalized);
@@ -77,8 +78,8 @@ export function AnalyzerPage() {
 
   return (
     <>
-    {/* Kept outside the space-y-8 container: while open it would be its first child,
-        pushing every sibling down by one gap the moment the modal mounts. */}
+    {/* Outside the space-y-8 container so it never counts as a spacing sibling.
+        Modal also portals to <body>, so this placement is belt-and-braces. */}
     <AuthAuditModal
       open={authModalOpen}
       initialUrl={url}
@@ -127,6 +128,11 @@ export function AnalyzerPage() {
             <TimelineWaterfallSkeleton />
           </section>
         </div>
+      )}
+
+      {/* Idle: the page below the form was otherwise blank on first visit */}
+      {!isPending && !data && !isError && (
+        <AnalysisIdlePanel variant="analyze" sites={websites} onPick={setUrl} />
       )}
 
       <AnimatePresence>

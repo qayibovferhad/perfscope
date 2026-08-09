@@ -3,12 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, AlertTriangle, GitCommit, Info } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { EvolutionChart, isRegression } from './EvolutionChart';
+import { fmtMs } from '@/shared/lib/format';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function fmtMs(ms: number) {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
-}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

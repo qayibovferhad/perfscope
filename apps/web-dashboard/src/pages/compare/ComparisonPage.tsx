@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
+import { normalizeUrl } from '@/shared/lib/utils';
 import { useComparisonSide } from '@/features/compare/model/useComparisonSide';
 import { useWebsites } from '@/entities/website';
 import { useCompetitorSessions } from '@/features/compare/model/useCompetitorSessions';
@@ -15,11 +16,7 @@ import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
 import { WaterfallComparison } from './ui/WaterfallComparison';
 import { ComparisonSide } from './ui/ComparisonSide';
-
-function normalize(url: string): string {
-  const t = url.trim();
-  return t.startsWith('http') ? t : `https://${t}`;
-}
+import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
 export function ComparisonPage() {
   const target     = useComparisonSide();
@@ -79,13 +76,13 @@ export function ComparisonPage() {
   const handleLaunch = () => {
     if (!target.isSuccess && !isBlank(targetUrl)) {
       targetAuthSession
-        ? target.startAuthAudit(targetAuthSession, normalize(targetUrl))
-        : target.analyze(normalize(targetUrl));
+        ? target.startAuthAudit(targetAuthSession, normalizeUrl(targetUrl))
+        : target.analyze(normalizeUrl(targetUrl));
     }
     if (!competitor.isSuccess && !isBlank(competitorUrl)) {
       competitorAuthSession
-        ? competitor.startAuthAudit(competitorAuthSession, normalize(competitorUrl))
-        : competitor.analyze(normalize(competitorUrl));
+        ? competitor.startAuthAudit(competitorAuthSession, normalizeUrl(competitorUrl))
+        : competitor.analyze(normalizeUrl(competitorUrl));
     }
   };
 
@@ -224,6 +221,18 @@ export function ComparisonPage() {
             )}
           </AnimatePresence> */}
         </div>
+      )}
+
+      {/* Idle: everything below the launch button was otherwise blank on first visit */}
+      {!isRunning && !bothLoaded && !target.data && !competitor.data && (
+        <AnalysisIdlePanel
+          variant="compare"
+          sites={websites}
+          // handleTargetUrlChange refuses anything off the prefilled URL, so a pick would
+          // silently do nothing when the page was opened from a specific site. Fill the
+          // side that is actually free.
+          onPick={url => (prefilledUrl ? setCompetitorUrl(url) : setTargetUrl(url))}
+        />
       )}
 
       {/* ── Scoreboard ────────────────────────────────────────────────────── */}

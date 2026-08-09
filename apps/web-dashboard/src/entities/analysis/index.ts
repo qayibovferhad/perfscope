@@ -35,10 +35,11 @@ export type {
   DependencyGraph,
 } from '@perfscope/shared'
 
-export { rateScore, rateLcp, rateCls, rateTbt } from '@perfscope/shared'
-export type { ScoreRating } from '@perfscope/shared'
+export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS } from '@perfscope/shared'
+export type { ScoreRating, VitalKey } from '@perfscope/shared'
 
-export { scoreColor, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'
+export { scoreColor, scoreBand, vitalBand, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'
+export type { ScoreBand } from './lib'
 
 export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
 export { MetricsGrid } from './ui/MetricsGrid'

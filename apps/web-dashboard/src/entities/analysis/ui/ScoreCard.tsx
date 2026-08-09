@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Gauge, Eye, Code2, Search } from 'lucide-react';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
+import { scoreBand, type ScoreBand } from '../lib';
 
 const ICONS = {
   Performance:      Gauge,
@@ -12,27 +13,19 @@ const ICONS = {
 
 export type ScoreLabel = keyof typeof ICONS;
 
-type Status = 'good' | 'warn' | 'poor';
-
-function getStatus(score: number): Status {
-  if (score >= 90) return 'good';
-  if (score >= 50) return 'warn';
-  return 'poor';
-}
-
-const ARC_STROKE: Record<Status, string> = {
+const ARC_STROKE: Record<ScoreBand, string> = {
   good: '[stroke:var(--ld-accent)]',
   warn: '[stroke:var(--ld-amber)]',
   poor: '[stroke:var(--ld-rose)]',
 };
 
-const COLOR: Record<Status, string> = {
+const COLOR: Record<ScoreBand, string> = {
   good: 'text-[var(--ld-score-good)]',
   warn: 'text-[var(--ld-amber)]',
   poor: 'text-[var(--ld-rose)]',
 };
 
-const LABEL: Record<Status, string> = {
+const LABEL: Record<ScoreBand, string> = {
   good: 'Good',
   warn: 'Needs improvement',
   poor: 'Poor',
@@ -56,7 +49,7 @@ export function ScoreCardSkeleton({ label }: { label: ScoreLabel }) {
 
 export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }) {
   const Icon = ICONS[label];
-  const status = getStatus(score);
+  const status = scoreBand(score);
   const offset = DASH * (1 - score / 100);
 
   return (

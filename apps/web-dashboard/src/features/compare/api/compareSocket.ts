@@ -1,17 +1,8 @@
-import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import type { AnalysisCallbacks } from '@/entities/analysis';
+import { createSocket } from '@/shared/api/socket';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
-
-let _getToken: () => string | null = () => null;
-export function configureCompareSocketToken(getter: () => string | null) { _getToken = getter; }
-
-function makeSocket() {
-  const token = _getToken();
-  return io(BACKEND_URL, { autoConnect: false, auth: token ? { token } : {} });
-}
-
-function attachCallbacks(socket: ReturnType<typeof io>, callbacks: AnalysisCallbacks) {
+function attachCallbacks(socket: Socket, callbacks: AnalysisCallbacks) {
   socket.on('analysis:progress', callbacks.onProgress);
   socket.on('analysis:partial',  callbacks.onPartial);
   socket.on('analysis:complete', callbacks.onComplete);
@@ -20,7 +11,7 @@ function attachCallbacks(socket: ReturnType<typeof io>, callbacks: AnalysisCallb
 }
 
 export function startCompareAnalysis(url: string, callbacks: AnalysisCallbacks): () => void {
-  const socket = makeSocket();
+  const socket = createSocket();
   socket.connect();
   const cleanup = attachCallbacks(socket, callbacks);
   socket.emit('analysis:start', { url });
@@ -28,7 +19,7 @@ export function startCompareAnalysis(url: string, callbacks: AnalysisCallbacks):
 }
 
 export function startCompareAuthAudit(sessionId: string, url: string, callbacks: AnalysisCallbacks): () => void {
-  const socket = makeSocket();
+  const socket = createSocket();
   socket.connect();
   const cleanup = attachCallbacks(socket, callbacks);
   socket.emit('auth-audit:start', { sessionId, url, context: 'competitor' });

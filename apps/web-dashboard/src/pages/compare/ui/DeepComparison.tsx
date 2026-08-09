@@ -2,18 +2,11 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Layers, Cpu, AlertTriangle, ExternalLink } from 'lucide-react';
 import type { AnalysisResult, FlameChartData } from '@/entities/analysis';
+import { fmtMs, fmtBytes } from '@/shared/lib/format';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtBytes(b: number): string {
-  if (b >= 1_048_576) return `${(b / 1_048_576).toFixed(2)} MB`;
-  if (b >= 1024)      return `${(b / 1024).toFixed(1)} KB`;
-  return `${b} B`;
-}
 
-function fmtMs(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
-}
 
 function pct(winner: number, loser: number): string {
   if (!loser) return '';

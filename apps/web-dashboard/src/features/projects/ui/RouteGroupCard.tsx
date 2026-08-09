@@ -3,19 +3,17 @@ import { ChevronRight, Link as LinkIcon } from 'lucide-react';
 import type { RouteGroup, ProjectAuditEntry } from '@/entities/history';
 import { AuditRow }  from './AuditRow';
 import { timeAgo }   from '../lib/formatters';
+import { scoreBand, type ScoreBand } from '@/entities/analysis';
 
 // ─── Score ring ───────────────────────────────────────────────────────────────
 
 const CIRC = 2 * Math.PI * 19; // ≈ 119.38
 
-type Band = 'good' | 'warn' | 'poor';
-function band(s: number): Band { return s >= 90 ? 'good' : s >= 50 ? 'warn' : 'poor'; }
-
-const RING_STROKE: Record<Band, string> = { good: 'stroke-ld-accent',   warn: 'stroke-ld-amber', poor: 'stroke-ld-rose' };
-const RING_NUM:    Record<Band, string> = { good: 'text-ld-accent-2',    warn: 'text-ld-amber',   poor: 'text-ld-rose'   };
+const RING_STROKE: Record<ScoreBand, string> = { good: 'stroke-ld-accent',   warn: 'stroke-ld-amber', poor: 'stroke-ld-rose' };
+const RING_NUM:    Record<ScoreBand, string> = { good: 'text-ld-accent-2',    warn: 'text-ld-amber',   poor: 'text-ld-rose'   };
 
 function ScoreRing({ score }: { score: number }) {
-  const b = band(score);
+  const b = scoreBand(score);
   return (
     <div className="relative w-[44px] h-[44px] shrink-0">
       <svg viewBox="0 0 44 44" className="w-[44px] h-[44px] -rotate-90">

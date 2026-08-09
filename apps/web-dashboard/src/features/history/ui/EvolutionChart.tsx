@@ -1,4 +1,5 @@
 import type { HistoryEntry } from '@/entities/history';
+import { fmtMs } from '@/shared/lib/format';
 
 // ─── Chart geometry ───────────────────────────────────────────────────────────
 
@@ -14,10 +15,6 @@ const REGRESSION_PCT = 15;
 
 export function isRegression(curr: number, prev: number) {
   return !prev ? false : ((curr - prev) / prev) * 100 > REGRESSION_PCT;
-}
-
-function fmtMs(ms: number) {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 }
 
 function fmtDate(iso: string) {

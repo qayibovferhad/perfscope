@@ -1,32 +1,25 @@
 import { motion } from 'framer-motion';
 import { Clock, Shield, Gauge, Eye, Code2, Search } from 'lucide-react';
-import type { AnalysisResult } from '@/entities/analysis';
+import { scoreBand, vitalBand, type AnalysisResult, type ScoreBand, type VitalKey } from '@/entities/analysis';
+import { fmtSec, fmtCls } from '@/shared/lib/format';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CIRC = 2 * Math.PI * 33; // ≈ 207.3
 
-// ─── Score band helpers ───────────────────────────────────────────────────────
+// ─── Score band styling ───────────────────────────────────────────────────────
 
-type Band = 'good' | 'warn' | 'poor';
-
-function scoreBand(s: number): Band {
-  if (s >= 90) return 'good';
-  if (s >= 50) return 'warn';
-  return 'poor';
-}
-
-const RING_STROKE: Record<Band, string> = {
+const RING_STROKE: Record<ScoreBand, string> = {
   good: 'stroke-ld-accent',
   warn: 'stroke-ld-amber',
   poor: 'stroke-ld-rose',
 };
-const NUM_CLASS: Record<Band, string> = {
+const NUM_CLASS: Record<ScoreBand, string> = {
   good: 'text-ld-accent-2',
   warn: 'text-ld-amber',
   poor: 'text-ld-rose',
 };
-const BAND_LABEL: Record<Band, string> = {
+const BAND_LABEL: Record<ScoreBand, string> = {
   good: 'Good',
   warn: 'Needs improvement',
   poor: 'Poor',
@@ -87,54 +80,36 @@ function ScoreCard({
   );
 }
 
-// ─── Core Web Vitals helpers ──────────────────────────────────────────────────
+// ─── Core Web Vitals styling ──────────────────────────────────────────────────
 
-type VitalBand = 'g' | 'w' | 'p';
-
-const VITAL_THRESHOLDS: Record<string, [number, number]> = {
-  fcp: [1800, 3000],
-  lcp: [2500, 4000],
-  tbt: [200,  600 ],
-  cls: [0.1,  0.25],
-  si:  [3400, 5800],
-  tti: [3800, 7300],
+const VITAL_VAL_CLASS: Record<ScoreBand, string> = {
+  good: 'text-ld-accent-2',
+  warn: 'text-ld-amber',
+  poor: 'text-ld-rose',
+};
+const VITAL_ST_CLASS: Record<ScoreBand, string> = {
+  good: 'text-ld-accent',
+  warn: 'text-ld-amber',
+  poor: 'text-ld-rose',
+};
+const VITAL_ST_LABEL: Record<ScoreBand, string> = {
+  good: 'Good',
+  warn: 'Needs work',
+  poor: 'Poor',
 };
 
-function vitalBand(key: string, val: number): VitalBand {
-  const [good, poor] = VITAL_THRESHOLDS[key] ?? [Infinity, Infinity];
-  return val <= good ? 'g' : val <= poor ? 'w' : 'p';
-}
-
-const VITAL_VAL_CLASS: Record<VitalBand, string> = {
-  g: 'text-ld-accent-2',
-  w: 'text-ld-amber',
-  p: 'text-ld-rose',
-};
-const VITAL_ST_CLASS: Record<VitalBand, string> = {
-  g: 'text-ld-accent',
-  w: 'text-ld-amber',
-  p: 'text-ld-rose',
-};
-const VITAL_ST_LABEL: Record<VitalBand, string> = {
-  g: 'Good',
-  w: 'Needs work',
-  p: 'Poor',
-};
-
-function fmtMs(v: number)  { return `${(v / 1000).toFixed(1)}s`; }
 function fmtRaw(v: number) { return `${Math.round(v)}ms`; }
-function fmtCls(v: number) { return v.toFixed(3); }
 
 const METRICS = [
-  { key: 'fcp' as const, abbr: 'FCP', fmt: fmtMs  },
-  { key: 'lcp' as const, abbr: 'LCP', fmt: fmtMs  },
+  { key: 'fcp' as const, abbr: 'FCP', fmt: fmtSec },
+  { key: 'lcp' as const, abbr: 'LCP', fmt: fmtSec },
   { key: 'tbt' as const, abbr: 'TBT', fmt: fmtRaw },
   { key: 'cls' as const, abbr: 'CLS', fmt: fmtCls },
-  { key: 'si'  as const, abbr: 'SI',  fmt: fmtMs  },
-  { key: 'tti' as const, abbr: 'TTI', fmt: fmtMs  },
+  { key: 'si'  as const, abbr: 'SI',  fmt: fmtSec },
+  { key: 'tti' as const, abbr: 'TTI', fmt: fmtSec },
 ] as const;
 
-function VitalsCell({ abbr, metricKey, value }: { abbr: string; metricKey: string; value: number }) {
+function VitalsCell({ abbr, metricKey, value }: { abbr: string; metricKey: VitalKey; value: number }) {
   const band = vitalBand(metricKey, value);
   const { fmt } = METRICS.find(m => m.key === metricKey)!;
 

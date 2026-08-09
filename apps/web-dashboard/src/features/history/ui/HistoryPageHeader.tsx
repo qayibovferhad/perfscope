@@ -5,25 +5,16 @@ import { isReg } from '@/features/history/lib/format';
 import { exportJson, exportCsv } from '@/features/history/lib/export';
 import { ScoreSparkline } from './ScoreSparkline';
 import { getHostname } from '@/entities/website';
+import { vitalBand, type ScoreBand } from '@/entities/analysis';
+import { fmtMs, fmtCls } from '@/shared/lib/format';
 
-// ─── CWV band helpers ─────────────────────────────────────────────────────────
+// ─── CWV band styling ─────────────────────────────────────────────────────────
 
-type Band = 'g' | 'w' | 'p';
-
-const BAND_CLS: Record<Band, string> = {
-  g: 'text-ld-accent-2',
-  w: 'text-ld-amber',
-  p: 'text-ld-rose',
+const BAND_CLS: Record<ScoreBand, string> = {
+  good: 'text-ld-accent-2',
+  warn: 'text-ld-amber',
+  poor: 'text-ld-rose',
 };
-
-function lcpBand(ms: number): Band { return ms <= 2500 ? 'g' : ms <= 4000 ? 'w' : 'p'; }
-function tbtBand(ms: number): Band { return ms <= 200  ? 'g' : ms <= 600  ? 'w' : 'p'; }
-function clsBand(v:  number): Band { return v  <= 0.1  ? 'g' : v  <= 0.25 ? 'w' : 'p'; }
-function fcpBand(ms: number): Band { return ms <= 1800 ? 'g' : ms <= 3000 ? 'w' : 'p'; }
-
-function fmtMs(ms: number) {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
-}
 
 // right border: all except last; on mobile (2-col) also hide from index 1
 function borderR(i: number) {
@@ -51,10 +42,10 @@ export function HistoryPageHeader({ url, entries }: Props) {
   }, [entries]);
 
   const metrics = [
-    { label: 'LCP', value: fmtMs(m.lcp),     band: lcpBand(m.lcp) },
-    { label: 'TBT', value: fmtMs(m.tbt),     band: tbtBand(m.tbt) },
-    { label: 'CLS', value: m.cls.toFixed(3), band: clsBand(m.cls) },
-    { label: 'FCP', value: fmtMs(m.fcp),     band: fcpBand(m.fcp) },
+    { label: 'LCP', value: fmtMs(m.lcp),  band: vitalBand('lcp', m.lcp) },
+    { label: 'TBT', value: fmtMs(m.tbt),  band: vitalBand('tbt', m.tbt) },
+    { label: 'CLS', value: fmtCls(m.cls), band: vitalBand('cls', m.cls) },
+    { label: 'FCP', value: fmtMs(m.fcp),  band: vitalBand('fcp', m.fcp) },
   ] as const;
 
   return (

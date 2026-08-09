@@ -3,6 +3,7 @@ import {
 } from 'react';
 import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes } from '@/shared/lib/format';
 import { PanelHeader } from '@/shared/ui/panel/PanelHeader';
 import { Chip } from '@/shared/ui/panel/Chip';
 import { useTimelineContext } from '../model/TimelineContext';
@@ -48,19 +49,6 @@ const METRIC_MARKERS: { key: keyof CoreWebVitals; label: string; color: string }
   { key: 'lcp', label: 'LCP', color: 'var(--ld-accent)' },
   { key: 'tti', label: 'TTI', color: 'var(--ld-amber)'  },
 ];
-
-function fmtBytes(b: number): string {
-  if (b <= 0) return '—';
-  if (b < 1024) return `${b} B`;
-  if (b < 1_048_576) return `${(b / 1024).toFixed(0)} KB`;
-  return `${(b / 1_048_576).toFixed(1)} MB`;
-}
-
-function fmtMs(ms: number): string {
-  if (ms <= 0) return '—';
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-}
 
 function resourceFilename(url: string): string {
   try {

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTheme } from '../theme/ThemeProvider';
@@ -26,7 +27,13 @@ export function Modal({ open, onClose, children }: ModalProps) {
 
   const scrimBg = theme === 'light' ? 'rgba(10,40,28,0.34)' : 'rgba(2,8,5,0.62)';
 
-  return (
+  // Rendered into <body>, never in place. A modal mounted inside the tree inherits
+  // whatever its surroundings impose: the sidebar is position:sticky and therefore its
+  // own stacking context, so the scrim's z-[200] only applied within the sidebar column
+  // and left the page beside it undimmed — reading as if the content lit up. Layout
+  // containers cause the same class of bug (a space-y parent shifting siblings, a card
+  // repainting --ld-accent). A portal removes all of it at once.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -67,6 +74,7 @@ export function Modal({ open, onClose, children }: ModalProps) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

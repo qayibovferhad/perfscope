@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';
+import { normalizeUrl } from '@/shared/lib/utils';
 import { useAuthAuditStore } from '../model/authAuditStore';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -56,7 +57,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
     const trimmed = url.trim();
     if (!trimmed) return;
 
-    const normalized = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+    const normalized = normalizeUrl(trimmed);
     setUrl(normalized);
     setLaunching(true);
     setError(null);
@@ -83,7 +84,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
 
   function handleSetUrl() {
     if (!url.trim()) return;
-    const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
+    const normalized = normalizeUrl(url);
     if (onAuthAudit) {
       onAuthAudit(sessionId, normalized);
     } else {

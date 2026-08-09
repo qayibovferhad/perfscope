@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
+import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
 import { FlameChart } from './FlameChart';
 import type {
@@ -52,30 +53,19 @@ interface TypeCfg {
   badgeCls:  string;
 }
 
+// Badge colors follow the shared resource palette (see ResourceWaterfall):
+// script indigo, stylesheet violet, image accent, font amber, document sky, media pink.
 const TYPE_CFG: Record<ResourceType, TypeCfg> = {
-  script:     { label: 'JS',    icon: FileCode2, barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-ld-amber  bg-[rgba(230,162,60,.12)] border border-[rgba(230,162,60,.25)]' },
-  stylesheet: { label: 'CSS',   icon: Palette,   barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-ld-teal   bg-[rgba(22,200,200,.12)]  border border-[rgba(22,200,200,.25)]' },
-  image:      { label: 'IMG',   icon: ImageIcon, barWaitCls: 'bg-ld-accent-soft',    badgeCls: 'text-[var(--ld-accent-2)] bg-ld-accent-soft border border-ld-accent-line'       },
-  font:       { label: 'FONT',  icon: Type,      barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#b08be0] bg-[rgba(176,139,224,.14)] border border-[rgba(176,139,224,.30)]' },
-  document:   { label: 'DOC',   icon: FileCode2, barWaitCls: 'bg-ld-accent-line',    badgeCls: 'text-ld-rose   bg-[rgba(242,100,122,.12)] border border-[rgba(242,100,122,.25)]' },
+  script:     { label: 'JS',    icon: FileCode2, barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#818cf8] bg-[rgba(99,102,241,.12)]  border border-[rgba(99,102,241,.3)]'  },
+  stylesheet: { label: 'CSS',   icon: Palette,   barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#a78bfa] bg-[rgba(167,139,250,.12)] border border-[rgba(167,139,250,.3)]' },
+  image:      { label: 'IMG',   icon: ImageIcon, barWaitCls: 'bg-ld-accent-soft',    badgeCls: 'text-[var(--ld-accent-2)] bg-ld-accent-soft border border-ld-accent-line'        },
+  font:       { label: 'FONT',  icon: Type,      barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-ld-amber  bg-[rgba(230,162,60,.1)]   border border-[rgba(230,162,60,.3)]'  },
+  document:   { label: 'DOC',   icon: FileCode2, barWaitCls: 'bg-ld-accent-line',    badgeCls: 'text-[#38bdf8] bg-[rgba(56,189,248,.1)]   border border-[rgba(56,189,248,.3)]'  },
   media:      { label: 'MEDIA', icon: ImageIcon, barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#f472b6] bg-[rgba(244,114,182,.10)] border border-[rgba(244,114,182,.30)]' },
   other:      { label: 'XHR',   icon: Globe,     barWaitCls: 'bg-ld-border',         badgeCls: 'text-ld-text-3 bg-transparent              border border-ld-border-strong'        },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtBytes(b: number): string {
-  if (b <= 0) return '—';
-  if (b < 1024) return `${b} B`;
-  if (b < 1_048_576) return `${(b / 1024).toFixed(0)} KB`;
-  return `${(b / 1_048_576).toFixed(1)} MB`;
-}
-
-function fmtMs(ms: number): string {
-  if (ms <= 0) return '—';
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-}
 
 function resourceFilename(url: string): string {
   try {

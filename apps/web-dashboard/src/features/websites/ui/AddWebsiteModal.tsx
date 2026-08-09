@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Globe, ArrowRight, Lock, Loader2, User } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
+import { normalizeUrl } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { useWebsites } from '@/entities/website';
@@ -33,7 +34,7 @@ export function AddWebsiteModal({ open, onClose }: Props) {
 
   async function onSubmit({ url, name }: WebsiteForm) {
     setError(null);
-    const normalized = url.startsWith('http') ? url : `https://${url}`;
+    const normalized = normalizeUrl(url);
     try {
       const website = await add.mutateAsync({ url: normalized, name });
       if (!requiresLogin) {
