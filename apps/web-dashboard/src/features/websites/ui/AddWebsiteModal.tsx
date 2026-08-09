@@ -73,16 +73,19 @@ export function AddWebsiteModal({ open, onClose }: Props) {
     <Modal open={open} onClose={handleClose}>
 
       <ModalHeader
-            icon={<Globe className="w-[23px] h-[23px] text-[#04130d]" />}
-            title="Add a website"
-            subtitle="Save a site to track its performance over time."
-          />
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-[18px]">
+        icon={<Globe className="w-[23px] h-[23px] text-[#04130d]" />}
+        title="Add a website"
+        subtitle="Save a site to track its performance over time."
+      />
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-[18px] mt-[22px]">
 
           <div className="flex flex-col gap-[7px]">
-            <label className="text-[13px] font-semibold text-ld-text flex items-center gap-[7px]">
+            <label className="text-[13px] font-semibold text-ld-text flex items-center justify-between gap-[10px]">
               Site name
-              <span className="font-normal text-ld-text-3 text-[12px]">optional</span>
+              <span className="font-mono font-normal text-[10px] tracking-[.08em] uppercase text-ld-text-3 px-[7px] py-[2px] rounded-full border border-ld-border">
+                optional
+              </span>
             </label>
             <Input
               {...nameReg}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Globe, Paperclip, AlertCircle, CheckCircle2, RotateCcw, Loader2, ShieldAlert, Lock } from 'lucide-react';
+import { Globe, Paperclip, AlertCircle, CheckCircle2, RotateCcw, ShieldAlert, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
@@ -54,6 +54,10 @@ export function SideInputBar({
   };
 
   return (
+    <>
+    {/* The competitor side repaints --ld-accent amber. Everything inside inherits it, so
+        the shared auth modal is rendered as a sibling below — otherwise its emerald
+        "Session active" badge turns amber on this side only. */}
     <div
       className={`relative rounded-[16px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card
         ${rival ? '[--ld-accent:var(--ld-amber)] [--ld-accent-soft:rgba(230,162,60,0.13)] [--ld-accent-line:rgba(230,162,60,0.34)]' : ''}`}
@@ -103,9 +107,6 @@ export function SideInputBar({
               mono
               wrapperClassName={isSuccess ? 'opacity-75' : ''}
             />
-            {isLoading && (
-              <Loader2 className="w-[14px] h-[14px] absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-ld-text-3" />
-            )}
           </div>
 
           {/* Lock (auth) button — competitor side only */}
@@ -116,12 +117,12 @@ export function SideInputBar({
               onClick={() => setAuthModalOpen(true)}
               className={`relative shrink-0 px-3 rounded-[11px] border transition-colors
                 ${hasAuthSession
-                  ? 'border-[rgba(230,162,60,0.34)] text-ld-amber bg-[rgba(230,162,60,0.13)]'
+                  ? 'border-ld-accent-2 text-ld-accent-2'
                   : 'border-ld-border-strong text-ld-text-3'}`}
             >
               <Lock className="w-[14px] h-[14px]" />
               {hasAuthSession && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full animate-pulse bg-ld-amber" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full animate-pulse bg-ld-accent-2" />
               )}
             </button>
           )}
@@ -203,17 +204,18 @@ export function SideInputBar({
           </div>
         )}
       </div>
-
-      <AuthAuditModal
-        open={authModalOpen}
-        initialUrl={url}
-        onClose={() => setAuthModalOpen(false)}
-        onSetUrl={auditUrl => onUrlChange(auditUrl)}
-        onAuthAudit={(sessionId, auditUrl) => {
-          setAuthModalOpen(false);
-          onAuthAudit(sessionId, auditUrl);
-        }}
-      />
     </div>
+
+    <AuthAuditModal
+      open={authModalOpen}
+      initialUrl={url}
+      onClose={() => setAuthModalOpen(false)}
+      onSetUrl={auditUrl => onUrlChange(auditUrl)}
+      onAuthAudit={(sessionId, auditUrl) => {
+        setAuthModalOpen(false);
+        onAuthAudit(sessionId, auditUrl);
+      }}
+    />
+    </>
   );
 }

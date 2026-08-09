@@ -77,14 +77,17 @@ export function AnalyzerPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
-      <AuthAuditModal
-        open={authModalOpen}
-        initialUrl={url}
-        onClose={() => setAuthModalOpen(false)}
-        onSetUrl={setUrl}
-      />
+    <>
+    {/* Kept outside the space-y-8 container: while open it would be its first child,
+        pushing every sibling down by one gap the moment the modal mounts. */}
+    <AuthAuditModal
+      open={authModalOpen}
+      initialUrl={url}
+      onClose={() => setAuthModalOpen(false)}
+      onSetUrl={setUrl}
+    />
 
+    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       <AnalyzerHeader
         hasData={!!data}
         onExport={handleExport}
@@ -131,5 +134,6 @@ export function AnalyzerPage() {
         {data && <AnalyzerResultsPanel data={data} />}
       </AnimatePresence>
     </div>
+    </>
   );
 }
