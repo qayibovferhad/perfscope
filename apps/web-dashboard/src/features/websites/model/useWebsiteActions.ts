@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
+import { usePrefetchStore } from '@/entities/analysis';
 
 export function useWebsiteActions() {
   const navigate = useNavigate();

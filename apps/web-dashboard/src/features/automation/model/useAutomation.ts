@@ -1,4 +1,4 @@
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites } from '@/entities/website';
 
 export function useAutomation(siteId: string) {
   const { setAutomation, triggerRun } = useWebsites();

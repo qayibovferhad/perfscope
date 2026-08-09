@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '@/features/history/model/types';
-import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct, isReg } from '@/features/history/lib/format';
+import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct } from '@/features/history/lib/format';
 import { sortRows } from '@/features/history/lib/computeRows';
 
 /** "/requests" — the audited path, since the table now spans every route of a site. */

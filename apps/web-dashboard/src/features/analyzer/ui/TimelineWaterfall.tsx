@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
-import { useTimelineContext } from '../context/TimelineContext';
-import { FlameChart } from '../components/FlameChart';
+import { useTimelineContext } from '../model/TimelineContext';
+import { FlameChart } from './FlameChart';
 import type {
   ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
   FlameChartData,
@@ -20,8 +20,6 @@ const LEFT_W     = 280;
 const MAX_ROWS   = 120;
 const TICK_COUNT = 6;
 const TICK_MS    = 50;
-const THUMB_W    = 80;
-const THUMB_H    = 45;
 
 // chipCls   — metric chip in the panel head
 // labelCls  — small label above the scrubber track

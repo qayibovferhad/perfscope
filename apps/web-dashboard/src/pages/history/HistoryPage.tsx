@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompareArrows, TrendingUp } from 'lucide-react';
-import { useHistory, useAllHistory, fetchHistoryResult } from '@/features/history/model/useHistory';
+import { GitCompareArrows } from 'lucide-react';
+import { useHistory, useAllHistory, fetchHistoryResult } from '@/entities/history';
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';

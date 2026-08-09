@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { LandingPage }            from '@/pages/landing';
 import { LoginPage }              from '@/pages/login/LoginPage';
 import { RegisterPage }           from '@/pages/register/RegisterPage';
-import { ProtectedRoute }         from '@/features/auth/components/ProtectedRoute';
+import { ProtectedRoute }         from '@/features/auth/ui/ProtectedRoute';
 import { DashboardLayout }        from '@/widgets/dashboard-layout';
 import { AnalyzerPage }           from '@/pages/analyzer/AnalyzerPage';
 import { ComparisonPage }         from '@/pages/compare/ComparisonPage';

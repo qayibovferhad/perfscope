@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Lock, ShieldCheck, Globe } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { ProgressStepper } from '../components/ProgressStepper';
+import { ProgressStepper } from '@/entities/analysis';
 import type { AnalysisProgress } from '@/entities/analysis';
 
 interface Props {

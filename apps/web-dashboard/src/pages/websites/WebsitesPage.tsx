@@ -5,7 +5,7 @@ import {
   CheckSquare, Gauge, AlertTriangle, Layers,
 } from 'lucide-react';
 import { Input }                     from '@/shared/ui/input';
-import { useWebsites }              from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites }              from '@/entities/website';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites/model/useWebsitesQuery';
 import { useWebsiteScores }         from '@/features/websites/model/useWebsiteScores';
 import { useWebsiteActions }        from '@/features/websites/model/useWebsiteActions';

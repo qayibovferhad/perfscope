@@ -43,3 +43,10 @@ export { scoreColor, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'
 export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
 export { MetricsGrid } from './ui/MetricsGrid'
 export { AuditList } from './ui/AuditList'
+export { ProgressStepper } from './ui/ProgressStepper'
+
+export { startAnalysis, joinAnalysis, emitAuthAuditStart } from './api/analysisSocket'
+export type { AnalysisCallbacks } from './api/analysisSocket'
+
+export { usePrefetchStore } from './model/prefetchStore'
+export type { PrefetchPartialMap } from './model/prefetchStore'

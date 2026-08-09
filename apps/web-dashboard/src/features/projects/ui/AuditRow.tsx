@@ -4,7 +4,7 @@ import { RefreshCw, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import type { ProjectAuditEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
-import { useDeleteAudit } from '@/features/history/model/useHistory';
+import { useDeleteAudit } from '@/entities/history';
 import { formatAuditDate, formatMs, formatTbt } from '../lib/formatters';
 
 // ─── CWV band helpers ─────────────────────────────────────────────────────────

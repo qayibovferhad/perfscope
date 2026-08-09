@@ -3,17 +3,17 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
-import { AiInsights } from '@/features/analyzer/components/AiInsights';
+import { AiInsights } from '@/features/analyzer/ui/AiInsights';
 import { ResourceBreakdown } from '@/features/analyzer/ui/ResourceBreakdown';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
-import { PerformanceTimeline } from '@/features/analyzer/components/PerformanceTimeline';
+import { PerformanceTimeline } from '@/features/analyzer/ui/PerformanceTimeline';
 import { TimelineWaterfall } from '@/features/analyzer/ui/TimelineWaterfall';
 import { ResourceDependencyChain } from '@/features/analyzer/ui/ResourceDependencyChain';
 import { HeapMemoryChart } from '@/features/analyzer/ui/HeapMemoryChart';
 import { InteractionTimeline } from '@/features/analyzer/ui/InteractionTimeline';
 import { CLSVisualizer } from '@/features/analyzer/ui/CLSVisualizer';
-import { ResourcesAlert } from '@/features/analyzer/components/ResourcesAlert';
-import { TimelineProvider } from '@/features/analyzer/context/TimelineContext';
+import { ResourcesAlert } from '@/features/analyzer/ui/ResourcesAlert';
+import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────

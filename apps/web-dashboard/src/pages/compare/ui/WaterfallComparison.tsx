@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useMotionValue, motion } from 'framer-motion';
 import { Activity, Zap, Play, Pause, Clock } from 'lucide-react';
 import type { AnalysisResult } from '@/entities/analysis';
-import { TimelineProvider } from '@/features/analyzer/context/TimelineContext';
+import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

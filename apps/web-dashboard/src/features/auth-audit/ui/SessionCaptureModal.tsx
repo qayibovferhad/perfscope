@@ -3,7 +3,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MonitorSmartphone, Rota
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
 import { apiClient } from '@/shared/api/client';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites } from '@/entities/website';
 
 type Step = 'launching' | 'browser-open' | 'capturing' | 'done';
 

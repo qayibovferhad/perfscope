@@ -1,8 +1,6 @@
 import { useMemo }         from 'react';
-import { useAllHistory }  from '@/features/history/model/useHistory';
-import { hasResult }      from '@/features/history/lib/hasResult';
+import { useAllHistory, hasResult, type HistoryEntry } from '@/entities/history';
 import { getHostname }    from '@/entities/website';
-import type { HistoryEntry } from '@/entities/history';
 
 export interface SiteScoreInfo {
   /** Mean performance across every successful audit of the site — the same figure the

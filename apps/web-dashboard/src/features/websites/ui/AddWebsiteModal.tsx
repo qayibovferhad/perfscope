@@ -5,8 +5,8 @@ import { Globe, ArrowRight, Lock, Loader2, User } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { SessionCaptureModal } from '@/features/auth-audit/ui/SessionCaptureModal';
+import { useWebsites } from '@/entities/website';
+import { SessionCaptureModal } from '@/features/auth-audit';
 
 interface WebsiteForm { url: string; name: string }
 

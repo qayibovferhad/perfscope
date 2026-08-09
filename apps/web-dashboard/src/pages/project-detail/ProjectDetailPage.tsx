@@ -9,14 +9,14 @@ import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/mo
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
 import { getHostname }          from '@/entities/website';
 import { setComparePreload }    from '@/features/compare/model/comparePreloadStore';
-import { fetchHistoryResult }   from '@/features/history/model/useHistory';
+import { fetchHistoryResult }   from '@/entities/history';
 import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
-import { useWebsites }          from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/features/projects/ui/StatCard';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
-import { SessionCaptureModal }  from '@/features/auth-audit/ui/SessionCaptureModal';
+import { SessionCaptureModal }  from '@/features/auth-audit';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects/lib/formatters';

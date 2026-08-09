@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites } from '@/entities/website';
 import { scoreColor } from '@/entities/analysis';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
 
@@ -76,7 +76,6 @@ export function CrossWebsitePicker({ excludeProjectId, onSelect, onClose }: Prop
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const others = websites.filter((w) => w._id !== excludeProjectId);
-  const selectedWebsite = others.find((w) => w._id === selectedId);
 
   function handleSelect(entry: ProjectAuditEntry) {
     onSelect(entry);

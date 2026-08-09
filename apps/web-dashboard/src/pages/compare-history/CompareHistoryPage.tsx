@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { GitCompareArrows, History } from 'lucide-react';
+import { History } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 

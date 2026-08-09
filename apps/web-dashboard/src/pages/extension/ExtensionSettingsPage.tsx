@@ -1,4 +1,4 @@
-import { Download, CheckCircle2, Circle, ExternalLink, Lightbulb, ArrowRight } from 'lucide-react';
+import { Download, CheckCircle2, Circle, Lightbulb, ArrowRight } from 'lucide-react';
 import { useExtensionConnected }      from '@/features/extension/model/useExtensionConnected';
 import { CopySnippet }                from '@/shared/ui/copy-snippet';
 import { Button }                     from '@/shared/ui/button';

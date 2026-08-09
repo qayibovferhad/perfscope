@@ -94,11 +94,11 @@ Session state (live browser handles) lives in an in-memory Map in `services/auth
 
 The compare page runs two independent analyses side-by-side. Each side uses a **dedicated, short-lived socket** created per-analysis in `features/compare/api/compareSocket.ts` — not the shared singleton from `api/socket.ts`. This prevents concurrent analyses from mixing up event listeners.
 
-Results can be preloaded from the websites page via `comparePreloadStore` (`store/comparePreloadStore.ts`), which is a plain **module-level singleton** (not Zustand). `setComparePreload()` stores the pair; `consumeComparePreload()` reads and clears it in one call. The compare page consumes this on mount and falls back to fresh socket analyses if absent.
+Results can be preloaded from the websites page via `comparePreloadStore` (`features/compare/model/comparePreloadStore.ts`), which is a plain **module-level singleton** (not Zustand). `setComparePreload()` stores the pair; `consumeComparePreload()` reads and clears it in one call. The compare page consumes this on mount and falls back to fresh socket analyses if absent.
 
 ### Projects feature
 
-The `projects` feature groups audits by website and route. A `projectId` can be passed to `analysis:start`; the backend tags the `History` entry with it. `features/projects/useProjectAudits.ts` fetches grouped audit history via `GET /api/projects/:id/audits`, organising results by `routePath` with trend detection (improving / regressing / stable).
+The `projects` feature groups audits by website and route. A `projectId` can be passed to `analysis:start`; the backend tags the `History` entry with it. `features/projects/model/useProjectAudits.ts` fetches grouped audit history via `GET /api/projects/:id/audits`, organising results by `routePath` with trend detection (improving / regressing / stable).
 
 ### Backend layout (`backend/src/`)
 - `app.ts` — Express + Socket.io wiring; all routes mounted under `/api`
@@ -115,23 +115,26 @@ The `projects` feature groups audits by website and route. A `projectId` can be 
 
 > **Note:** The backend has both **Mongoose** (primary, used for all models) and **Prisma** (`@prisma/client`) as dependencies. Only Mongoose is actively wired up; Prisma is present but not yet integrated.
 
-### Frontend layout (`frontend/src/`)
-- `features/` — feature-sliced; each feature owns its components, hooks, and types
-  - `analyzer/` — main analysis UI; `useAnalysis` hook owns all socket lifecycle and state
-  - `compare/` — side-by-side comparison; each side gets its own dedicated socket via `api/compareSocket.ts`
-  - `dashboard/` — `DashboardLayout` (sidebar + routing shell), website management
-  - `history/` — audit history with evolution charts
-  - `compare-history/` — saved comparison sessions
-  - `projects/` — project-based audit dashboard grouped by route with trend tracking
-  - `auth/` — login/register pages, Google OAuth button, `ProtectedRoute`
-  - `landing/` — public landing page
-- `store/` — Zustand stores: `authStore` (persisted to localStorage), `analysisStore` (last result in-memory), `prefetchStore`, `authAuditStore` (persisted); plus `comparePreloadStore` (plain module singleton, not Zustand)
-- `api/socket.ts` — singleton Socket.io client; lazily created, attaches JWT from `authStore`; used only by the analyzer feature
-- `api/client.ts` — Axios instance; base URL is `/api` (Vite proxies `/api/*` → `http://localhost:3101` in dev); attaches JWT via request interceptor
-- `shared/components/ui/` — Shadcn-style Radix + Tailwind primitives
-- `lib/utils.ts` — `cn()` helper (clsx + tailwind-merge)
+### Frontend layout (`apps/web-dashboard/src/`) — Feature-Sliced Design
 
-Path alias: `@/` resolves to `frontend/src/` throughout the frontend codebase.
+Six FSD layers; imports flow strictly downward (`app` → `pages` → `widgets` → `features` → `entities` → `shared`). Slices use `ui/` (components), `model/` (hooks + Zustand stores), `api/` (slice network code), `lib/` (helpers) segments.
+
+- `app/` — `App.tsx` (routes), `main.tsx` (providers + token wiring), `ErrorBoundary`, `styles/index.css`
+- `pages/` — route-level pages; page-local components live in the page's own `ui/` (e.g. `pages/websites/ui/WebsiteCard.tsx`)
+- `widgets/` — self-contained blocks: `dashboard-layout` (sidebar shell), `analyzer-results`, `analyzer-header`, `history-websites-overview`, `cross-website-picker`, `footer`
+- `features/` — user scenarios:
+  - `analyzer/` — analysis UI; `model/useAnalysis` owns socket lifecycle, `model/analysisStore` (Zustand) persists last result across routes
+  - `compare/` — side-by-side comparison; each side gets a dedicated short-lived socket via `api/compareSocket.ts`; `model/comparePreloadStore` (plain module singleton, not Zustand)
+  - `auth-audit/` — login-wall session capture; has an `index.ts` public API because `compare` and `websites` embed its modals (the one sanctioned cross-feature import)
+  - `history/`, `compare-history/`, `projects/`, `websites/`, `automation/`, `auth/`, `extension/`, `subscribe/`
+- `entities/` — business objects; types re-exported from `@perfscope/shared` plus entity-level hooks/UI:
+  - `analysis/` — types, `api/analysisSocket.ts` (startAnalysis/joinAnalysis/emitAuthAuditStart over the shared socket), `model/prefetchStore`, `ui/` (ScoreCard, MetricsGrid, AuditList, ProgressStepper)
+  - `website/` — types, `getHostname`, `model/useWebsites` (React Query CRUD hook used app-wide)
+  - `history/` — types, `model/useHistory` (+ useAllHistory/useDeleteAudit/fetchHistoryResult), `lib/hasResult`
+  - `user/` — `AuthUser` type
+- `shared/` — domain-agnostic: `api/client.ts` (Axios, JWT interceptor), `api/socket.ts` (raw Socket.io singleton — no analysis knowledge), `lib/utils.ts` (`cn()`), `ui/` (Radix + Tailwind primitives; complex ones as folders with barrels: `modal/`, `panel/`, `theme/`)
+
+Path alias: `@/` resolves to `apps/web-dashboard/src/`. Entities expose `index.ts` barrels — import `@/entities/<name>`, not deep paths. Features are imported by segment path (only `auth-audit` and `subscribe` have barrels).
 
 ### State management pattern
 
@@ -145,4 +148,4 @@ Dual auth: email/password (bcrypt + JWT, 30-day expiry) and Google OAuth. The JW
 
 ### Styling
 
-Pure Tailwind with a custom CSS variable design system. Variables are defined in `frontend/src/index.css` under `:root` / `[data-theme="light"]` selectors and prefixed with `--ps-`. Inline styles using these vars are the norm for interactive color changes (hover states, active nav items). `ThemeProvider` manages the `data-theme` attribute on `<html>`.
+Pure Tailwind with a custom CSS variable design system. Variables are defined in `apps/web-dashboard/src/app/styles/index.css` under `:root` / `[data-theme="light"]` selectors and prefixed with `--ps-`. Inline styles using these vars are the norm for interactive color changes (hover states, active nav items). `ThemeProvider` manages the `data-theme` attribute on `<html>`.

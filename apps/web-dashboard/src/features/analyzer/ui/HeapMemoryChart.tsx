@@ -9,7 +9,7 @@ import * as d3 from 'd3';
 import { MemoryStick, Activity, AlertTriangle } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
-import { useTimelineContext } from '../context/TimelineContext';
+import { useTimelineContext } from '../model/TimelineContext';
 import type { HeapMemoryData, HeapMemoryPoint } from '@/entities/analysis';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

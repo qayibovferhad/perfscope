@@ -1,5 +1,5 @@
 import { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from '@/entities/analysis/ui/ScoreCard';
-import type { PartialMap } from '../hooks/useAnalysis';
+import type { PartialMap } from '../model/useAnalysis';
 
 const SCORE_ITEMS: { categoryKey: string; label: ScoreLabel }[] = [
   { categoryKey: 'performance',    label: 'Performance'    },

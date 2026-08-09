@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { GoogleButton } from '@/features/auth/components/GoogleButton';
+import { GoogleButton } from '@/features/auth/ui/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/model/authStore';

@@ -6,7 +6,7 @@ import { LayoutGrid, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-re
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
 import { useComparisonSide } from '@/features/compare/model/useComparisonSide';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites } from '@/entities/website';
 import { useCompetitorSessions } from '@/features/compare/model/useCompetitorSessions';
 import { SideInputBar } from '@/features/compare/ui/SideInputBar';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
@@ -15,7 +15,6 @@ import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
 import { WaterfallComparison } from './ui/WaterfallComparison';
 import { ComparisonSide } from './ui/ComparisonSide';
-import { DualProgressBar } from './ui/DualProgressBar';
 
 function normalize(url: string): string {
   const t = url.trim();

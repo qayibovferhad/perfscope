@@ -1,2 +1,2 @@
 export { CrossWebsitePicker } from './CrossWebsitePicker';
-export type { ProjectAuditEntry } from '@/features/projects/hooks/useProjectAudits';
+export type { ProjectAuditEntry } from '@/entities/history';

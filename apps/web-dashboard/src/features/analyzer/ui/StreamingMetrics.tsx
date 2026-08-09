@@ -1,6 +1,6 @@
 import { Skeleton } from '@/shared/ui/skeleton';
 import { MetricsGrid } from '@/entities/analysis/ui/MetricsGrid';
-import type { PartialMap } from '../hooks/useAnalysis';
+import type { PartialMap } from '../model/useAnalysis';
 
 function VitalSkeleton() {
   return (

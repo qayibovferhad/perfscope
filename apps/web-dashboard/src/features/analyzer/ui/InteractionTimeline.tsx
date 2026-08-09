@@ -12,7 +12,7 @@ import {
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { useTimelineContext } from '../context/TimelineContext';
+import { useTimelineContext } from '../model/TimelineContext';
 import type { InteractionData, InteractionEvent, LongTaskSegment } from '@/entities/analysis';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────

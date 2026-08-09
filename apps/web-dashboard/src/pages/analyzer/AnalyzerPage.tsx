@@ -3,16 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
-import { useAnalysis } from '@/features/analyzer/hooks/useAnalysis';
+import { useAnalysis } from '@/features/analyzer/model/useAnalysis';
 import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfall';
 import { AnalyzerHeader } from '@/widgets/analyzer-header';
 import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
 import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
-import { AuthAuditModal } from '@/features/auth-audit/ui/AuthAuditModal';
-import { useAuthAuditStore } from '@/features/auth-audit/model/authAuditStore';
-import { usePrefetchStore } from '@/features/analyzer/model/prefetchStore';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
+import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
+import { usePrefetchStore } from '@/entities/analysis';
+import { useWebsites } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 
 export function AnalyzerPage() {

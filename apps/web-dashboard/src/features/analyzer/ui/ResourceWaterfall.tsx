@@ -5,7 +5,7 @@ import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } 
 import { cn } from '@/shared/lib/utils';
 import { PanelHeader } from '@/shared/ui/panel/PanelHeader';
 import { Chip } from '@/shared/ui/panel/Chip';
-import { useTimelineContext } from '../context/TimelineContext';
+import { useTimelineContext } from '../model/TimelineContext';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
 
 const LEFT_W     = 320;
@@ -460,7 +460,7 @@ export function ResourceWaterfall({
               />
             ))}
 
-            {metrics && METRIC_MARKERS.map(({ key, label, color }) => {
+            {metrics && METRIC_MARKERS.map(({ key, color }) => {
               const ms = metrics[key];
               if (!ms || ms <= 0 || ms > axisMs) return null;
               const pct = (ms / axisMs) * 100;

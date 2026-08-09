@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import type { AnalysisCallbacks } from '@/shared/api/socket';
+import type { AnalysisCallbacks } from '@/entities/analysis';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
 

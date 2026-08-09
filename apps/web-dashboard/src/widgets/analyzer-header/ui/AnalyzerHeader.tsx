@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { GitCompareArrows, Download, Lock } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 
 interface Props {
   hasData:     boolean;

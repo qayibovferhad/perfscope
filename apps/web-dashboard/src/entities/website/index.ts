@@ -8,3 +8,4 @@ export type {
 } from '@perfscope/shared'
 
 export { getHostname } from './lib'
+export { useWebsites } from './model/useWebsites'

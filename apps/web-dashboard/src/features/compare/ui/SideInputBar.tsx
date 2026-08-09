@@ -3,8 +3,8 @@ import { Globe, Paperclip, AlertCircle, CheckCircle2, RotateCcw, ShieldAlert, Lo
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
-import { ProgressStepper } from '../../analyzer/components/ProgressStepper';
-import { AuthAuditModal } from '@/features/auth-audit/ui/AuthAuditModal';
+import { ProgressStepper } from '@/entities/analysis';
+import { AuthAuditModal } from '@/features/auth-audit';
 import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';
 

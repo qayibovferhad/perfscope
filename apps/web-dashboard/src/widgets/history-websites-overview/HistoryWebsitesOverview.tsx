@@ -5,8 +5,8 @@ import { ArrowRight, Clock } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { getHostname } from '@/entities/website';
-import { useWebsites } from '@/features/dashboard/hooks/useWebsites';
-import { hasResult } from '@/features/history/lib/hasResult';
+import { useWebsites } from '@/entities/website';
+import { hasResult } from '@/entities/history';
 import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard';
 
 interface Props {

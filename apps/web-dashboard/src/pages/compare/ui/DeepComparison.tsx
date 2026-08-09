@@ -36,19 +36,6 @@ function fileName(url: string): string {
   catch { return url.split('/').pop() || url; }
 }
 
-// ─── Section head ─────────────────────────────────────────────────────────────
-
-function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) {
-  return (
-    <div className="flex items-center gap-[11px] mb-[22px]">
-      <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-        {icon}
-      </div>
-      <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">{title}</h2>
-    </div>
-  );
-}
-
 // ─── Sub-section label ────────────────────────────────────────────────────────
 
 function SubLabel({ icon, title }: { icon: React.ReactNode; title: string }) {

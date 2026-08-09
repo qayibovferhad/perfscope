@@ -1,6 +1,6 @@
 import { useState }                    from 'react';
 import { Moon, Globe, Loader2 }        from 'lucide-react';
-import { useWebsites }                 from '@/features/dashboard/hooks/useWebsites';
+import { useWebsites }                 from '@/entities/website';
 import { WebsiteAutomationCard }       from './ui/WebsiteAutomationCard';
 import { UnconfiguredRow }             from './ui/UnconfiguredRow';
 import { SetupModal }                  from './ui/SetupModal';
