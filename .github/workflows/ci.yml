@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Puppeteer's Chrome-for-Testing download is unreliable from GitHub runners
+# ("All providers failed"), so both jobs skip it at install time; the e2e job
+# provides a system Chrome via setup-chrome and points puppeteer (backend
+# Lighthouse + e2e tests) at it through PUPPETEER_EXECUTABLE_PATH.
+env:
+  PUPPETEER_SKIP_DOWNLOAD: 'true'
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -51,6 +58,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set up Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+
       - name: Create backend .env
         # Drop the placeholder GEMINI_API_KEY so AI insights are cleanly disabled,
         # then pin the CI Mongo/JWT settings.
@@ -62,8 +73,8 @@ jobs:
           } >> apps/backend/.env
 
       - name: Start dev servers
-        # Lighthouse runs through puppeteer's bundled Chromium (installed by
-        # pnpm's puppeteer postinstall), so no system Chrome is needed.
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
           pnpm dev:backend > /tmp/backend.log 2>&1 &
           pnpm dev:web > /tmp/web.log 2>&1 &
@@ -84,6 +95,8 @@ jobs:
           exit 1
 
       - name: Run e2e smoke tests
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: pnpm e2e
 
       - name: Show server logs on failure
