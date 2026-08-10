@@ -1,0 +1,11 @@
+{
+  "name": "@perfscope/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end smoke tests. Assumes backend (3101) and web dashboard (5173) are already running; run with `pnpm e2e` from the repo root.",
+  "devDependencies": {
+    "mongodb": "^7.5.0",
+    "puppeteer": "^24.43.1"
+  }
+}

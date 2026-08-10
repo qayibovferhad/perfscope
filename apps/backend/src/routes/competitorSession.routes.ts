@@ -9,8 +9,9 @@ competitorSessionRouter.get('/competitor-sessions', requireAuth, async (req: Aut
   try {
     const sessions = await CompetitorSession.find({ userId: req.userId! }).sort({ createdAt: -1 });
     return res.json(sessions);
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[competitorSession]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -19,7 +20,8 @@ competitorSessionRouter.delete('/competitor-sessions/:id', requireAuth, async (r
   try {
     await CompetitorSession.deleteOne({ _id: req.params['id']!, userId: req.userId! });
     return res.json({ ok: true });
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[competitorSession]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });

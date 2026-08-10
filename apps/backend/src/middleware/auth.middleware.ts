@@ -20,7 +20,7 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized', code: 'NO_TOKEN' });
+    return res.status(401).json({ success: false, error: 'Unauthorized', code: 'NO_TOKEN' });
   }
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as { sub: string };
@@ -30,8 +30,8 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     // Expired is the common case (30d tokens) — the client shows a "session expired"
     // message for it, so keep it distinguishable from a tampered/malformed token.
     if (err instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+      return res.status(401).json({ success: false, error: 'Token expired', code: 'TOKEN_EXPIRED' });
     }
-    return res.status(401).json({ error: 'Invalid token', code: 'INVALID_TOKEN' });
+    return res.status(401).json({ success: false, error: 'Invalid token', code: 'INVALID_TOKEN' });
   }
 }

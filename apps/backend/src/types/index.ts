@@ -9,6 +9,7 @@
 export type {
   AnalysisStage,
   AnalysisCategory,
+  AuditFormFactor,
   AnalysisResult,
   AnalysisProgress,
   CategoryPartial,
@@ -40,7 +41,7 @@ export type {
 } from '@perfscope/shared';
 
 // Import a few for use in local socket-event contracts below
-import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@perfscope/shared';
+import type { AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor } from '@perfscope/shared';
 
 // ─── Backend-specific: REST contracts ───────────────────────────────────────
 
@@ -60,9 +61,9 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'analysis:start':    (data: { url: string; projectId?: string }) => void;
+  'analysis:start':    (data: { url: string; projectId?: string; formFactor?: AuditFormFactor }) => void;
   'analysis:cancel':   (data: { analysisId: string }) => void;
-  'auth-audit:start':  (data: { sessionId: string; url: string; projectId?: string }) => void;
+  'auth-audit:start':  (data: { sessionId: string; url: string; projectId?: string; formFactor?: AuditFormFactor }) => void;
 }
 
 export interface InterServerEvents {

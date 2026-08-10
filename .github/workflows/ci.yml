@@ -30,3 +30,62 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create backend .env
+        # Drop the placeholder GEMINI_API_KEY so AI insights are cleanly disabled,
+        # then pin the CI Mongo/JWT settings.
+        run: |
+          grep -v '^GEMINI_API_KEY=' apps/backend/.env.example > apps/backend/.env
+          {
+            echo "MONGODB_URI=mongodb://localhost:27017/perfscope"
+            echo "JWT_SECRET=ci-secret"
+          } >> apps/backend/.env
+
+      - name: Start dev servers
+        # Lighthouse runs through puppeteer's bundled Chromium (installed by
+        # pnpm's puppeteer postinstall), so no system Chrome is needed.
+        run: |
+          pnpm dev:backend > /tmp/backend.log 2>&1 &
+          pnpm dev:web > /tmp/web.log 2>&1 &
+
+      - name: Wait for servers
+        # Backend has no /health route: any HTTP response (404 included) means up,
+        # so plain curl (no -f) is used for the backend probe.
+        run: |
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null http://localhost:5173 && curl -s -o /dev/null http://localhost:3101/api; then
+              echo "both servers up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "servers did not come up in time"
+          tail -n 50 /tmp/backend.log /tmp/web.log
+          exit 1
+
+      - name: Run e2e smoke tests
+        run: pnpm e2e
+
+      - name: Show server logs on failure
+        if: failure()
+        run: tail -n 100 /tmp/backend.log /tmp/web.log

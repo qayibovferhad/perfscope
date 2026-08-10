@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { persistAudit } from '../services/auditPipeline.js';
 import { AnalyzerService } from '../services/analyzer.service.js';
 import { HistoryService }  from '../services/history.service.js';
 import { Website }         from '../models/Website.model.js';
@@ -74,18 +75,9 @@ export class AnalyzerController {
       console.log(`[Analyzer] Matched website _id=${website._id} url=${website.url}`);
     }
 
-    const entry = {
-      id:        result.id,
-      shortId:   result.id.slice(0, 7),
-      url:       result.url,
-      timestamp: result.timestamp,
-      scores:    result.scores,
-      metrics:   result.metrics,
-    };
-
     const projectId = String(website._id);
     console.log(`[Analyzer] Saving history with projectId=${projectId}`);
-    await HistoryService.save(entry, userId, projectId, result as unknown as Record<string, unknown>);
+    await persistAudit(result, userId, projectId);
     console.log(`[Analyzer] History saved ✓`);
   }
 }

@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io-client';
-import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@perfscope/shared';
+import type { AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor } from '@perfscope/shared';
 import { getSocket } from '@/shared/api/socket';
 
 export interface AnalysisCallbacks {
@@ -28,11 +28,20 @@ function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   };
 }
 
-export function startAnalysis(url: string, callbacks: AnalysisCallbacks, projectId?: string): () => void {
+export function startAnalysis(
+  url: string,
+  callbacks: AnalysisCallbacks,
+  projectId?: string,
+  formFactor?: AuditFormFactor,
+): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
   const cleanup = attachListeners(s, callbacks);
-  s.emit('analysis:start', { url, ...(projectId ? { projectId } : {}) });
+  s.emit('analysis:start', {
+    url,
+    ...(projectId ? { projectId } : {}),
+    ...(formFactor ? { formFactor } : {}),
+  });
   return cleanup;
 }
 
@@ -41,10 +50,15 @@ export function joinAnalysis(callbacks: AnalysisCallbacks): () => void {
   return attachListeners(s, callbacks);
 }
 
-export function emitAuthAuditStart(sessionId: string, url: string, callbacks: AnalysisCallbacks): () => void {
+export function emitAuthAuditStart(
+  sessionId: string,
+  url: string,
+  callbacks: AnalysisCallbacks,
+  formFactor?: AuditFormFactor,
+): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
   const cleanup = attachListeners(s, callbacks);
-  s.emit('auth-audit:start', { sessionId, url });
+  s.emit('auth-audit:start', { sessionId, url, ...(formFactor ? { formFactor } : {}) });
   return cleanup;
 }

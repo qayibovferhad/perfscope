@@ -10,7 +10,8 @@ compareHistoryRouter.get('/compare-history', async (req: Request, res: Response)
       ? (req.query['search'] as string) : undefined;
     const data   = await CompareHistoryService.listPairs(search);
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[compareHistory]', err);
     res.status(500).json({ success: false, error: 'Failed to load compare history' });
   }
 });
@@ -21,7 +22,8 @@ compareHistoryRouter.get('/compare-history/:pairId', async (req: Request, res: R
     const pairId = String(req.params['pairId'] ?? '');
     const data   = await CompareHistoryService.getPair(pairId);
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[compareHistory]', err);
     res.status(500).json({ success: false, error: 'Failed to load pair history' });
   }
 });
@@ -41,7 +43,8 @@ compareHistoryRouter.post('/compare-history', async (req: Request, res: Response
   try {
     await CompareHistoryService.save(sourceUrl, targetUrl, source, competitor);
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[compareHistory]', err);
     res.status(500).json({ success: false, error: 'Failed to save comparison' });
   }
 });

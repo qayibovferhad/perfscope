@@ -1,7 +1,6 @@
 import { Website } from '../models/Website.model.js';
 import { lighthouseService } from './lighthouse.service.js';
-import { AiService } from './ai.service.js';
-import { HistoryService } from './history.service.js';
+import { enrichWithAi, persistAudit } from './auditPipeline.js';
 
 // Milliseconds between each audit within a nightly run — avoids saturating the host.
 const AUDIT_DELAY_MS = 15_000;
@@ -24,41 +23,8 @@ async function runSingleAudit(
       ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {})
       : await lighthouseService.analyzeStreaming(fullUrl, () => {});
 
-    if (AiService.isAvailable()) {
-      const criticals = (result.resources?.requests ?? [])
-        .filter((r) => r.isCritical)
-        .slice(0, 6);
-
-      const [insights, adviceMap] = await Promise.all([
-        AiService.getInsights(result).catch(() => null),
-        criticals.length > 0
-          ? AiService.getResourceAdvice(criticals).catch(() => new Map<string, string>())
-          : Promise.resolve(new Map<string, string>()),
-      ]);
-
-      if (insights) result.aiInsights = insights;
-      if (adviceMap.size > 0 && result.resources) {
-        for (const req of result.resources.requests) {
-          const advice = adviceMap.get(req.url);
-          if (advice) req.advice = advice;
-        }
-      }
-    }
-
-    await HistoryService.save(
-      {
-        id:        result.id,
-        shortId:   result.id.slice(0, 7),
-        url:       result.url,
-        timestamp: result.timestamp,
-        scores:    result.scores,
-        metrics:   result.metrics,
-      },
-      userId,
-      projectId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      result as unknown as Record<string, any>,
-    );
+    await enrichWithAi(result);
+    await persistAudit(result, userId, projectId);
 
     console.log(`[NightlyAudit] Done — perf score: ${result.scores.performance}`);
   } catch (err) {

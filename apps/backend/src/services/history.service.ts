@@ -1,4 +1,5 @@
 import { HistoryModel } from '../models/History.model.js';
+import { hasResult } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import type {
   HistoryEntry,
@@ -29,19 +30,6 @@ function extractRoutePath(url: string): string {
   }
 }
 
-/**
- * A run that failed (unreachable host, Chrome crash, timeout) is still persisted, but
- * with every score and metric at 0. Such a run carries no signal, so it must stay out of
- * every score-derived stat — otherwise one failure drags a site's average toward zero.
- * It is still listed in the audit table: the user should see that a run happened.
- */
-function hasResult(entry: HistoryEntry): boolean {
-  const { performance, accessibility, bestPractices, seo } = entry.scores;
-  if (performance || accessibility || bestPractices || seo) return true;
-
-  const { fcp, lcp, tbt, cls, si, tti } = entry.metrics;
-  return Boolean(fcp || lcp || tbt || cls || si || tti);
-}
 
 function computeTrend(entries: ProjectAuditEntry[]): RouteGroup['trend'] {
   if (entries.length < 2) return 'single';
@@ -127,7 +115,9 @@ export const HistoryService = {
       .find({ userId })
       .sort({ createdAt: -1 })
       .lean();
-    return docs.map(toEntry);
+    // Failed 0-score runs are excluded here like everywhere else — the websites
+    // overview and history page derive averages from this list.
+    return docs.map(toEntry).filter(hasResult);
   },
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

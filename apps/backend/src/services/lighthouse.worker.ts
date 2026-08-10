@@ -3,6 +3,10 @@ import puppeteer from 'puppeteer';
 import lighthouse from 'lighthouse';
 import type { RunnerResult } from 'lighthouse';
 
+
+// NOTE: this worker must stay self-contained (no imports from other src files) —
+// the tsx loader inside worker threads cannot resolve cross-file .js→.ts specifiers.
+// Keep in sync with CHROME_ARGS in lib/chrome.ts.
 const CHROME_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
@@ -13,7 +17,7 @@ const CHROME_ARGS = [
   '--disable-backgrounding-occluded-windows',
 ];
 
-interface WorkerInput { url: string; categories: string[] }
+interface WorkerInput { url: string; categories: string[]; formFactor?: 'mobile' | 'desktop' }
 
 // Compact trace sent back to the service so parseFlameChart can run there
 // (avoids worker-thread module-resolution issues with tsx's .js→.ts remapping)
@@ -136,7 +140,7 @@ function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] 
 }
 
 async function run(): Promise<void> {
-  const { url, categories } = workerData as WorkerInput;
+  const { url, categories, formFactor } = workerData as WorkerInput;
   const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
 
   try {
@@ -146,7 +150,10 @@ async function run(): Promise<void> {
       output: 'json',
       logLevel: 'error',
       onlyCategories: categories,
-      screenEmulation: { disabled: true },
+      ...(formFactor === 'mobile'
+        ? { formFactor: 'mobile' as const,
+            screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
+        : { screenEmulation: { disabled: true } }),
       throttlingMethod: 'provided',
     });
 

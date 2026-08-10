@@ -1,11 +1,7 @@
 import puppeteer, { type Browser } from 'puppeteer';
+import { VISIBLE_CHROME_ARGS as CHROME_ARGS } from '../lib/chrome.js';
 import { v4 as uuidv4 } from 'uuid';
 
-const CHROME_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-];
 
 export interface AuthSessionData {
   cookies: Array<{

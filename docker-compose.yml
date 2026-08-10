@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PerfScope — local infrastructure only.
+#
+# This compose file deliberately does NOT containerize the backend or the web
+# apps: they run on the host via `pnpm dev` because the Lighthouse pipeline
+# needs a host Chrome instance (Puppeteer spawns real Chrome processes per
+# worker thread), and hot-reload/dev tooling works best outside a container.
+#
+# Usage:
+#   docker compose up -d    # start MongoDB
+#   pnpm dev                # start backend + web dashboard + extension on host
+#
+# MongoDB is optional — the backend runs analyses without it; only history
+# persistence is skipped when it is unavailable.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: perfscope-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

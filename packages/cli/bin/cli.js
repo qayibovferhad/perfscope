@@ -3,6 +3,7 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import http from 'node:http';
 import net  from 'node:net';
 import readline from 'node:readline';
@@ -330,34 +331,15 @@ async function audit(targetUrl, opts) {
     spinner.text = chalk.dim('Running audit… (this may take up to 2 min)');
   }
 
-  // ── POST to API ────────────────────────────────────────
+  // ── Stream over WebSocket ──────────────────────────────
   let result;
   try {
-    const headers = {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    };
-
-    const { data } = await axios.post(
-      `${apiUrl}/api/analyze`,
-      { url: auditUrl },
-      { headers, timeout },
-    );
-
-    result = data?.data ?? data;
+    result = await runSocketAnalysis(apiUrl, apiKey, auditUrl, spinner, timeout);
     if (!result || typeof result !== 'object') throw new Error('Unexpected API response shape');
 
     spinner.succeed(chalk.greenBright('Audit complete'));
   } catch (err) {
-    const msg = err.response
-      ? `API error ${err.response.status}: ${JSON.stringify(err.response.data)}`
-      : err.code === 'ECONNABORTED'
-      ? `Audit timed out after ${timeout / 1000} s`
-      : err.code === 'ECONNREFUSED'
-      ? `Cannot reach ${apiUrl} — is the backend running?`
-      : err.message;
-
-    spinner.fail(chalk.red(msg));
+    spinner.fail(chalk.red(err.message));
     if (tunnel) tunnel.close();
     process.exit(1);
   } finally {
@@ -370,6 +352,39 @@ async function audit(targetUrl, opts) {
     case 'minimal': printMinimal(result);           break;
     default:        printReport(result, targetUrl); break;
   }
+}
+
+
+// ── Socket streaming audit ───────────────────────────────
+// Same pipeline the web dashboard uses: progress + per-category partial scores
+// stream in live, and the run is not subject to the HTTP server timeout.
+function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const socket = io(apiUrl, { auth: token ? { token } : {} });
+
+    const finish = (fn, value) => {
+      clearTimeout(timer);
+      socket.disconnect();
+      fn(value);
+    };
+    const timer = setTimeout(
+      () => finish(reject, new Error(`Audit timed out after ${timeoutMs / 1000} s`)),
+      timeoutMs,
+    );
+
+    socket.on('connect', () => socket.emit('analysis:start', { url }));
+    socket.on('connect_error', (err) =>
+      finish(reject, new Error(`Cannot reach ${apiUrl} — is the backend running? (${err.message})`)));
+
+    socket.on('analysis:progress', (p) => {
+      spinner.text = chalk.dim(`${p.message ?? 'Auditing…'} (${Math.round(p.progress ?? 0)}%)`);
+    });
+    socket.on('analysis:partial', (partial) => {
+      spinner.text = chalk.dim(`${partial.category}: ${partial.score} — waiting for remaining categories…`);
+    });
+    socket.on('analysis:complete', (result) => finish(resolve, result));
+    socket.on('analysis:error', (e) => finish(reject, new Error(e?.message ?? 'Analysis failed')));
+  });
 }
 
 // ── CLI definition ───────────────────────────────────────

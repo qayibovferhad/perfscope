@@ -17,7 +17,7 @@ setInterval(() => {
 router.post('/cli/init', (req, res) => {
   const { code } = req.body as { code?: string };
   if (!code || typeof code !== 'string' || code.length > 128) {
-    res.status(400).json({ error: 'Invalid code' });
+    res.status(400).json({ success: false, error: 'Invalid code' });
     return;
   }
   pending.set(code, { at: Date.now() });
@@ -27,9 +27,9 @@ router.post('/cli/init', (req, res) => {
 // Browser (CliAuthPage) → store token against the code
 router.post('/cli/complete', (req, res) => {
   const { code, token } = req.body as { code?: string; token?: string };
-  if (!code || !token) { res.status(400).json({ error: 'Missing fields' }); return; }
+  if (!code || !token) { res.status(400).json({ success: false, error: 'Missing fields' }); return; }
   const entry = pending.get(code);
-  if (!entry)           { res.status(404).json({ error: 'Unknown or expired code' }); return; }
+  if (!entry)           { res.status(404).json({ success: false, error: 'Unknown or expired code' }); return; }
   entry.token = token;
   res.json({ ok: true });
 });
@@ -37,9 +37,9 @@ router.post('/cli/complete', (req, res) => {
 // CLI → poll for token
 router.get('/cli/poll', (req, res) => {
   const code = req.query['code'] as string | undefined;
-  if (!code)            { res.status(400).json({ error: 'Missing code' }); return; }
+  if (!code)            { res.status(400).json({ success: false, error: 'Missing code' }); return; }
   const entry = pending.get(code);
-  if (!entry)           { res.status(404).json({ error: 'Unknown or expired code — re-run login' }); return; }
+  if (!entry)           { res.status(404).json({ success: false, error: 'Unknown or expired code — re-run login' }); return; }
   if (entry.token) {
     const token = entry.token;
     pending.delete(code);

@@ -1,3 +1,6 @@
+/** Which device profile a Lighthouse run emulated. */
+export type AuditFormFactor = 'mobile' | 'desktop'
+
 // ─── Categories & stages ─────────────────────────────────────────────────────
 
 export type AnalysisStage    = 'launching' | 'navigating' | 'auditing' | 'processing' | 'complete' | 'error'
@@ -219,6 +222,8 @@ export interface DependencyGraph {
 // ─── Result root + progress ──────────────────────────────────────────────────
 
 export interface AnalysisResult {
+  /** Device profile the audit ran with; absent on results saved before the toggle existed. */
+  formFactor?: AuditFormFactor
   id:                    string
   url:                   string
   timestamp:             string

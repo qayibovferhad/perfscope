@@ -11,7 +11,7 @@ import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
 import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
-import { usePrefetchStore } from '@/entities/analysis';
+import { usePrefetchStore, type AuditFormFactor } from '@/entities/analysis';
 import { useWebsites } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
@@ -21,6 +21,7 @@ export function AnalyzerPage() {
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [formFactor, setFormFactor]       = useState<AuditFormFactor>('desktop');
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
   const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
@@ -49,7 +50,7 @@ export function AnalyzerPage() {
 
     const normalized = normalizeUrl(paramUrl);
     reset();
-    analyze(normalized, projectId);
+    analyze(normalized, projectId, formFactor);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSubmit(e: FormEvent) {
@@ -58,10 +59,10 @@ export function AnalyzerPage() {
     const normalized = normalizeUrl(url);
     const projectId  = searchParams.get('projectId') ?? undefined;
     if (authSessionId) {
-      startAuthAudit(authSessionId, normalized);
+      startAuthAudit(authSessionId, normalized, formFactor);
     } else {
       reset();
-      analyze(normalized, projectId);
+      analyze(normalized, projectId, formFactor);
     }
   }
 
@@ -101,6 +102,8 @@ export function AnalyzerPage() {
         authSessionId={authSessionId}
         hasSession={!!activeSession}
         progress={progress}
+        formFactor={formFactor}
+        onFormFactor={setFormFactor}
         onSubmit={handleSubmit}
       />
 

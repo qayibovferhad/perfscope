@@ -9,7 +9,8 @@ historyRouter.get('/history/all', requireAuth, async (req: AuthRequest, res: Res
   try {
     const data = await HistoryService.getAll(req.userId!);
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[history]', err);
     res.status(500).json({ success: false, error: 'Failed to load history' });
   }
 });
@@ -24,7 +25,8 @@ historyRouter.get('/history', async (req: Request, res: Response) => {
   try {
     const data = await HistoryService.get(url);
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[history]', err);
     res.status(500).json({ success: false, error: 'Failed to load history' });
   }
 });
@@ -38,7 +40,8 @@ historyRouter.get('/history/:id', requireAuth, async (req: AuthRequest, res: Res
       return;
     }
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[history]', err);
     res.status(500).json({ success: false, error: 'Failed to load result' });
   }
 });
@@ -52,7 +55,8 @@ historyRouter.delete('/history/:id', requireAuth, async (req: AuthRequest, res: 
       return;
     }
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error('[history]', err);
     res.status(500).json({ success: false, error: 'Failed to delete audit' });
   }
 });
@@ -66,7 +70,8 @@ historyRouter.get('/projects/:id/audits', requireAuth, async (req: AuthRequest, 
       return;
     }
     res.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('[history]', err);
     res.status(500).json({ success: false, error: 'Failed to load project audits' });
   }
 });

@@ -1,21 +1,15 @@
 import { Router, type Response } from 'express';
+import { HAS_RESULT_FIELDS } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
+import { escapeRegex, hostOf, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
 
 export const websiteRouter: Router = Router();
 
 const MAX_LIMIT = 100;
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function hostOf(url: string): string {
-  try { return new URL(url).hostname; } catch { return ''; }
-}
 
 /**
  * Owner scope plus an optional free-text filter over the site's label and URL.
@@ -36,18 +30,7 @@ function ownedFilter(userId: string | undefined, q?: string): QueryFilter<Record
  * Those must not count as an audited site — mirrors `hasResult` on the client.
  */
 const HAS_RESULT = {
-  $or: [
-    { 'scores.performance':   { $gt: 0 } },
-    { 'scores.accessibility': { $gt: 0 } },
-    { 'scores.bestPractices': { $gt: 0 } },
-    { 'scores.seo':           { $gt: 0 } },
-    { 'metrics.fcp': { $gt: 0 } },
-    { 'metrics.lcp': { $gt: 0 } },
-    { 'metrics.tbt': { $gt: 0 } },
-    { 'metrics.cls': { $gt: 0 } },
-    { 'metrics.si':  { $gt: 0 } },
-    { 'metrics.tti': { $gt: 0 } },
-  ],
+  $or: HAS_RESULT_FIELDS.map((field) => ({ [field]: { $gt: 0 } })),
 };
 
 // GET /api/websites?q=&page=&limit=
@@ -79,8 +62,9 @@ websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Respon
       .limit(limit);
 
     return res.json({ items, total, page, limit, totalPages });
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -130,8 +114,9 @@ websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res
       : 0;
 
     return res.json({ total: sites.length, audited: scores.length, avgScore, needsAttention });
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -139,17 +124,18 @@ websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res
 websiteRouter.post('/websites', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { url, name } = req.body as { url: string; name?: string };
-    if (!url) return res.status(400).json({ error: 'url is required' });
+    if (!url) return res.status(400).json({ success: false, error: 'url is required' });
 
-    const normalized = url.startsWith('http') ? url : `https://${url}`;
+    const normalized = normalizeSiteUrl(url);
     const website = await Website.findOneAndUpdate(
       { userId: req.userId!, url: normalized },
       { url: normalized, name: name ?? '' },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     );
     return res.status(201).json(website);
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -172,12 +158,12 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
       },
       { returnDocument: 'after' },
     );
-    if (!website) return res.status(404).json({ error: 'Website not found' });
+    if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
 
     return res.json(website);
   } catch (err) {
     console.error('[Website session]', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -193,7 +179,7 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
                                             update['automation.scheduleTime']  = body.scheduleTime;
 
     if (Object.keys(update).length === 0) {
-      return res.status(400).json({ error: 'Provide enabled or routes to update' });
+      return res.status(400).json({ success: false, error: 'Provide enabled or routes to update' });
     }
 
     const website = await Website.findOneAndUpdate(
@@ -201,11 +187,12 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
       update,
       { returnDocument: 'after' },
     );
-    if (!website) return res.status(404).json({ error: 'Website not found' });
+    if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
 
     return res.json(website);
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -213,7 +200,7 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
 websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const website = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).lean();
-    if (!website) return res.status(404).json({ error: 'Website not found' });
+    if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
 
     // Fire and forget — respond immediately, audit runs in background.
     NightlyAuditService.runForWebsite(String(req.params['id']), req.userId!).catch((err: unknown) => {
@@ -221,8 +208,9 @@ websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: Auth
     });
 
     return res.json({ ok: true, message: 'Audit started in background' });
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
@@ -231,7 +219,8 @@ websiteRouter.delete('/websites/:id', requireAuth, async (req: AuthRequest, res:
   try {
     await Website.deleteOne({ _id: req.params['id']!, userId: req.userId! });
     return res.json({ ok: true });
-  } catch {
-    return res.status(500).json({ error: 'Server error' });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
