@@ -38,6 +38,7 @@ export interface IHistory extends Document {
   metrics:       { fcp: number; lcp: number; tbt: number; cls: number; si: number; tti: number };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fullResult?:   Record<string, any>;
+  shareToken?:   string | null;
   createdAt:     Date;
 }
 
@@ -53,6 +54,7 @@ const HistorySchema = new Schema<IHistory>(
     scores:        { type: ScoresSchema, required: true },
     metrics:       { type: MetricsSchema, required: true },
     fullResult:    { type: Schema.Types.Mixed },
+    shareToken:    { type: String, default: null, index: true, sparse: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

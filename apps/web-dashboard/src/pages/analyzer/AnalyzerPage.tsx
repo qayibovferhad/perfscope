@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
+import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer/model/useAnalysis';
 import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfall';
@@ -26,6 +27,7 @@ export function AnalyzerPage() {
   const { websites } = useWebsites();
   const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
   const handledUrl = useRef<string | null>(null);
+  const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {
     const ff = searchParams.get('ff');
@@ -82,6 +84,20 @@ export function AnalyzerPage() {
     }
   }
 
+  async function handleShare() {
+    if (!data) return;
+    try {
+      const res = await apiClient.post<{ token: string }>(`/history/${data.id}/share`);
+      const link = `${window.location.origin}/report/${res.data.token}`;
+      await navigator.clipboard.writeText(link);
+      setShareState('copied');
+      setTimeout(() => setShareState('idle'), 2500);
+    } catch {
+      // History persists asynchronously right after an audit — a retry moment later succeeds.
+      setShareState('idle');
+    }
+  }
+
   function handleExport() {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -109,6 +125,8 @@ export function AnalyzerPage() {
         hasData={!!data}
         onExport={handleExport}
         onAuthModal={() => setAuthModalOpen(true)}
+        onShare={handleShare}
+        shareState={shareState}
       />
 
       <AnalyzerSearchForm

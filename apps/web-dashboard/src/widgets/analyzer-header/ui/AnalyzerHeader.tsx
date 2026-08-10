@@ -1,17 +1,20 @@
 import { Link } from 'react-router-dom';
-import { GitCompareArrows, Download, Lock } from 'lucide-react';
+import { GitCompareArrows, Download, Lock, Share2, Check } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 
 interface Props {
   hasData:     boolean;
   onExport:    () => void;
   onAuthModal: () => void;
+  onShare:     () => void;
+  /** 'idle' | 'copied' — flips the Share button into a confirmation state. */
+  shareState:  'idle' | 'copied';
 }
 
 const btnCls = 'group text-[13.5px] px-[14px] py-[9px] h-auto rounded-[10px] [&_svg]:w-[15px] [&_svg]:h-[15px]';
 const iconCls = 'text-ld-text-3 group-hover:text-ld-accent transition-colors';
 
-export function AnalyzerHeader({ hasData, onExport, onAuthModal }: Props) {
+export function AnalyzerHeader({ hasData, onExport, onAuthModal, onShare, shareState }: Props) {
   return (
     <div className="flex items-start justify-between gap-5 flex-wrap mb-7">
       <div>
@@ -21,10 +24,17 @@ export function AnalyzerHeader({ hasData, onExport, onAuthModal }: Props) {
 
       <div className="flex items-center gap-2 flex-shrink-0">
         {hasData && (
-          <Button variant="outline" onClick={onExport} className={btnCls}>
-            <Download className={iconCls} />
-            Export JSON
-          </Button>
+          <>
+            <Button variant="outline" onClick={onShare} className={btnCls}>
+              {shareState === 'copied'
+                ? <><Check className="text-ld-accent" /> Link copied</>
+                : <><Share2 className={iconCls} /> Share</>}
+            </Button>
+            <Button variant="outline" onClick={onExport} className={btnCls}>
+              <Download className={iconCls} />
+              Export JSON
+            </Button>
+          </>
         )}
 
         <Button variant="outline" asChild className={btnCls}>
