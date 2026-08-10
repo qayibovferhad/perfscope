@@ -38,6 +38,28 @@ const requiresLoginSchema = new Schema(
   { _id: false },
 );
 
+const budgetsSchema = new Schema(
+  {
+    performance: { type: Number, default: null },
+    lcp:         { type: Number, default: null },
+    tbt:         { type: Number, default: null },
+    cls:         { type: Number, default: null },
+    webhookUrl:  { type: String, default: null },
+  },
+  { _id: false },
+);
+
+const budgetBreachSchema = new Schema(
+  {
+    analysisId: { type: String, required: true },
+    url:        { type: String, required: true },
+    formFactor: { type: String, default: null },
+    failures:   [{ metric: String, value: Number, budget: Number, _id: false }],
+    at:         { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const websiteSchema = new Schema(
   {
     userId:        { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -46,6 +68,8 @@ const websiteSchema = new Schema(
     session:       { type: sessionSchema, default: null },
     requiresLogin: { type: requiresLoginSchema, default: null },
     automation:    { type: automationSchema, default: () => ({ enabled: false, lastRunAt: null }) },
+    budgets:          { type: budgetsSchema, default: null },
+    lastBudgetBreach: { type: budgetBreachSchema, default: null },
   },
   { timestamps: true },
 );
@@ -68,13 +92,39 @@ export interface IWebsiteAutomation {
   lastRunAt:    Date | null;
 }
 
-export interface IWebsite {
-  _id:        Types.ObjectId;
-  userId:     Types.ObjectId;
+export interface IWebsiteBudgets {
+  performance: number | null;
+  lcp:         number | null;
+  tbt:         number | null;
+  cls:         number | null;
+  webhookUrl:  string | null;
+}
+
+export interface IBudgetBreach {
+  analysisId: string;
   url:        string;
-  name:       string;
-  session:    IWebsiteSession | null;
-  automation: IWebsiteAutomation;
+  formFactor: string | null;
+  failures:   Array<{ metric: string; value: number; budget: number }>;
+  at:         Date;
+}
+
+export interface IRequiresLogin {
+  url:        string;
+  loginUrl:   string;
+  detectedAt: Date;
+}
+
+export interface IWebsite {
+  _id:              Types.ObjectId;
+  userId:           Types.ObjectId;
+  url:              string;
+  name:             string;
+  session:          IWebsiteSession | null;
+  requiresLogin:    IRequiresLogin | null;
+  automation:       IWebsiteAutomation;
+  budgets:          IWebsiteBudgets | null;
+  lastBudgetBreach: IBudgetBreach | null;
+  createdAt?:       Date;
 }
 
 export const Website = model<IWebsite>('Website', websiteSchema);

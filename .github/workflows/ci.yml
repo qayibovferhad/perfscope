@@ -72,12 +72,17 @@ jobs:
             echo "JWT_SECRET=ci-secret"
           } >> apps/backend/.env
 
+      - name: Build shared package
+        # Both dev servers import @perfscope/shared from its dist output.
+        run: pnpm --filter @perfscope/shared build
+
       - name: Start dev servers
+        # Invoke the package scripts directly — `turbo dev` hangs in non-TTY CI.
         env:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
-          pnpm dev:backend > /tmp/backend.log 2>&1 &
-          pnpm dev:web > /tmp/web.log 2>&1 &
+          pnpm --filter @perfscope/backend dev > /tmp/backend.log 2>&1 &
+          pnpm --filter @perfscope/web-dashboard dev > /tmp/web.log 2>&1 &
 
       - name: Wait for servers
         # Backend has no /health route: any HTTP response (404 included) means up,

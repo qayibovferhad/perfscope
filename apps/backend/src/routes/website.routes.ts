@@ -196,6 +196,53 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
   }
 });
 
+// PATCH /api/websites/:id/budgets — set or clear performance budgets
+websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const body = req.body as {
+      performance?: number | null; lcp?: number | null; tbt?: number | null;
+      cls?: number | null; webhookUrl?: string | null;
+    };
+
+    const num = (v: unknown, min: number, max: number): number | null =>
+      typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null;
+
+    let webhookUrl: string | null = null;
+    if (typeof body.webhookUrl === 'string' && body.webhookUrl.trim()) {
+      try {
+        const u = new URL(body.webhookUrl.trim());
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('bad protocol');
+        webhookUrl = u.toString();
+      } catch {
+        return res.status(400).json({ success: false, error: 'webhookUrl must be a valid http(s) URL' });
+      }
+    }
+
+    const budgets = {
+      performance: num(body.performance, 1, 100),
+      lcp:         num(body.lcp, 100, 60_000),
+      tbt:         num(body.tbt, 0,   60_000),
+      cls:         num(body.cls, 0.01, 5),
+      webhookUrl,
+    };
+    const empty = budgets.performance == null && budgets.lcp == null &&
+                  budgets.tbt == null && budgets.cls == null;
+
+    const website = await Website.findOneAndUpdate(
+      { _id: req.params['id']!, userId: req.userId! },
+      // No thresholds at all clears budgets (and any recorded breach) entirely.
+      empty ? { budgets: null, lastBudgetBreach: null } : { budgets },
+      { returnDocument: 'after' },
+    );
+    if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
+
+    return res.json(website);
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // POST /api/websites/:id/automation/run — manual trigger for a single website
 websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: AuthRequest, res: Response) => {
   try {

@@ -6,7 +6,7 @@ import { Button }             from '@/shared/ui/button';
 import { Toggle }             from '@/shared/ui/toggle';
 import { TimePicker }         from '@/shared/ui/time-picker';
 import { useAutomation }      from '@/features/automation/model/useAutomation';
-import { getHostname }        from '@/entities/website';
+import { getHostname, useWebsites } from '@/entities/website';
 import type { Website }       from '@/entities/website';
 
 interface Props {
@@ -17,12 +17,25 @@ interface Props {
 
 export function SetupModal({ site, open, onClose }: Props) {
   const automation = useAutomation(site._id);
+  const { setBudgets } = useWebsites();
 
   const [routes,       setRoutes]       = useState<string[]>([]);
   const [input,        setInput]        = useState('');
   const [inputError,   setInputError]   = useState('');
   const [enabled,      setEnabled]      = useState(false);
   const [scheduleTime, setScheduleTime] = useState('00:00');
+
+  // Budgets — hydrated from the site so reopening the modal shows current thresholds.
+  const [budgetPerf, setBudgetPerf] = useState(site.budgets?.performance?.toString() ?? '');
+  const [budgetLcp,  setBudgetLcp]  = useState(site.budgets?.lcp?.toString() ?? '');
+  const [budgetTbt,  setBudgetTbt]  = useState(site.budgets?.tbt?.toString() ?? '');
+  const [budgetCls,  setBudgetCls]  = useState(site.budgets?.cls?.toString() ?? '');
+  const [webhookUrl, setWebhookUrl] = useState(site.budgets?.webhookUrl ?? '');
+
+  const parseNum = (v: string): number | null => {
+    const n = Number(v.trim());
+    return v.trim() !== '' && Number.isFinite(n) ? n : null;
+  };
 
   function handleAdd() {
     const raw = input.trim();
@@ -35,7 +48,17 @@ export function SetupModal({ site, open, onClose }: Props) {
   }
 
   async function handleSave() {
-    await automation.save({ routes, enabled, scheduleTime });
+    await Promise.all([
+      automation.save({ routes, enabled, scheduleTime }),
+      setBudgets.mutateAsync({
+        id:          site._id,
+        performance: parseNum(budgetPerf),
+        lcp:         parseNum(budgetLcp),
+        tbt:         parseNum(budgetTbt),
+        cls:         parseNum(budgetCls),
+        webhookUrl:  webhookUrl.trim() || null,
+      }),
+    ]);
     onClose();
   }
 
@@ -105,6 +128,41 @@ export function SetupModal({ site, open, onClose }: Props) {
         <div>
           <p className="text-[9px] font-bold uppercase tracking-widest mb-2 text-ld-text-3">Run at</p>
           <TimePicker value={scheduleTime} onChange={setScheduleTime} />
+        </div>
+
+        {/* Performance budgets */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest mb-2 text-ld-text-3">
+            Performance budgets <span className="normal-case font-medium tracking-normal">— alert when an audit breaks them</span>
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {([
+              ['Min score', budgetPerf, setBudgetPerf, '90'],
+              ['Max LCP ms', budgetLcp, setBudgetLcp, '2500'],
+              ['Max TBT ms', budgetTbt, setBudgetTbt, '200'],
+              ['Max CLS', budgetCls, setBudgetCls, '0.1'],
+            ] as const).map(([label, value, setter, ph]) => (
+              <div key={label}>
+                <p className="text-[9px] text-ld-text-3 mb-1">{label}</p>
+                <Input
+                  value={value}
+                  onChange={e => setter(e.target.value)}
+                  placeholder={ph}
+                  inputMode="decimal"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2">
+            <p className="text-[9px] text-ld-text-3 mb-1">Alert webhook URL (optional — POSTs on every breach)</p>
+            <Input
+              value={webhookUrl}
+              onChange={e => setWebhookUrl(e.target.value)}
+              placeholder="https://hooks.slack.com/…"
+              className="h-8 text-xs font-mono"
+            />
+          </div>
         </div>
 
         {/* Enable toggle */}

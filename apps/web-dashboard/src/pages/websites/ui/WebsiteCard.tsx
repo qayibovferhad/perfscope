@@ -1,4 +1,4 @@
-import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight } from 'lucide-react';
+import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight, Gauge } from 'lucide-react';
 import { motion }          from 'framer-motion';
 import { Link }            from 'react-router-dom';
 import { getHostname }     from '@/entities/website';
@@ -81,6 +81,15 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           {site.session && (
             <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
               <ShieldCheck className="w-[13px] h-[13px]" /> Saved
+            </span>
+          )}
+          {/* The latest audit broke this site's performance budgets. */}
+          {site.lastBudgetBreach && (
+            <span
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)] text-ld-rose"
+              title={`${site.lastBudgetBreach.url} broke: ${site.lastBudgetBreach.failures.map(f => f.metric).join(', ')}`}
+            >
+              <Gauge className="w-[13px] h-[13px]" /> Budget breach
             </span>
           )}
           {/* The last audit landed on a login screen — the scores are for that screen. */}

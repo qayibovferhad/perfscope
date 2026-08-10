@@ -1,5 +1,6 @@
 import { AiService } from './ai.service.js';
 import { HistoryService } from './history.service.js';
+import { checkBudgets } from './budget.service.js';
 import type { AnalysisResult } from '../types/index.js';
 
 /** Cap on critical resources sent for per-resource AI advice. */
@@ -63,4 +64,9 @@ export async function persistAudit(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     result as unknown as Record<string, any>,
   );
+
+  // Budget evaluation rides on the same choke point every entry path funnels
+  // through; a failure here must never fail the audit itself.
+  await checkBudgets(result, userId).catch((err: unknown) =>
+    console.warn('[Budgets] Check failed:', err));
 }

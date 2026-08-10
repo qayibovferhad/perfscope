@@ -32,6 +32,12 @@ export function useWebsites() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
+  const setBudgets = useMutation({
+    mutationFn: ({ id, ...budgets }: { id: string; performance?: number | null; lcp?: number | null; tbt?: number | null; cls?: number | null; webhookUrl?: string | null }) =>
+      apiClient.patch<Website>(`/websites/${id}/budgets`, budgets).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+
   const setAutomation = useMutation({
     mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[]; scheduleTime?: string }) =>
       apiClient.patch<Website>(`/websites/${id}/automation`, patch).then(r => r.data),
@@ -43,5 +49,5 @@ export function useWebsites() {
       apiClient.post(`/websites/${id}/automation/run`).then(r => r.data),
   });
 
-  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession, setAutomation, triggerRun };
+  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession, setAutomation, setBudgets, triggerRun };
 }
