@@ -1,6 +1,13 @@
 import { useGoogleLogin } from '@react-oauth/google';
 import type { AuthUser } from '@/entities/user';
 
+/**
+ * Google sign-in is optional infrastructure: without a configured client id the
+ * useGoogleLogin hook throws and takes the whole login page down with it, so
+ * pages must gate rendering on this flag.
+ */
+export const googleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 interface Props {
   onSuccess: (user: AuthUser) => void;
   onError:   (msg: string)    => void;

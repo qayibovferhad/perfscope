@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { GoogleButton } from '@/features/auth/ui/GoogleButton';
+import { GoogleButton, googleAuthEnabled } from '@/features/auth/ui/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/model/authStore';
@@ -152,14 +152,18 @@ export function RegisterPage() {
           </p>
         </form>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-ps-divider" />
-          <span className="text-xs text-ps-muted">or</span>
-          <div className="flex-1 h-px bg-ps-divider" />
-        </div>
+        {googleAuthEnabled && (
+          <>
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-ps-divider" />
+              <span className="text-xs text-ps-muted">or</span>
+              <div className="flex-1 h-px bg-ps-divider" />
+            </div>
 
-        <GoogleButton onSuccess={onGoogleSuccess} onError={(msg) => setServerErr(msg)} />
+            <GoogleButton onSuccess={onGoogleSuccess} onError={(msg) => setServerErr(msg)} />
+          </>
+        )}
       </motion.div>
     </div>
   );
