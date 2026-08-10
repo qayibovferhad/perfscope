@@ -1,3 +1,4 @@
+import { fmtMs, fmtCls } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { hostOf, hostPrefixRegex } from '../lib/url.js';
 import type { AnalysisResult } from '../types/index.js';
@@ -23,6 +24,33 @@ function collectFailures(result: AnalysisResult, budgets: NonNullable<IWebsite['
   if (budgets.tbt != null && tbt > budgets.tbt) failures.push({ metric: 'tbt', value: tbt, budget: budgets.tbt });
   if (budgets.cls != null && cls > budgets.cls) failures.push({ metric: 'cls', value: cls, budget: budgets.cls });
   return failures;
+}
+
+function describeFailure(f: BudgetFailure): string {
+  switch (f.metric) {
+    case 'performance': return `performance score ${f.value} (budget ≥ ${f.budget})`;
+    case 'cls':         return `CLS ${fmtCls(f.value)} (budget ≤ ${fmtCls(f.budget)})`;
+    default:            return `${f.metric.toUpperCase()} ${fmtMs(f.value)} (budget ≤ ${fmtMs(f.budget)})`;
+  }
+}
+
+/**
+ * Slack (and Discord) incoming webhooks reject arbitrary JSON — they need their
+ * own envelope. Everything else gets the full structured payload.
+ */
+export function webhookBody(webhookUrl: string, breach: {
+  url: string; formFactor: string | null; failures: BudgetFailure[];
+}, site: { url: string; name: string }): unknown {
+  const lines = breach.failures.map(f => `• ${describeFailure(f)}`).join('\n');
+  const title = `:warning: PerfScope budget breach — ${site.name || site.url}`;
+  const text  = `${title}\n${breach.url} (${breach.formFactor ?? 'desktop'})\n${lines}`;
+
+  try {
+    const host = new URL(webhookUrl).hostname;
+    if (host === 'hooks.slack.com')              return { text };
+    if (host.endsWith('discord.com') || host.endsWith('discordapp.com')) return { content: text.replace(':warning:', '⚠️') };
+  } catch { /* fall through to the raw payload */ }
+  return null;
 }
 
 async function postWebhook(webhookUrl: string, payload: unknown): Promise<void> {
@@ -85,11 +113,13 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
   console.warn(`[Budgets] ${result.url} broke ${failures.map(f => f.metric).join(', ')}`);
 
   if (site.budgets.webhookUrl) {
-    await postWebhook(site.budgets.webhookUrl, {
+    const body = webhookBody(site.budgets.webhookUrl, breach, site) ?? {
       event:   'budget.breach',
       website: { id: String(site._id), url: site.url, name: site.name },
       ...breach,
       at: breach.at.toISOString(),
-    }).catch((err: unknown) => console.warn('[Budgets] Webhook failed:', err));
+    };
+    await postWebhook(site.budgets.webhookUrl, body)
+      .catch((err: unknown) => console.warn('[Budgets] Webhook failed:', err));
   }
 }
