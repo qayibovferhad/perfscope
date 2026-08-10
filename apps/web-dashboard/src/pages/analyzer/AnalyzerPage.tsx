@@ -21,7 +21,9 @@ export function AnalyzerPage() {
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [formFactor, setFormFactor]       = useState<AuditFormFactor>('desktop');
+  const [formFactor, setFormFactor]       = useState<AuditFormFactor>(
+    () => (searchParams.get('ff') === 'mobile' ? 'mobile' : 'desktop'),
+  );
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
   const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
@@ -52,6 +54,19 @@ export function AnalyzerPage() {
     reset();
     analyze(normalized, projectId, formFactor);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleFormFactor(next: AuditFormFactor) {
+    if (next === formFactor) return;
+    setFormFactor(next);
+    // A visible result in the other mode is an explicit ask for this mode's numbers —
+    // re-run the same URL right away instead of making the user press Analyze again.
+    if (data && !isPending) {
+      const target = normalizeUrl(url.trim() || data.url);
+      const projectId = searchParams.get('projectId') ?? undefined;
+      reset();
+      analyze(target, projectId, next);
+    }
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -103,7 +118,7 @@ export function AnalyzerPage() {
         hasSession={!!activeSession}
         progress={progress}
         formFactor={formFactor}
-        onFormFactor={setFormFactor}
+        onFormFactor={handleFormFactor}
         onSubmit={handleSubmit}
       />
 

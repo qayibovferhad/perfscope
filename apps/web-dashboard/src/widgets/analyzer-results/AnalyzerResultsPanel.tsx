@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShieldAlert } from 'lucide-react';
+import { TrendingUp, ShieldAlert, Monitor, Smartphone } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
 import { AiInsights } from '@/features/analyzer/ui/AiInsights';
@@ -46,12 +46,20 @@ export function AnalyzerResultsPanel({ data }: Props) {
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="space-y-8"
     >
-      <p className="text-xs text-muted-foreground -mb-4">
-        Results for{' '}
-        <a href={data.url} target="_blank" rel="noreferrer"
-          className="font-medium text-foreground underline underline-offset-2">
-          {data.url}
-        </a>
+      <p className="text-xs text-muted-foreground -mb-4 flex items-center gap-2">
+        <span>
+          Results for{' '}
+          <a href={data.url} target="_blank" rel="noreferrer"
+            className="font-medium text-foreground underline underline-offset-2">
+            {data.url}
+          </a>
+        </span>
+        {data.formFactor && (
+          <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[.08em] px-[8px] py-[3px] rounded-full border border-ld-border-strong text-ld-text-3">
+            {data.formFactor === 'mobile' ? <Smartphone className="w-[11px] h-[11px]" /> : <Monitor className="w-[11px] h-[11px]" />}
+            {data.formFactor}
+          </span>
+        )}
       </p>
 
       {data.authRedirectDetected && (
