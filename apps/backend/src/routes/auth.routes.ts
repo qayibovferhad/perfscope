@@ -5,7 +5,7 @@ import { User } from '../models/User.model.js';
 import { config } from '../config/index.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 
-export const authRouter = Router();
+export const authRouter: Router = Router();
 
 function sign(payload: object) {
   return jwt.sign(payload, config.jwtSecret, { expiresIn: '30d' });

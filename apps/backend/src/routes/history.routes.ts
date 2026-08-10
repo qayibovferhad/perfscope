@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { HistoryService } from '../services/history.service.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 
-export const historyRouter = Router();
+export const historyRouter: Router = Router();
 
 // GET /api/history/all  — all entries for authenticated user
 historyRouter.get('/history/all', requireAuth, async (req: AuthRequest, res: Response) => {

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { createAuthAuditSession, hasSession, destroySession } from '../services/authAuditSession.js';
 
-export const authAuditRouter = Router();
+export const authAuditRouter: Router = Router();
 
 // POST /api/auth-audit/session — open a visible browser at url, return sessionId
 authAuditRouter.post('/auth-audit/session', async (req: Request, res: Response) => {

@@ -14,6 +14,9 @@ importers:
 
   apps/backend:
     dependencies:
+      '@google/generative-ai':
+        specifier: ^0.24.1
+        version: 0.24.1
       '@perfscope/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -130,9 +133,6 @@ importers:
 
   apps/web-dashboard:
     dependencies:
-      '@google/generative-ai':
-        specifier: ^0.24.1
-        version: 0.24.1
       '@perfscope/shared':
         specifier: workspace:*
         version: link:../../packages/shared

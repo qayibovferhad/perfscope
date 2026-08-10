@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-const router = Router();
+const router: Router = Router();
 
 interface PendingEntry { token?: string; at: number }
 const pending = new Map<string, PendingEntry>();

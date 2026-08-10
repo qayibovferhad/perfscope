@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { CompareHistoryService } from '../services/compareHistory.service.js';
 
-export const compareHistoryRouter = Router();
+export const compareHistoryRouter: Router = Router();
 
 // GET /api/compare-history — list unique pairs (latest per pair)
 compareHistoryRouter.get('/compare-history', async (req: Request, res: Response) => {

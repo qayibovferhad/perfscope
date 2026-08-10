@@ -5,7 +5,7 @@ import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 
-export const websiteRouter = Router();
+export const websiteRouter: Router = Router();
 
 const MAX_LIMIT = 100;
 

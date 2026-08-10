@@ -2,7 +2,7 @@ import { Router, type Response } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
 
-export const competitorSessionRouter = Router();
+export const competitorSessionRouter: Router = Router();
 
 // GET /api/competitor-sessions
 competitorSessionRouter.get('/competitor-sessions', requireAuth, async (req: AuthRequest, res: Response) => {
