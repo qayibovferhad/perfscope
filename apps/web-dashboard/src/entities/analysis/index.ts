@@ -51,3 +51,4 @@ export type { AnalysisCallbacks } from './api/analysisSocket'
 
 export { usePrefetchStore } from './model/prefetchStore'
 export type { PrefetchPartialMap } from './model/prefetchStore'
+export { useAuditModeStore } from './model/auditModeStore'

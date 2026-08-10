@@ -11,7 +11,7 @@ import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
 import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
-import { usePrefetchStore, type AuditFormFactor } from '@/entities/analysis';
+import { usePrefetchStore, useAuditModeStore, type AuditFormFactor } from '@/entities/analysis';
 import { useWebsites } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
@@ -21,15 +21,16 @@ export function AnalyzerPage() {
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [formFactor, setFormFactor]       = useState<AuditFormFactor>(
-    () => (searchParams.get('ff') === 'mobile' ? 'mobile' : 'desktop'),
-  );
+  const { formFactor, setFormFactor } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
   const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
   const handledUrl = useRef<string | null>(null);
 
   useEffect(() => {
+    const ff = searchParams.get('ff');
+    if (ff === 'mobile' || ff === 'desktop') setFormFactor(ff);
+
     const paramUrl  = searchParams.get('url');
     const projectId = searchParams.get('projectId') ?? undefined;
     if (!paramUrl || paramUrl === handledUrl.current) return;
@@ -52,7 +53,7 @@ export function AnalyzerPage() {
 
     const normalized = normalizeUrl(paramUrl);
     reset();
-    analyze(normalized, projectId, formFactor);
+    analyze(normalized, projectId, (ff === 'mobile' || ff === 'desktop') ? ff : useAuditModeStore.getState().formFactor);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFormFactor(next: AuditFormFactor) {

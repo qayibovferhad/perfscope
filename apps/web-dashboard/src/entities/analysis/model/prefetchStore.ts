@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis } from '../api/analysisSocket';
+import { useAuditModeStore } from './auditModeStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@perfscope/shared';
 
 export type PrefetchPartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
@@ -33,6 +34,10 @@ export const usePrefetchStore = create<PrefetchStore>((set, get) => ({
 
     set({ url, status: 'loading', result: null, partials: {}, progress: null });
 
+    // Honor the persisted device profile — a website-card "Analyze" click must
+    // run in the same mode the analyzer toggle shows.
+    const { formFactor } = useAuditModeStore.getState();
+
     const cleanup = startAnalysis(url, {
       onProgress: (progress) => set({ progress }),
       onPartial:  (partial)  => set((s) => ({
@@ -40,7 +45,7 @@ export const usePrefetchStore = create<PrefetchStore>((set, get) => ({
       })),
       onComplete: (result)   => set({ status: 'success', result, progress: null }),
       onError:    ()         => set({ status: 'error', progress: null }),
-    });
+    }, undefined, formFactor);
 
     set({ _cleanup: cleanup });
   },
