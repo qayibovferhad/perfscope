@@ -45,6 +45,7 @@ const budgetsSchema = new Schema(
     tbt:         { type: Number, default: null },
     cls:         { type: Number, default: null },
     webhookUrl:  { type: String, default: null },
+    alertEmail:  { type: String, default: null },
   },
   { _id: false },
 );
@@ -98,6 +99,7 @@ export interface IWebsiteBudgets {
   tbt:         number | null;
   cls:         number | null;
   webhookUrl:  string | null;
+  alertEmail:  string | null;
 }
 
 export interface IBudgetBreach {

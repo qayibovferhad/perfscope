@@ -33,7 +33,7 @@ export function useWebsites() {
   });
 
   const setBudgets = useMutation({
-    mutationFn: ({ id, ...budgets }: { id: string; performance?: number | null; lcp?: number | null; tbt?: number | null; cls?: number | null; webhookUrl?: string | null }) =>
+    mutationFn: ({ id, ...budgets }: { id: string; performance?: number | null; lcp?: number | null; tbt?: number | null; cls?: number | null; webhookUrl?: string | null; alertEmail?: string | null }) =>
       apiClient.patch<Website>(`/websites/${id}/budgets`, budgets).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

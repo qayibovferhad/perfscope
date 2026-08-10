@@ -18,6 +18,15 @@ export const config = {
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
   jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
 
+  /** Email alerts are disabled unless SMTP_HOST is set. */
+  smtp: {
+    host:   process.env['SMTP_HOST'],
+    port:   parseInt(optionalEnv('SMTP_PORT', '587'), 10),
+    secure: optionalEnv('SMTP_SECURE', 'false') === 'true',
+    user:   process.env['SMTP_USER'],
+    pass:   process.env['SMTP_PASS'],
+    from:   optionalEnv('SMTP_FROM', 'PerfScope Alerts <alerts@perfscope.local>'),
+  },
 } as const;
 
 export function validateConfig(): void {

@@ -31,6 +31,7 @@ export function SetupModal({ site, open, onClose }: Props) {
   const [budgetTbt,  setBudgetTbt]  = useState(site.budgets?.tbt?.toString() ?? '');
   const [budgetCls,  setBudgetCls]  = useState(site.budgets?.cls?.toString() ?? '');
   const [webhookUrl, setWebhookUrl] = useState(site.budgets?.webhookUrl ?? '');
+  const [alertEmail, setAlertEmail] = useState(site.budgets?.alertEmail ?? '');
 
   const parseNum = (v: string): number | null => {
     const n = Number(v.trim());
@@ -57,6 +58,7 @@ export function SetupModal({ site, open, onClose }: Props) {
         tbt:         parseNum(budgetTbt),
         cls:         parseNum(budgetCls),
         webhookUrl:  webhookUrl.trim() || null,
+        alertEmail:  alertEmail.trim() || null,
       }),
     ]);
     onClose();
@@ -154,14 +156,26 @@ export function SetupModal({ site, open, onClose }: Props) {
               </div>
             ))}
           </div>
-          <div className="mt-2">
-            <p className="text-[9px] text-ld-text-3 mb-1">Alert webhook URL (optional — POSTs on every breach)</p>
-            <Input
-              value={webhookUrl}
-              onChange={e => setWebhookUrl(e.target.value)}
-              placeholder="https://hooks.slack.com/…"
-              className="h-8 text-xs font-mono"
-            />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[9px] text-ld-text-3 mb-1">Alert webhook (Slack/Discord/custom)</p>
+              <Input
+                value={webhookUrl}
+                onChange={e => setWebhookUrl(e.target.value)}
+                placeholder="https://hooks.slack.com/…"
+                className="h-8 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <p className="text-[9px] text-ld-text-3 mb-1">Alert email</p>
+              <Input
+                value={alertEmail}
+                onChange={e => setAlertEmail(e.target.value)}
+                placeholder="you@company.com"
+                type="email"
+                className="h-8 text-xs font-mono"
+              />
+            </div>
           </div>
         </div>
 

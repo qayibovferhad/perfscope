@@ -1,5 +1,6 @@
 import { fmtMs, fmtCls } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
+import { Mailer } from './mailer.service.js';
 import { hostOf, hostPrefixRegex } from '../lib/url.js';
 import type { AnalysisResult } from '../types/index.js';
 
@@ -111,6 +112,17 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
   site.set('lastBudgetBreach', breach);
   await site.save();
   console.warn(`[Budgets] ${result.url} broke ${failures.map(f => f.metric).join(', ')}`);
+
+  if (site.budgets.alertEmail && Mailer.isAvailable()) {
+    const lines = failures.map(f => `  • ${describeFailure(f)}`).join('\n');
+    const subject = `PerfScope budget breach — ${site.name || site.url}`;
+    const text = `${breach.url} (${breach.formFactor ?? 'desktop'}) broke its performance budgets:\n\n${lines}\n\nAudit id: ${result.id}`;
+    const html = `<p><b>${breach.url}</b> (${breach.formFactor ?? 'desktop'}) broke its performance budgets:</p>` +
+      `<ul>${failures.map(f => `<li>${describeFailure(f)}</li>`).join('')}</ul>` +
+      `<p style="color:#888;font-size:12px">Audit id: ${result.id}</p>`;
+    await Mailer.send(site.budgets.alertEmail, subject, text, html)
+      .catch((err: unknown) => console.warn('[Budgets] Alert email failed:', err));
+  }
 
   if (site.budgets.webhookUrl) {
     const body = webhookBody(site.budgets.webhookUrl, breach, site) ?? {

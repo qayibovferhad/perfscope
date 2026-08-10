@@ -34,6 +34,8 @@ export interface WebsiteBudgets {
   cls?: number | null
   /** POSTed a BudgetBreach payload whenever an audit violates the budgets. */
   webhookUrl?: string | null
+  /** Receives a breach summary email (requires SMTP_* configured on the backend). */
+  alertEmail?: string | null
 }
 
 export interface BudgetFailure {

@@ -201,7 +201,7 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
   try {
     const body = req.body as {
       performance?: number | null; lcp?: number | null; tbt?: number | null;
-      cls?: number | null; webhookUrl?: string | null;
+      cls?: number | null; webhookUrl?: string | null; alertEmail?: string | null;
     };
 
     const num = (v: unknown, min: number, max: number): number | null =>
@@ -218,12 +218,22 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
       }
     }
 
+    let alertEmail: string | null = null;
+    if (typeof body.alertEmail === 'string' && body.alertEmail.trim()) {
+      const email = body.alertEmail.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, error: 'alertEmail must be a valid email address' });
+      }
+      alertEmail = email;
+    }
+
     const budgets = {
       performance: num(body.performance, 1, 100),
       lcp:         num(body.lcp, 100, 60_000),
       tbt:         num(body.tbt, 0,   60_000),
       cls:         num(body.cls, 0.01, 5),
       webhookUrl,
+      alertEmail,
     };
     const empty = budgets.performance == null && budgets.lcp == null &&
                   budgets.tbt == null && budgets.cls == null;
