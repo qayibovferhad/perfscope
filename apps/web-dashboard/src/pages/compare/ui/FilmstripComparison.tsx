@@ -415,8 +415,6 @@ export function FilmstripComparison({
   const tData = target.timelineData;
   const cData = competitor.timelineData;
 
-  if (!tData && !cData) return null;
-
   const totalMs = Math.max(
     tData?.frames.at(-1)?.timing ?? 0,
     cData?.frames.at(-1)?.timing ?? 0,
@@ -474,6 +472,9 @@ export function FilmstripComparison({
     if (from === 0) setCurrentMs(0);
     startPlay(from);
   }, [isPlaying, currentMs, totalMs, stopPlay, startPlay]);
+
+  // After the hooks — an early return above them breaks hook order once a side loads.
+  if (!tData && !cData) return null;
 
   return (
     <motion.div

@@ -3,26 +3,23 @@ import { History } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 
-const T_HEX  = 'var(--ps-accent)';
-const T_GLOW = 'var(--ps-accent-glow-lg)';
-
 function Breadcrumb() {
   return (
     <nav className="flex items-center gap-1.5 text-sm select-none flex-wrap">
       {[{ to: '/', label: 'Analyzer' }, { to: '/compare', label: 'Competitive Analysis' }].map(({ to, label }) => (
         <span key={to} className="flex items-center gap-1.5">
-          <Link to={to} className="font-medium transition-all duration-150"
-            style={{ color: 'rgba(255,255,255,0.38)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T_HEX; (e.currentTarget as HTMLElement).style.textShadow = `0 0 12px ${T_GLOW}`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.38)'; (e.currentTarget as HTMLElement).style.textShadow = 'none'; }}>
+          <Link
+            to={to}
+            className="font-medium transition-all duration-150 text-ld-text-3 hover:text-ld-accent hover:[text-shadow:0_0_12px_var(--ld-accent-line)]"
+          >
             {label}
           </Link>
-          <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 16 }}>›</span>
+          <span className="text-ld-text-3 opacity-50 text-[16px]">›</span>
         </span>
       ))}
       <div className="flex items-center gap-1.5">
-        <History className="w-3.5 h-3.5" style={{ color: T_HEX }} />
-        <span className="font-semibold" style={{ color: '#e2e8f0' }}>Compare History</span>
+        <History className="w-3.5 h-3.5 text-ld-accent" />
+        <span className="font-semibold text-ld-text">Compare History</span>
       </div>
     </nav>
   );

@@ -11,7 +11,7 @@ import type {
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { AiService } from '../services/ai.service.js';
 import { HistoryService } from '../services/history.service.js';
-import { hasSession, extractSessionData, destroySession } from '../services/authAuditSession.js';
+import { hasSession, extractSessionData } from '../services/authAuditSession.js';
 import { Website } from '../models/Website.model.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
 import { config } from '../config/index.js';

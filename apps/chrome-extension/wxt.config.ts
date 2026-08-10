@@ -4,7 +4,6 @@ import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 
 export default defineConfig({
-  extensionEntrypoints: {},
   manifest: {
     name: 'PerfScope Companion',
     description: "Analyze any page with PerfScope's Lighthouse engine and compare against your own sites.",

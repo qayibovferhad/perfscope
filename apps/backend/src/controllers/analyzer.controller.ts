@@ -76,7 +76,7 @@ export class AnalyzerController {
 
     const entry = {
       id:        result.id,
-      shortId:   result.id.slice(0, 8),
+      shortId:   result.id.slice(0, 7),
       url:       result.url,
       timestamp: result.timestamp,
       scores:    result.scores,

@@ -1,8 +1,10 @@
+import { fmtSec } from '@/shared/lib/format';
+
 const SCORE_MAP = [
-  { min: 90, label: 'Excellent',  bg: 'var(--ps-healthy-muted)' },
-  { min: 75, label: 'Good',       bg: 'var(--ps-healthy-muted)' },
-  { min: 50, label: 'Needs Work', bg: 'var(--ps-amber-muted)'   },
-  { min:  0, label: 'Poor',       bg: 'var(--ps-reg-muted)'     },
+  { min: 90, label: 'Excellent',  bg: 'var(--ld-accent-soft)'    },
+  { min: 75, label: 'Good',       bg: 'var(--ld-accent-soft)'    },
+  { min: 50, label: 'Needs Work', bg: 'rgba(230,162,60,.10)'     },
+  { min:  0, label: 'Poor',       bg: 'rgba(242,100,122,.09)'    },
 ] as const;
 
 function getScore(score: number) {
@@ -12,9 +14,7 @@ function getScore(score: number) {
 export function scoreLabel(score: number) { return getScore(score).label; }
 export function scoreBg(score: number)    { return getScore(score).bg;    }
 
-export function formatMs(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`;
-}
+export const formatMs = fmtSec;
 
 export function formatTbt(ms: number): string {
   return `${Math.round(ms)}ms`;

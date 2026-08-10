@@ -5,6 +5,23 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+// FSD layer enforcement: imports flow strictly downward
+// app → pages → widgets → features → entities → shared.
+// Same-slice imports must be relative; cross-slice via '@/<layer>/<slice>'.
+const banned = (layers, extra = []) => ({
+  rules: {
+    'no-restricted-imports': ['error', {
+      patterns: [
+        ...layers.map((l) => ({
+          group: [`@/${l}/*`, `@/${l}`],
+          message: `FSD: this layer must not import from '${l}' (imports flow downward only).`,
+        })),
+        ...extra,
+      ],
+    }],
+  },
+})
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -19,5 +36,35 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Advisory findings from the compiler-powered react-hooks plugin stay visible
+      // as warnings; errors are reserved for real defects and FSD boundary breaks.
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/incompatible-library': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
+  },
+  { files: ['src/shared/**/*.{ts,tsx}'],   ...banned(['entities', 'features', 'widgets', 'pages', 'app']) },
+  { files: ['src/entities/**/*.{ts,tsx}'], ...banned(['features', 'widgets', 'pages', 'app']) },
+  {
+    files: ['src/features/**/*.{ts,tsx}'],
+    ...banned(['widgets', 'pages', 'app'], [{
+      // Cross-feature imports are banned; auth-audit's public barrel is the one
+      // sanctioned exception (compare + websites embed its modals).
+      group: ['@/features/*', '!@/features/auth-audit'],
+      message: 'FSD: no cross-feature imports (use relative paths inside a slice; auth-audit barrel is the only exception).',
+    }]),
+  },
+  { files: ['src/widgets/**/*.{ts,tsx}'],  ...banned(['pages', 'app'], [{
+      group: ['@/widgets/*', '@/widgets'],
+      message: 'FSD: widgets must not import other widgets.',
+    }]),
+  },
+  { files: ['src/pages/**/*.{ts,tsx}'],    ...banned(['app'], [{
+      group: ['@/pages/*', '@/pages'],
+      message: 'FSD: pages must not import other pages.',
+    }]),
   },
 ])

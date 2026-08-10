@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Globe, AlertTriangle, Download, FileText } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
-import { isReg } from '@/features/history/lib/format';
-import { exportJson, exportCsv } from '@/features/history/lib/export';
+import { isReg } from '../lib/format';
+import { exportJson, exportCsv } from '../lib/export';
 import { ScoreSparkline } from './ScoreSparkline';
 import { getHostname } from '@/entities/website';
 import { vitalBand, type ScoreBand } from '@/entities/analysis';

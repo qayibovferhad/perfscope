@@ -1,9 +1,10 @@
-import { rateScore, rateVital, type ScoreRating, type VitalKey } from '@perfscope/shared';
+import { rateScore, rateVital, RATING_COLOR, type ScoreRating, type VitalKey } from '@perfscope/shared';
 
-// Hex values match the CSS design tokens exactly
-export const SCORE_GOOD = '#10b981'; // var(--ps-healthy)
-export const SCORE_WARN = '#f59e0b'; // var(--ps-amber)
-export const SCORE_BAD  = '#ef4444'; // var(--ps-regression)
+// Hex literals (not CSS vars) because callers derive alpha variants ("`${color}18`");
+// the values are the shared RATING_COLOR palette, aliased for existing call sites.
+export const SCORE_GOOD = RATING_COLOR.good;
+export const SCORE_WARN = RATING_COLOR['needs-improvement'];
+export const SCORE_BAD  = RATING_COLOR.poor;
 
 /**
  * Compact display band used across client UI. Thresholds live in @perfscope/shared

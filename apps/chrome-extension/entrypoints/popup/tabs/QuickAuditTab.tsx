@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createApiClient, rateLcp, rateCls, rateTbt } from '@perfscope/shared'
+import { createApiClient, rateVital, RATING_COLOR, fmtSec, fmtMs, fmtCls, type ScoreRating } from '@perfscope/shared'
 import type { AnalysisResult } from '@perfscope/shared'
 import { ScoreCard }      from '../components/ScoreCard'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -9,11 +9,6 @@ interface Props {
   token:      string | null
 }
 
-const RATING_COLOR: Record<string, string> = {
-  good:                '#10b981',
-  'needs-improvement': '#F59E0B',
-  poor:                '#ef4444',
-}
 
 export function QuickAuditTab({ backendUrl, token }: Props) {
   const [currentUrl, setCurrentUrl] = useState('')
@@ -123,10 +118,10 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
           <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800">
             <span className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">Core Web Vitals</span>
             <div className="grid grid-cols-2 gap-1.5">
-              <VitalChip label="LCP" value={`${(result.metrics.lcp / 1000).toFixed(2)} s`} rating={rateLcp(result.metrics.lcp)} />
-              <VitalChip label="TBT" value={`${Math.round(result.metrics.tbt)} ms`}         rating={rateTbt(result.metrics.tbt)} />
-              <VitalChip label="CLS" value={result.metrics.cls.toFixed(3)}                   rating={rateCls(result.metrics.cls)} />
-              <VitalChip label="FCP" value={`${(result.metrics.fcp / 1000).toFixed(2)} s`} rating={rateLcp(result.metrics.fcp)} />
+              <VitalChip label="LCP" value={fmtSec(result.metrics.lcp)} rating={rateVital('lcp', result.metrics.lcp)} />
+              <VitalChip label="TBT" value={fmtMs(result.metrics.tbt)}  rating={rateVital('tbt', result.metrics.tbt)} />
+              <VitalChip label="CLS" value={fmtCls(result.metrics.cls)} rating={rateVital('cls', result.metrics.cls)} />
+              <VitalChip label="FCP" value={fmtSec(result.metrics.fcp)} rating={rateVital('fcp', result.metrics.fcp)} />
             </div>
           </div>
 
@@ -145,8 +140,8 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
   )
 }
 
-function VitalChip({ label, value, rating }: { label: string; value: string; rating: string }) {
-  const color = RATING_COLOR[rating] ?? '#94a3b8'
+function VitalChip({ label, value, rating }: { label: string; value: string; rating: ScoreRating }) {
+  const color = RATING_COLOR[rating]
   return (
     <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-800/60">
       <span className="text-[10px] text-slate-500 font-medium">{label}</span>

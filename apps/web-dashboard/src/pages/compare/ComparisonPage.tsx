@@ -75,14 +75,12 @@ export function ComparisonPage() {
 
   const handleLaunch = () => {
     if (!target.isSuccess && !isBlank(targetUrl)) {
-      targetAuthSession
-        ? target.startAuthAudit(targetAuthSession, normalizeUrl(targetUrl))
-        : target.analyze(normalizeUrl(targetUrl));
+      if (targetAuthSession) target.startAuthAudit(targetAuthSession, normalizeUrl(targetUrl));
+      else                   target.analyze(normalizeUrl(targetUrl));
     }
     if (!competitor.isSuccess && !isBlank(competitorUrl)) {
-      competitorAuthSession
-        ? competitor.startAuthAudit(competitorAuthSession, normalizeUrl(competitorUrl))
-        : competitor.analyze(normalizeUrl(competitorUrl));
+      if (competitorAuthSession) competitor.startAuthAudit(competitorAuthSession, normalizeUrl(competitorUrl));
+      else                       competitor.analyze(normalizeUrl(competitorUrl));
     }
   };
 

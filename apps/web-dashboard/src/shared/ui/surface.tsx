@@ -4,7 +4,7 @@ import { cn } from '@/shared/lib/utils';
 
 /**
  * Surface — the canonical panel primitive.
- * Replaces ad-hoc `<div style={{ background: 'var(--ps-panel-bg)', border: '1px solid var(--ps-panel-border)' }}>`.
+ * Replaces ad-hoc inline-styled panel divs — tones are built on the --ld-* tokens.
  *
  * Tones map to the semantic colour families in the design system. Use `padding` instead
  * of writing `p-5` on the consumer side so spacing stays consistent across the app.

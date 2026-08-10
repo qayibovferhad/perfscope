@@ -48,7 +48,7 @@ function resolveDevtoolsLog(artifacts: unknown): CdpEntry[] | undefined {
 }
 
 /** Extract compact Network.requestWillBeSent events from a Lighthouse artifact object.
- *  Called inside the worker thread where parsing is not possible. */
+ *  NOTE: the worker keeps its own private copy of this logic (lighthouse.worker.ts). */
 export function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] | undefined {
   const log = resolveDevtoolsLog(artifacts);
   if (!log || log.length === 0) return undefined;

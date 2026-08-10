@@ -12,14 +12,14 @@ const buttonVariants = cva(
         default:
           "bg-[image:var(--ld-grad)] text-white font-bold shadow-[0_18px_60px_-20px_rgba(20,192,138,.45)] hover:-translate-y-px hover:shadow-[0_20px_44px_-16px_rgba(20,192,138,.6)]",
         destructive:
-          "bg-[var(--ps-regression)] text-white hover:opacity-90",
+          "bg-[var(--ld-rose)] text-white hover:opacity-90",
         outline:
           "border border-[var(--ld-border-strong)] bg-[var(--ld-surface)] text-[var(--ld-text)] hover:bg-[var(--ld-surface-hover)] hover:border-[var(--ld-accent-line)]",
         secondary:
-          "bg-[var(--ps-accent-muted)] text-[var(--ps-accent)] border border-[var(--ps-accent-border)] hover:bg-[var(--ps-accent-hover)]",
+          "bg-[var(--ld-accent-soft)] text-[var(--ld-accent)] border border-[var(--ld-accent-line)] hover:bg-[var(--ld-accent-line)]",
         ghost:
           "text-[var(--ld-text-2)] hover:bg-[var(--ld-surface-hover)] hover:text-[var(--ld-text)]",
-        link: "text-[var(--ps-accent)] underline-offset-4 hover:underline",
+        link: "text-[var(--ld-accent)] underline-offset-4 hover:underline",
         dark: "bg-[#04130d] text-[#eafff5] font-bold shadow-none hover:-translate-y-px hover:shadow-none",
       },
       size: {

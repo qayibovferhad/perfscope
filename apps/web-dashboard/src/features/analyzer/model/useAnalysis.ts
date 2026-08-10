@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/entities/analysis';
-import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
+import { useAnalysisStore } from './analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory } from '@/entities/analysis';
 
 

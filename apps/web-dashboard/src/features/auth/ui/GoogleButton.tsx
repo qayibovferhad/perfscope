@@ -29,22 +29,7 @@ export function GoogleButton({ onSuccess, onError }: Props) {
     <button
       type="button"
       onClick={() => login()}
-      className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-      style={{
-        background:  'var(--ps-panel-bg)',
-        border:      '1px solid var(--ps-panel-border)',
-        color:       'var(--ps-text-secondary)',
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-accent-border)';
-        (e.currentTarget as HTMLElement).style.color       = 'var(--ps-text-heading)';
-        (e.currentTarget as HTMLElement).style.boxShadow  = '0 0 0 3px var(--ps-accent-muted)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = 'var(--ps-panel-border)';
-        (e.currentTarget as HTMLElement).style.color       = 'var(--ps-text-secondary)';
-        (e.currentTarget as HTMLElement).style.boxShadow  = 'none';
-      }}
+      className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 bg-ld-surface border border-ld-border text-ld-text-3 hover:border-ld-accent-line hover:text-ld-text hover:[box-shadow:0_0_0_3px_var(--ld-accent-soft)]"
     >
       {/* Google "G" logo */}
       <svg width="18" height="18" viewBox="0 0 48 48">

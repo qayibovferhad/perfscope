@@ -1,19 +1,31 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { LandingPage }            from '@/pages/landing';
-import { LoginPage }              from '@/pages/login/LoginPage';
-import { RegisterPage }           from '@/pages/register/RegisterPage';
-import { ProtectedRoute }         from '@/features/auth/ui/ProtectedRoute';
-import { DashboardLayout }        from '@/widgets/dashboard-layout';
-import { AnalyzerPage }           from '@/pages/analyzer/AnalyzerPage';
-import { ComparisonPage }         from '@/pages/compare/ComparisonPage';
-import { HistoryPage }            from '@/pages/history/HistoryPage';
-import { CompareHistoryPage }     from '@/pages/compare-history/CompareHistoryPage';
-import { WebsitesPage }           from '@/pages/websites/WebsitesPage';
-import { ProjectDetailPage }      from '@/pages/project-detail/ProjectDetailPage';
-import { AutomationPage }         from '@/pages/automation/AutomationPage';
-import { ExtensionSettingsPage }  from '@/pages/extension/ExtensionSettingsPage';
-import { SettingsPage }           from '@/pages/settings/SettingsPage';
-import { CliAuthPage }            from '@/pages/cli-auth/CliAuthPage';
+import { Loader2 } from 'lucide-react';
+import { ProtectedRoute }  from '@/features/auth/ui/ProtectedRoute';
+import { DashboardLayout } from '@/widgets/dashboard-layout';
+
+// Each page is its own chunk — visiting the landing no longer downloads the dashboard.
+const LandingPage           = lazy(() => import('@/pages/landing').then(m => ({ default: m.LandingPage })));
+const LoginPage             = lazy(() => import('@/pages/login/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage          = lazy(() => import('@/pages/register/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const AnalyzerPage          = lazy(() => import('@/pages/analyzer/AnalyzerPage').then(m => ({ default: m.AnalyzerPage })));
+const ComparisonPage        = lazy(() => import('@/pages/compare/ComparisonPage').then(m => ({ default: m.ComparisonPage })));
+const HistoryPage           = lazy(() => import('@/pages/history/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const CompareHistoryPage    = lazy(() => import('@/pages/compare-history/CompareHistoryPage').then(m => ({ default: m.CompareHistoryPage })));
+const WebsitesPage          = lazy(() => import('@/pages/websites/WebsitesPage').then(m => ({ default: m.WebsitesPage })));
+const ProjectDetailPage     = lazy(() => import('@/pages/project-detail/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
+const AutomationPage        = lazy(() => import('@/pages/automation/AutomationPage').then(m => ({ default: m.AutomationPage })));
+const ExtensionSettingsPage = lazy(() => import('@/pages/extension/ExtensionSettingsPage').then(m => ({ default: m.ExtensionSettingsPage })));
+const SettingsPage          = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const CliAuthPage           = lazy(() => import('@/pages/cli-auth/CliAuthPage').then(m => ({ default: m.CliAuthPage })));
+
+function PageFallback() {
+  return (
+    <div className="min-h-[60vh] grid place-items-center">
+      <Loader2 className="w-6 h-6 animate-spin text-ld-text-3" />
+    </div>
+  );
+}
 
 function DashboardRoute({ children }: { children: React.ReactNode }) {
   return (
@@ -25,7 +37,7 @@ function DashboardRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
+    <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/"      element={<LandingPage />} />
         <Route path="/login"    element={<LoginPage />} />
@@ -42,6 +54,6 @@ export default function App() {
         <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
         <Route path="/cli-auth"        element={<CliAuthPage />} />
       </Routes>
-    </>
+    </Suspense>
   );
 }

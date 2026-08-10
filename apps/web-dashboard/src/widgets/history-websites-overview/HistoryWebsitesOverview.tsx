@@ -48,10 +48,7 @@ export function HistoryWebsitesOverview({ allEntries, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-28">
-        <div
-          className="w-6 h-6 rounded-full border-2 animate-spin"
-          style={{ borderColor: 'rgba(139,92,246,0.18)', borderTopColor: 'var(--ps-accent)' }}
-        />
+        <div className="w-6 h-6 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
       </div>
     );
   }

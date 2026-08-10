@@ -44,19 +44,10 @@ import type { AnalysisProgress, AnalysisResult, CategoryPartial } from '@perfsco
 
 // ─── Backend-specific: REST contracts ───────────────────────────────────────
 
-export interface StartAnalysisBody {
-  url: string;
-}
-
 export interface ApiResponse<T> {
   success: boolean;
   data?:   T;
   error?:  string;
-}
-
-export interface StartAnalysisResponse {
-  analysisId: string;
-  message:    string;
 }
 
 // ─── Backend-specific: Socket.io event signatures ───────────────────────────

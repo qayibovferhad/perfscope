@@ -32,7 +32,7 @@ authRouter.post('/auth/register', async (req: Request, res: Response) => {
       token,
       user: { sub: user._id, name: user.name, email: user.email, picture: user.picture },
     });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -58,7 +58,7 @@ authRouter.post('/auth/login', async (req: Request, res: Response) => {
       token,
       user: { sub: user._id, name: user.name, email: user.email, picture: user.picture },
     });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ error: 'Server error' });
   }
 });

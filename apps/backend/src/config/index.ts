@@ -18,9 +18,6 @@ export const config = {
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
   jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
 
-  get isDev(): boolean {
-    return this.nodeEnv === 'development';
-  },
 } as const;
 
 export function validateConfig(): void {

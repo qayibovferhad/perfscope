@@ -107,7 +107,7 @@ websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res
 
     const hostRx = new RegExp(`^(${hosts.map(escapeRegex).join('|')})(/|$)`);
     const entries = await HistoryModel
-      .find({ userId: req.userId, normalizedUrl: hostRx, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
+      .find({ userId: req.userId!, normalizedUrl: hostRx, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
       .select('normalizedUrl scores.performance')
       .lean();
 
@@ -143,7 +143,7 @@ websiteRouter.post('/websites', requireAuth, async (req: AuthRequest, res: Respo
 
     const normalized = url.startsWith('http') ? url : `https://${url}`;
     const website = await Website.findOneAndUpdate(
-      { userId: req.userId, url: normalized },
+      { userId: req.userId!, url: normalized },
       { url: normalized, name: name ?? '' },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     );
@@ -162,7 +162,7 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
     };
 
     const website = await Website.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
+      { _id: req.params['id']!, userId: req.userId! },
       {
         session: { cookies, localStorage: ls, capturedAt: new Date() },
         // Capturing a session is the answer to the login-wall warning, so clear it now
@@ -197,7 +197,7 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
     }
 
     const website = await Website.findOneAndUpdate(
-      { _id: req.params['id'], userId: req.userId },
+      { _id: req.params['id']!, userId: req.userId! },
       update,
       { returnDocument: 'after' },
     );
@@ -212,7 +212,7 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
 // POST /api/websites/:id/automation/run — manual trigger for a single website
 websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const website = await Website.findOne({ _id: req.params['id'], userId: req.userId }).lean();
+    const website = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).lean();
     if (!website) return res.status(404).json({ error: 'Website not found' });
 
     // Fire and forget — respond immediately, audit runs in background.
@@ -229,7 +229,7 @@ websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: Auth
 // DELETE /api/websites/:id
 websiteRouter.delete('/websites/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    await Website.deleteOne({ _id: req.params['id'], userId: req.userId });
+    await Website.deleteOne({ _id: req.params['id']!, userId: req.userId! });
     return res.json({ ok: true });
   } catch {
     return res.status(500).json({ error: 'Server error' });

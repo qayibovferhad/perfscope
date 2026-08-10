@@ -1,5 +1,5 @@
 import { Activity, GitCompareArrows } from 'lucide-react';
-import type { HistoryTab } from '@/features/history/model/types';
+import type { HistoryTab } from '../model/types';
 
 const TABS = [
   { key: 'analysis' as HistoryTab, label: 'Analysis', icon: <Activity         className="w-[16px] h-[16px]" /> },

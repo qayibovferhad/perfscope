@@ -212,7 +212,8 @@ export function WaterfallComparison({
   }, [stopPlayback, sharedMotionMs]);
 
   const togglePlay = useCallback(() => {
-    isPlaying ? stopPlayback() : startPlayback();
+    if (isPlaying) stopPlayback();
+    else startPlayback();
   }, [isPlaying, stopPlayback, startPlayback]);
 
   // ── Guard — after all hooks ────────────────────────────────────────────────

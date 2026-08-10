@@ -6,6 +6,7 @@ export * from './types/user.js'
 
 // ─── Lib ────────────────────────────────────────────────────────────────────
 export * from './lib/rating.js'
+export * from './lib/format.js'
 
 // ─── API client ─────────────────────────────────────────────────────────────
 export * from './api/client.js'

@@ -58,7 +58,7 @@ export function HistoryPage() {
   }
 
   function setTab(t: HistoryTab) {
-    setParams(_ => {
+    setParams(() => {
       const n = new URLSearchParams();
       if (t !== 'analysis') n.set('tab', t);
       return n;

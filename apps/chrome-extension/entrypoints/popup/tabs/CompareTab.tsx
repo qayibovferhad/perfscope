@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createApiClient } from '@perfscope/shared'
+import { createApiClient, fmtSec, fmtMs, fmtCls } from '@perfscope/shared'
 import type { AnalysisResult, WebsiteDoc, HistoryEntry } from '@perfscope/shared'
 import { MetricBar } from '../components/MetricBar'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -201,7 +201,7 @@ function CompareResults({ state, competitorHostname }: { state: CompareState; co
           competitorValue={competitor.metrics.lcp}
           max={8000}
           lowerIsBetter
-          formatValue={v => `${(v / 1000).toFixed(2)}s`}
+          formatValue={fmtSec}
         />
         <MetricBar
           label="TBT"
@@ -211,7 +211,7 @@ function CompareResults({ state, competitorHostname }: { state: CompareState; co
           competitorValue={competitor.metrics.tbt}
           max={1500}
           lowerIsBetter
-          formatValue={v => `${Math.round(v)}ms`}
+          formatValue={fmtMs}
         />
         <MetricBar
           label="CLS"
@@ -221,7 +221,7 @@ function CompareResults({ state, competitorHostname }: { state: CompareState; co
           competitorValue={competitor.metrics.cls}
           max={0.5}
           lowerIsBetter
-          formatValue={v => v.toFixed(3)}
+          formatValue={fmtCls}
         />
       </div>
     </div>

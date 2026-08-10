@@ -4,9 +4,9 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Lightbulb, Minus,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
-import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '@/features/history/model/types';
-import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct } from '@/features/history/lib/format';
-import { sortRows } from '@/features/history/lib/computeRows';
+import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '../model/types';
+import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct } from '../lib/format';
+import { sortRows } from '../lib/computeRows';
 
 /** "/requests" — the audited path, since the table now spans every route of a site. */
 function routeOf(url: string): string {

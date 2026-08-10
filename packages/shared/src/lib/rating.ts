@@ -25,6 +25,13 @@ export function rateVital(key: VitalKey, value: number): ScoreRating {
   return 'poor'
 }
 
+/** Hex per rating, matching the dashboard's dark --ld-* palette (accent/amber/rose). */
+export const RATING_COLOR: Record<ScoreRating, string> = {
+  good:                '#14c08a',
+  'needs-improvement': '#e6a23c',
+  poor:                '#f2647a',
+}
+
 export const rateLcp = (ms: number): ScoreRating => rateVital('lcp', ms)
 export const rateCls = (value: number): ScoreRating => rateVital('cls', value)
 export const rateTbt = (ms: number): ScoreRating => rateVital('tbt', ms)

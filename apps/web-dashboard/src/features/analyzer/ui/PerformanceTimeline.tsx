@@ -315,7 +315,8 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
   const togglePlay = useCallback(() => {
-    isPlaying ? stopPlayback() : startPlayback();
+    if (isPlaying) stopPlayback();
+    else startPlayback();
   }, [isPlaying, startPlayback, stopPlayback]);
 
   const handleScrub = useCallback((ms: number) => {

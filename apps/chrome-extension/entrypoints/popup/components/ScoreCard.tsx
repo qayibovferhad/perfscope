@@ -1,19 +1,16 @@
-import { rateScore } from '@perfscope/shared'
+import { rateScore, RATING_COLOR } from '@perfscope/shared'
 
 interface Props {
   label: string
   score: number
 }
 
-const COLOR: Record<string, string> = {
-  good:             '#10b981',
-  'needs-improvement': '#F59E0B',
-  poor:             '#ef4444',
-}
+const COLOR = RATING_COLOR
+// 0.40-alpha glow derived from the shared rating palette
 const GLOW: Record<string, string> = {
-  good:             'rgba(16,185,129,0.40)',
-  'needs-improvement': 'rgba(245,158,11,0.40)',
-  poor:             'rgba(239,68,68,0.40)',
+  good:                `${RATING_COLOR.good}66`,
+  'needs-improvement': `${RATING_COLOR['needs-improvement']}66`,
+  poor:                `${RATING_COLOR.poor}66`,
 }
 
 const R = 20

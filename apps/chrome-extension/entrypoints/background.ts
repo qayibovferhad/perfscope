@@ -1,17 +1,23 @@
+type ExtMessage =
+  | { type: 'PERFSCOPE_TOKEN'; token: string }
+  | { type: 'PERFSCOPE_LOGOUT' }
+  | { type: 'PERFSCOPE_EXT_CONFIG'; config: Record<string, unknown> }
+
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type === 'PERFSCOPE_TOKEN') {
-      browser.storage.local.set({ token: message.token }).then(() => sendResponse({ ok: true }))
-      return true
+    const msg = message as ExtMessage
+    switch (msg.type) {
+      case 'PERFSCOPE_TOKEN':
+        browser.storage.local.set({ token: msg.token }).then(() => sendResponse({ ok: true }))
+        break
+      case 'PERFSCOPE_LOGOUT':
+        browser.storage.local.remove('token').then(() => sendResponse({ ok: true }))
+        break
+      case 'PERFSCOPE_EXT_CONFIG':
+        // Merge web-configured settings into extension storage
+        browser.storage.local.set({ extConfig: msg.config }).then(() => sendResponse({ ok: true }))
+        break
     }
-    if (message.type === 'PERFSCOPE_LOGOUT') {
-      browser.storage.local.remove('token').then(() => sendResponse({ ok: true }))
-      return true
-    }
-    if (message.type === 'PERFSCOPE_EXT_CONFIG') {
-      // Merge web-configured settings into extension storage
-      browser.storage.local.set({ extConfig: message.config }).then(() => sendResponse({ ok: true }))
-      return true
-    }
+    return true // keep the message channel open for the async sendResponse
   })
 })
