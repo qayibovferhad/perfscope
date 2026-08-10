@@ -38,23 +38,32 @@ test('all routes render without console or page errors', { timeout: 180_000 }, a
     await cleanupUser(auth.email);
   });
 
-  const visit = async (path) => {
+  const visit = async (path, marker) => {
     const before = errors.length;
     await page.goto(WEB_URL + path, { waitUntil: 'networkidle2', timeout: 45_000 });
-    await new Promise((r) => setTimeout(r, 1200));
+    // Route chunks are lazy-loaded behind a Suspense fallback — poll for the
+    // expected content instead of sampling the body once (CI runners are slow).
+    try {
+      await page.waitForFunction(
+        (re) => new RegExp(re, 'i').test(document.body.innerText),
+        { timeout: 15_000 },
+        marker.source,
+      );
+    } catch { /* fall through — the assertions below carry the real message */ }
+    await new Promise((r) => setTimeout(r, 400));
     const body = await page.evaluate(() => document.body.innerText);
     return { body, newErrors: errors.slice(before), before };
   };
 
   for (const { path, marker } of ROUTES) {
     await t.test(`route ${path}`, async () => {
-      let { body, newErrors, before } = await visit(path);
+      let { body, newErrors, before } = await visit(path, marker);
 
       // Retry once if every error is transient backend-unreachable noise.
       if (newErrors.length > 0 && newErrors.every((e) => TRANSIENT.test(e.text))) {
         errors.length = before;
         await waitForServers();
-        ({ body, newErrors } = await visit(path));
+        ({ body, newErrors } = await visit(path, marker));
       }
 
       assert.ok(body.trim().length > 0, `body of ${path} is empty`);
