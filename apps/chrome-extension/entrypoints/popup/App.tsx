@@ -7,64 +7,84 @@ type ActiveTab = 'quick-audit' | 'compare'
 interface StorageState {
   token:      string | null
   backendUrl: string
+  webUrl:     string
 }
 
 const DEFAULT_BACKEND = 'http://localhost:3101'
+const DEFAULT_WEB     = 'http://localhost:5173'
+
+/** Ask Chrome for host access to a custom backend origin. No-op when already granted. */
+async function ensureHostPermission(url: string): Promise<boolean> {
+  try {
+    const origin = new URL(url).origin + '/*'
+    const granted = await browser.permissions.contains({ origins: [origin] })
+    if (granted) return true
+    return await browser.permissions.request({ origins: [origin] })
+  } catch {
+    return false
+  }
+}
 
 export function App() {
   const [activeTab,    setActiveTab]    = useState<ActiveTab>('quick-audit')
-  const [storage,      setStorage]      = useState<StorageState>({ token: null, backendUrl: DEFAULT_BACKEND })
+  const [storage,      setStorage]      = useState<StorageState>({ token: null, backendUrl: DEFAULT_BACKEND, webUrl: DEFAULT_WEB })
   const [showSettings, setShowSettings] = useState(false)
   const [backendInput, setBackendInput] = useState(DEFAULT_BACKEND)
+  const [webInput,     setWebInput]     = useState(DEFAULT_WEB)
+  const [permError,    setPermError]    = useState(false)
 
   useEffect(() => {
-    browser.storage.local.get(['token', 'backendUrl']).then(result => {
+    browser.storage.local.get(['token', 'backendUrl', 'webUrl']).then(result => {
       setStorage({
         token:      (result.token      as string | undefined) ?? null,
         backendUrl: (result.backendUrl as string | undefined) ?? DEFAULT_BACKEND,
+        webUrl:     (result.webUrl     as string | undefined) ?? DEFAULT_WEB,
       })
     })
   }, [])
 
   function openSettings() {
     setBackendInput(storage.backendUrl)
+    setWebInput(storage.webUrl)
+    setPermError(false)
     setShowSettings(v => !v)
   }
 
-  function saveSettings() {
-    const url = backendInput.trim() || DEFAULT_BACKEND
-    browser.storage.local.set({ backendUrl: url })
-    setStorage(prev => ({ ...prev, backendUrl: url }))
+  async function saveSettings() {
+    const backendUrl = backendInput.trim() || DEFAULT_BACKEND
+    const webUrl     = webInput.trim()     || DEFAULT_WEB
+
+    const ok = await ensureHostPermission(backendUrl)
+    if (!ok) { setPermError(true); return }
+
+    browser.storage.local.set({ backendUrl, webUrl })
+    setStorage(prev => ({ ...prev, backendUrl, webUrl }))
     setShowSettings(false)
   }
 
   return (
-    <div className="w-[380px] min-h-[480px] max-h-[600px] bg-slate-950 text-slate-200 flex flex-col overflow-hidden">
+    <div className="w-[380px] min-h-[480px] max-h-[600px] bg-ld-bg text-ld-text-2 flex flex-col overflow-hidden">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-800/70 shrink-0">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-ld-border shrink-0">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg,#6366f1,#8B5CF6)', boxShadow: '0 0 10px rgba(139,92,246,0.45)' }}
-          >
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black text-[var(--ld-grad-text)] shrink-0 bg-[image:var(--ld-grad)] [box-shadow:0_0_10px_var(--ld-accent-line)]">
             PS
           </div>
-          <span className="text-sm font-semibold text-slate-100 tracking-tight">PerfScope</span>
-          <span className="text-[10px] text-slate-600 font-mono">Companion</span>
+          <span className="text-sm font-semibold text-ld-text tracking-tight">PerfScope</span>
+          <span className="text-[10px] text-ld-text-3 font-mono">Companion</span>
         </div>
 
         <div className="flex items-center gap-2">
           {storage.token && (
             <span
-              className="w-1.5 h-1.5 rounded-full bg-emerald-400"
-              style={{ boxShadow: '0 0 5px rgba(52,211,153,0.8)' }}
+              className="w-1.5 h-1.5 rounded-full bg-ld-accent-2 [box-shadow:0_0_5px_var(--ld-accent)]"
               title="Connected to PerfScope"
             />
           )}
           <button
             onClick={openSettings}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-ld-text-3 hover:text-ld-text hover:bg-ld-surface-2 transition-colors"
             title="Settings"
           >
             <GearIcon />
@@ -74,25 +94,40 @@ export function App() {
 
       {/* ── Settings drawer ─────────────────────────────────────────── */}
       {showSettings && (
-        <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 shrink-0">
-          <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-2 font-semibold">Backend URL</p>
-          <div className="flex gap-2">
+        <div className="px-4 py-3 bg-ld-surface border-b border-ld-border shrink-0 flex flex-col gap-3">
+          <div>
+            <p className="text-[10px] text-ld-text-3 uppercase tracking-widest mb-2 font-semibold">Backend URL</p>
             <input
               type="url"
               value={backendInput}
               onChange={e => setBackendInput(e.target.value)}
               placeholder={DEFAULT_BACKEND}
-              className="flex-1 text-xs bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 placeholder-slate-600 outline-none focus:border-indigo-500 transition-colors font-mono"
+              className="w-full text-xs bg-ld-surface-2 border border-ld-border-strong rounded-lg px-3 py-1.5 text-ld-text placeholder:text-ld-text-3 outline-none focus:border-ld-accent-line transition-colors font-mono"
             />
-            <button
-              onClick={saveSettings}
-              className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
-            >
-              Save
-            </button>
           </div>
+          <div>
+            <p className="text-[10px] text-ld-text-3 uppercase tracking-widest mb-2 font-semibold">Web App URL</p>
+            <input
+              type="url"
+              value={webInput}
+              onChange={e => setWebInput(e.target.value)}
+              placeholder={DEFAULT_WEB}
+              className="w-full text-xs bg-ld-surface-2 border border-ld-border-strong rounded-lg px-3 py-1.5 text-ld-text placeholder:text-ld-text-3 outline-none focus:border-ld-accent-line transition-colors font-mono"
+            />
+          </div>
+          <button
+            onClick={saveSettings}
+            className="self-end px-3 py-1.5 text-xs font-bold rounded-lg bg-[image:var(--ld-grad)] text-[var(--ld-grad-text)] hover:opacity-90 transition-opacity"
+          >
+            Save
+          </button>
+          {permError && (
+            <p className="text-[10px] text-ld-rose -mt-1">
+              Chrome permission for that backend origin was declined — the extension can't reach it without it.
+            </p>
+          )}
           {!storage.token && (
-            <p className="text-[10px] text-amber-500/80 mt-2">
+            <p className="text-[10px] text-ld-amber -mt-1">
               Open PerfScope in a tab and log in — your token syncs automatically.
             </p>
           )}
@@ -101,15 +136,14 @@ export function App() {
 
       {/* ── Not connected banner ────────────────────────────────────── */}
       {!storage.token && (
-        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 shrink-0"
-          style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.25)' }}>
+        <div className="mx-4 mt-3 px-3 py-2.5 rounded-xl flex items-center justify-between gap-3 shrink-0 bg-ld-accent-soft border border-ld-accent-line">
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-indigo-300">Not connected</span>
-            <span className="text-[10px] text-slate-500">Results won't be saved to your account</span>
+            <span className="text-xs font-semibold text-ld-accent-2">Not connected</span>
+            <span className="text-[10px] text-ld-text-3">Results won't be saved to your account</span>
           </div>
           <button
-            onClick={() => browser.tabs.create({ url: `${storage.backendUrl.replace(':3101', ':5173')}/login` })}
-            className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shrink-0"
+            onClick={() => browser.tabs.create({ url: `${storage.webUrl}/login` })}
+            className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-[image:var(--ld-grad)] text-[var(--ld-grad-text)] hover:opacity-90 transition-opacity shrink-0"
           >
             Log in →
           </button>
@@ -124,15 +158,11 @@ export function App() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200"
-              style={active ? {
-                background: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-                color: '#fff',
-                boxShadow: '0 0 14px rgba(99,102,241,0.38)',
-              } : {
-                color: '#64748b',
-                background: 'transparent',
-              }}
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 ${
+                active
+                  ? 'bg-[image:var(--ld-grad)] text-[var(--ld-grad-text)] [box-shadow:0_0_14px_var(--ld-accent-line)]'
+                  : 'text-ld-text-3 bg-transparent hover:text-ld-text-2'
+              }`}
             >
               {tab === 'quick-audit' ? 'Quick Audit' : 'Compare'}
             </button>
@@ -143,15 +173,15 @@ export function App() {
       {/* ── Tab content ──────────────────────────────────────────────── */}
       <div className="flex-1 px-4 py-3 overflow-y-auto">
         {activeTab === 'quick-audit' ? (
-          <QuickAuditTab backendUrl={storage.backendUrl} token={storage.token} />
+          <QuickAuditTab backendUrl={storage.backendUrl} webUrl={storage.webUrl} token={storage.token} />
         ) : (
           <CompareTab backendUrl={storage.backendUrl} token={storage.token} />
         )}
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <div className="px-4 py-2 border-t border-slate-800/60 shrink-0">
-        <p className="text-[9px] text-slate-700 text-center font-mono">
+      <div className="px-4 py-2 border-t border-ld-border shrink-0">
+        <p className="text-[9px] text-ld-text-3 opacity-70 text-center font-mono">
           PerfScope Companion · v1.0.0
         </p>
       </div>

@@ -332,7 +332,7 @@ export function TimelineWaterfall({
     return () => ro.disconnect();
   }, []);
 
-  function handleScrubInternal(ms: number) {
+  const handleScrubInternal = useCallback((ms: number) => {
     motionMs.set(ms);
     ctx?.motionMs.set(ms);
     if (rangeRef.current) rangeRef.current.value = String(ms);
@@ -341,7 +341,7 @@ export function TimelineWaterfall({
       prevFrIdxRef.current = newIdx;
       setActiveFrameIdx(newIdx);
     }
-  }
+  }, [frames, motionMs, ctx]);
 
   const stopPlayback = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -361,7 +361,7 @@ export function TimelineWaterfall({
         setIsPlaying(false);
       }
     }, TICK_MS);
-  }, [maxTiming]);
+  }, [maxTiming, handleScrubInternal]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
@@ -370,7 +370,7 @@ export function TimelineWaterfall({
     stopPlayback();
     playTimeRef.current = ms;
     handleScrubInternal(ms);
-  }, [stopPlayback]);
+  }, [stopPlayback, handleScrubInternal]);
 
   // ── MotionValue subscriber → imperatively update ghost lines + row states
   useEffect(() => {

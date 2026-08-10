@@ -1,3 +1,5 @@
+@import '@perfscope/shared/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,8 +18,8 @@
     padding: 0;
     min-width: 380px;
     min-height: 480px;
-    background-color: #020617; /* slate-950 */
-    color: #e2e8f0;
+    background-color: var(--ld-bg);
+    color: var(--ld-text-2);
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -31,7 +33,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--ld-border-strong);
     border-radius: 4px;
   }
 }

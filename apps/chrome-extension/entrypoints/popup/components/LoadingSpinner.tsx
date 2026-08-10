@@ -13,8 +13,8 @@ export function LoadingSpinner({ size = 20, className = '' }: Props) {
       className={`animate-spin ${className}`}
       aria-label="Loading"
     >
-      <circle cx="12" cy="12" r="10" stroke="rgba(139,92,246,0.18)" strokeWidth="3" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="#8B5CF6" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="10" stroke="var(--ld-accent-soft)" strokeWidth="3" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--ld-accent)" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }

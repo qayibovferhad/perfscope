@@ -34,7 +34,7 @@ export function CliAuthPage() {
         setState('error');
         setErrMsg('Could not send token to CLI. The login code may have expired — run `perfscope login` again.');
       });
-  }, [token, code]);
+  }, [token, code, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-ld-bg-2 px-4">

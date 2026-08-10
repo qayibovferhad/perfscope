@@ -42,6 +42,7 @@ export function HistoryPage() {
     fetchHistoryResult(openId)
       .then(result => { setResult(result, result.url as string); navigate('/app'); })
       .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link is consumed once on mount
   }, []);
 
   async function handleOpenInAnalyzer(entry: HistoryEntry) {

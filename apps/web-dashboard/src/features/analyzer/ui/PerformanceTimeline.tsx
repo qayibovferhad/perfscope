@@ -265,9 +265,20 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
     return frames.map((_, i) => map.get(i) ?? EMPTY_DOTS);
   }, [frames, metrics]);
 
+  const handleScrubInternal = useCallback((ms: number) => {
+    motionMs.set(ms);
+    timelineCtx?.motionMs.set(ms);
+    if (rangeRef.current) rangeRef.current.value = String(ms);
+    const newIdx = findClosestFrameIndex(frames, ms);
+    if (newIdx !== prevIdxRef.current) {
+      prevIdxRef.current = newIdx;
+      setActiveIndex(newIdx);
+    }
+  }, [frames, motionMs, timelineCtx]);
+
   const frameClickHandlers = useMemo(
     () => frames.map(f => () => handleScrubInternal(f.timing)),
-    [frames],
+    [frames, handleScrubInternal],
   );
 
   useEffect(() => {
@@ -277,17 +288,6 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
   useEffect(() => {
     thumbRefs.current[activeIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [activeIndex]);
-
-  function handleScrubInternal(ms: number) {
-    motionMs.set(ms);
-    timelineCtx?.motionMs.set(ms);
-    if (rangeRef.current) rangeRef.current.value = String(ms);
-    const newIdx = findClosestFrameIndex(frames, ms);
-    if (newIdx !== prevIdxRef.current) {
-      prevIdxRef.current = newIdx;
-      setActiveIndex(newIdx);
-    }
-  }
 
   const stopPlayback = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -310,7 +310,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
         setIsPlaying(false);
       }
     }, TICK_MS);
-  }, [maxTiming]);
+  }, [maxTiming, handleScrubInternal]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
@@ -323,7 +323,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
     stopPlayback();
     playTimeRef.current = ms;
     handleScrubInternal(ms);
-  }, [stopPlayback]);
+  }, [stopPlayback, handleScrubInternal]);
 
   return (
     <div className="rounded-xl border border-slate-700/60 bg-slate-900 overflow-hidden select-none">

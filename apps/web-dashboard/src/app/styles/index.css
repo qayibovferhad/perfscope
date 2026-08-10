@@ -1,3 +1,5 @@
+@import '@perfscope/shared/tokens.css';
+
 /* ── PerfScope · Global Theme ────────────────────────────────────────────────── */
 
 /* ============================================================
@@ -5,76 +7,9 @@
    Global scope with --ld- prefix; available everywhere.
    ============================================================ */
 
-:root {
-  --ld-bg:            #070b09;
-  --ld-bg-2:          #0a110d;
-  --ld-surface:       #0e1712;
-  --ld-surface-2:     #111d16;
-  --ld-surface-hover: #14241b;
-  --ld-border:        rgba(180, 230, 205, 0.09);
-  --ld-border-strong: rgba(180, 230, 205, 0.16);
+/* --ld-* tokens now live in @perfscope/shared/tokens.css (imported above) */
 
-  --ld-text:          #e9f1ec;
-  --ld-text-2:        #aebcb4;
-  --ld-text-3:        #6f8278;
 
-  --ld-accent:        #14c08a;
-  --ld-accent-2:      #34e0a4;
-  --ld-accent-deep:   #0c8f66;
-  --ld-accent-soft:   rgba(20, 192, 138, 0.12);
-  --ld-accent-line:   rgba(20, 192, 138, 0.30);
-
-  --ld-teal:          #16c8c8;
-  --ld-amber:         #e6a23c;
-  --ld-rose:          #f2647a;
-
-  --ld-score-good:  var(--ld-accent-2);
-  --ld-grad:        linear-gradient(100deg, #0c8f66 0%, #14c08a 45%, #2fd3bb 100%);
-  --ld-grad-text:   #04130d;
-  --ld-glow:        0 0 0 1px var(--ld-accent-line), 0 18px 60px -20px rgba(20, 192, 138, 0.45);
-  --ld-shadow-card: 0 1px 0 0 rgba(255,255,255,0.02) inset, 0 24px 60px -30px rgba(0,0,0,0.8);
-  --ld-ring:        0 0 0 4px var(--ld-accent-soft);
-  --ld-hero-veil:   radial-gradient(1200px 620px at 78% -8%, rgba(20,192,138,0.16), transparent 60%),
-                    radial-gradient(900px 500px at 8% 30%, rgba(22,200,200,0.08), transparent 60%);
-  --ld-blob-tl:     radial-gradient(ellipse at 0% 0%, rgba(20,192,138,0.10) 0%, transparent 62%);
-  --ld-blob-br:     radial-gradient(ellipse at 100% 100%, rgba(22,200,200,0.08) 0%, transparent 62%);
-}
-
-/* Light override */
-[data-theme="light"] {
-  --ld-bg:            #f3f7f4;
-  --ld-bg-2:          #eef3ef;
-  --ld-surface:       #ffffff;
-  --ld-surface-2:     #f7faf8;
-  --ld-surface-hover: #f0f6f2;
-  --ld-border:        rgba(8, 50, 36, 0.10);
-  --ld-border-strong: rgba(8, 50, 36, 0.18);
-
-  --ld-text:          #08160f;
-  --ld-text-2:        #41544b;
-  --ld-text-3:        #6c7d74;
-
-  --ld-accent:        #0a9e6f;
-  --ld-accent-2:      #07875e;
-  --ld-accent-deep:   #066b4a;
-  --ld-accent-soft:   rgba(10, 158, 111, 0.12);
-  --ld-accent-line:   rgba(10, 158, 111, 0.28);
-
-  --ld-teal:          #0e9c9c;
-  --ld-amber:         #b9791a;
-  --ld-rose:          #d63a57;
-
-  --ld-score-good:  var(--ld-accent);
-  --ld-grad:        linear-gradient(100deg, #07875e 0%, #0a9e6f 50%, #14b89a 100%);
-  --ld-grad-text:   #ffffff;
-  --ld-glow:        0 0 0 1px var(--ld-accent-line), 0 18px 50px -22px rgba(10, 158, 111, 0.40);
-  --ld-shadow-card: 0 1px 2px rgba(8,50,36,0.04), 0 18px 44px -28px rgba(8,50,36,0.20);
-  --ld-ring:        0 0 0 4px var(--ld-accent-soft);
-  --ld-hero-veil:   radial-gradient(1100px 600px at 80% -10%, rgba(10,158,111,0.14), transparent 60%),
-                    radial-gradient(820px 460px at 6% 28%, rgba(14,156,156,0.07), transparent 60%);
-  --ld-blob-tl:     radial-gradient(ellipse at 0% 0%, rgba(10,158,111,0.09) 0%, transparent 62%);
-  --ld-blob-br:     radial-gradient(ellipse at 100% 100%, rgba(22,200,200,0.07) 0%, transparent 62%);
-}
 
 /* Landing layout helpers */
 .ld-wrap { width: min(1180px, 92vw); margin-inline: auto; }

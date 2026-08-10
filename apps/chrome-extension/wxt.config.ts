@@ -13,6 +13,12 @@ export default defineConfig({
       'http://localhost:3101/*',
       'https://localhost:3101/*',
     ],
+    // A custom backend URL from the settings drawer needs a runtime
+    // permissions.request() for its origin — granted on Save.
+    optional_host_permissions: [
+      'http://*/*',
+      'https://*/*',
+    ],
     action: {
       default_title: 'PerfScope Companion',
     },

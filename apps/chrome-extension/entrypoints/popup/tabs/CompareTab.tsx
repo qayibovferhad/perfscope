@@ -78,30 +78,30 @@ export function CompareTab({ backendUrl, token }: Props) {
     <div className="flex flex-col gap-3">
       {/* Target URL */}
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">Competitor (current page)</span>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-amber-500/25">
-          <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" style={{ boxShadow: '0 0 6px rgba(245,158,11,0.7)' }} />
-          <span className="text-xs text-slate-300 truncate font-mono">{competitorHostname || '—'}</span>
+        <span className="text-[10px] text-ld-text-3 uppercase tracking-widest font-semibold">Competitor (current page)</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-ld-surface border border-[rgba(230,162,60,.3)]">
+          <span className="w-2 h-2 rounded-full bg-ld-amber shrink-0 [box-shadow:0_0_6px_var(--ld-amber)]" />
+          <span className="text-xs text-ld-text-2 truncate font-mono">{competitorHostname || '—'}</span>
         </div>
       </div>
 
       {/* Your site selector */}
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">Your site</span>
+        <span className="text-[10px] text-ld-text-3 uppercase tracking-widest font-semibold">Your site</span>
 
         {noAuth ? (
-          <p className="text-xs text-amber-400/80 py-1">
+          <p className="text-xs text-ld-amber py-1">
             Log in to PerfScope to see your sites.
           </p>
         ) : websitesErr ? (
-          <p className="text-xs text-red-400 py-1">{websitesErr}</p>
+          <p className="text-xs text-ld-rose py-1">{websitesErr}</p>
         ) : websites.length === 0 ? (
-          <p className="text-xs text-slate-600 py-1">No websites found. Add one in PerfScope.</p>
+          <p className="text-xs text-ld-text-3 py-1">No websites found. Add one in PerfScope.</p>
         ) : (
           <select
             value={selectedId}
             onChange={e => setSelectedId(e.target.value)}
-            className="w-full px-3 py-2 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-200 outline-none focus:border-indigo-500 transition-colors"
+            className="w-full px-3 py-2 text-xs bg-ld-surface-2 border border-ld-border-strong rounded-lg text-ld-text outline-none focus:border-ld-accent-line transition-colors"
           >
             {websites.map(site => (
               <option key={site._id} value={site._id}>
@@ -116,11 +116,7 @@ export function CompareTab({ backendUrl, token }: Props) {
       <button
         onClick={handleCompare}
         disabled={!currentUrl || !selectedId || loading || noAuth}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{
-          background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-          boxShadow:  loading ? 'none' : '0 0 16px rgba(99,102,241,0.35)',
-        }}
+        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-[var(--ld-grad-text)] bg-[image:var(--ld-grad)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${loading ? '' : '[box-shadow:0_0_16px_var(--ld-accent-line)]'}`}
       >
         {loading ? (
           <><LoadingSpinner size={16} /><span>Running analysis…</span></>
@@ -130,13 +126,13 @@ export function CompareTab({ backendUrl, token }: Props) {
       </button>
 
       {loading && (
-        <p className="text-center text-[11px] text-slate-600">
+        <p className="text-center text-[11px] text-ld-text-3">
           Auditing competitor page — may take up to 60 s.
         </p>
       )}
 
       {error && (
-        <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-xs text-red-400">
+        <div className="px-3 py-2 rounded-lg bg-[rgba(242,100,122,.08)] border border-[rgba(242,100,122,.3)] text-xs text-ld-rose">
           {error}
         </div>
       )}
@@ -157,11 +153,11 @@ function CompareResults({ state, competitorHostname }: { state: CompareState; co
   const competitorLabel = competitorHostname
 
   return (
-    <div className="flex flex-col gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800">
+    <div className="flex flex-col gap-3 p-3 rounded-xl bg-ld-surface border border-ld-border">
       {/* Legend */}
       <div className="flex items-center gap-4 text-[10px]">
-        <LegendDot color="#6366f1" label={`You — ${yourLabel}`} />
-        <LegendDot color="#F59E0B" label={`Them — ${competitorLabel}`} />
+        <LegendDot color="var(--ld-accent)" label={`You — ${yourLabel}`} />
+        <LegendDot color="var(--ld-amber)" label={`Them — ${competitorLabel}`} />
       </div>
 
       {/* Score bars */}
@@ -189,7 +185,7 @@ function CompareResults({ state, competitorHostname }: { state: CompareState; co
         />
       </div>
 
-      <div className="h-px bg-slate-800 my-0.5" />
+      <div className="h-px bg-ld-border my-0.5" />
 
       {/* Web Vitals bars */}
       <div className="flex flex-col gap-2.5">
@@ -255,7 +251,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-1">
       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-slate-500 truncate max-w-[120px]">{label}</span>
+      <span className="text-ld-text-3 truncate max-w-[120px]">{label}</span>
     </div>
   )
 }

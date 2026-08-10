@@ -23,10 +23,10 @@ export function ScoreCard({ label, score }: Props) {
   const dash   = (score / 100) * C
 
   return (
-    <div className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-slate-900/70 border border-slate-700/40">
+    <div className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl bg-ld-surface border border-ld-border">
       <div className="relative" style={{ width: 54, height: 54 }}>
         <svg width={54} height={54} viewBox="0 0 54 54" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={27} cy={27} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={4} />
+          <circle cx={27} cy={27} r={R} fill="none" stroke="var(--ld-border-strong)" strokeWidth={4} />
           <circle
             cx={27} cy={27} r={R}
             fill="none"
@@ -41,7 +41,7 @@ export function ScoreCard({ label, score }: Props) {
           {score}
         </span>
       </div>
-      <span className="text-[10px] text-slate-500 text-center leading-tight font-medium">{label}</span>
+      <span className="text-[10px] text-ld-text-3 text-center leading-tight font-medium">{label}</span>
     </div>
   )
 }

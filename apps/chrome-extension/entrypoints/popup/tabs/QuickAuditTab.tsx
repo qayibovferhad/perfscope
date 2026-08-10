@@ -6,11 +6,12 @@ import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Props {
   backendUrl: string
+  webUrl:     string
   token:      string | null
 }
 
 
-export function QuickAuditTab({ backendUrl, token }: Props) {
+export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
   const [currentUrl, setCurrentUrl] = useState('')
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<AnalysisResult | null>(null)
@@ -54,11 +55,11 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
 
       {/* URL breakdown */}
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.7)' }} />
-          <span className="text-xs text-slate-300 font-mono truncate flex-1">{hostname || 'No active page'}</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-ld-surface border border-ld-border">
+          <span className="w-2 h-2 rounded-full bg-ld-accent-2 shrink-0 [box-shadow:0_0_6px_var(--ld-accent)]" />
+          <span className="text-xs text-ld-text-2 font-mono truncate flex-1">{hostname || 'No active page'}</span>
           {route !== '/' && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 shrink-0">
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-ld-accent-soft text-ld-accent border border-ld-accent-line shrink-0">
               {route}
             </span>
           )}
@@ -66,9 +67,9 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
 
         {/* Where it will be saved */}
         {token && hostname && (
-          <p className="text-[10px] text-slate-600 px-1">
-            Saved under <span className="text-slate-500">{hostname}</span>
-            {route !== '/' && <> › <span className="text-indigo-400">{route}</span></>}
+          <p className="text-[10px] text-ld-text-3 px-1">
+            Saved under <span className="text-ld-text-2">{hostname}</span>
+            {route !== '/' && <> › <span className="text-ld-accent">{route}</span></>}
           </p>
         )}
       </div>
@@ -77,11 +78,7 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
       <button
         onClick={handleAnalyze}
         disabled={!currentUrl || loading}
-        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{
-          background: 'linear-gradient(135deg, #6366f1, #8B5CF6)',
-          boxShadow:  loading ? 'none' : '0 0 18px rgba(139,92,246,0.40)',
-        }}
+        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-[var(--ld-grad-text)] bg-[image:var(--ld-grad)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${loading ? '' : '[box-shadow:0_0_18px_var(--ld-accent-line)]'}`}
       >
         {loading
           ? <><LoadingSpinner size={16} /><span>Analyzing…</span></>
@@ -90,17 +87,17 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
       </button>
 
       {loading && (
-        <p className="text-center text-[11px] text-slate-600">Running Lighthouse — up to 60 s.</p>
+        <p className="text-center text-[11px] text-ld-text-3">Running Lighthouse — up to 60 s.</p>
       )}
 
       {error && (
-        <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/25 text-xs text-red-400">
+        <div className="px-3 py-2 rounded-lg bg-[rgba(242,100,122,.08)] border border-[rgba(242,100,122,.3)] text-xs text-ld-rose">
           {error}
         </div>
       )}
 
       {saved && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-400">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-ld-accent-soft border border-ld-accent-line text-xs text-ld-accent-2">
           <span>✓</span>
           <span>Saved to your PerfScope account</span>
         </div>
@@ -115,8 +112,8 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
             <ScoreCard label="SEO"    score={result.scores.seo} />
           </div>
 
-          <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800">
-            <span className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">Core Web Vitals</span>
+          <div className="flex flex-col gap-2 p-3 rounded-xl bg-ld-surface border border-ld-border">
+            <span className="text-[10px] text-ld-text-3 uppercase tracking-widest font-semibold">Core Web Vitals</span>
             <div className="grid grid-cols-2 gap-1.5">
               <VitalChip label="LCP" value={fmtSec(result.metrics.lcp)} rating={rateVital('lcp', result.metrics.lcp)} />
               <VitalChip label="TBT" value={fmtMs(result.metrics.tbt)}  rating={rateVital('tbt', result.metrics.tbt)} />
@@ -126,11 +123,8 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
           </div>
 
           <button
-            onClick={() => {
-              const webUrl = backendUrl.replace('3101', '5173')
-              browser.tabs.create({ url: `${webUrl}/history?open=${result.id}` })
-            }}
-            className="text-[11px] text-indigo-400 hover:text-indigo-300 underline underline-offset-2 text-center transition-colors"
+            onClick={() => browser.tabs.create({ url: `${webUrl}/history?open=${result.id}` })}
+            className="text-[11px] text-ld-accent hover:text-ld-accent-2 underline underline-offset-2 text-center transition-colors"
           >
             View full report in PerfScope →
           </button>
@@ -143,8 +137,8 @@ export function QuickAuditTab({ backendUrl, token }: Props) {
 function VitalChip({ label, value, rating }: { label: string; value: string; rating: ScoreRating }) {
   const color = RATING_COLOR[rating]
   return (
-    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-800/60">
-      <span className="text-[10px] text-slate-500 font-medium">{label}</span>
+    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-ld-surface-2">
+      <span className="text-[10px] text-ld-text-3 font-medium">{label}</span>
       <span className="text-xs font-mono font-semibold" style={{ color }}>{value}</span>
     </div>
   )
