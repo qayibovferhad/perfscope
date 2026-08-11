@@ -191,7 +191,10 @@ export function RumPanel({ websiteId, lab }: Props) {
 
   const [trendMetric, setTrendMetric] = useState<RumMetricKey>('lcp');
 
-  const { data, isPending } = useRum({ websiteId, days: Number(days), device });
+  // isLoading, not isPending: the query is gated on `enabled: Boolean(websiteId)`, and a
+  // disabled query stays `pending` forever in React Query v5 — an empty id would pin this
+  // panel on "Loading field data…" with nothing in flight.
+  const { data, isLoading } = useRum({ websiteId, days: Number(days), device });
   const trend = useRumTrend({ websiteId, metric: trendMetric, days: Number(days), device });
   const issue = useIssueRumKey(websiteId);
 
@@ -214,13 +217,13 @@ export function RumPanel({ websiteId, lab }: Props) {
       </PanelHeader>
 
       <div className="p-[18px] flex flex-col gap-[16px]">
-        {isPending && (
+        {isLoading && (
           <div className="flex items-center gap-2 text-[13px] text-ld-text-3">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading field data…
           </div>
         )}
 
-        {!isPending && !hasData && (
+        {!isLoading && !hasData && (
           <InstallGuide
             apiOrigin={apiOrigin}
             rumKey={data?.rumKey ?? null}
@@ -229,7 +232,7 @@ export function RumPanel({ websiteId, lab }: Props) {
           />
         )}
 
-        {!isPending && hasData && (
+        {!isLoading && hasData && (
           <>
             <div className="flex flex-col gap-[14px]">
               {FIELD_METRIC_ORDER.map(key => {
@@ -264,9 +267,17 @@ export function RumPanel({ websiteId, lab }: Props) {
                   })}
                 </div>
               </div>
-              {trend.data
-                ? <RumTrendChart trend={trend.data} />
-                : <p className="text-[12px] text-ld-text-3 py-[10px]">Loading trend…</p>}
+              {/* Checking only `trend.data` left a failed request saying "Loading trend…"
+                  indefinitely — the three outcomes have to be told apart. */}
+              {trend.data ? (
+                <RumTrendChart trend={trend.data} />
+              ) : trend.isError ? (
+                <p className="text-[12px] text-ld-rose py-[10px]">Could not load the trend.</p>
+              ) : (
+                <p className="text-[12px] text-ld-text-3 py-[10px]">
+                  {trend.isLoading ? 'Loading trend…' : 'No trend data yet.'}
+                </p>
+              )}
             </div>
 
             <PathTable paths={data?.paths ?? []} />

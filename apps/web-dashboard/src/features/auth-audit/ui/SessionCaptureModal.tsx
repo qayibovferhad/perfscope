@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MonitorSmartphone, RotateCcw } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
-import { apiClient } from '@/shared/api/client';
+import { apiClient, BROWSER_LAUNCH_TIMEOUT_MS } from '@/shared/api/client';
 import { useWebsites } from '@/entities/website';
 
 type Step = 'launching' | 'browser-open' | 'capturing' | 'done';
@@ -41,7 +41,9 @@ export function SessionCaptureModal({ open, websiteId, url, onClose, doneLabel, 
     setSessionId('');
     sessionRef.current = '';
     try {
-      const { data } = await apiClient.post<{ sessionId: string }>('/auth-audit/session', { url });
+      const { data } = await apiClient.post<{ sessionId: string }>(
+        '/auth-audit/session', { url }, { timeout: BROWSER_LAUNCH_TIMEOUT_MS },
+      );
       sessionRef.current = data.sessionId;
       setSessionId(data.sessionId);
       setStep('browser-open');

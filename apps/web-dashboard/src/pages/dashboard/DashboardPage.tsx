@@ -13,6 +13,22 @@ import { RumPulseCard } from '@/features/overview/ui/RumPulseCard';
 import { ScoreTrendChart } from '@/features/overview/ui/ScoreTrendChart';
 import { ActivityChart } from '@/features/overview/ui/ActivityChart';
 import { VitalsSplitChart } from '@/features/overview/ui/VitalsSplitChart';
+import { StatePanel } from '@/shared/ui/state-panel';
+import { Skeleton } from '@/shared/ui/skeleton';
+
+/** Placeholders that occupy the same space as the real strip and panels, so a slow
+ *  overview reads as loading rather than as a page that drew nothing. */
+function TotalsStripSkeleton() {
+  return (
+    <div className="grid grid-cols-4 gap-[14px] mb-[22px] max-sm:grid-cols-2">
+      {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-[78px] rounded-[16px]" />)}
+    </div>
+  );
+}
+
+function PanelSkeleton({ className }: { className: string }) {
+  return <Skeleton className={`w-full rounded-[16px] ${className}`} />;
+}
 
 /**
  * The account at a glance — the first screen after logging in.
@@ -52,26 +68,34 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {/* The strip is the page's anchor, so it renders as soon as there is anything to
-          show. While the request is in flight the page stays empty rather than flashing
-          skeletons that resolve in well under a second on a local backend. */}
-      {data && <TotalsStrip totals={data.totals} />}
+      {/* The strip is the page's anchor. While the request is in flight its skeleton holds
+          the same space — rendering nothing at all made a slow response look like a page
+          that had failed to draw. */}
+      {data ? <TotalsStrip totals={data.totals} /> : isPending ? <TotalsStripSkeleton /> : null}
 
       {/* First-run path. Renders nothing once every step is done, or if dismissed. */}
       <GettingStartedPanel onAddWebsite={() => setModalOpen(true)} />
 
-      {!isPending && !data ? (
-        <div className="rounded-[16px] border border-ld-border bg-ld-surface px-[22px] py-[20px]">
-          <b className="block text-[14px] font-bold text-ld-text">Overview unavailable</b>
-          <p className="text-[13px] text-ld-text-3 mt-[4px]">
-            The summary could not be loaded. Everything else still works —{' '}
-            <Link to="/websites" className="font-semibold text-ld-accent hover:underline">
-              go to your websites
-            </Link>
-            .
-          </p>
+      {isPending && !data ? (
+        <div className="flex flex-col gap-[20px] mt-[20px]">
+          <PanelSkeleton className="h-[260px]" />
+          <PanelSkeleton className="h-[200px]" />
         </div>
-      ) : data ? (
+      ) : !data ? (
+        <StatePanel
+          variant="error"
+          title="Overview unavailable"
+          description={
+            <>
+              The summary could not be loaded. Everything else still works —{' '}
+              <Link to="/websites" className="font-semibold text-ld-accent hover:underline">
+                go to your websites
+              </Link>
+              .
+            </>
+          }
+        />
+      ) : (
         <div className="flex flex-col gap-[20px]">
 
           {/* Trend leads: the shape over time is the one thing no other page shows. */}
@@ -125,7 +149,7 @@ export function DashboardPage() {
             <RumPulseCard rum={data.rum} />
           </div>
         </div>
-      ) : null}
+      )}
 
       <AddWebsiteModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>

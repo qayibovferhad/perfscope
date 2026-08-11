@@ -59,5 +59,12 @@ export function useWebsites() {
       apiClient.post(`/websites/${id}/automation/run`).then(r => r.data),
   });
 
-  return { websites: query.data ?? [], isLoading: query.isLoading, add, remove, saveSession, setAutomation, setBudgets, triggerRun };
+  return {
+    websites: query.data ?? [],
+    isLoading: query.isLoading,
+    // Exposed so callers can tell "you have no websites" apart from "we could not ask".
+    isError:  query.isError,
+    refetch:  query.refetch,
+    add, remove, saveSession, setAutomation, setBudgets, triggerRun,
+  };
 }

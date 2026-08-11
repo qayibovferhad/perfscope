@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Routes, Route, Link } from 'react-router-dom';
+import { Compass, Loader2 } from 'lucide-react';
 import { ProtectedRoute }  from '@/features/auth/ui/ProtectedRoute';
+import { useAuthStore }    from '@/features/auth/model/authStore';
 import { DashboardLayout } from '@/widgets/dashboard-layout';
+import { StatePanel }      from '@/shared/ui/state-panel';
 
 // Each page is its own chunk — visiting the landing no longer downloads the dashboard.
 const LandingPage           = lazy(() => import('@/pages/landing').then(m => ({ default: m.LandingPage })));
@@ -27,6 +29,32 @@ function PageFallback() {
       <Loader2 className="w-6 h-6 animate-spin text-ld-text-3" />
     </div>
   );
+}
+
+function NotFoundRoute() {
+  const { user } = useAuthStore();
+  const panel = (
+    <div className="p-6 max-w-3xl mx-auto pt-[60px]">
+      <StatePanel
+        variant="error"
+        icon={<Compass className="w-7 h-7" />}
+        title="Page not found"
+        description={
+          <>
+            That address does not match any page.{' '}
+            <Link to={user ? '/dashboard' : '/'} className="font-semibold text-ld-accent hover:underline">
+              {user ? 'Back to the dashboard' : 'Back to the home page'}
+            </Link>
+            .
+          </>
+        }
+      />
+    </div>
+  );
+
+  // Signed in, the shell is the orientation — dropping the user onto a bare page loses
+  // the sidebar they would use to get out.
+  return user ? <DashboardRoute>{panel}</DashboardRoute> : panel;
 }
 
 function DashboardRoute({ children }: { children: React.ReactNode }) {
@@ -57,6 +85,10 @@ export default function App() {
         <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
         <Route path="/cli-auth"        element={<CliAuthPage />} />
         <Route path="/report/:token"   element={<PublicReportPage />} />
+
+        {/* Without this, an unmatched path — "/projects" with no id, or any stale link —
+            renders literally nothing, which is indistinguishable from a page stuck loading. */}
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
     </Suspense>
   );

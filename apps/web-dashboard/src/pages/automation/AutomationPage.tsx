@@ -1,6 +1,7 @@
 import { useState }                    from 'react';
 import { Moon, Globe, Loader2 }        from 'lucide-react';
 import { useWebsites }                 from '@/entities/website';
+import { QueryErrorPanel }             from '@/shared/ui/state-panel';
 import { WebsiteAutomationCard }       from './ui/WebsiteAutomationCard';
 import { UnconfiguredRow }             from './ui/UnconfiguredRow';
 import { SetupModal }                  from './ui/SetupModal';
@@ -16,7 +17,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function AutomationPage() {
-  const { websites, isLoading } = useWebsites();
+  const { websites, isLoading, isError, refetch } = useWebsites();
   const [setupSite, setSetupSite] = useState<Website | null>(null);
 
   const configured   = websites.filter(w => (w.automation?.routes ?? []).length > 0 || w.automation?.enabled);
@@ -64,8 +65,13 @@ export function AutomationPage() {
         </div>
       )}
 
+      {/* ── Request failed ─────────────────────────────────────────────────── */}
+      {!isLoading && isError && (
+        <QueryErrorPanel what="your websites" onRetry={() => void refetch()} />
+      )}
+
       {/* ── Empty state ────────────────────────────────────────────────────── */}
-      {!isLoading && websites.length === 0 && (
+      {!isLoading && !isError && websites.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center rounded-[18px] border border-ld-border bg-ld-surface">
           <Globe className="w-8 h-8 mb-3 text-ld-text-3" />
           <p className="text-sm font-semibold text-ld-text">No websites yet</p>

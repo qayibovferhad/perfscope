@@ -10,6 +10,17 @@ import type {
 
 const MAX_PER_URL = 10;
 
+/**
+ * Exactly the fields `toEntry` and `hasResult` read.
+ *
+ * Without it these queries load `fullResult` — an entire Lighthouse report per document,
+ * stored as Mixed — out of Mongo and then throw it away. The listing endpoints answer with
+ * a few hundred bytes per audit, so the cost is invisible in the response and grows with
+ * the history: measured at 223 ms for 28 audits against 5 ms for the website list, and it
+ * scales linearly. `routePath` is here for the project grouping, which shares this shape.
+ */
+const ENTRY_FIELDS = 'analysisId shortId url routePath scores metrics createdAt';
+
 // Re-export shared types so existing imports `from '.../history.service.js'` keep working.
 export type { HistoryEntry, ProjectAuditEntry, RouteGroup, ProjectAuditsResult };
 
@@ -110,6 +121,7 @@ export const HistoryService = {
         userId,
         normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`),
       })
+      .select(ENTRY_FIELDS)
       .sort({ createdAt: 1 })
       .lean();
 
@@ -119,6 +131,7 @@ export const HistoryService = {
   async getAll(userId: string): Promise<HistoryEntry[]> {
     const docs = await HistoryModel
       .find({ userId })
+      .select(ENTRY_FIELDS)
       .sort({ createdAt: -1 })
       .lean();
     // Failed 0-score runs are excluded here like everywhere else — the websites
@@ -147,6 +160,7 @@ export const HistoryService = {
 
     const docs = await HistoryModel
       .find({ projectId })
+      .select(ENTRY_FIELDS)
       .sort({ createdAt: 1 })
       .lean();
 

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Clock } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
+import { QueryErrorPanel } from '@/shared/ui/state-panel';
 import { getHostname } from '@/entities/website';
 import { useWebsites } from '@/entities/website';
 import { hasResult } from '@/entities/history';
@@ -12,10 +13,15 @@ import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard
 interface Props {
   allEntries: HistoryEntry[];
   isLoading:  boolean;
+  isError?:   boolean;
+  onRetry?:   () => void;
 }
 
-export function HistoryWebsitesOverview({ allEntries, isLoading }: Props) {
-  const { websites } = useWebsites();
+export function HistoryWebsitesOverview({ allEntries, isLoading, isError, onRetry }: Props) {
+  // This list is the intersection of two requests, so it cannot be judged empty until both
+  // have landed. Gating only on the history query let /websites resolve second and render
+  // "No history yet" for a moment before swapping to content.
+  const { websites, isLoading: sitesLoading } = useWebsites();
 
   // Keyed by hostname, not by full URL. Audits run per route, so a site saved as
   // "https://x.com" is audited as "https://x.com/" or "https://x.com/requests" — keying
@@ -45,12 +51,16 @@ export function HistoryWebsitesOverview({ allEntries, isLoading }: Props) {
       }),
   [websites, grouped]);
 
-  if (isLoading) {
+  if (isLoading || sitesLoading) {
     return (
       <div className="flex items-center justify-center py-28">
         <div className="w-6 h-6 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
       </div>
     );
+  }
+
+  if (isError) {
+    return <QueryErrorPanel what="audit history" {...(onRetry ? { onRetry } : {})} />;
   }
 
   if (sitesWithHistory.length === 0) {

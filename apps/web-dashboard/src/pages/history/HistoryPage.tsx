@@ -16,6 +16,7 @@ import { HistoryTabBar } from '@/features/history/ui/HistoryTabBar';
 import { HistoryDeepDiveTable } from '@/features/history/ui/HistoryDeepDiveTable';
 import { HistoryEmptyState } from '@/features/history/ui/HistoryEmptyState';
 import { HistoryWebsitesOverview } from '@/widgets/history-websites-overview';
+import { QueryErrorPanel } from '@/shared/ui/state-panel';
 
 export function HistoryPage() {
   const [params, setParams] = useSearchParams();
@@ -26,8 +27,8 @@ export function HistoryPage() {
   const sort   = (params.get('sort')   ?? 'date') as SortKey;
   const order  = (params.get('order')  ?? 'desc') as SortOrder;
 
-  const { data: urlEntries = [], isLoading: urlLoading } = useHistory(url || null);
-  const { data: allEntries = [], isLoading: allLoading  } = useAllHistory();
+  const { data: urlEntries = [], isLoading: urlLoading, isError: urlError, refetch: refetchUrl } = useHistory(url || null);
+  const { data: allEntries = [], isLoading: allLoading, isError: allError, refetch: refetchAll } = useAllHistory();
 
   const allRows  = useMemo(() => computeRows(urlEntries), [urlEntries]);
   const hostname = getHostname(url, '');
@@ -119,7 +120,12 @@ export function HistoryPage() {
             className="flex flex-col gap-[22px]"
           >
             {!url ? (
-              <HistoryWebsitesOverview allEntries={allEntries} isLoading={allLoading} />
+              <HistoryWebsitesOverview
+                allEntries={allEntries}
+                isLoading={allLoading}
+                isError={allError}
+                onRetry={() => void refetchAll()}
+              />
             ) : (
               <>
                 {urlLoading && (
@@ -128,11 +134,16 @@ export function HistoryPage() {
                   </div>
                 )}
 
-                {!urlLoading && urlEntries.length === 0 && (
+                {/* Before the empty state: an unreachable backend is not "no audits yet". */}
+                {!urlLoading && urlError && (
+                  <QueryErrorPanel what={`history for ${hostname || 'this URL'}`} onRetry={() => void refetchUrl()} />
+                )}
+
+                {!urlLoading && !urlError && urlEntries.length === 0 && (
                   <HistoryEmptyState url={url} />
                 )}
 
-                {!urlLoading && urlEntries.length > 0 && (
+                {!urlLoading && !urlError && urlEntries.length > 0 && (
                   <>
                     <HistoryEvolutionCard url={url} entries={urlEntries} />
 

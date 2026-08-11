@@ -28,7 +28,14 @@ function AuditList({ projectId, onSelect }: {
     </div>
   );
 
-  if (isError || !data || data.stats.totalAudits === 0) return (
+  if (isError) return (
+    <div className="flex items-center gap-2 py-6 justify-center text-xs text-ld-rose">
+      <AlertCircle className="w-3.5 h-3.5" />
+      Could not load this website&apos;s audits
+    </div>
+  );
+
+  if (!data || data.stats.totalAudits === 0) return (
     <div className="flex items-center gap-2 py-6 justify-center text-xs text-ld-text-3">
       <AlertCircle className="w-3.5 h-3.5" />
       No audits found for this website

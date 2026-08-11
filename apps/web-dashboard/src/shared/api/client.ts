@@ -10,9 +10,19 @@ export function configureUnauthorizedHandler(fn: (reason: UnauthorizedReason) =>
   _onUnauthorized = fn;
 }
 
+/** Long enough for a cold Mongo read, short enough that a hung backend surfaces as an
+ *  error instead of a spinner. Analysis itself runs over the socket, so nothing routed
+ *  through here is long-running — the one exception (launching a browser for an
+ *  auth-audit session) passes its own timeout at the call site. */
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+/** Launching a visible Chrome and navigating it to the target genuinely takes tens of
+ *  seconds. Exported so the call sites don't invent their own number. */
+export const BROWSER_LAUNCH_TIMEOUT_MS = 60_000;
+
 export const apiClient = axios.create({
   baseURL: '/api',
-  timeout: 90_000,
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 });
 

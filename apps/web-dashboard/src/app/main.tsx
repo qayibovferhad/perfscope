@@ -35,6 +35,19 @@ configureUnauthorizedHandler((reason) => {
 const queryClient = new QueryClient({
   defaultOptions: {
     mutations: { retry: false },
+    queries: {
+      // React Query's stock `retry: 3` with exponential backoff keeps a failed request in
+      // the pending state for four attempts and seven seconds of waiting. Every list page
+      // shows a spinner for that whole window and then falls through to its *empty* state,
+      // so a dead backend is indistinguishable from an account with no data. One quick
+      // retry still absorbs a genuine blip; anything worse should be reported, not hidden.
+      retry: 1,
+      retryDelay: 400,
+      // With the ambient staleTime of 0, every return to the tab re-runs the full sequence
+      // above — a broken page re-enters the spinner each time the user comes back. Every
+      // mutation and finished audit already invalidates explicitly.
+      refetchOnWindowFocus: false,
+    },
   },
 });
 

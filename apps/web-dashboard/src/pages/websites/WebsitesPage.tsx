@@ -5,6 +5,7 @@ import {
   CheckSquare, Gauge, AlertTriangle, Layers,
 } from 'lucide-react';
 import { Input }                     from '@/shared/ui/input';
+import { QueryErrorPanel }           from '@/shared/ui/state-panel';
 import { useWebsites }              from '@/entities/website';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites/model/useWebsitesQuery';
 import { useWebsiteScores }         from '@/features/websites/model/useWebsiteScores';
@@ -78,7 +79,7 @@ export function WebsitesPage() {
   // A new filter invalidates the current page number.
   useEffect(() => { setPage(1); }, [debouncedQ]);
 
-  const { data: pageData, isPending, isFetching } = useWebsitesPage({
+  const { data: pageData, isPending, isFetching, isError, refetch } = useWebsitesPage({
     q: debouncedQ, page, limit: PAGE_SIZE,
   });
   const { data: summary } = useWebsitesSummary();
@@ -88,6 +89,10 @@ export function WebsitesPage() {
   const total      = pageData?.total ?? 0;
   const isLoading  = isPending;
   const isFiltering = debouncedQ.length > 0;
+  // A failed request leaves `total` at its 0 fallback, which is indistinguishable from an
+  // account with no websites. Everything below branches on this first so the user is never
+  // told they have no sites when the truth is that we could not ask.
+  const failed = isError && !pageData;
 
   function switchView(v: 'grid' | 'list') {
     setView(v);
@@ -136,7 +141,7 @@ export function WebsitesPage() {
 
       {/* ── Toolbar — stays mounted while filtering so an empty result set
              can still be cleared ──────────────────────────────────────── */}
-      {!isLoading && (total > 0 || isFiltering) && (
+      {!isLoading && !failed && (total > 0 || isFiltering) && (
         <div className="flex items-center gap-3 mb-[18px] flex-wrap">
           <Input
             icon={<Search />}
@@ -174,8 +179,13 @@ export function WebsitesPage() {
         </div>
       )}
 
+      {/* ── Request failed — never fall through to the empty state ─────── */}
+      {!isLoading && failed && (
+        <QueryErrorPanel what="your websites" onRetry={() => void refetch()} isRetrying={isFetching} />
+      )}
+
       {/* ── Empty state (no websites at all) ───────────────────────────── */}
-      {!isLoading && total === 0 && !isFiltering && (
+      {!isLoading && !failed && total === 0 && !isFiltering && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-14 h-14 rounded-[16px] grid place-items-center mb-4 bg-ld-accent-soft">
             <Globe className="w-7 h-7 text-ld-accent" />
@@ -222,7 +232,7 @@ export function WebsitesPage() {
       )}
 
       {/* ── No search results ──────────────────────────────────────────── */}
-      {!isLoading && items.length === 0 && isFiltering && (
+      {!isLoading && !failed && items.length === 0 && isFiltering && (
         <p className="text-center text-[14px] text-ld-text-3 py-10">
           No websites match “{debouncedQ}”.
         </p>

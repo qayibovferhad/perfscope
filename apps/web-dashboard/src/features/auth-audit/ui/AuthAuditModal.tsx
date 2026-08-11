@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
-import { apiClient } from '@/shared/api/client';
+import { apiClient, BROWSER_LAUNCH_TIMEOUT_MS } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAuthAuditStore } from '../model/authAuditStore';
 import { Button } from '@/shared/ui/button';
@@ -68,7 +68,9 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
     }
 
     try {
-      const { data } = await apiClient.post<{ sessionId: string }>('/auth-audit/session', { url: normalized });
+      const { data } = await apiClient.post<{ sessionId: string }>(
+        '/auth-audit/session', { url: normalized }, { timeout: BROWSER_LAUNCH_TIMEOUT_MS },
+      );
       setSessionId(data.sessionId);
       setSession(data.sessionId);  // persist across modal opens
       setStep('ready');

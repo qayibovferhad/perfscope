@@ -14,6 +14,7 @@ import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
 import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/shared/ui/stat-card';
+import { QueryErrorPanel }      from '@/shared/ui/state-panel';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
 import { SessionCaptureModal }  from '@/features/auth-audit';
@@ -27,7 +28,7 @@ import { scoreBand, type AnalysisResult } from '@/entities/analysis';
 export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const navigate  = useNavigate();
-  const { data, isLoading, isError } = useProjectAudits(id!);
+  const { data, isLoading, isError, refetch } = useProjectAudits(id!);
   const { websites } = useWebsites();
 
   const [auditOpen,     setAuditOpen]     = useState(false);
@@ -73,7 +74,18 @@ export function ProjectDetailPage() {
 
   if (isLoading) return <ProjectDetailSkeleton />;
 
-  if (isError || !data) {
+  // A failed request and a project that does not exist are different problems: one is
+  // worth retrying, the other means the link is dead. Reporting both as "not found" sent
+  // users hunting for a deleted project whenever the backend hiccuped.
+  if (isError) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <QueryErrorPanel what="this project" onRetry={() => void refetch()} />
+      </div>
+    );
+  }
+
+  if (!data) {
     return (
       <div className="p-6 max-w-5xl mx-auto flex flex-col items-center justify-center py-24 text-center">
         <p className="text-sm font-medium mb-2 text-ld-text">Project not found</p>
