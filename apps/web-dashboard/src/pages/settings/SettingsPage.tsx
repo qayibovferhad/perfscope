@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CheckCircle2, KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
+import { Toggle } from '@/shared/ui/toggle';
+import { TimePicker } from '@/shared/ui/time-picker';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { useAuthStore } from '@/features/auth/model/authStore';
@@ -23,13 +25,98 @@ export function SettingsPage() {
       <div className="flex flex-col gap-1.5 mb-1">
         <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ld-text">Settings</h1>
         <p className="text-[14px] text-ld-text-2">
-          Manage your display name and sign-in password.
+          Manage your display name, sign-in password and weekly summary.
         </p>
       </div>
 
       <ProfileSection user={user} setAuth={setAuth} />
+      <DigestSection />
       <PasswordSection />
     </div>
+  );
+}
+
+/* ── Weekly digest ────────────────────────────────────────────────────────── */
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function DigestSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [day,     setDay]     = useState(1);
+  const [time,    setTime]    = useState('09:00');
+  const [saved,   setSaved]   = useState(false);
+  const [serverErr, setServerErr] = useState('');
+  const [loaded,  setLoaded]  = useState(false);
+
+  // The digest preference lives on the user document, which the auth store does not carry.
+  useEffect(() => {
+    apiClient.get<{ success: boolean; data: { enabled: boolean; day: number; time: string } }>('/auth/digest')
+      .then(res => {
+        const d = res.data.data;
+        setEnabled(d.enabled); setDay(d.day); setTime(d.time);
+      })
+      .catch(() => { /* leave defaults */ })
+      .finally(() => setLoaded(true));
+  }, []);
+
+  async function save(next: { enabled?: boolean; day?: number; time?: string }) {
+    setServerErr('');
+    setSaved(false);
+    try {
+      await apiClient.patch('/auth/digest', next);
+      setSaved(true);
+    } catch (err) {
+      setServerErr(errorMessage(err, 'Could not save your digest settings'));
+    }
+  }
+
+  return (
+    <Panel>
+      <PanelHeader icon={<Mail />} title="Weekly digest" />
+      <div className="flex flex-col gap-[14px] p-[18px]">
+
+        <div className="flex items-start justify-between gap-[16px]">
+          <div className="min-w-0">
+            <p className="text-[13.5px] font-semibold text-ld-text">Email me a weekly summary</p>
+            <p className="text-[12.5px] text-ld-text-3 mt-[3px] leading-[1.5]">
+              Average score movement, regressions, budget breaches and your slowest pages.
+              Unlike alerts, this arrives whether or not anything went wrong.
+            </p>
+          </div>
+          <Toggle
+            enabled={enabled}
+            disabled={!loaded}
+            onChange={(next) => { setEnabled(next); void save({ enabled: next }); }}
+          />
+        </div>
+
+        {enabled && (
+          <div className="flex items-end gap-[14px] flex-wrap pt-[4px]">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-semibold text-ld-text-2">Day</label>
+              <select
+                value={day}
+                onChange={e => { const d = Number(e.target.value); setDay(d); void save({ day: d }); }}
+                className="h-9 rounded-[10px] border border-ld-border-strong bg-ld-bg-2 px-[10px] text-[13px] text-ld-text outline-none focus:border-ld-accent"
+              >
+                {DAYS.map((label, i) => <option key={label} value={i}>{label}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-semibold text-ld-text-2">Time</label>
+              <TimePicker value={time} onChange={(t) => { setTime(t); void save({ time: t }); }} />
+            </div>
+          </div>
+        )}
+
+        {serverErr && <p className="text-xs px-3 py-2 rounded-lg ps-badge-reg">{serverErr}</p>}
+        {saved && !serverErr && (
+          <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
+            <CheckCircle2 className="w-4 h-4" /> Saved
+          </span>
+        )}
+      </div>
+    </Panel>
   );
 }
 

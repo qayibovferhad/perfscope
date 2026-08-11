@@ -88,6 +88,48 @@ authRouter.patch('/auth/profile', requireAuth, async (req: AuthRequest, res: Res
   }
 });
 
+// GET /api/auth/digest — current weekly-summary preference
+authRouter.get('/auth/digest', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.userId).select('digest').lean();
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    // Documents created before the field existed read as undefined; answer with defaults.
+    const digest = user.digest ?? { enabled: false, day: 1, time: '09:00', lastSentAt: null };
+    return res.json({ success: true, data: digest });
+  } catch (err) {
+    console.error('[auth]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// PATCH /api/auth/digest — opt in/out of the weekly summary
+authRouter.patch('/auth/digest', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const body = req.body as { enabled?: boolean; day?: number; time?: string };
+
+    const update: Record<string, unknown> = {};
+    if (typeof body.enabled === 'boolean') update['digest.enabled'] = body.enabled;
+    if (typeof body.day === 'number' && Number.isInteger(body.day) && body.day >= 0 && body.day <= 6) {
+      update['digest.day'] = body.day;
+    }
+    if (typeof body.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.time)) {
+      update['digest.time'] = body.time;
+    }
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, error: 'Provide enabled, day or time' });
+    }
+
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    return res.json({ success: true, data: user.get('digest') });
+  } catch (err) {
+    console.error('[auth]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // PATCH /api/auth/password — change (or, for Google-only accounts, set) the password
 authRouter.patch('/auth/password', requireAuth, async (req: AuthRequest, res: Response) => {
   try {

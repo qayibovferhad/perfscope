@@ -3,6 +3,7 @@ import { config, validateConfig } from './config/index.js';
 import { installChromeReaper } from './lib/chromeReaper.js';
 import { connectDatabase } from './config/database.js';
 import { registerNightlyCron } from './cron/nightlyAudit.cron.js';
+import { registerDigestCron } from './cron/digest.cron.js';
 
 validateConfig();
 installChromeReaper();
@@ -18,4 +19,5 @@ httpServer.listen(config.port, () => {
   console.log(`[Server] WebSocket ready`);
   console.log(`[Server] Environment: ${config.nodeEnv}`);
   registerNightlyCron();
+  registerDigestCron();
 });
