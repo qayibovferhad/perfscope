@@ -139,7 +139,7 @@ export function DashboardPage() {
               leaves a half-empty panel that reads as a loading failure. */}
           <div className="grid grid-cols-2 gap-[18px] items-start max-[1100px]:grid-cols-1">
             <IncidentsCard incidents={data.incidents} />
-            <AttentionCard rows={data.attention} trend={data.charts.trend} />
+            <AttentionCard rows={data.attention} />
           </div>
 
           {/* The RUM card is a single line; stretching it to the height of the audit log

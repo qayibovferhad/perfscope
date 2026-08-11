@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ListChecks, CheckCircle2 } from 'lucide-react';
-import type { OverviewAttention, OverviewAttentionReason, OverviewSiteTrend } from '@perfscope/shared';
+import type { OverviewAttention, OverviewAttentionReason } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { scoreBand } from '@/entities/analysis';
-import { Sparkline } from '@/shared/ui/chart';
 
 /** Each reason states what is wrong, not what the field is called. */
 const REASON_LABEL: Record<OverviewAttentionReason, string> = {
@@ -20,26 +19,13 @@ const REASON_TONE: Record<OverviewAttentionReason, string> = {
   neverAudited:  'text-ld-text-3',
 };
 
-const BAND_COLOR = {
-  good: 'var(--ld-accent)',
-  warn: 'var(--ld-amber)',
-  poor: 'var(--ld-rose)',
-} as const;
-
 const BAND_TONE = {
   good: 'text-ld-accent',
   warn: 'text-ld-amber',
   poor: 'text-ld-rose',
 } as const;
 
-export function AttentionCard({ rows, trend }: { rows: OverviewAttention[]; trend: OverviewSiteTrend[] }) {
-  // The score alone says where a site is; the line says which way it is going, which is
-  // what decides whether it needs looking at today.
-  const seriesFor = (websiteId: string) =>
-    (trend.find(t => t.websiteId === websiteId)?.points ?? [])
-      .map(p => p.score)
-      .filter((score): score is number => score !== null);
-
+export function AttentionCard({ rows }: { rows: OverviewAttention[] }) {
   return (
     <Panel>
       <PanelHeader
@@ -77,14 +63,6 @@ export function AttentionCard({ rows, trend }: { rows: OverviewAttention[]; tren
                       </span>
                     )}
                   </span>
-
-                  <Sparkline
-                    id={row.websiteId}
-                    values={seriesFor(row.websiteId)}
-                    width={64}
-                    height={26}
-                    color={row.score === null ? 'var(--ld-text-3)' : BAND_COLOR[scoreBand(row.score)]}
-                  />
 
                   <span className={`font-mono text-[20px] font-semibold tabular-nums shrink-0 w-[32px] text-right ${
                     row.score === null ? 'text-ld-text-3' : BAND_TONE[scoreBand(row.score)]
