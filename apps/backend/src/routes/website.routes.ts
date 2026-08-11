@@ -1,9 +1,12 @@
+import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
 import { HAS_RESULT_FIELDS } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
+import { RUM_METRIC_KEYS } from '@perfscope/shared';
+import { getRumSummary, getRumPaths, getRumTrend } from '../services/rum.service.js';
 import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 import { escapeRegex, hostOf, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
@@ -197,6 +200,79 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
   }
 });
 
+// GET /api/websites/:id/rum — field data from the site's own visitors.
+// Complements the lab audit and CrUX: this is your traffic, every browser, and the only
+// view that can see pages behind a login.
+websiteRouter.get('/websites/:id/rum', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! })
+      .select('_id rumKey').lean();
+    if (!site) return res.status(404).json({ success: false, error: 'Website not found' });
+
+    const days   = parseInt(String(req.query['days'] ?? '7'), 10) || 7;
+    const path   = typeof req.query['path'] === 'string' && req.query['path'] ? String(req.query['path']) : undefined;
+    const device = req.query['device'] === 'mobile' || req.query['device'] === 'desktop'
+      ? req.query['device'] as 'mobile' | 'desktop'
+      : undefined;
+
+    const [summary, paths] = await Promise.all([
+      getRumSummary({ websiteId: site._id, days, path, device }),
+      getRumPaths({ websiteId: site._id, days, device }),
+    ]);
+
+    return res.json({ success: true, data: { summary, paths, rumKey: site.rumKey ?? null } });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /api/websites/:id/rum/trend — daily p75 for one metric
+websiteRouter.get('/websites/:id/rum/trend', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).select('_id').lean();
+    if (!site) return res.status(404).json({ success: false, error: 'Website not found' });
+
+    const raw = String(req.query['metric'] ?? 'lcp');
+    const metric = (RUM_METRIC_KEYS as readonly string[]).includes(raw)
+      ? raw as (typeof RUM_METRIC_KEYS)[number]
+      : 'lcp';
+
+    const days   = parseInt(String(req.query['days'] ?? '30'), 10) || 30;
+    const device = req.query['device'] === 'mobile' || req.query['device'] === 'desktop'
+      ? req.query['device'] as 'mobile' | 'desktop'
+      : undefined;
+
+    const trend = await getRumTrend({ websiteId: site._id, days, device, metric });
+    return res.json({ success: true, data: trend });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/websites/:id/rum-key — issue (or rotate) the public key for the RUM snippet.
+// Not a secret: it ships in the page source of whatever site embeds the collector. Its
+// only job is to say which Website a beacon belongs to, so rotating it simply orphans
+// any snippet still carrying the old one.
+websiteRouter.post('/websites/:id/rum-key', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const rumKey = randomBytes(12).toString('base64url');
+
+    const website = await Website.findOneAndUpdate(
+      { _id: req.params['id']!, userId: req.userId! },
+      { rumKey },
+      { returnDocument: 'after' },
+    );
+    if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
+
+    return res.json({ success: true, data: { rumKey } });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // GET /api/websites/:id/alerts — what was sent, when, and whether it landed.
 // Delivery is fire-and-forget, so without this "I never got an alert" is undebuggable.
 websiteRouter.get('/websites/:id/alerts', requireAuth, async (req: AuthRequest, res: Response) => {
@@ -222,7 +298,7 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
   try {
     const body = req.body as {
       performance?: number | null; lcp?: number | null; tbt?: number | null;
-      cls?: number | null; webhookUrl?: string | null; alertEmail?: string | null;
+      cls?: number | null; inp?: number | null; webhookUrl?: string | null; alertEmail?: string | null;
     };
 
     const num = (v: unknown, min: number, max: number): number | null =>
@@ -253,13 +329,14 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
       lcp:         num(body.lcp, 100, 60_000),
       tbt:         num(body.tbt, 0,   60_000),
       cls:         num(body.cls, 0.01, 5),
+      inp:         num(body.inp, 10, 60_000),
       webhookUrl,
       alertEmail,
     };
     // Channels stand on their own: regression alerts need somewhere to send without any
     // threshold being set, so only a fully blank form clears the record.
     const noThresholds = budgets.performance == null && budgets.lcp == null &&
-                         budgets.tbt == null && budgets.cls == null;
+                         budgets.tbt == null && budgets.cls == null && budgets.inp == null;
     const empty = noThresholds && !webhookUrl && !alertEmail;
 
     const website = await Website.findOneAndUpdate(

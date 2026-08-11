@@ -44,6 +44,8 @@ const budgetsSchema = new Schema(
     lcp:         { type: Number, default: null },
     tbt:         { type: Number, default: null },
     cls:         { type: Number, default: null },
+    /** Field-only: no lab run can measure INP, so this is checked against RUM p75. */
+    inp:         { type: Number, default: null },
     webhookUrl:  { type: String, default: null },
     alertEmail:  { type: String, default: null },
   },
@@ -70,6 +72,12 @@ const websiteSchema = new Schema(
     requiresLogin: { type: requiresLoginSchema, default: null },
     automation:    { type: automationSchema, default: () => ({ enabled: false, lastRunAt: null }) },
     budgets:          { type: budgetsSchema, default: null },
+    /**
+     * Public key embedded in the RUM snippet. Not a secret — it is visible in the page
+     * source by design; it identifies the site, and the ingest endpoint checks nothing
+     * else. Absent until the user asks for a snippet.
+     */
+    rumKey:           { type: String, default: null, index: true, sparse: true },
     lastBudgetBreach: { type: budgetBreachSchema, default: null },
   },
   { timestamps: true },
@@ -98,6 +106,7 @@ export interface IWebsiteBudgets {
   lcp:         number | null;
   tbt:         number | null;
   cls:         number | null;
+  inp:         number | null;
   webhookUrl:  string | null;
   alertEmail:  string | null;
 }
@@ -125,6 +134,7 @@ export interface IWebsite {
   requiresLogin:    IRequiresLogin | null;
   automation:       IWebsiteAutomation;
   budgets:          IWebsiteBudgets | null;
+  rumKey:           string | null;
   lastBudgetBreach: IBudgetBreach | null;
   createdAt?:       Date;
 }

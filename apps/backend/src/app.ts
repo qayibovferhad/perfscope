@@ -10,7 +10,9 @@ import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
 import { authAuditRouter } from './routes/authAudit.routes.js';
 import { competitorSessionRouter } from './routes/competitorSession.routes.js';
+import { onboardingRouter } from './routes/onboarding.routes.js';
 import { cliAuthRouter }           from './routes/cliAuth.routes.js';
+import { rumRouter } from './routes/rum.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import type {
@@ -44,6 +46,10 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use(express.json());
 
   // ── Routes ───────────────────────────────────────────────────────────────
+  // Mounted at the root: it serves /rum.js as well as /api/rum, and carries its own
+  // permissive CORS because both are called from other origins.
+  app.use(rumRouter);
+
   app.use('/api', authRouter);
   app.use('/api', websiteRouter);
   app.use('/api', analyzerRouter);
@@ -52,6 +58,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', authAuditRouter);
   app.use('/api', competitorSessionRouter);
   app.use('/api', cruxRouter);
+  app.use('/api', onboardingRouter);
   app.use('/api/auth', cliAuthRouter);
 
   app.get('/', (_req, res) => {

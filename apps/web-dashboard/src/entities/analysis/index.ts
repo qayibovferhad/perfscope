@@ -37,10 +37,15 @@ export type {
   ThirdPartyEntity,
 } from '@perfscope/shared'
 
-export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS } from '@perfscope/shared'
+export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS, SCORE_BANDS } from '@perfscope/shared'
 export type { ScoreRating, VitalKey, AuditFormFactor } from '@perfscope/shared'
 
 export { scoreColor, scoreBand, vitalBand, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'
+export { FIELD_METRICS, FIELD_METRIC_ORDER, RATING_TEXT, RATING_LABEL } from './fieldMetrics'
+export { GLOSSARY, thresholdLine, goodThreshold, CATEGORY_BAND_LINE, isVitalKey } from './glossary'
+export type { GlossaryKey, CategoryKey } from './glossary'
+export { GlossaryTip } from './ui/GlossaryTip'
+export type { FieldMetricKey } from './fieldMetrics'
 export type { ScoreBand } from './lib'
 
 export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'

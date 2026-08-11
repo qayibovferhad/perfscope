@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { Clock, Shield, Gauge, Eye, Code2, Search } from 'lucide-react';
-import { scoreBand, vitalBand, type AnalysisResult, type ScoreBand, type VitalKey } from '@/entities/analysis';
+import {
+  scoreBand, vitalBand, GlossaryTip,
+  type AnalysisResult, type ScoreBand, type VitalKey, type GlossaryKey,
+} from '@/entities/analysis';
 import { fmtSec, fmtCls } from '@/shared/lib/format';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -27,17 +30,18 @@ const BAND_LABEL: Record<ScoreBand, string> = {
 
 // ─── Score card ───────────────────────────────────────────────────────────────
 
+// `term` is the glossary slug, which differs from the result key for best practices.
 const SCORE_ITEMS = [
-  { key: 'performance'   as const, label: 'Performance',    Icon: Gauge  },
-  { key: 'accessibility'  as const, label: 'Accessibility',  Icon: Eye    },
-  { key: 'bestPractices'  as const, label: 'Best Practices', Icon: Code2  },
-  { key: 'seo'            as const, label: 'SEO',            Icon: Search },
+  { key: 'performance'   as const, term: 'performance'    as const, label: 'Performance',    Icon: Gauge  },
+  { key: 'accessibility'  as const, term: 'accessibility'  as const, label: 'Accessibility',  Icon: Eye    },
+  { key: 'bestPractices'  as const, term: 'best-practices' as const, label: 'Best Practices', Icon: Code2  },
+  { key: 'seo'            as const, term: 'seo'            as const, label: 'SEO',            Icon: Search },
 ] as const;
 
 function ScoreCard({
-  label, Icon, score, delay = 0,
+  label, term, Icon, score, delay = 0,
 }: {
-  label: string; Icon: React.ElementType; score: number; delay?: number;
+  label: string; term: GlossaryKey; Icon: React.ElementType; score: number; delay?: number;
 }) {
   const band = scoreBand(score);
   const offset = CIRC * (1 - score / 100);
@@ -72,6 +76,7 @@ function ScoreCard({
       <h4 className="text-[13.5px] font-semibold flex items-center justify-center gap-[6px]">
         <Icon className="w-[14px] h-[14px] text-ld-text-3" />
         <span className="text-ld-text">{label}</span>
+        <GlossaryTip term={term} />
       </h4>
 
       {/* Status */}
@@ -115,7 +120,10 @@ function VitalsCell({ abbr, metricKey, value }: { abbr: string; metricKey: Vital
 
   return (
     <div className="px-[14px] py-[13px] rounded-[12px] border border-ld-border bg-ld-surface-2">
-      <div className="font-mono text-[10px] tracking-[.08em] uppercase text-ld-text-3">{abbr}</div>
+      <div className="font-mono text-[10px] tracking-[.08em] uppercase text-ld-text-3 flex items-center gap-[5px]">
+        {abbr}
+        <GlossaryTip term={metricKey} />
+      </div>
       <div className={`font-mono text-[18px] font-semibold mt-[6px] ${VITAL_VAL_CLASS[band]}`}>
         {fmt(value)}
       </div>
@@ -194,10 +202,10 @@ export function ComparisonSide({
           <div>
             <ColHead isYou />
             <div className="grid grid-cols-2 gap-[12px]">
-              {SCORE_ITEMS.map(({ key, label, Icon }, i) => (
+              {SCORE_ITEMS.map(({ key, term, label, Icon }, i) => (
                 <ScoreCard
                   key={key}
-                  label={label} Icon={Icon}
+                  label={label} term={term} Icon={Icon}
                   score={target.scores[key]}
                   delay={i * 0.07}
                 />
@@ -209,10 +217,10 @@ export function ComparisonSide({
           <div>
             <ColHead isYou={false} />
             <div className="grid grid-cols-2 gap-[12px]">
-              {SCORE_ITEMS.map(({ key, label, Icon }, i) => (
+              {SCORE_ITEMS.map(({ key, term, label, Icon }, i) => (
                 <ScoreCard
                   key={key}
-                  label={label} Icon={Icon}
+                  label={label} term={term} Icon={Icon}
                   score={competitor.scores[key]}
                   delay={i * 0.07 + 0.1}
                 />

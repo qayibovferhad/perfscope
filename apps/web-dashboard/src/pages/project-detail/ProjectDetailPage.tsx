@@ -17,6 +17,8 @@ import { StatCard }             from '@/features/projects/ui/StatCard';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
 import { SessionCaptureModal }  from '@/features/auth-audit';
+import { RumPanel }             from '@/features/rum';
+import { hasResult }            from '@perfscope/shared';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects/lib/formatters';
@@ -54,6 +56,15 @@ export function ProjectDetailPage() {
     () => (data?.groups ?? []).flatMap((g) => g.entries),
     [data?.groups],
   );
+
+  // Newest audit that actually produced numbers — the lab side of the field comparison.
+  const latestLab = useMemo(() => {
+    const scored = allAudits
+      .filter(hasResult)
+      .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
+    const last = scored.at(-1);
+    return last ? { lcp: last.metrics.lcp, cls: last.metrics.cls, fcp: last.metrics.fcp } : null;
+  }, [allAudits]);
 
   const selectedAudits = useMemo(
     () => allAudits.filter((a) => selectedIds.has(a.id)),
@@ -300,6 +311,9 @@ export function ProjectDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Field data — what real visitors got, next to the lab runs above */}
+        <RumPanel websiteId={project.id} lab={latestLab} />
 
       </div>
 

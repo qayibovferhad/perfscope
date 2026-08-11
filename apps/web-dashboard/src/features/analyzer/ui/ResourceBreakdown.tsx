@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   FileCode2, Palette, ImageIcon, Type, Globe,
-  ExternalLink, AlertTriangle, Info, LayoutGrid,
+  ExternalLink, AlertTriangle, LayoutGrid,
 } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
+import { InfoTip } from '@/shared/ui/info-tip';
 import { cn } from '@/shared/lib/utils';
 import type { ParsedResources, ResourceType, NetworkRequest } from '@/entities/analysis';
 
@@ -63,39 +63,6 @@ const TYPE_CONFIG: Record<
   media:      { label: 'Media',      icon: ImageIcon,  iconCls: 'text-[#f472b6]'            },
   other:      { label: 'Other/XHR',  icon: Globe,      iconCls: 'text-ld-text-3'            },
 };
-
-// ─── Tooltip ──────────────────────────────────────────────────────────────────
-
-function Tooltip({ content, children }: { content: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {children}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-64 pointer-events-none"
-          >
-            <div className="rounded-[10px] bg-ld-surface border border-ld-border shadow-ld-shadow-card px-[12px] py-[8px] text-[12px] text-ld-text-2 leading-relaxed">
-              <div className="flex gap-[6px]">
-                <Info className="w-[14px] h-[14px] text-ld-amber shrink-0 mt-[2px]" />
-                <span>{content}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -242,9 +209,13 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
                   </td>
                   <td className="px-[12px] py-[8px] text-center">
                     {req.advice ? (
-                      <Tooltip content={req.advice}>
-                        <AlertTriangle className="w-[13px] h-[13px] text-ld-amber cursor-help" />
-                      </Tooltip>
+                      // The table is `overflow-hidden`, so this tip has to be portalled out.
+                      <InfoTip
+                        icon={AlertTriangle}
+                        label={`Advice for ${req.url}`}
+                        content={req.advice}
+                        className="text-ld-amber hover:text-ld-amber"
+                      />
                     ) : (
                       <AlertTriangle className="w-[13px] h-[13px] text-ld-rose" />
                     )}

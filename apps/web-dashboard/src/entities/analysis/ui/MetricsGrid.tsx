@@ -4,16 +4,18 @@ import { cn } from '@/shared/lib/utils';
 import { fmtSec, fmtCls } from '@/shared/lib/format';
 import { VITAL_THRESHOLDS, type CoreWebVitals } from '@perfscope/shared';
 import { vitalBand, type ScoreBand } from '../lib';
+import { goodThreshold } from '../glossary';
+import { GlossaryTip } from './GlossaryTip';
 
 function clamp(v: number) { return Math.min(100, Math.max(0, v)); }
 
 const VITALS = [
-  { key: 'fcp' as const, abbr: 'FCP', label: 'First Contentful Paint',   icon: Clock,      fmt: fmtSec, hint: 'good < 1.8s'   },
-  { key: 'lcp' as const, abbr: 'LCP', label: 'Largest Contentful Paint', icon: Maximize2,  fmt: fmtSec, hint: 'good < 2.5s'   },
-  { key: 'tbt' as const, abbr: 'TBT', label: 'Total Blocking Time',      icon: Layers,     fmt: (v: number) => `${Math.round(v)}ms`, hint: 'good < 200ms' },
-  { key: 'cls' as const, abbr: 'CLS', label: 'Cumulative Layout Shift',  icon: LayoutGrid, fmt: fmtCls, hint: 'good < 0.1'    },
-  { key: 'si'  as const, abbr: 'SI',  label: 'Speed Index',              icon: Zap,        fmt: fmtSec, hint: 'good < 3.4s'   },
-  { key: 'tti' as const, abbr: 'TTI', label: 'Time to Interactive',      icon: Timer,      fmt: fmtSec, hint: 'good < 3.8s'   },
+  { key: 'fcp' as const, abbr: 'FCP', label: 'First Contentful Paint',   icon: Clock,      fmt: fmtSec },
+  { key: 'lcp' as const, abbr: 'LCP', label: 'Largest Contentful Paint', icon: Maximize2,  fmt: fmtSec },
+  { key: 'tbt' as const, abbr: 'TBT', label: 'Total Blocking Time',      icon: Layers,     fmt: (v: number) => `${Math.round(v)}ms` },
+  { key: 'cls' as const, abbr: 'CLS', label: 'Cumulative Layout Shift',  icon: LayoutGrid, fmt: fmtCls },
+  { key: 'si'  as const, abbr: 'SI',  label: 'Speed Index',              icon: Zap,        fmt: fmtSec },
+  { key: 'tti' as const, abbr: 'TTI', label: 'Time to Interactive',      icon: Timer,      fmt: fmtSec },
 ] as const;
 
 const VAL_COLOR: Record<ScoreBand, string> = {
@@ -37,7 +39,7 @@ const BAR_CLS: Record<ScoreBand, string> = {
 export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
-      {VITALS.map(({ key, abbr, label, icon: Icon, fmt, hint }) => {
+      {VITALS.map(({ key, abbr, label, icon: Icon, fmt }) => {
         const value  = metrics[key];
         const status = vitalBand(key, value);
         const barW   = clamp(value / VITAL_THRESHOLDS[key].poor * 100);
@@ -57,8 +59,10 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
                   <Icon className="w-[15px] h-[15px]" />
                 </span>
                 {abbr}
+                <GlossaryTip term={key} />
               </span>
-              <span className="font-mono text-[11px] text-ld-text-3">{hint}</span>
+              {/* Derived, so a threshold change in VITAL_THRESHOLDS cannot leave this lying. */}
+              <span className="font-mono text-[11px] text-ld-text-3">{goodThreshold(key)}</span>
             </div>
 
             {/* Value */}

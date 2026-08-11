@@ -30,6 +30,7 @@ export function SetupModal({ site, open, onClose }: Props) {
   const [budgetLcp,  setBudgetLcp]  = useState(site.budgets?.lcp?.toString() ?? '');
   const [budgetTbt,  setBudgetTbt]  = useState(site.budgets?.tbt?.toString() ?? '');
   const [budgetCls,  setBudgetCls]  = useState(site.budgets?.cls?.toString() ?? '');
+  const [budgetInp,  setBudgetInp]  = useState(site.budgets?.inp?.toString() ?? '');
   const [webhookUrl, setWebhookUrl] = useState(site.budgets?.webhookUrl ?? '');
   const [alertEmail, setAlertEmail] = useState(site.budgets?.alertEmail ?? '');
 
@@ -57,6 +58,7 @@ export function SetupModal({ site, open, onClose }: Props) {
         lcp:         parseNum(budgetLcp),
         tbt:         parseNum(budgetTbt),
         cls:         parseNum(budgetCls),
+        inp:         parseNum(budgetInp),
         webhookUrl:  webhookUrl.trim() || null,
         alertEmail:  alertEmail.trim() || null,
       }),
@@ -135,14 +137,15 @@ export function SetupModal({ site, open, onClose }: Props) {
         {/* Performance budgets */}
         <div>
           <p className="text-[9px] font-bold uppercase tracking-widest mb-2 text-ld-text-3">
-            Performance budgets <span className="normal-case font-medium tracking-normal">— alert when an audit breaks them</span>
+            Performance budgets <span className="normal-case font-medium tracking-normal">— checked against audits, and against real-user p75</span>
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2 max-[560px]:grid-cols-3">
             {([
               ['Min score', budgetPerf, setBudgetPerf, '90'],
               ['Max LCP ms', budgetLcp, setBudgetLcp, '2500'],
               ['Max TBT ms', budgetTbt, setBudgetTbt, '200'],
               ['Max CLS', budgetCls, setBudgetCls, '0.1'],
+              ['Max INP ms', budgetInp, setBudgetInp, '200'],
             ] as const).map(([label, value, setter, ph]) => (
               <div key={label}>
                 <p className="text-[9px] text-ld-text-3 mb-1">{label}</p>
@@ -159,7 +162,8 @@ export function SetupModal({ site, open, onClose }: Props) {
           <p className="text-[9.5px] text-ld-text-3 mt-3 leading-[1.5]">
             Alerts fire on a budget breach, and whenever a run degrades sharply against the
             previous audit of the same page — set a channel to get regression alerts even
-            without thresholds.
+            without thresholds. LCP, CLS and INP are also checked hourly against real-user
+            p75; INP has no lab equivalent, so it is field-only.
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>

@@ -1,21 +1,35 @@
 export type ScoreRating = 'good' | 'needs-improvement' | 'poor'
 
+/**
+ * Lighthouse category bands — the 0-100 score equivalent of VITAL_THRESHOLDS, so a
+ * threshold shown in the UI is read from here rather than retyped ("good" is inclusive).
+ */
+export const SCORE_BANDS = { good: 90, needsImprovement: 50 } as const
+
 export function rateScore(score: number): ScoreRating {
-  if (score >= 90) return 'good'
-  if (score >= 50) return 'needs-improvement'
+  if (score >= SCORE_BANDS.good) return 'good'
+  if (score >= SCORE_BANDS.needsImprovement) return 'needs-improvement'
   return 'poor'
 }
 
-/** Core Web Vitals + lab metrics, thresholds per web.dev ("good" is inclusive). */
-export type VitalKey = 'fcp' | 'lcp' | 'tbt' | 'cls' | 'si' | 'tti'
+/**
+ * Metric thresholds per web.dev ("good" is inclusive).
+ *
+ * Covers both what a lab run measures (tbt, si, tti) and what only real users can
+ * produce (inp, ttfb) — field data buckets its samples against the same numbers, so
+ * they live together rather than in a second table.
+ */
+export type VitalKey = 'fcp' | 'lcp' | 'tbt' | 'cls' | 'si' | 'tti' | 'inp' | 'ttfb'
 
 export const VITAL_THRESHOLDS: Record<VitalKey, { good: number; poor: number }> = {
-  fcp: { good: 1800, poor: 3000 },
-  lcp: { good: 2500, poor: 4000 },
-  tbt: { good: 200,  poor: 600  },
-  cls: { good: 0.1,  poor: 0.25 },
-  si:  { good: 3400, poor: 5800 },
-  tti: { good: 3800, poor: 7300 },
+  fcp:  { good: 1800, poor: 3000 },
+  lcp:  { good: 2500, poor: 4000 },
+  tbt:  { good: 200,  poor: 600  },
+  cls:  { good: 0.1,  poor: 0.25 },
+  si:   { good: 3400, poor: 5800 },
+  tti:  { good: 3800, poor: 7300 },
+  inp:  { good: 200,  poor: 500  },
+  ttfb: { good: 800,  poor: 1800 },
 }
 
 export function rateVital(key: VitalKey, value: number): ScoreRating {

@@ -1,4 +1,5 @@
 import { Users } from 'lucide-react';
+import { GlossaryTip } from '@/entities/analysis';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import type { CruxData, CruxMetric, CruxMetricKey } from '@perfscope/shared';
 import {
@@ -52,6 +53,7 @@ function MetricRow({ metricKey, metric }: { metricKey: CruxMetricKey; metric: Cr
         <b className="font-mono text-[11px] tracking-[.08em] uppercase text-ld-text-2 font-semibold w-[42px] shrink-0">
           {meta.label}
         </b>
+        <GlossaryTip term={metricKey} />
         <span className="text-[12px] text-ld-text-3 flex-1 min-w-0 truncate">{meta.title}</span>
         <span className={`font-mono text-[14px] font-semibold tabular-nums ${RATING_TEXT[rating]}`}>
           {meta.format(metric.p75)}

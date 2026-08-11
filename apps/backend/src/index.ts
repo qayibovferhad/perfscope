@@ -4,6 +4,7 @@ import { installChromeReaper } from './lib/chromeReaper.js';
 import { connectDatabase } from './config/database.js';
 import { registerNightlyCron } from './cron/nightlyAudit.cron.js';
 import { registerDigestCron } from './cron/digest.cron.js';
+import { registerRumBudgetCron } from './cron/rumBudget.cron.js';
 
 validateConfig();
 installChromeReaper();
@@ -20,4 +21,5 @@ httpServer.listen(config.port, () => {
   console.log(`[Server] Environment: ${config.nodeEnv}`);
   registerNightlyCron();
   registerDigestCron();
+  registerRumBudgetCron();
 });

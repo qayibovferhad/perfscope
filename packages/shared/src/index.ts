@@ -4,6 +4,8 @@ export * from './types/history.js'
 export * from './types/website.js'
 export * from './types/user.js'
 export * from './types/crux.js'
+export * from './types/rum.js'
+export * from './types/onboarding.js'
 
 // ─── Lib ────────────────────────────────────────────────────────────────────
 export * from './lib/rating.js'

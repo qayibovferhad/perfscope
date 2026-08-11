@@ -32,6 +32,8 @@ export interface WebsiteBudgets {
   tbt?: number | null
   /** Maximum acceptable CLS. */
   cls?: number | null
+  /** Maximum acceptable INP in ms. Field-only — no lab run produces this metric. */
+  inp?: number | null
   /** POSTed a BudgetBreach payload whenever an audit violates the budgets. */
   webhookUrl?: string | null
   /** Receives a breach summary email (requires SMTP_* configured on the backend). */
@@ -39,7 +41,7 @@ export interface WebsiteBudgets {
 }
 
 export interface BudgetFailure {
-  metric: 'performance' | 'lcp' | 'tbt' | 'cls'
+  metric: 'performance' | 'lcp' | 'tbt' | 'cls' | 'inp' | 'fcp' | 'ttfb'
   value:  number
   budget: number
 }

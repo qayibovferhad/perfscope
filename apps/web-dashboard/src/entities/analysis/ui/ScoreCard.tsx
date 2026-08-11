@@ -3,6 +3,8 @@ import { Gauge, Eye, Code2, Search } from 'lucide-react';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import { scoreBand, type ScoreBand } from '../lib';
+import { GlossaryTip } from './GlossaryTip';
+import type { CategoryKey } from '../glossary';
 
 const ICONS = {
   Performance:      Gauge,
@@ -12,6 +14,14 @@ const ICONS = {
 } as const;
 
 export type ScoreLabel = keyof typeof ICONS;
+
+/** Display strings are what the audit hands us; the glossary is keyed by slug. */
+const TERM: Record<ScoreLabel, CategoryKey> = {
+  Performance:      'performance',
+  Accessibility:    'accessibility',
+  'Best Practices': 'best-practices',
+  SEO:              'seo',
+};
 
 const ARC_STROKE: Record<ScoreBand, string> = {
   good: '[stroke:var(--ld-accent)]',
@@ -90,6 +100,7 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
       <h3 className="flex items-center justify-center gap-[7px] text-[15px] font-bold text-ld-text">
         <Icon className={cn('w-[15px] h-[15px]', COLOR[status])} />
         {label}
+        <GlossaryTip term={TERM[label]} />
       </h3>
 
       {/* Status */}

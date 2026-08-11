@@ -13,6 +13,7 @@ import { AddWebsiteModal }          from '@/features/websites/ui/AddWebsiteModal
 import { DeleteWebsiteModal }       from '@/features/websites/ui/DeleteWebsiteModal';
 import { WebsiteCard }              from './ui/WebsiteCard';
 import { Pagination }               from './ui/Pagination';
+import { GettingStartedPanel }      from '@/features/onboarding';
 import type { Website }             from '@/entities/website';
 
 const PAGE_SIZE = 12;
@@ -133,6 +134,9 @@ export function WebsitesPage() {
           <SumCard icon={<AlertTriangle className="w-[19px] h-[19px]" />} value={summary.needsAttention} label="Needs attention" variant={summary.needsAttention > 0 ? 'warn' : 'default'} />
         </div>
       )}
+
+      {/* First-run path. Renders nothing once every step is done, or if dismissed. */}
+      <GettingStartedPanel onAddWebsite={() => setModalOpen(true)} />
 
       {/* ── Toolbar — stays mounted while filtering so an empty result set
              can still be cleared ──────────────────────────────────────── */}

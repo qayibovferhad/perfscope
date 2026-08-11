@@ -4,6 +4,16 @@ import type { WebsiteDoc as Website } from '@perfscope/shared';
 
 const KEY = ['websites'];
 
+/**
+ * Adding a site, enabling automation or saving a budget each complete an onboarding step,
+ * and the checklist is rendered on the same page as the Add modal — with no remount to
+ * trigger a refetch, it would sit there stale until the user navigated away and back.
+ */
+function invalidate(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: KEY });
+  qc.invalidateQueries({ queryKey: ['onboarding'] });
+}
+
 export function useWebsites() {
   const qc = useQueryClient();
 
@@ -18,30 +28,30 @@ export function useWebsites() {
   const add = useMutation({
     mutationFn: (payload: { url: string; name?: string }) =>
       apiClient.post<Website>('/websites', payload).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/websites/${id}`),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess:  () => invalidate(qc),
   });
 
   const saveSession = useMutation({
     mutationFn: ({ id, sessionData }: { id: string; sessionData: { cookies: unknown[]; localStorage: Record<string, string> } }) =>
       apiClient.patch<Website>(`/websites/${id}/session`, sessionData).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   });
 
   const setBudgets = useMutation({
-    mutationFn: ({ id, ...budgets }: { id: string; performance?: number | null; lcp?: number | null; tbt?: number | null; cls?: number | null; webhookUrl?: string | null; alertEmail?: string | null }) =>
+    mutationFn: ({ id, ...budgets }: { id: string; performance?: number | null; lcp?: number | null; tbt?: number | null; cls?: number | null; inp?: number | null; webhookUrl?: string | null; alertEmail?: string | null }) =>
       apiClient.patch<Website>(`/websites/${id}/budgets`, budgets).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   });
 
   const setAutomation = useMutation({
     mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[]; scheduleTime?: string }) =>
       apiClient.patch<Website>(`/websites/${id}/automation`, patch).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => invalidate(qc),
   });
 
   const triggerRun = useMutation({
