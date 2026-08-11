@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Gauge, GitCompareArrows, History, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
+import { Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -10,6 +10,8 @@ export interface NavItem {
 // Ordered by workflow: the two audit entry points first, then the sites you audit,
 // then past results, then automate/extend. Keep new entries inside the group they belong to.
 export const NAV: NavItem[] = [
+  // Review at a glance — the landing screen, so it leads
+  { to: '/dashboard',  icon: LayoutDashboard,  label: 'Dashboard'   },
   // Run
   { to: '/app',        icon: Gauge,            label: 'New Audit'   },
   { to: '/compare',    icon: GitCompareArrows, label: 'Compare'     },

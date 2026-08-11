@@ -2,7 +2,6 @@ import { Router, type Response } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
-import { RumEvent } from '../models/RumEvent.model.js';
 import type { OnboardingStatus, OnboardingStepId } from '@perfscope/shared';
 
 export const onboardingRouter = Router();
@@ -23,36 +22,22 @@ onboardingRouter.get('/onboarding/status', requireAuth, async (req: AuthRequest,
     const userId = req.userId!;
 
     const sites = await Website.find({ userId })
-      .select('_id automation budgets rumKey')
+      .select('_id automation')
       .lean();
 
-    const siteIds = sites.map(s => s._id);
-
-    // Capped: the panel needs "any, and roughly how many" — never an exact total. RumEvent
-    // is the high-cardinality collection here (one row per page view), and this runs on
-    // every visit to /websites, so an unbounded count would be the expensive part of a
-    // checklist that retires itself. Counts at the cap are rendered as "1000+".
-    const [audits, rumPageViews] = await Promise.all([
-      HistoryModel.countDocuments({ userId }, { limit: COUNT_CAP }),
-      siteIds.length
-        ? RumEvent.countDocuments({ websiteId: { $in: siteIds } }, { limit: COUNT_CAP })
-        : Promise.resolve(0),
-    ]);
+    // Capped: the panel needs "any, and roughly how many" — never an exact total, and
+    // this runs on every dashboard visit. Counts at the cap are rendered as "1000+".
+    const audits = await HistoryModel.countDocuments({ userId }, { limit: COUNT_CAP });
 
     const steps: Record<OnboardingStepId, boolean> = {
       website:    sites.length > 0,
       audit:      audits > 0,
       automation: sites.some(s => s.automation?.enabled),
-      // A budget with nowhere to send is only half the step: the point is being told.
-      budget:     sites.some(s => s.budgets && (s.budgets.webhookUrl || s.budgets.alertEmail)),
-      // The snippet only counts once a real page view has arrived — issuing a key proves
-      // nothing about whether it was ever pasted into the site.
-      rum:        rumPageViews > 0,
     };
 
     const status: OnboardingStatus = {
       steps,
-      counts: { websites: sites.length, audits, rumPageViews },
+      counts: { websites: sites.length, audits },
       complete: Object.values(steps).every(Boolean),
     };
 

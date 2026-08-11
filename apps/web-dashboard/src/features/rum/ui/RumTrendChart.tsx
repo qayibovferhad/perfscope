@@ -1,20 +1,20 @@
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ReferenceLine,
+  ResponsiveContainer,
+} from 'recharts';
 import { VITAL_THRESHOLDS } from '@perfscope/shared';
 import type { RumTrend } from '@perfscope/shared';
 import { FIELD_METRICS, type FieldMetricKey } from '@/entities/analysis';
+import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/shared/ui/chart';
 
 /**
  * Daily p75 over the window, drawn against the web.dev bands.
  *
  * The bands carry the meaning: a line that sits in the green is fine wherever it wobbles,
  * and one drifting into amber is the story regardless of its absolute numbers. Days with
- * no traffic break the line rather than interpolating a measurement nobody took.
+ * no traffic break the line rather than interpolating a measurement nobody took — that is
+ * `connectNulls={false}`, and it is the one behaviour this chart must not lose.
  */
-
-const VW = 720;
-const VH = 130;
-const PAD = { top: 10, right: 8, bottom: 18, left: 44 } as const;
-const INNER_W = VW - PAD.left - PAD.right;
-const INNER_H = VH - PAD.top - PAD.bottom;
 
 function fmtDay(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -37,75 +37,64 @@ export function RumTrendChart({ trend }: { trend: RumTrend }) {
   // Keep the "good" threshold on screen even when every sample is far below it, so the
   // line is always read against the bar it has to clear.
   const max = Math.max(...values, good * 1.15);
-  const min = 0;
 
-  const x = (i: number) => PAD.left + (i / (trend.points.length - 1)) * INNER_W;
-  const y = (v: number) => PAD.top + INNER_H - ((v - min) / (max - min || 1)) * INNER_H;
-
-  // Contiguous runs only — a gap in traffic must not become a straight line across it.
-  const segments: string[] = [];
-  let current: string[] = [];
-  trend.points.forEach((point, i) => {
-    if (point.p75 === null) {
-      if (current.length > 1) segments.push(current.join(' '));
-      current = [];
-      return;
-    }
-    current.push(`${current.length === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(point.p75).toFixed(1)}`);
-  });
-  if (current.length > 1) segments.push(current.join(' '));
-
-  const bandTop    = (v: number) => Math.max(PAD.top, y(v));
-  const goodTop    = bandTop(good);
-  const poorTop    = bandTop(poor);
-  const axisBottom = PAD.top + INNER_H;
-
-  const first = trend.points.find(p => p.p75 !== null);
-  const last  = [...trend.points].reverse().find(p => p.p75 !== null);
+  const data = trend.points.map(p => ({
+    day: p.day,
+    p75: p.p75,
+    pageViews: p.pageViews,
+  }));
 
   return (
-    <div className="flex flex-col gap-[6px]">
-      <svg viewBox={`0 0 ${VW} ${VH}`} className="block w-full" role="img"
-        aria-label={`${meta.label} p75 over ${trend.points.length} days`}>
+    <ResponsiveContainer width="100%" height={150}>
+      <AreaChart data={data} margin={{ top: 10, right: 8, bottom: 4, left: 0 }}>
+        <defs>
+          <linearGradient id="rum-trend-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={CHART.accent2} stopOpacity={0.20} />
+            <stop offset="100%" stopColor={CHART.accent2} stopOpacity={0} />
+          </linearGradient>
+        </defs>
 
-        {/* Bands: good up to the threshold, then needs-improvement, then poor */}
-        <rect x={PAD.left} y={goodTop} width={INNER_W} height={axisBottom - goodTop}
-          className="fill-ld-accent" opacity={0.07} />
-        <rect x={PAD.left} y={poorTop} width={INNER_W} height={goodTop - poorTop}
-          className="fill-ld-amber" opacity={0.07} />
-        <rect x={PAD.left} y={PAD.top} width={INNER_W} height={Math.max(0, poorTop - PAD.top)}
-          className="fill-ld-rose" opacity={0.07} />
-
-        <line x1={PAD.left} x2={VW - PAD.right} y1={goodTop} y2={goodTop}
-          className="stroke-ld-accent" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
-
-        {/* Threshold labels */}
-        <text x={PAD.left - 6} y={goodTop + 3} textAnchor="end"
-          className="fill-ld-text-3 font-mono" fontSize={9}>
-          {meta.format(good)}
-        </text>
-        <text x={PAD.left - 6} y={axisBottom + 3} textAnchor="end"
-          className="fill-ld-text-3 font-mono" fontSize={9}>0</text>
-
-        {segments.map((d, i) => (
-          <path key={i} d={d} fill="none" className="stroke-ld-accent-2" strokeWidth={2}
-            strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-
-        {trend.points.map((point, i) =>
-          point.p75 === null ? null : (
-            <circle key={point.day} cx={x(i)} cy={y(point.p75)} r={2.5}
-              className="fill-ld-accent-2">
-              <title>{`${fmtDay(point.day)} · ${meta.format(point.p75)} · ${point.pageViews} views`}</title>
-            </circle>
-          ),
+        {/* Bands, bottom-up: good, needs-improvement, poor. Clamped to the visible max. */}
+        <ReferenceArea y1={0} y2={Math.min(good, max)} fill={CHART.accent} fillOpacity={0.07} />
+        {max > good && (
+          <ReferenceArea y1={good} y2={Math.min(poor, max)} fill={CHART.amber} fillOpacity={0.07} />
         )}
-      </svg>
+        {max > poor && (
+          <ReferenceArea y1={poor} y2={max} fill={CHART.rose} fillOpacity={0.07} />
+        )}
+        <ReferenceLine
+          y={good} stroke={CHART.accent} strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.5}
+        />
 
-      <div className="flex justify-between font-mono text-[10px] text-ld-text-3 px-[2px]">
-        <span>{first ? fmtDay(first.day) : ''}</span>
-        <span>{last ? fmtDay(last.day) : ''}</span>
-      </div>
-    </div>
+        <CartesianGrid {...GRID_PROPS} />
+        <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDay} minTickGap={28} />
+        <YAxis
+          {...AXIS_PROPS}
+          domain={[0, max]}
+          tickFormatter={(v: number) => meta.format(v)}
+          width={52}
+        />
+
+        <Tooltip
+          cursor={CURSOR_PROPS}
+          content={
+            <ChartTooltip
+              formatLabel={fmtDay}
+              formatValue={(value, key) => (key === 'p75' ? meta.format(value) : String(value))}
+            />
+          }
+        />
+
+        <Area
+          type="monotone" dataKey="p75" name={`${meta.label} p75`}
+          stroke={CHART.accent2} strokeWidth={2} strokeLinecap="round"
+          fill="url(#rum-trend-fill)"
+          dot={{ r: 2.5, fill: CHART.accent2, strokeWidth: 0 }}
+          activeDot={{ r: 4, fill: CHART.accent2, stroke: CHART.surface, strokeWidth: 1.5 }}
+          connectNulls={false}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
   );
 }

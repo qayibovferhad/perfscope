@@ -13,7 +13,7 @@ import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
 import { StreamingMetrics } from '@/features/analyzer/ui/StreamingMetrics';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
 import { usePrefetchStore, useAuditModeStore, type AuditFormFactor } from '@/entities/analysis';
-import { useWebsites } from '@/entities/website';
+import { useWebsites, sessionState } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
@@ -25,7 +25,8 @@ export function AnalyzerPage() {
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
-  const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
+  const matchedSite   = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
+  const sessionStatus = sessionState(matchedSite);
   const handledUrl = useRef<string | null>(null);
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
@@ -135,7 +136,7 @@ export function AnalyzerPage() {
         setUrl={setUrl}
         isPending={isPending}
         authSessionId={authSessionId}
-        hasSession={!!activeSession}
+        sessionStatus={sessionStatus}
         progress={progress}
         formFactor={formFactor}
         onFormFactor={handleFormFactor}

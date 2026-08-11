@@ -1,7 +1,7 @@
 import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight, Gauge } from 'lucide-react';
 import { motion }          from 'framer-motion';
 import { Link }            from 'react-router-dom';
-import { getHostname }     from '@/entities/website';
+import { getHostname, sessionState } from '@/entities/website';
 import type { Website }    from '@/entities/website';
 import type { SiteScoreInfo } from '@/features/websites/model/useWebsiteScores';
 import { Button }          from '@/shared/ui/button';
@@ -28,6 +28,7 @@ interface Props {
 export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onDelete }: Props) {
   const hostname   = getHostname(site.url);
   const detailPath = `/projects/${site._id}`;
+  const session    = sessionState(site);
 
   return (
     <motion.article
@@ -78,9 +79,19 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
       {/* ── Meta — hidden in list mode ────────────────────────────── */}
       {!isList && (
         <div className="flex flex-wrap items-center gap-[10px] mt-4 w-full min-w-0">
-          {site.session && (
+          {/* A saved session that no longer works must not read as healthy — the
+              expired state replaces the badge rather than sitting beside it. */}
+          {session === 'active' && (
             <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
               <ShieldCheck className="w-[13px] h-[13px]" /> Saved
+            </span>
+          )}
+          {session === 'expired' && (
+            <span
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)] text-ld-rose"
+              title={`The saved session no longer works — a run was redirected to ${site.requiresLogin?.loginUrl}`}
+            >
+              <ShieldAlert className="w-[13px] h-[13px]" /> Session expired
             </span>
           )}
           {/* The latest audit broke this site's performance budgets. */}
@@ -93,7 +104,8 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
             </span>
           )}
           {/* The last audit landed on a login screen — the scores are for that screen. */}
-          {site.requiresLogin && (
+          {/* Only when there is no session at all — with one, "expired" above says it. */}
+          {site.requiresLogin && session === 'none' && (
             <span
               className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)] text-ld-amber"
               title={`Audit was redirected to ${site.requiresLogin.loginUrl}`}

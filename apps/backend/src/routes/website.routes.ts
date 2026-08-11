@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
-import { HAS_RESULT_FIELDS } from '@perfscope/shared';
+import { SCORE_BANDS } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
@@ -9,7 +9,9 @@ import { RUM_METRIC_KEYS } from '@perfscope/shared';
 import { getRumSummary, getRumPaths, getRumTrend } from '../services/rum.service.js';
 import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
-import { escapeRegex, hostOf, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
+import { escapeRegex, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
+import { computeSiteScores } from '../services/overview.service.js';
+import { HAS_RESULT_FILTER } from '../lib/history.js';
 
 export const websiteRouter: Router = Router();
 
@@ -28,14 +30,6 @@ function ownedFilter(userId: string | undefined, q?: string): QueryFilter<Record
   }
   return filter;
 }
-
-/**
- * A run that failed is still persisted, but with every score and metric at 0.
- * Those must not count as an audited site — mirrors `hasResult` on the client.
- */
-const HAS_RESULT = {
-  $or: HAS_RESULT_FIELDS.map((field) => ({ [field]: { $gt: 0 } })),
-};
 
 // GET /api/websites?q=&page=&limit=
 // Without any of those params this returns the plain array it always has, so the
@@ -77,47 +71,22 @@ websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Respon
 // user types and does not vanish when a filter matches nothing.
 websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const filter = ownedFilter(req.userId);
-
-    const sites = await Website.find(filter).select('url').lean();
+    const sites = await Website.find(ownedFilter(req.userId)).select('url').lean();
     if (!sites.length) {
       return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });
     }
 
-    // Audits are recorded per route, so a site's score cannot be found by matching its
-    // URL exactly: "https://x.com" never equals the stored "https://x.com/" or
-    // "https://x.com/requests". History keeps normalizedUrl as "host/path", so match on
-    // the host prefix instead and collect every route belonging to the site.
-    const hosts = [...new Set(sites.map((s) => hostOf(s.url)).filter(Boolean))];
-    if (!hosts.length) {
-      return res.json({ total: sites.length, audited: 0, avgScore: 0, needsAttention: 0 });
-    }
+    // Shared with GET /api/overview: a site's score is the mean of all its successful
+    // audits, matched by host because audits are recorded per route. Two copies of that
+    // definition is how the strip and the detail page came to disagree before.
+    const scores = [...(await computeSiteScores(req.userId!, sites)).values()].map((s) => s.avg);
 
-    const hostRx = new RegExp(`^(${hosts.map(escapeRegex).join('|')})(/|$)`);
-    const entries = await HistoryModel
-      .find({ userId: req.userId!, normalizedUrl: hostRx, ...HAS_RESULT } as QueryFilter<Record<string, unknown>>)
-      .select('normalizedUrl scores.performance')
-      .lean();
-
-    const runsByHost = new Map<string, number[]>();
-    for (const e of entries) {
-      const host = e.normalizedUrl.split('/')[0]!;
-      const runs = runsByHost.get(host) ?? [];
-      runs.push(e.scores.performance);
-      runsByHost.set(host, runs);
-    }
-
-    // A site's score is the mean of all its successful audits — the same definition the
-    // project detail page shows as "Avg Score", so the two pages cannot disagree.
-    const scores = [...runsByHost.values()].map(
-      (runs) => Math.round(runs.reduce((sum, s) => sum + s, 0) / runs.length),
-    );
-    const needsAttention = scores.filter((s) => s < 50).length;
-    const avgScore       = scores.length
-      ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
-      : 0;
-
-    return res.json({ total: sites.length, audited: scores.length, avgScore, needsAttention });
+    return res.json({
+      total:          sites.length,
+      audited:        scores.length,
+      avgScore:       scores.length ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length) : 0,
+      needsAttention: scores.filter((s) => s < SCORE_BANDS.needsImprovement).length,
+    });
   } catch (err) {
     console.error('[website]', err);
     return res.status(500).json({ success: false, error: 'Server error' });

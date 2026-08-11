@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { AddWebsiteModal } from '@/features/websites/ui/AddWebsiteModal';
@@ -7,6 +8,17 @@ import { Sidebar } from './ui/Sidebar';
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modalOpen,  setModalOpen]  = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+
+  // A new route starts at the top. The window never scrolls here — `main` is the scroll
+  // container — so the browser's own restoration does nothing and, without this, arriving
+  // on a page lands you wherever the previous one happened to be scrolled to.
+  // Keyed on pathname only: the analyzer rewrites its query string mid-run, and yanking
+  // the reader back to the top while results stream in would be its own bug.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-ps-page">
@@ -61,7 +73,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </span>
         </div>
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main ref={mainRef} className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

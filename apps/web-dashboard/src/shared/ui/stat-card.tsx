@@ -1,3 +1,10 @@
+/**
+ * A headline number with its label and an icon tile.
+ *
+ * Shared rather than owned by one feature: the project detail strip and the dashboard
+ * strip are the same object, and a second copy would drift in padding and type scale
+ * the first time either was touched.
+ */
 export function StatCard({
   label, value, icon, compact = false,
 }: {

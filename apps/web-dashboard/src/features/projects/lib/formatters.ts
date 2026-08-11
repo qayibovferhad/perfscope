@@ -1,5 +1,10 @@
 import { fmtSec } from '@/shared/lib/format';
 
+// Lives in shared/lib now that the dashboard prints relative times too; re-exported
+// so this module stays the one place the projects feature imports formatting from.
+import { timeAgo } from '@/shared/lib/time';
+export { timeAgo };
+
 const SCORE_MAP = [
   { min: 90, label: 'Excellent',  bg: 'var(--ld-accent-soft)'    },
   { min: 75, label: 'Good',       bg: 'var(--ld-accent-soft)'    },
@@ -41,13 +46,3 @@ export function formatDate(iso: string): string {
   );
 }
 
-export function timeAgo(iso: string | null): string {
-  if (!iso) return '—';
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}

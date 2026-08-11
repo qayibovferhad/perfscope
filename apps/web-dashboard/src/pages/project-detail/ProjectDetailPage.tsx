@@ -7,13 +7,13 @@ import {
 } from 'lucide-react';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
-import { getHostname }          from '@/entities/website';
+import { getHostname, sessionState } from '@/entities/website';
 import { setComparePreload }    from '@/features/compare/model/comparePreloadStore';
 import { fetchHistoryResult }   from '@/entities/history';
 import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
 import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
-import { StatCard }             from '@/features/projects/ui/StatCard';
+import { StatCard }             from '@/shared/ui/stat-card';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
 import { SessionCaptureModal }  from '@/features/auth-audit';
@@ -116,6 +116,7 @@ export function ProjectDetailPage() {
   }
 
   const website = websites.find(w => w._id === project.id);
+  const session = sessionState(website);
 
   return (
     <>
@@ -210,10 +211,14 @@ export function ProjectDetailPage() {
               </Button>
             )}
 
-            {/* Login session — capture or refresh the cookies used for authenticated audits */}
+            {/* Login session — capture or refresh the cookies used for authenticated
+                audits. An expired session says so: it is the state that needs an action,
+                and reading "saved" beside a login warning is what made it invisible. */}
             <Button variant="outline" onClick={() => setSessionOpen(true)}>
-              {website?.session
+              {session === 'active'
                 ? <><ShieldCheck className="w-[15px] h-[15px] text-ld-accent" /> Session saved</>
+                : session === 'expired'
+                ? <><ShieldAlert className="w-[15px] h-[15px] text-ld-rose" /> Session expired</>
                 : <><Lock className="w-[15px] h-[15px]" /> Set up login</>}
             </Button>
 
@@ -236,14 +241,14 @@ export function ProjectDetailPage() {
                 <span className="font-mono text-ld-text-3">{website.requiresLogin.url}</span>{' '}
                 was redirected to{' '}
                 <span className="font-mono text-ld-text-3">{website.requiresLogin.loginUrl}</span>
-                {website.session
-                  ? ' — the saved session may have expired.'
+                {session === 'expired'
+                  ? ' — the saved session has stopped working.'
                   : ' — capture a login session to audit the real page.'}
               </p>
             </div>
             <Button variant="outline" size="md" className="shrink-0" onClick={() => setSessionOpen(true)}>
               <Lock className="w-[14px] h-[14px]" />
-              {website.session ? 'Refresh session' : 'Set up login'}
+              {session === 'expired' ? 'Refresh session' : 'Set up login'}
             </Button>
           </div>
         )}

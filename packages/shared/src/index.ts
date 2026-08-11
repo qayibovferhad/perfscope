@@ -6,6 +6,7 @@ export * from './types/user.js'
 export * from './types/crux.js'
 export * from './types/rum.js'
 export * from './types/onboarding.js'
+export * from './types/overview.js'
 
 // ─── Lib ────────────────────────────────────────────────────────────────────
 export * from './lib/rating.js'

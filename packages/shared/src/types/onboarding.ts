@@ -10,8 +10,6 @@ export type OnboardingStepId =
   | 'website'
   | 'audit'
   | 'automation'
-  | 'budget'
-  | 'rum'
 
 export interface OnboardingStatus {
   /** Per-step completion, keyed by step id. */
@@ -20,7 +18,6 @@ export interface OnboardingStatus {
   counts: {
     websites: number
     audits:   number
-    rumPageViews: number
   }
   /** True once every step is done — the panel retires itself. */
   complete: boolean

@@ -20,7 +20,9 @@ export function LoginPage() {
   const { user, setAuth, setUser } = useAuthStore();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const redirectTo = params.get('redirect') || '/app';
+  // The dashboard answers "what changed?"; the analyzer answers "audit this URL".
+  // An explicit ?redirect (a shared report, a deep link) still wins.
+  const redirectTo = params.get('redirect') || '/dashboard';
 
   // Set by the 401 interceptor when a stored token stops working mid-session.
   const reason = params.get('reason');

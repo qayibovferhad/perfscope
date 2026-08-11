@@ -1,30 +1,88 @@
+import {
+  ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import { isRegression } from '@perfscope/shared';
 import type { HistoryEntry } from '@/entities/history';
 import { fmtMs } from '@/shared/lib/format';
-
-// ─── Chart geometry ───────────────────────────────────────────────────────────
-
-const VW      = 1000;
-const VH      = 300;
-const PAD     = { top: 28, right: 32, bottom: 56, left: 68 } as const;
-const INNER_W = VW - PAD.left - PAD.right;
-const INNER_H = VH - PAD.top  - PAD.bottom;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-import { isRegression } from '@perfscope/shared';
+import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, MONO } from '@/shared/ui/chart';
 
 // Re-exported so existing importers keep resolving it from here.
 export { isRegression };
+
+/**
+ * LCP and TBT over successive runs.
+ *
+ * The two metrics keep independent scales — TBT is measured in tens of milliseconds
+ * where LCP is in thousands, so a shared axis would flatten TBT into the baseline and
+ * hide exactly the movement this chart exists to show. Only the LCP axis is labelled;
+ * the point of the TBT line is its shape, not its absolute pixel height.
+ *
+ * The panel above owns the detailed hover card, so this reports the active index rather
+ * than drawing a tooltip of its own — the cursor line is the only thing rendered.
+ */
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function linePath(pts: { x: number; y: number }[]) {
-  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+interface Row {
+  date:       string;
+  shortId:    string;
+  lcp:        number;
+  tbt:        number;
+  regression: boolean;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+/** Two-line category tick: the date, and the run's short id beneath it. */
+function DateTick({ x, y, payload, rows }: {
+  x?: number; y?: number; payload?: { index?: number; value?: string }; rows: Row[];
+}) {
+  const row = rows[payload?.index ?? -1];
+  if (!row || x === undefined || y === undefined) return null;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text textAnchor="middle" fill={CHART.axis} fontSize={11} fontFamily={MONO} dy={14}>
+        {row.date}
+      </text>
+      <text textAnchor="middle" fill={CHART.axis} fontSize={9} fontFamily={MONO} opacity={0.5} dy={30}>
+        #{row.shortId}
+      </text>
+    </g>
+  );
+}
+
+/** A run that got materially worse than the one before it gets a halo and a label. */
+function LcpDot({ cx, cy, index, rows, hoveredIdx }: {
+  cx?: number; cy?: number; index?: number; rows: Row[]; hoveredIdx: number | null;
+}) {
+  if (cx === undefined || cy === undefined || index === undefined) return null;
+  const row = rows[index];
+  if (!row) return null;
+
+  if (row.regression) {
+    // A centred label runs off the plot on the first and last runs — and the most recent
+    // run is exactly where a regression is most likely to be. Anchor it inward instead.
+    const anchor = index === rows.length - 1 ? 'end' : index === 0 ? 'start' : 'middle';
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={13} fill="rgba(242,100,122,0.14)" />
+        <circle cx={cx} cy={cy} r={6.5} fill={CHART.rose} />
+        <text
+          x={cx} y={cy - 20} textAnchor={anchor} fill={CHART.rose}
+          fontSize={11} fontWeight={700} fontFamily={MONO} letterSpacing="0.07em"
+        >
+          REGRESSION
+        </text>
+      </g>
+    );
+  }
+  return (
+    <circle
+      cx={cx} cy={cy} r={hoveredIdx === index ? 6 : 4.5}
+      fill={CHART.surface} stroke={CHART.accent} strokeWidth={2}
+    />
+  );
+}
 
 export function EvolutionChart({
   entries,
@@ -35,172 +93,85 @@ export function EvolutionChart({
   hoveredIdx: number | null;
   onHover:    (i: number | null) => void;
 }) {
-  const n = entries.length;
-  if (n < 1) return null;
+  if (!entries.length) return null;
 
-  const xOf = (i: number) =>
-    PAD.left + (n === 1 ? INNER_W / 2 : (i / (n - 1)) * INNER_W);
+  const rows: Row[] = entries.map((entry, i) => {
+    const prev = entries[i - 1];
+    return {
+      date:    fmtDate(entry.timestamp),
+      shortId: entry.shortId,
+      lcp:     entry.metrics.lcp,
+      tbt:     entry.metrics.tbt,
+      regression: prev
+        ? isRegression(entry.metrics.lcp, prev.metrics.lcp) || isRegression(entry.metrics.tbt, prev.metrics.tbt)
+        : false,
+    };
+  });
 
-  function yScale(key: 'lcp' | 'tbt') {
-    const vals = entries.map(e => e.metrics[key]);
-    const min  = Math.min(...vals) * 0.85;
-    const max  = Math.max(...vals) * 1.10;
-    return (v: number) => PAD.top + INNER_H - ((v - min) / (max - min || 1)) * INNER_H;
-  }
-
-  const lcpY   = yScale('lcp');
-  const tbtY   = yScale('tbt');
-  const lcpPts = entries.map((e, i) => ({ x: xOf(i), y: lcpY(e.metrics.lcp) }));
-  const tbtPts = entries.map((e, i) => ({ x: xOf(i), y: tbtY(e.metrics.tbt) }));
-
-  const baseline = PAD.top + INNER_H;
-  const lcpArea  = lcpPts.length > 1
-    ? `${linePath(lcpPts)} L${lcpPts.at(-1)!.x.toFixed(1)},${baseline} L${lcpPts[0]!.x.toFixed(1)},${baseline} Z`
-    : '';
-  const tbtArea  = tbtPts.length > 1
-    ? `${linePath(tbtPts)} L${tbtPts.at(-1)!.x.toFixed(1)},${baseline} L${tbtPts[0]!.x.toFixed(1)},${baseline} Z`
-    : '';
-
-  // Y-axis ticks on LCP scale
-  const lcpVals = entries.map(e => e.metrics.lcp);
-  const lcpMin  = Math.min(...lcpVals) * 0.85;
-  const lcpMax  = Math.max(...lcpVals) * 1.10;
-  const yTicks  = [0, 0.25, 0.5, 0.75, 1].map(t => ({
-    y: PAD.top + INNER_H * (1 - t),
-    v: lcpMin + t * (lcpMax - lcpMin),
-  }));
-
-  const MONO = "'Geist Mono', ui-monospace, monospace";
+  // Matches the old framing: a little air under the lowest point and above the highest,
+  // so a flat series does not render as a line pinned to the axis.
+  const pad = (values: number[]): [number, number] =>
+    [Math.min(...values) * 0.85, Math.max(...values) * 1.1];
 
   return (
-    <svg
-      viewBox={`0 0 ${VW} ${VH}`}
-      style={{ width: '100%', height: 'auto', overflow: 'visible', display: 'block' }}
-      aria-label="LCP and TBT evolution chart"
-    >
-      <defs>
-        <linearGradient id="ev-lcp-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="var(--ld-accent)" stopOpacity="0.20" />
-          <stop offset="100%" stopColor="var(--ld-accent)" stopOpacity="0"    />
-        </linearGradient>
-        <linearGradient id="ev-tbt-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="var(--ld-amber)" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="var(--ld-amber)" stopOpacity="0"    />
-        </linearGradient>
-      </defs>
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart
+        data={rows}
+        margin={{ top: 28, right: 16, bottom: 34, left: 8 }}
+        onMouseMove={(state) => {
+          const i = (state as { activeTooltipIndex?: number }).activeTooltipIndex;
+          onHover(typeof i === 'number' ? i : null);
+        }}
+        onMouseLeave={() => onHover(null)}
+      >
+        <defs>
+          <linearGradient id="ev-lcp-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={CHART.accent} stopOpacity={0.20} />
+            <stop offset="100%" stopColor={CHART.accent} stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="ev-tbt-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={CHART.amber} stopOpacity={0.16} />
+            <stop offset="100%" stopColor={CHART.amber} stopOpacity={0} />
+          </linearGradient>
+        </defs>
 
-      {/* Y-axis grid + labels */}
-      {yTicks.map((t, i) => (
-        <g key={i}>
-          <line
-            x1={PAD.left} y1={t.y} x2={VW - PAD.right} y2={t.y}
-            stroke="var(--ld-border)" strokeWidth="1" strokeDasharray="4 5"
-          />
-          <text
-            x={PAD.left - 8} y={t.y + 4}
-            textAnchor="end" fill="var(--ld-text-3)"
-            fontSize="11" fontFamily={MONO}
-          >
-            {fmtMs(t.v)}
-          </text>
-        </g>
-      ))}
+        <CartesianGrid {...GRID_PROPS} />
 
-      {/* Hover crosshair */}
-      {hoveredIdx !== null && (
-        <line
-          x1={xOf(hoveredIdx)} y1={PAD.top}
-          x2={xOf(hoveredIdx)} y2={PAD.top + INNER_H}
-          stroke="var(--ld-border-strong)" strokeWidth="1" strokeDasharray="4 3"
+        <XAxis
+          dataKey="date"
+          {...AXIS_PROPS}
+          interval="preserveStartEnd"
+          tick={<DateTick rows={rows} />}
+          height={38}
         />
-      )}
+        <YAxis
+          yAxisId="lcp"
+          {...AXIS_PROPS}
+          domain={pad(rows.map(r => r.lcp))}
+          tickFormatter={(v: number) => fmtMs(v)}
+          width={58}
+        />
+        {/* TBT rides its own hidden scale — see the note at the top of the file. */}
+        <YAxis yAxisId="tbt" hide domain={pad(rows.map(r => r.tbt))} />
 
-      {/* LCP area + line */}
-      {lcpArea && <path d={lcpArea} fill="url(#ev-lcp-fill)" />}
-      <path
-        d={linePath(lcpPts)} fill="none"
-        stroke="var(--ld-accent)" strokeWidth="2.5"
-        strokeLinecap="round" strokeLinejoin="round"
-      />
+        {/* Renders the crosshair only; the panel above owns the readout. */}
+        <Tooltip cursor={CURSOR_PROPS} content={() => null} />
 
-      {/* TBT area + line */}
-      {tbtArea && <path d={tbtArea} fill="url(#ev-tbt-fill)" />}
-      <path
-        d={linePath(tbtPts)} fill="none"
-        stroke="var(--ld-amber)" strokeWidth="2.5"
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-
-      {/* Per-entry: dots, regression markers, x-axis labels */}
-      {entries.map((entry, i) => {
-        const prev   = entries[i - 1];
-        const hasReg = prev
-          ? isRegression(entry.metrics.lcp, prev.metrics.lcp) || isRegression(entry.metrics.tbt, prev.metrics.tbt)
-          : false;
-        const lY    = lcpY(entry.metrics.lcp);
-        const tY    = tbtY(entry.metrics.tbt);
-        const isHov = hoveredIdx === i;
-        const x     = xOf(i);
-
-        return (
-          <g key={i}>
-            {hasReg ? (
-              <>
-                {/* Rose halo + filled dot */}
-                <circle cx={x} cy={lY} r="13" fill="rgba(242,100,122,0.14)" />
-                <circle cx={x} cy={lY} r="6.5" fill="var(--ld-rose)" />
-                {/* REGRESSION label above dot */}
-                <text
-                  x={x} y={lY - 20}
-                  textAnchor="middle" fill="var(--ld-rose)"
-                  fontSize="11" fontWeight="700" fontFamily={MONO}
-                  letterSpacing="0.07em"
-                >
-                  REGRESSION
-                </text>
-              </>
-            ) : (
-              <circle
-                cx={x} cy={lY} r={isHov ? 6 : 4.5}
-                fill="var(--ld-surface)" stroke="var(--ld-accent)" strokeWidth="2"
-                style={{ transition: 'r 0.15s' }}
-              />
-            )}
-
-            {/* TBT dot */}
-            <circle
-              cx={x} cy={tY} r={isHov ? 6 : 4.5}
-              fill="var(--ld-surface)" stroke="var(--ld-amber)" strokeWidth="2"
-              style={{ transition: 'r 0.15s' }}
-            />
-
-            {/* X-axis: date */}
-            <text
-              x={x} y={PAD.top + INNER_H + 18}
-              textAnchor="middle" fill="var(--ld-text-3)"
-              fontSize="11" fontFamily={MONO}
-            >
-              {fmtDate(entry.timestamp)}
-            </text>
-            {/* X-axis: commit hash */}
-            <text
-              x={x} y={PAD.top + INNER_H + 34}
-              textAnchor="middle" fill="var(--ld-text-3)"
-              fontSize="9" fontFamily={MONO} opacity="0.5"
-            >
-              #{entry.shortId}
-            </text>
-
-            {/* Invisible hover target */}
-            <rect
-              x={x - 24} y={PAD.top} width={48} height={INNER_H}
-              fill="transparent" style={{ cursor: 'crosshair' }}
-              onMouseEnter={() => onHover(i)}
-              onMouseLeave={() => onHover(null)}
-            />
-          </g>
-        );
-      })}
-    </svg>
+        <Area
+          yAxisId="tbt" type="linear" dataKey="tbt" name="TBT"
+          stroke={CHART.amber} strokeWidth={2.5} fill="url(#ev-tbt-fill)"
+          dot={{ r: 4.5, fill: CHART.surface, stroke: CHART.amber, strokeWidth: 2 }}
+          activeDot={{ r: 6, fill: CHART.surface, stroke: CHART.amber, strokeWidth: 2 }}
+          isAnimationActive={false}
+        />
+        <Area
+          yAxisId="lcp" type="linear" dataKey="lcp" name="LCP"
+          stroke={CHART.accent} strokeWidth={2.5} fill="url(#ev-lcp-fill)"
+          dot={<LcpDot rows={rows} hoveredIdx={hoveredIdx} />}
+          activeDot={false}
+          isAnimationActive={false}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
   );
 }

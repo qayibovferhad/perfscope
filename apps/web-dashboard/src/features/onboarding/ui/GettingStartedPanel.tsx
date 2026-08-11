@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  CheckCircle2, X, Globe, Gauge, Moon, BellRing, Activity, ArrowRight,
+  CheckCircle2, X, Globe, Gauge, Moon, ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
 import type { OnboardingStepId, OnboardingStatus } from '@perfscope/shared';
@@ -48,16 +48,6 @@ const STEPS: Step[] = [
     why: 'Catches a regression the morning after it ships, not next quarter.',
     cta: 'Set a schedule', needsSite: true,
   },
-  {
-    id: 'budget', title: 'Set a budget and an alert channel', icon: BellRing,
-    why: 'Turns a number you have to remember to check into one that tells you.',
-    cta: 'Set a budget', needsSite: true,
-  },
-  {
-    id: 'rum', title: 'Install the RUM snippet', icon: Activity,
-    why: 'Lab runs measure your server; this measures your users — including pages behind a login.',
-    cta: 'Get the snippet', needsSite: true,
-  },
 ];
 
 /** The backend stops counting here, so anything at the ceiling is reported as "1000+". */
@@ -70,7 +60,6 @@ function evidence(id: OnboardingStepId, counts: OnboardingStatus['counts']): str
   switch (id) {
     case 'website': return plural(counts.websites, 'site');
     case 'audit':   return plural(counts.audits, 'audit');
-    case 'rum':     return plural(counts.rumPageViews, 'page view');
     default:        return null;
   }
 }
@@ -102,11 +91,9 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
     setDismissed(true);
   }
 
-  /** The RUM step needs a site; without one the user belongs on the websites page anyway. */
   const destination = (id: OnboardingStepId): string =>
     id === 'audit'      ? '/app'
-    : id === 'automation' || id === 'budget' ? '/automation'
-    : id === 'rum'      ? `/projects/${firstSiteId}`
+    : id === 'automation' ? '/automation'
     : '/websites';
 
   return (
@@ -121,7 +108,8 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
           <b className="block text-[14px] font-bold text-ld-text">Getting started</b>
           <span className="block text-[12px] text-ld-text-3 mt-[2px]">
             {done} of {STEPS.length} done
-            {first ? ` · next: ${first.title.toLowerCase()}` : ''}
+            {/* Not lowercased: it would turn "RUM" into "rum". */}
+            {first ? ` · next: ${first.title}` : ''}
           </span>
         </div>
         <button

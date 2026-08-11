@@ -7,5 +7,5 @@ export type {
   WebsiteAutomation,
 } from '@perfscope/shared'
 
-export { getHostname } from './lib'
+export { getHostname, sessionState, type SessionState } from './lib'
 export { useWebsites } from './model/useWebsites'

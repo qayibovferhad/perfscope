@@ -31,7 +31,7 @@ export function RegisterPage() {
   } = useForm<FormValues>();
 
   useEffect(() => {
-    if (user) navigate('/app', { replace: true });
+    if (user) navigate('/dashboard', { replace: true });
   }, [user, navigate]);
 
   async function onSubmit(data: FormValues) {
@@ -39,7 +39,7 @@ export function RegisterPage() {
     try {
       const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/register', data);
       setAuth(res.data.user, res.data.token);
-      navigate('/app', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
         ?.response?.data?.error ?? 'Registration failed';
@@ -49,7 +49,7 @@ export function RegisterPage() {
 
   function onGoogleSuccess(user: AuthUser) {
     setUser(user);
-    navigate('/app', { replace: true });
+    navigate('/dashboard', { replace: true });
   }
 
   return (

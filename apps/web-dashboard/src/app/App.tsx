@@ -10,6 +10,7 @@ const LoginPage             = lazy(() => import('@/pages/login/LoginPage').then(
 const RegisterPage          = lazy(() => import('@/pages/register/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const AnalyzerPage          = lazy(() => import('@/pages/analyzer/AnalyzerPage').then(m => ({ default: m.AnalyzerPage })));
 const ComparisonPage        = lazy(() => import('@/pages/compare/ComparisonPage').then(m => ({ default: m.ComparisonPage })));
+const DashboardPage         = lazy(() => import('@/pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const HistoryPage           = lazy(() => import('@/pages/history/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const CompareHistoryPage    = lazy(() => import('@/pages/compare-history/CompareHistoryPage').then(m => ({ default: m.CompareHistoryPage })));
 const WebsitesPage          = lazy(() => import('@/pages/websites/WebsitesPage').then(m => ({ default: m.WebsitesPage })));
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
+        <Route path="/dashboard"       element={<DashboardRoute><DashboardPage /></DashboardRoute>} />
         <Route path="/app"             element={<DashboardRoute><AnalyzerPage /></DashboardRoute>} />
         <Route path="/compare"         element={<DashboardRoute><ComparisonPage /></DashboardRoute>} />
         <Route path="/history"         element={<DashboardRoute><HistoryPage /></DashboardRoute>} />
