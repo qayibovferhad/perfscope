@@ -1,4 +1,5 @@
 import puppeteer, { type Browser } from 'puppeteer';
+import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { VISIBLE_CHROME_ARGS as CHROME_ARGS } from '../lib/chrome.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,6 +30,7 @@ export async function createAuthAuditSession(url: string): Promise<string> {
     args: CHROME_ARGS,
     defaultViewport: null,
   });
+  trackChrome(browser.process()?.pid);
 
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -85,5 +87,6 @@ export function destroySession(sessionId: string): void {
   const session = sessions.get(sessionId);
   if (!session) return;
   sessions.delete(sessionId);
+  killChrome(session.browser.process()?.pid);
   session.browser.close().catch(() => {});
 }

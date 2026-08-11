@@ -41,7 +41,11 @@ type WorkerMessage =
       traceMaxMs?: number;
       networkEvents?: CompactNetworkEvent[];
     }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string }
+  /** Sent right after launch so the parent can kill the browser if it has to terminate us. */
+  | { type: 'browser'; pid: number | undefined }
+  /** Sent once the browser is actually closed — the parent may terminate this thread now. */
+  | { type: 'closed' };
 
 /** Resolve traceEvents from whatever shape Lighthouse provides.
  *  v12 : artifacts.Trace  = { traceEvents: [...] }   ← direct
@@ -142,6 +146,10 @@ function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] 
 async function run(): Promise<void> {
   const { url, categories, formFactor } = workerData as WorkerInput;
   const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
+  // Hand the pid to the parent immediately: if this thread is ever terminated
+  // (cancel, timeout) its `finally` never runs, and only the parent can then
+  // stop the browser from outliving everything.
+  parentPort!.postMessage({ type: 'browser', pid: browser.process()?.pid } satisfies WorkerMessage);
 
   try {
     const port = Number(new URL(browser.wsEndpoint()).port);
@@ -199,6 +207,8 @@ async function run(): Promise<void> {
     parentPort!.postMessage(msg);
   } finally {
     await browser.close().catch(() => void 0);
+    // Tells the parent the browser is gone and this thread is safe to terminate.
+    parentPort!.postMessage({ type: 'closed' } satisfies WorkerMessage);
   }
 }
 

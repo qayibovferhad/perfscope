@@ -16,6 +16,7 @@ import type { CompactNetworkEvent } from './dependency-parser.js';
 import { buildPartial, buildFullResult, toScore } from './lhr-transform.js';
 import { AuditQueue, type AuditPriority } from './auditQueue.js';
 import { SessionExpiredError } from '../lib/errors.js';
+import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { config } from '../config/index.js';
 import type {
   AnalysisResult,
@@ -72,6 +73,11 @@ const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance', 'accessibility'];
 
 /** More than this and the wait stops being worth the extra precision. */
 const MAX_RUNS = 5;
+
+/** A single Lighthouse pass that outlives this is wedged, not slow. */
+const RUN_TIMEOUT_MS = 4 * 60_000;
+/** Grace period for a finished worker to close its browser before we do it for it. */
+const CLOSE_GRACE_MS = 15_000;
 
 export interface AnalyzeOptions {
   // Explicit `| undefined` so callers can spread optional values under
@@ -297,6 +303,7 @@ export class LighthouseService extends EventEmitter {
       this.emitProgress(analysisId, 'launching', 10, 'Launching audit browser...');
 
       browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
+      trackChrome(browser.process()?.pid);
       this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
 
       const { cookies, localStorage: ls } = sessionData;
@@ -400,7 +407,7 @@ export class LighthouseService extends EventEmitter {
     categories: string[],
     workerRegistry: Worker[],
     formFactor?: AuditFormFactor,
-  ): Promise<{ lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; heapMemoryData?: HeapMemoryData; interactionData?: InteractionData; networkEvents?: CompactNetworkEvent[] }> {
+  ): Promise<WorkerRunResult> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
         workerData: { url, categories, formFactor },
@@ -410,9 +417,60 @@ export class LighthouseService extends EventEmitter {
       // Register immediately so cancelAnalysis can terminate this worker
       workerRegistry.push(worker);
 
-      worker.once('message', (msg: { type: string; lhr?: RunnerResult['lhr']; compactTrace?: unknown; traceMaxMs?: number; networkEvents?: CompactNetworkEvent[]; message?: string }) => {
+      let chromePid: number | undefined;
+      let untrackChrome: () => void = () => {};
+      let settled = false;
+
+      /**
+       * Wind the worker down. A worker thread that is terminated never runs its
+       * `finally`, so the browser is killed explicitly unless the thread already
+       * told us it closed it.
+       */
+      const shutdown = (browserClosed: boolean) => {
+        clearTimeout(runTimer);
+        clearTimeout(closeTimer);
+        if (!browserClosed) killChrome(chromePid);
+        untrackChrome();
+        worker.terminate().catch(() => {});
+        const i = workerRegistry.indexOf(worker);
+        if (i !== -1) workerRegistry.splice(i, 1);
+      };
+
+      const fail = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        shutdown(false);
+        reject(err);
+      };
+
+      const runTimer = setTimeout(
+        () => fail(new Error(`Lighthouse run exceeded ${RUN_TIMEOUT_MS / 60_000} minutes and was aborted`)),
+        RUN_TIMEOUT_MS,
+      );
+      // Armed once a result is in: the browser should close within the grace
+      // period, otherwise we stop waiting and kill it ourselves.
+      let closeTimer: NodeJS.Timeout | undefined;
+
+      worker.on('message', (msg: {
+        type: string; pid?: number; lhr?: RunnerResult['lhr']; compactTrace?: unknown;
+        traceMaxMs?: number; networkEvents?: CompactNetworkEvent[]; message?: string;
+      }) => {
+        if (msg.type === 'browser') {
+          chromePid     = msg.pid;
+          untrackChrome = trackChrome(msg.pid);
+          return;
+        }
+
+        if (msg.type === 'closed') {
+          // Clean finish: the browser is gone, so only the thread is left to reap.
+          if (settled) shutdown(true);
+          return;
+        }
+
         if (msg.type === 'result' && msg.lhr) {
-          const r: { lhr: RunnerResult['lhr']; flameChartData?: FlameChartData; heapMemoryData?: HeapMemoryData; interactionData?: InteractionData; networkEvents?: CompactNetworkEvent[] } = { lhr: msg.lhr };
+          if (settled) return;
+          settled = true;
+          const r: WorkerRunResult = { lhr: msg.lhr };
           if (msg.compactTrace && msg.traceMaxMs != null) {
             const fc = parseFlameChart(msg.compactTrace, msg.traceMaxMs);
             if (fc) r.flameChartData = fc;
@@ -422,14 +480,22 @@ export class LighthouseService extends EventEmitter {
             if (id) r.interactionData = id;
           }
           if (msg.networkEvents) r.networkEvents = msg.networkEvents;
+          clearTimeout(runTimer);
+          closeTimer = setTimeout(() => shutdown(false), CLOSE_GRACE_MS);
+          // Resolve now; the browser teardown above continues in the background.
           resolve(r);
-        } else {
-          reject(new Error(msg.message ?? 'Worker returned no result'));
+          return;
         }
+
+        fail(new Error(msg.message ?? 'Worker returned no result'));
       });
-      worker.once('error', reject);
+
+      worker.once('error', (err) => fail(err instanceof Error ? err : new Error(String(err))));
       worker.once('exit', (code) => {
-        if (code !== 0) reject(new Error(`Worker exited with code ${code}`));
+        // A worker that dies without a result took its browser's fate with it.
+        if (!settled && code !== 0) fail(new Error(`Worker exited with code ${code}`));
+        killChrome(chromePid);
+        untrackChrome();
       });
     });
   }
@@ -457,6 +523,7 @@ export class LighthouseService extends EventEmitter {
   private async launchBrowser(analysisId: string): Promise<Browser> {
     this.emitProgress(analysisId, 'launching', 10, 'Launching Chrome browser...');
     const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
+    trackChrome(browser.process()?.pid);
     this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
     this.emitProgress(analysisId, 'navigating', 25, 'Browser ready...');
     return browser;
