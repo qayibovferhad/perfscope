@@ -104,6 +104,27 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: pnpm e2e
 
+      - name: Check the dashboard's own performance budget
+        # Dogfooding: the CLI audits the dev server it just booted, through the same
+        # socket pipeline the app uses. Budgets are deliberately loose — a GitHub runner
+        # is slower and noisier than any real host, so this is a smoke test for a
+        # catastrophic regression, not a performance gate.
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          TOKEN=$(curl -s -X POST http://localhost:3101/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"CI","email":"ci-budget@example.com","password":"ci-password"}' \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).token??'')}catch{console.log('')}})")
+
+          if [ -z "$TOKEN" ]; then echo "could not obtain a token"; exit 1; fi
+
+          PERFSCOPE_API_KEY="$TOKEN" node packages/cli/bin/cli.js ci \
+            --url http://localhost:5173 \
+            --api-url http://localhost:3101 \
+            --budget "performance=20,lcp=15000,cls=0.5" \
+            --no-tunnel
+
       - name: Show server logs on failure
         if: failure()
         run: tail -n 100 /tmp/backend.log /tmp/web.log
