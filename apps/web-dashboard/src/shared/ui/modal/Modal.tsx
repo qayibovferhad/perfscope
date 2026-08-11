@@ -4,13 +4,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTheme } from '../theme/ThemeProvider';
 
+/** `wide` is for forms with side-by-side controls — a confirm dialog stretched to the
+ *  same width just puts one short sentence across a very long line. */
+export type ModalSize = 'default' | 'wide';
+
+const WIDTHS: Record<ModalSize, string> = {
+  default: 'w-[min(520px,100%)]',
+  wide:    'w-[min(640px,100%)]',
+};
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  size?: ModalSize;
 }
 
-export function Modal({ open, onClose, children }: ModalProps) {
+export function Modal({ open, onClose, children, size = 'default' }: ModalProps) {
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -45,12 +55,16 @@ export function Modal({ open, onClose, children }: ModalProps) {
           style={{ background: scrimBg }}
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
+          {/* max-h with a scrolling body, rather than a card free to grow: the automation
+              setup is taller than a laptop viewport, and overflow-hidden on a grown card
+              clipped the Save button off the bottom of the screen with no way to reach it.
+              The scrim's p-6 is 24px top and bottom, hence the 48px. */}
           <motion.div
             initial={{ y: 14, scale: 0.98, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 8, scale: 0.99, opacity: 0 }}
             transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-            className="w-[min(480px,100%)] bg-ld-surface border border-ld-border-strong rounded-[20px] p-[26px] relative overflow-hidden"
+            className={`${WIDTHS[size]} max-h-[calc(100vh-48px)] flex flex-col bg-ld-surface border border-ld-border-strong rounded-[20px] relative overflow-hidden`}
             style={{ boxShadow: '0 40px 100px -30px rgba(0,0,0,.7), 0 0 0 1px var(--ld-accent-soft)' }}
           >
             {/* Top-left emerald radial glow */}
@@ -68,7 +82,9 @@ export function Modal({ open, onClose, children }: ModalProps) {
               <X className="w-[17px] h-[17px]" />
             </button>
 
-            <div className="relative z-[1]">
+            {/* The padding moved off the card and onto this element so the content scrolls
+                all the way to the rounded edges instead of stopping at a padding gutter. */}
+            <div className="relative z-[1] overflow-y-auto overscroll-contain p-[26px]">
               {children}
             </div>
           </motion.div>

@@ -90,7 +90,7 @@ export function SetupModal({ site, open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal open={open} onClose={onClose} size="wide">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 rounded-lg grid place-items-center shrink-0 bg-ld-accent-soft">
