@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
@@ -15,6 +15,7 @@ import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/shared/ui/stat-card';
 import { QueryErrorPanel }      from '@/shared/ui/state-panel';
+import { TabBar }               from '@/shared/ui/tab-bar';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
 import { SessionCaptureModal }  from '@/features/auth-audit';
@@ -24,6 +25,8 @@ import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects/lib/formatters';
 import { scoreBand, type AnalysisResult } from '@/entities/analysis';
+
+type ProjectTab = 'audits' | 'field';
 
 export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
@@ -37,6 +40,21 @@ export function ProjectDetailPage() {
   const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
   const [crossSiteOpen, setCrossSiteOpen] = useState(false);
   const [loadingId,     setLoadingId]     = useState<string | null>(null);
+
+  // In the URL so a reload, a back button or a shared link lands on the same tab.
+  const [params, setParams] = useSearchParams();
+  const tab: ProjectTab = params.get('tab') === 'field' ? 'field' : 'audits';
+
+  function setTab(next: ProjectTab) {
+    // The floating compare bar belongs to the audit table; leaving it armed while the
+    // field panel is showing offers a "Compare" button with nothing to compare.
+    if (next !== 'audits') exitCompareMode();
+    setParams(p => {
+      const n = new URLSearchParams(p);
+      if (next === 'audits') n.delete('tab'); else n.set('tab', next);
+      return n;
+    }, { replace: true });
+  }
 
   const setResult = useAnalysisStore(s => s.setResult);
 
@@ -274,6 +292,26 @@ export function ProjectDetailPage() {
           <StatCard label="Last Audit"    value={timeAgo(stats.lastAuditAt)} icon={<Clock className="w-5 h-5" />} compact />
         </div>
 
+        {/* ── Tabs ──────────────────────────────────────────
+             Lab runs and field data answer different questions — "what did our test
+             measure" versus "what did real visitors get" — and stacking them made the
+             page long enough that the RUM panel was rarely scrolled to at all. */}
+        <div className="flex flex-col gap-[26px] -mt-[18px]">
+          <TabBar
+            tabs={[
+              { key: 'audits', label: 'Audits',     icon: <BarChart3 className="w-[16px] h-[16px]" />, badge: stats.totalAudits || undefined },
+              { key: 'field',  label: 'Field data', icon: <Activity  className="w-[16px] h-[16px]" /> },
+            ]}
+            active={tab}
+            onChange={setTab}
+            ariaLabel="Project view"
+            className="self-start"
+          />
+
+        {tab === 'field' ? (
+          <RumPanel websiteId={project.id} lab={latestLab} />
+        ) : (
+        <>
         {/* Empty state */}
         {groups.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-ld-surface border border-ld-border">
@@ -329,8 +367,9 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Field data — what real visitors got, next to the lab runs above */}
-        <RumPanel websiteId={project.id} lab={latestLab} />
+        </>
+        )}
+        </div>
 
       </div>
 
