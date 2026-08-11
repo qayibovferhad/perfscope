@@ -3,6 +3,7 @@ import { HAS_RESULT_FIELDS } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
+import { AlertLog } from '../models/AlertLog.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 import { escapeRegex, hostOf, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
@@ -196,6 +197,26 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
   }
 });
 
+// GET /api/websites/:id/alerts — what was sent, when, and whether it landed.
+// Delivery is fire-and-forget, so without this "I never got an alert" is undebuggable.
+websiteRouter.get('/websites/:id/alerts', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).select('_id').lean();
+    if (!site) return res.status(404).json({ success: false, error: 'Website not found' });
+
+    const limit = Math.min(Math.max(parseInt(String(req.query['limit'] ?? '20'), 10) || 20, 1), 100);
+    const alerts = await AlertLog.find({ websiteId: site._id })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json({ success: true, data: alerts });
+  } catch (err) {
+    console.error('[website]', err);
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // PATCH /api/websites/:id/budgets — set or clear performance budgets
 websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
@@ -235,8 +256,11 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
       webhookUrl,
       alertEmail,
     };
-    const empty = budgets.performance == null && budgets.lcp == null &&
-                  budgets.tbt == null && budgets.cls == null;
+    // Channels stand on their own: regression alerts need somewhere to send without any
+    // threshold being set, so only a fully blank form clears the record.
+    const noThresholds = budgets.performance == null && budgets.lcp == null &&
+                         budgets.tbt == null && budgets.cls == null;
+    const empty = noThresholds && !webhookUrl && !alertEmail;
 
     const website = await Website.findOneAndUpdate(
       { _id: req.params['id']!, userId: req.userId! },

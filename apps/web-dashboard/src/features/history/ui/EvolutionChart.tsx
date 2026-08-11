@@ -11,11 +11,10 @@ const INNER_H = VH - PAD.top  - PAD.bottom;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const REGRESSION_PCT = 15;
+import { isRegression } from '@perfscope/shared';
 
-export function isRegression(curr: number, prev: number) {
-  return !prev ? false : ((curr - prev) / prev) * 100 > REGRESSION_PCT;
-}
+// Re-exported so existing importers keep resolving it from here.
+export { isRegression };
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

@@ -10,6 +10,7 @@ export * from './lib/rating.js'
 export * from './lib/format.js'
 export * from './lib/hasResult.js'
 export * from './lib/forecast.js'
+export * from './lib/regression.js'
 
 // ─── API client ─────────────────────────────────────────────────────────────
 export * from './api/client.js'

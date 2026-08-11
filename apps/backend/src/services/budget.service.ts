@@ -1,6 +1,6 @@
-import { fmtMs, fmtCls } from '@perfscope/shared';
+import { fmtMs, fmtCls, hasResult } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
-import { Mailer } from './mailer.service.js';
+import { dispatchAlert } from './alerts.service.js';
 import { hostOf, hostPrefixRegex } from '../lib/url.js';
 import type { AnalysisResult } from '../types/index.js';
 
@@ -9,8 +9,6 @@ interface BudgetFailure {
   value:  number;
   budget: number;
 }
-
-const WEBHOOK_TIMEOUT_MS = 5000;
 
 function collectFailures(result: AnalysisResult, budgets: NonNullable<IWebsite['budgets']>): BudgetFailure[] {
   const failures: BudgetFailure[] = [];
@@ -36,40 +34,6 @@ function describeFailure(f: BudgetFailure): string {
 }
 
 /**
- * Slack (and Discord) incoming webhooks reject arbitrary JSON — they need their
- * own envelope. Everything else gets the full structured payload.
- */
-export function webhookBody(webhookUrl: string, breach: {
-  url: string; formFactor: string | null; failures: BudgetFailure[];
-}, site: { url: string; name: string }): unknown {
-  const lines = breach.failures.map(f => `• ${describeFailure(f)}`).join('\n');
-  const title = `:warning: PerfScope budget breach — ${site.name || site.url}`;
-  const text  = `${title}\n${breach.url} (${breach.formFactor ?? 'desktop'})\n${lines}`;
-
-  try {
-    const host = new URL(webhookUrl).hostname;
-    if (host === 'hooks.slack.com')              return { text };
-    if (host.endsWith('discord.com') || host.endsWith('discordapp.com')) return { content: text.replace(':warning:', '⚠️') };
-  } catch { /* fall through to the raw payload */ }
-  return null;
-}
-
-async function postWebhook(webhookUrl: string, payload: unknown): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-  try {
-    await fetch(webhookUrl, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-      signal:  controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
  * Compare a fresh audit against the owning site's budgets. On breach, record it on
  * the Website (dashboard badge) and POST the payload to the configured webhook.
  * A clean audit of the previously breaching URL clears the recorded breach.
@@ -88,8 +52,7 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
   if (!site?.budgets) return;
 
   // An all-zero failed run must not trip (or clear) budgets.
-  const { performance, accessibility, bestPractices, seo } = result.scores;
-  if (!performance && !accessibility && !bestPractices && !seo) return;
+  if (!hasResult(result)) return;
 
   const failures = collectFailures(result, site.budgets);
 
@@ -98,6 +61,19 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
       site.set('lastBudgetBreach', null);
       await site.save();
     }
+    // Close the incident even when no breach was recorded on this document — the log,
+    // not the Website, is the source of truth for whether anyone was told.
+    await dispatchAlert(site, {
+      kind:   'budget recovered',
+      event:  'budget.recovered',
+      status: 'recovered',
+      url:    result.url,
+      formFactor: result.formFactor ?? null,
+      metrics: [],
+      lines:  ['Back within budget on every threshold.'],
+      analysisId: result.id,
+      payload: { analysisId: result.id },
+    });
     return;
   }
 
@@ -113,25 +89,17 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
   await site.save();
   console.warn(`[Budgets] ${result.url} broke ${failures.map(f => f.metric).join(', ')}`);
 
-  if (site.budgets.alertEmail && Mailer.isAvailable()) {
-    const lines = failures.map(f => `  • ${describeFailure(f)}`).join('\n');
-    const subject = `PerfScope budget breach — ${site.name || site.url}`;
-    const text = `${breach.url} (${breach.formFactor ?? 'desktop'}) broke its performance budgets:\n\n${lines}\n\nAudit id: ${result.id}`;
-    const html = `<p><b>${breach.url}</b> (${breach.formFactor ?? 'desktop'}) broke its performance budgets:</p>` +
-      `<ul>${failures.map(f => `<li>${describeFailure(f)}</li>`).join('')}</ul>` +
-      `<p style="color:#888;font-size:12px">Audit id: ${result.id}</p>`;
-    await Mailer.send(site.budgets.alertEmail, subject, text, html)
-      .catch((err: unknown) => console.warn('[Budgets] Alert email failed:', err));
-  }
-
-  if (site.budgets.webhookUrl) {
-    const body = webhookBody(site.budgets.webhookUrl, breach, site) ?? {
-      event:   'budget.breach',
-      website: { id: String(site._id), url: site.url, name: site.name },
-      ...breach,
-      at: breach.at.toISOString(),
-    };
-    await postWebhook(site.budgets.webhookUrl, body)
-      .catch((err: unknown) => console.warn('[Budgets] Webhook failed:', err));
-  }
+  // A breach persists across runs, so it is an incident: announced once, then silent
+  // until it recovers. Repeating it nightly is how alerting gets muted.
+  await dispatchAlert(site, {
+    kind:   'budget breach',
+    event:  'budget.breach',
+    status: 'firing',
+    url:    breach.url,
+    formFactor: breach.formFactor,
+    metrics: failures.map(f => f.metric),
+    lines:  failures.map(describeFailure),
+    analysisId: breach.analysisId,
+    payload: { analysisId: breach.analysisId, failures: breach.failures },
+  });
 }

@@ -156,6 +156,11 @@ export function SetupModal({ site, open, onClose }: Props) {
               </div>
             ))}
           </div>
+          <p className="text-[9.5px] text-ld-text-3 mt-3 leading-[1.5]">
+            Alerts fire on a budget breach, and whenever a run degrades sharply against the
+            previous audit of the same page — set a channel to get regression alerts even
+            without thresholds.
+          </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>
               <p className="text-[9px] text-ld-text-3 mb-1">Alert webhook (Slack/Discord/custom)</p>
