@@ -3,6 +3,7 @@ import { parseResources } from './resource-parser.js';
 import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkEvent } from './dependency-parser.js';
 import { parseTimeline } from './timeline-parser.js';
 import { parseCLSData } from './cls-parser.js';
+import { parseThirdParties } from './third-party-parser.js';
 import type {
   AnalysisResult,
   AuditItem,
@@ -134,6 +135,9 @@ export function buildFullResult(
 
     const clsData = parseCLSData(performanceLhr);
     if (clsData) result.clsData = clsData;
+
+    const thirdParty = parseThirdParties(performanceLhr, result.resources?.requests ?? []);
+    if (thirdParty) result.thirdParty = thirdParty;
 
     // Build dependency graph — prefer worker-extracted events, fall back to raw artifacts
     const requests = result.resources?.requests ?? [];

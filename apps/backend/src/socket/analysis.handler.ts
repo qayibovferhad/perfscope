@@ -15,6 +15,8 @@ import { Website } from '../models/Website.model.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
 import { config } from '../config/index.js';
 import { sameOrigin, isValidUrl, hostOf, hostPrefixRegex } from '../lib/url.js';
+import { SessionExpiredError } from '../lib/errors.js';
+import { v4 as uuidv4 } from 'uuid';
 
 function extractUserId(socket: TypedSocket): string | undefined {
   try {
@@ -95,11 +97,25 @@ async function recordLoginWall(
   }
 }
 
+/**
+ * A stored session that no longer authenticates is worse than no session: every
+ * later audit silently measures a login page. Drop it and flag the site so the
+ * dashboard asks for a fresh capture.
+ */
+async function dropStaleSession(userId: string | undefined, url: string, loginUrl: string): Promise<void> {
+  if (!userId) return;
+  const site = await findWebsiteByHost(userId, url);
+  if (!site) return;
+  site.set('session', null);
+  site.set('requiresLogin', { url, loginUrl, detectedAt: new Date() });
+  await site.save();
+}
+
 export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
-    socket.on('analysis:start', async (payload: { url: string; projectId?: string; formFactor?: 'mobile' | 'desktop' }) => {
+    socket.on('analysis:start', async (payload: { url: string; projectId?: string; formFactor?: 'mobile' | 'desktop'; precision?: 'single' | 'median' }) => {
       const { url, projectId } = payload;
       const formFactor = payload.formFactor === 'mobile' ? 'mobile' as const : undefined;
 
@@ -110,8 +126,17 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       console.log(`[Socket] Analysis started: ${url}`);
 
-      const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
-      const onPartial  = (data: CategoryPartial)  => socket.emit('analysis:partial', data);
+      // Own the id up front so this socket only forwards its own audit's progress —
+      // concurrent audits share the service's event emitter.
+      const analysisId = uuidv4();
+      const runs = payload.precision === 'median' ? 3 : 1;
+
+      const onProgress = (data: AnalysisProgress) => {
+        if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
+      };
+      const onPartial  = (data: CategoryPartial) => {
+        if (data.analysisId === analysisId) socket.emit('analysis:partial', data);
+      };
 
       lighthouseService.on('progress', onProgress);
 
@@ -130,9 +155,12 @@ export function registerAnalysisSocket(io: TypedServer): void {
           ];
           const match = allSources.find(s => s.session && sameOrigin(url, s.url));
           if (match?.session) {
-            const s = match.session;
-            if (s.cookies.length > 0 || Object.keys(s.localStorage as object).length > 0) {
-              savedSession = { cookies: s.cookies, localStorage: s.localStorage as Record<string, string> };
+            // Mongo drops an empty localStorage map, and a cookies-only capture is
+            // perfectly normal — neither may crash the audit that wants to use it.
+            const cookies = match.session.cookies ?? [];
+            const ls      = (match.session.localStorage ?? {}) as Record<string, string>;
+            if (cookies.length > 0 || Object.keys(ls).length > 0) {
+              savedSession = { cookies, localStorage: ls };
               console.log(`[Socket] Using saved session for ${url}`);
             }
           }
@@ -144,8 +172,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
       try {
         const result = savedSession
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? await lighthouseService.analyzeWithInjectedSession(url, savedSession as any, onPartial, formFactor)
-          : await lighthouseService.analyzeStreaming(url, onPartial, formFactor);
+          ? await lighthouseService.analyzeWithInjectedSession(url, savedSession as any, onPartial, { formFactor, analysisId })
+          : await lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId });
 
         await enrichWithAi(result);
 
@@ -160,8 +188,12 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
         socket.emit('analysis:complete', result);
       } catch (err) {
+        if (err instanceof SessionExpiredError) {
+          await dropStaleSession(userId, url, err.loginUrl)
+            .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
+        }
         const message = err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', { analysisId: '', message });
+        socket.emit('analysis:error', { analysisId, message });
       } finally {
         lighthouseService.off('progress', onProgress);
       }
@@ -219,13 +251,18 @@ export function registerAnalysisSocket(io: TypedServer): void {
         }
       }
 
-      const onProgress = (data: AnalysisProgress) => socket.emit('analysis:progress', data);
-      const onPartial  = (data: CategoryPartial)  => socket.emit('analysis:partial',  data);
+      const analysisId = uuidv4();
+      const onProgress = (data: AnalysisProgress) => {
+        if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
+      };
+      const onPartial  = (data: CategoryPartial) => {
+        if (data.analysisId === analysisId) socket.emit('analysis:partial', data);
+      };
 
       lighthouseService.on('progress', onProgress);
 
       try {
-        const result = await lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial, formFactor);
+        const result = await lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial, { formFactor, analysisId });
 
         await enrichWithAi(result);
 
@@ -240,8 +277,10 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
         socket.emit('analysis:complete', result);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', { analysisId: '', message });
+        const message = err instanceof SessionExpiredError
+          ? 'The captured session did not authenticate — log in inside the opened browser, then run the audit again.'
+          : err instanceof Error ? err.message : 'Analysis failed';
+        socket.emit('analysis:error', { analysisId, message });
       } finally {
         lighthouseService.off('progress', onProgress);
       }

@@ -36,7 +36,7 @@ export const usePrefetchStore = create<PrefetchStore>((set, get) => ({
 
     // Honor the persisted device profile — a website-card "Analyze" click must
     // run in the same mode the analyzer toggle shows.
-    const { formFactor } = useAuditModeStore.getState();
+    const { formFactor, precision } = useAuditModeStore.getState();
 
     const cleanup = startAnalysis(url, {
       onProgress: (progress) => set({ progress }),
@@ -45,7 +45,7 @@ export const usePrefetchStore = create<PrefetchStore>((set, get) => ({
       })),
       onComplete: (result)   => set({ status: 'success', result, progress: null }),
       onError:    ()         => set({ status: 'error', progress: null }),
-    }, undefined, formFactor);
+    }, { formFactor, precision });
 
     set({ _cleanup: cleanup });
   },

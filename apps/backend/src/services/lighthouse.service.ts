@@ -13,17 +13,50 @@ import { parseFlameChart } from './flame-chart-parser.js';
 import { parseHeapMemory } from './heap-memory-parser.js';
 import { parseInteractions } from './interaction-parser.js';
 import type { CompactNetworkEvent } from './dependency-parser.js';
-import { buildPartial, buildFullResult } from './lhr-transform.js';
+import { buildPartial, buildFullResult, toScore } from './lhr-transform.js';
+import { AuditQueue, type AuditPriority } from './auditQueue.js';
+import { SessionExpiredError } from '../lib/errors.js';
+import { config } from '../config/index.js';
 import type {
   AnalysisResult,
   AnalysisProgress,
   AnalysisCategory,
   AuditFormFactor,
   CategoryPartial,
+  MeasurementQuality,
   FlameChartData,
   HeapMemoryData,
   InteractionData,
 } from '../types/index.js';
+
+/** What one worker thread hands back for a single Lighthouse pass. */
+interface WorkerRunResult {
+  lhr:              RunnerResult['lhr'];
+  flameChartData?:  FlameChartData;
+  heapMemoryData?:  HeapMemoryData;
+  interactionData?: InteractionData;
+  networkEvents?:   CompactNetworkEvent[];
+}
+
+/**
+ * Pick the run that represents the page.
+ *
+ * The median is taken over whole runs rather than per metric so the reported
+ * numbers stay internally consistent — the waterfall, filmstrip and trace all
+ * belong to the same load as the score beside them. Averaging metrics would
+ * produce a page that never actually existed.
+ */
+function pickMedianRun(runs: WorkerRunResult[]): { run: WorkerRunResult; measurement: MeasurementQuality } {
+  const scored = runs
+    .map(run => ({ run, score: toScore(run.lhr.categories['performance']?.score) }))
+    .sort((a, b) => a.score - b.score);
+
+  const median = scored[Math.floor((scored.length - 1) / 2)]!;
+  const scores = runs.map(run => toScore(run.lhr.categories['performance']?.score));
+  const spread = scored.length > 1 ? scored[scored.length - 1]!.score - scored[0]!.score : 0;
+
+  return { run: median.run, measurement: { runs: runs.length, scores, median: median.score, spread } };
+}
 
 type ActiveAnalysis =
   | { type: 'browser'; browser: Browser; abortController: AbortController }
@@ -31,6 +64,33 @@ type ActiveAnalysis =
 
 
 const CATEGORIES: AnalysisCategory[] = ['performance', 'accessibility', 'best-practices', 'seo'];
+
+/** Categories whose score is a property of the markup, not of this particular load. */
+const STATIC_CATEGORIES: AnalysisCategory[] = ['seo', 'best-practices'];
+/** Categories that measure the load itself and therefore vary run to run. */
+const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance', 'accessibility'];
+
+/** More than this and the wait stops being worth the extra precision. */
+const MAX_RUNS = 5;
+
+export interface AnalyzeOptions {
+  // Explicit `| undefined` so callers can spread optional values under
+  // exactOptionalPropertyTypes without pre-filtering them.
+  formFactor?: AuditFormFactor | undefined;
+  /**
+   * How many times to measure the timed categories. The median run is reported,
+   * so an odd number is the useful choice. 1 keeps the fast parallel path.
+   */
+  runs?:       number | undefined;
+  /** Supply an id to correlate progress events with this specific audit. */
+  analysisId?: string | undefined;
+  priority?:   AuditPriority | undefined;
+}
+
+/** Global admission control — see AuditQueue for why this is a correctness feature. */
+const auditQueue = new AuditQueue(config.maxConcurrentAudits);
+
+export const auditQueueStats = () => auditQueue.stats;
 
 export class LighthouseService extends EventEmitter {
   private readonly activeAnalyses = new Map<string, ActiveAnalysis>();
@@ -46,8 +106,15 @@ export class LighthouseService extends EventEmitter {
 
   // ─── Single-run (REST path) ───────────────────────────────────────────────
 
-  async analyze(url: string): Promise<AnalysisResult> {
-    const analysisId = uuidv4();
+  async analyze(url: string, opts: AnalyzeOptions = {}): Promise<AnalysisResult> {
+    const analysisId = opts.analysisId ?? uuidv4();
+    return auditQueue.run(() => this.singleShotAudit(analysisId, url), {
+      priority: opts.priority ?? 'interactive',
+      onQueue:  this.queueReporter(analysisId),
+    });
+  }
+
+  private async singleShotAudit(analysisId: string, url: string): Promise<AnalysisResult> {
     let browser: Browser | null = null;
     try {
       browser = await this.launchBrowser(analysisId);
@@ -80,55 +147,117 @@ export class LighthouseService extends EventEmitter {
   async analyzeStreaming(
     url: string,
     onPartial: (partial: CategoryPartial) => void,
-    formFactor?: AuditFormFactor,
+    opts: AnalyzeOptions = {},
   ): Promise<AnalysisResult> {
-    const analysisId = uuidv4();
+    const analysisId = opts.analysisId ?? uuidv4();
+    return auditQueue.run(
+      () => this.streamingAudit(analysisId, url, onPartial, opts),
+      { priority: opts.priority ?? 'interactive', onQueue: this.queueReporter(analysisId) },
+    );
+  }
+
+  /** Progress callback that tells the client why its audit has not started yet. */
+  private queueReporter(analysisId: string) {
+    return (position: number) =>
+      this.emitProgress(
+        analysisId, 'launching', 2,
+        position === 1 ? 'Queued — next in line…' : `Queued — ${position - 1} audit(s) ahead…`,
+      );
+  }
+
+  private async streamingAudit(
+    analysisId: string,
+    url: string,
+    onPartial: (partial: CategoryPartial) => void,
+    opts: AnalyzeOptions,
+  ): Promise<AnalysisResult> {
+    const { formFactor } = opts;
+    const runs = Math.max(1, Math.min(Math.floor(opts.runs ?? 1), MAX_RUNS));
     const workers: Worker[] = [];
 
     // Register workers immediately so cancelAnalysis can terminate them at any point
     this.activeAnalyses.set(analysisId, { type: 'workers', workers });
 
-    this.emitProgress(analysisId, 'launching', 10, 'Launching Chrome instances...');
-    this.emitProgress(analysisId, 'auditing',  35, 'Running parallel audits...');
+    try {
+      this.emitProgress(analysisId, 'launching', 10, 'Launching Chrome instances...');
 
-    // Monotonically increasing progress shared across both worker callbacks.
-    // Node.js is single-threaded so .then() callbacks are sequential — no mutex needed.
-    let progress = 35;
-    const advance = (by: number, stage: AnalysisProgress['stage'], msg: string) => {
-      progress = Math.min(progress + by, 88); // cap before processing stage
-      this.emitProgress(analysisId, stage, progress, msg);
-    };
+      const emitFor = (cats: AnalysisCategory[], lhr: RunnerResult['lhr']) => {
+        for (const cat of cats) onPartial(buildPartial(analysisId, cat, lhr));
+      };
 
-    const run1 = this.runLighthouseInWorker(url, ['seo', 'best-practices'], workers, formFactor).then((res): typeof res => {
-      for (const cat of ['seo', 'best-practices'] as AnalysisCategory[]) {
-        onPartial(buildPartial(analysisId, cat, res.lhr));
+      let staticRes: WorkerRunResult;
+      let timedRuns: WorkerRunResult[];
+
+      if (runs === 1) {
+        // Fast path: both workers in parallel, whichever finishes first streams.
+        this.emitProgress(analysisId, 'auditing', 35, 'Running parallel audits...');
+        let progress = 35;
+        const advance = (by: number, msg: string) => {
+          progress = Math.min(progress + by, 88); // cap before processing stage
+          this.emitProgress(analysisId, 'auditing', progress, msg);
+        };
+
+        const staticRun = this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor)
+          .then((res): WorkerRunResult => {
+            emitFor(STATIC_CATEGORIES, res.lhr);
+            advance(27, 'SEO & Best Practices complete');
+            return res;
+          });
+
+        const timedRun = this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor)
+          .then((res): WorkerRunResult => {
+            emitFor(TIMED_CATEGORIES, res.lhr);
+            advance(27, 'Performance & Accessibility complete');
+            return res;
+          });
+
+        [staticRes, timedRuns] = await Promise.all([staticRun, timedRun.then(r => [r])]);
+      } else {
+        // Precision path: nothing else may share the CPU while a timed run is in
+        // flight, otherwise the extra iterations measure contention instead of the
+        // page. Static categories go first (they cannot be perturbed), then each
+        // timed iteration runs alone.
+        this.emitProgress(analysisId, 'auditing', 20, 'Auditing SEO & Best Practices...');
+        staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor);
+        emitFor(STATIC_CATEGORIES, staticRes.lhr);
+
+        timedRuns = [];
+        for (let i = 0; i < runs; i++) {
+          this.emitProgress(
+            analysisId, 'auditing',
+            Math.round(30 + (55 * i) / runs),
+            `Measuring performance — run ${i + 1} of ${runs}...`,
+          );
+          const res = await this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor);
+          timedRuns.push(res);
+          // Stream the first iteration so the user sees real numbers early; later
+          // iterations refine them and the median is emitted below.
+          if (i === 0) emitFor(TIMED_CATEGORIES, res.lhr);
+        }
       }
-      advance(27, 'auditing', 'SEO & Best Practices complete');
-      return res;
-    });
 
-    const run2 = this.runLighthouseInWorker(url, ['performance', 'accessibility'], workers, formFactor).then((res): typeof res => {
-      for (const cat of ['performance', 'accessibility'] as AnalysisCategory[]) {
-        onPartial(buildPartial(analysisId, cat, res.lhr));
-      }
-      advance(27, 'auditing', 'Performance & Accessibility complete');
-      return res;
-    });
+      this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
 
-    const [res1, res2] = await Promise.all([run1, run2]);
+      const { run: medianRun, measurement } = pickMedianRun(timedRuns);
+      if (runs > 1) emitFor(TIMED_CATEGORIES, medianRun.lhr);
 
-    this.activeAnalyses.delete(analysisId);
-    this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
-    // performance worker is run2; flame chart, heap, and interaction data come from there
-    const flameData       = res2.flameChartData  ?? res1.flameChartData;
-    const heapData        = res2.heapMemoryData  ?? res1.heapMemoryData;
-    const interactionData = res2.interactionData ?? res1.interactionData;
-    // Use network events from whichever worker captured them (prefer run2 for performance)
-    const networkEvents = res2.networkEvents ?? res1.networkEvents;
-    const full = buildFullResult(analysisId, url, [res1.lhr, res2.lhr], flameData, heapData, interactionData, networkEvents);
-    full.formFactor = formFactor ?? 'desktop';
-    this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
-    return full;
+      const flameData       = medianRun.flameChartData  ?? staticRes.flameChartData;
+      const heapData        = medianRun.heapMemoryData  ?? staticRes.heapMemoryData;
+      const interactionData = medianRun.interactionData ?? staticRes.interactionData;
+      const networkEvents   = medianRun.networkEvents   ?? staticRes.networkEvents;
+
+      const full = buildFullResult(
+        analysisId, url, [staticRes.lhr, medianRun.lhr],
+        flameData, heapData, interactionData, networkEvents,
+      );
+      full.formFactor  = formFactor ?? 'desktop';
+      full.measurement = measurement;
+
+      this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
+      return full;
+    } finally {
+      this.activeAnalyses.delete(analysisId);
+    }
   }
 
   // ─── Authenticated audit (session transfer) ──────────────────────────────
@@ -143,9 +272,25 @@ export class LighthouseService extends EventEmitter {
       localStorage: Record<string, string>;
     },
     onPartial: (partial: CategoryPartial) => void,
+    opts: AnalyzeOptions = {},
+  ): Promise<AnalysisResult> {
+    const analysisId = opts.analysisId ?? uuidv4();
+    return auditQueue.run(
+      () => this.injectedSessionAudit(analysisId, url, sessionData, onPartial, opts.formFactor),
+      { priority: opts.priority ?? 'interactive', onQueue: this.queueReporter(analysisId) },
+    );
+  }
+
+  private async injectedSessionAudit(
+    analysisId: string,
+    url: string,
+    sessionData: {
+      cookies:      Array<{ name: string; value: string; domain: string | undefined; path: string | undefined; expires: number | undefined; httpOnly: boolean | undefined; secure: boolean | undefined; sameSite: string | undefined }>;
+      localStorage: Record<string, string>;
+    },
+    onPartial: (partial: CategoryPartial) => void,
     formFactor?: AuditFormFactor,
   ): Promise<AnalysisResult> {
-    const analysisId = uuidv4();
     let browser: Browser | null = null;
 
     try {
@@ -234,6 +379,13 @@ export class LighthouseService extends EventEmitter {
         undefined, anyResult?.artifacts,
       );
       result.formFactor = formFactor ?? 'desktop';
+
+      // A session was injected and Lighthouse still ended up on a login screen:
+      // the cookies are stale. Reporting this as a 0-score audit would poison the
+      // site's history, so fail loudly and let the caller drop the session.
+      if (result.authRedirectDetected) {
+        throw new SessionExpiredError(result.authRedirectDetected.finalUrl);
+      }
 
       this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
       return result;

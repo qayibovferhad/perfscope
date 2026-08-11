@@ -18,10 +18,13 @@ async function runSingleAudit(
   try {
     console.log(`[NightlyAudit] Auditing ${fullUrl}`);
 
+    // Unattended runs feed trends, budgets and regression detection, so they pay
+    // the extra minutes for a median instead of trusting one noisy sample. They
+    // also yield to anyone waiting on a page.
     const result = sessionData
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {})
-      : await lighthouseService.analyzeStreaming(fullUrl, () => {});
+      ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {}, { priority: 'background' })
+      : await lighthouseService.analyzeStreaming(fullUrl, () => {}, { priority: 'background', runs: 3 });
 
     await enrichWithAi(result);
     await persistAudit(result, userId, projectId);

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShieldAlert, Monitor, Smartphone } from 'lucide-react';
+import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
 import { AiInsights } from '@/features/analyzer/ui/AiInsights';
@@ -13,6 +13,8 @@ import { HeapMemoryChart } from '@/features/analyzer/ui/HeapMemoryChart';
 import { InteractionTimeline } from '@/features/analyzer/ui/InteractionTimeline';
 import { CLSVisualizer } from '@/features/analyzer/ui/CLSVisualizer';
 import { ResourcesAlert } from '@/features/analyzer/ui/ResourcesAlert';
+import { ThirdPartyPanel } from '@/features/analyzer/ui/ThirdPartyPanel';
+import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import type { AnalysisResult } from '@/entities/analysis';
 
@@ -38,7 +40,15 @@ const SCORE_ITEMS: { label: ScoreLabel; scoreKey: keyof AnalysisResult['scores']
 
 interface Props { data: AnalysisResult }
 
+/** Score gap across runs beyond which the page's own variance dominates the number. */
+const NOISY_SPREAD = 8;
+
 export function AnalyzerResultsPanel({ data }: Props) {
+  const measurement = data.measurement;
+  // Field data for the same URL/device — renders nothing when Chrome has no
+  // real-user sample for this page (or the server has no CrUX key).
+  const { data: crux, isLoading: cruxLoading } = useCruxData(data.url, data.formFactor ?? 'desktop');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -60,7 +70,29 @@ export function AnalyzerResultsPanel({ data }: Props) {
             {data.formFactor}
           </span>
         )}
+        {measurement && measurement.runs > 1 && (
+          <span
+            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[.08em] px-[8px] py-[3px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent"
+            title={`Runs scored ${measurement.scores.join(', ')} — the median run is reported`}
+          >
+            <Crosshair className="w-[11px] h-[11px]" />
+            median of {measurement.runs}
+          </span>
+        )}
       </p>
+
+      {/* A wide spread means the page itself measures unreliably — say so instead of
+          letting the reader treat one number as exact. */}
+      {measurement && measurement.spread >= NOISY_SPREAD && (
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.08)] text-ld-amber">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            This page measures unevenly — the {measurement.runs} runs scored{' '}
+            <b className="font-semibold">{measurement.scores.join(', ')}</b> ({measurement.spread} points apart).
+            Treat single-point comparisons with care.
+          </span>
+        </div>
+      )}
 
       {data.authRedirectDetected && (
         <div
@@ -150,6 +182,15 @@ export function AnalyzerResultsPanel({ data }: Props) {
             </section>
           )}
         </TimelineProvider>
+      )}
+
+      <CruxFieldPanel data={crux} isLoading={cruxLoading} />
+
+      {data.thirdParty && data.thirdParty.length > 0 && (
+        <section>
+          <SectionTitle>Third-party impact</SectionTitle>
+          <ThirdPartyPanel entities={data.thirdParty} />
+        </section>
       )}
 
       {data.audits.length > 0 && (

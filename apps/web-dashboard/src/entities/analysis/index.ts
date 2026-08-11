@@ -33,6 +33,8 @@ export type {
   DependencyNode,
   DependencyLink,
   DependencyGraph,
+  MeasurementQuality,
+  ThirdPartyEntity,
 } from '@perfscope/shared'
 
 export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS } from '@perfscope/shared'
@@ -47,7 +49,7 @@ export { AuditList } from './ui/AuditList'
 export { ProgressStepper } from './ui/ProgressStepper'
 
 export { startAnalysis, joinAnalysis, emitAuthAuditStart } from './api/analysisSocket'
-export type { AnalysisCallbacks } from './api/analysisSocket'
+export type { AnalysisCallbacks, AuditPrecision, StartAnalysisOptions } from './api/analysisSocket'
 
 export { usePrefetchStore } from './model/prefetchStore'
 export type { PrefetchPartialMap } from './model/prefetchStore'

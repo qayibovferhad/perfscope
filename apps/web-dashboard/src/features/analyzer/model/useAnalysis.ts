@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { AsyncStatus } from '@/shared/lib/types';
-import { startAnalysis, joinAnalysis, emitAuthAuditStart } from '@/entities/analysis';
+import { startAnalysis, joinAnalysis, emitAuthAuditStart, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory, AuditFormFactor } from '@/entities/analysis';
 
@@ -28,7 +28,7 @@ export function useAnalysis() {
 
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  const analyze = useCallback((url: string, projectId?: string, formFactor?: AuditFormFactor) => {
+  const analyze = useCallback((url: string, projectId?: string, formFactor?: AuditFormFactor, precision?: AuditPrecision) => {
     cleanupRef.current?.();
     setState({ status: 'loading', progress: null, partials: {}, data: null, error: null });
 
@@ -49,7 +49,7 @@ export function useAnalysis() {
 
       onError: (error) =>
         setState({ status: 'error', error, data: null, progress: null, partials: {} }),
-    }, projectId, formFactor);
+    }, { projectId, formFactor, precision });
 
     cleanupRef.current = cleanup;
   }, [setResult]);

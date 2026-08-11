@@ -1,5 +1,8 @@
 import type { Socket } from 'socket.io-client';
 import type { AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor } from '@perfscope/shared';
+
+/** How thoroughly an audit measures: one shot, or the median of three runs. */
+export type AuditPrecision = 'single' | 'median';
 import { getSocket } from '@/shared/api/socket';
 
 export interface AnalysisCallbacks {
@@ -28,19 +31,26 @@ function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   };
 }
 
+export interface StartAnalysisOptions {
+  projectId?: string | undefined;
+  formFactor?: AuditFormFactor | undefined;
+  /** 'median' measures three times and reports the middle run — slower, far less noisy. */
+  precision?: AuditPrecision | undefined;
+}
+
 export function startAnalysis(
   url: string,
   callbacks: AnalysisCallbacks,
-  projectId?: string,
-  formFactor?: AuditFormFactor,
+  opts: StartAnalysisOptions = {},
 ): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
   const cleanup = attachListeners(s, callbacks);
   s.emit('analysis:start', {
     url,
-    ...(projectId ? { projectId } : {}),
-    ...(formFactor ? { formFactor } : {}),
+    ...(opts.projectId  ? { projectId:  opts.projectId }  : {}),
+    ...(opts.formFactor ? { formFactor: opts.formFactor } : {}),
+    ...(opts.precision  ? { precision:  opts.precision }  : {}),
   });
   return cleanup;
 }

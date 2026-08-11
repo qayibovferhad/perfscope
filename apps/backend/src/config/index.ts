@@ -15,8 +15,17 @@ export const config = {
   clientUrl:   optionalEnv('CLIENT_URL', 'http://localhost:5173'),
   nodeEnv:     optionalEnv('NODE_ENV', 'development'),
   geminiApiKey: process.env['GEMINI_API_KEY'],
+  /** Chrome UX Report field data is disabled unless this is set. */
+  cruxApiKey:  process.env['CRUX_API_KEY'],
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
   jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
+
+  /**
+   * Audits running at once. Each owns a Chrome instance, and Lighthouse numbers
+   * degrade when runs compete for CPU — so this is a measurement-accuracy knob,
+   * not just a resource limit.
+   */
+  maxConcurrentAudits: Math.max(1, parseInt(optionalEnv('MAX_CONCURRENT_AUDITS', '2'), 10) || 2),
 
   /** Email alerts are disabled unless SMTP_HOST is set. */
   smtp: {

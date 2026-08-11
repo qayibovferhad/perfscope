@@ -33,7 +33,7 @@ pnpm dev
 - Backend: http://localhost:3101
 - Web dashboard: http://localhost:5173
 
-MongoDB and `GEMINI_API_KEY` are both optional: without Mongo, analyses still run but history is not persisted; without the Gemini key, AI insights are disabled. `MONGODB_URI` and `JWT_SECRET` have dev defaults (`mongodb://localhost:27017/perfscope`, a dev-only secret). For Google OAuth in the dashboard, set `VITE_GOOGLE_CLIENT_ID` in `apps/web-dashboard/.env`.
+MongoDB, `GEMINI_API_KEY`, and `CRUX_API_KEY` are all optional: without Mongo, analyses still run but history is not persisted; without the Gemini key, AI insights are disabled; without a Chrome UX Report key (enable the *Chrome UX Report API* in a Google Cloud project, then create an API key at [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)), audits show lab data only and the real-user field panel stays hidden. `MONGODB_URI` and `JWT_SECRET` have dev defaults (`mongodb://localhost:27017/perfscope`, a dev-only secret). For Google OAuth in the dashboard, set `VITE_GOOGLE_CLIENT_ID` in `apps/web-dashboard/.env`.
 
 ## Scripts
 

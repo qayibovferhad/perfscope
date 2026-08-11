@@ -102,6 +102,39 @@ export interface ParsedResources {
   detectedLibraries:  DetectedLibrary[]
 }
 
+// ─── Measurement quality ─────────────────────────────────────────────────────
+
+/**
+ * How the reported performance numbers were produced. A single Lighthouse run
+ * swings by ±10 points on the same page, so anything derived from one shot
+ * (trends, regressions, budget breaches) is partly noise. When `runs > 1` the
+ * reported result is the median run and `spread` says how noisy the page is.
+ */
+export interface MeasurementQuality {
+  /** Performance iterations executed (1 = single shot). */
+  runs:   number
+  /** Performance score of every iteration, in run order. */
+  scores: number[]
+  /** Score of the run whose artifacts this result carries. */
+  median: number
+  /** max − min across iterations; large values mean the page measures unreliably. */
+  spread: number
+}
+
+// ─── Third parties ───────────────────────────────────────────────────────────
+
+/** Per-vendor cost, from Lighthouse's third-party-summary audit. */
+export interface ThirdPartyEntity {
+  /** Vendor name as Lighthouse identifies it (e.g. "Google Tag Manager"). */
+  name:           string
+  transferSize:   number
+  /** Total main-thread time attributed to this vendor (ms). */
+  mainThreadTime: number
+  /** Portion of main-thread time that blocked interactivity (ms). */
+  blockingTime:   number
+  requestCount:   number
+}
+
 // ─── Timeline / filmstrip ────────────────────────────────────────────────────
 
 export interface TimelineFrame {
@@ -240,6 +273,10 @@ export interface AnalysisResult {
   clsData?:              CLSData
   /** Set when Lighthouse was redirected to an auth/login page instead of the requested URL. */
   authRedirectDetected?: { finalUrl: string }
+  /** Present when the run was measured more than once (median reporting). */
+  measurement?:          MeasurementQuality
+  /** Vendors loaded by the page, heaviest first. */
+  thirdParty?:           ThirdPartyEntity[]
 }
 
 export interface AnalysisProgress {

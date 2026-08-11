@@ -38,6 +38,8 @@ export type {
   DependencyNode,
   DependencyLink,
   DependencyGraph,
+  MeasurementQuality,
+  ThirdPartyEntity,
 } from '@perfscope/shared';
 
 // Import a few for use in local socket-event contracts below

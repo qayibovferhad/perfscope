@@ -7,6 +7,7 @@ import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
 import { computeRows } from '@/features/history/lib/computeRows';
 import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard';
+import { TrendForecastPanel } from '@/features/history/ui/TrendForecastPanel';
 import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history/model/types';
@@ -134,6 +135,9 @@ export function HistoryPage() {
                 {!urlLoading && urlEntries.length > 0 && (
                   <>
                     <HistoryEvolutionCard url={url} entries={urlEntries} />
+
+                    {/* Projects the same runs forward; renders nothing until there are enough. */}
+                    <TrendForecastPanel url={url} entries={urlEntries} />
 
                     {/* Deep dive table */}
                     <HistoryDeepDiveTable

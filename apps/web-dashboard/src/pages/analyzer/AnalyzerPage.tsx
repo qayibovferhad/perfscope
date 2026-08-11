@@ -22,7 +22,7 @@ export function AnalyzerPage() {
   const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const { formFactor, setFormFactor } = useAuditModeStore();
+  const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
   const activeSession = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
@@ -55,7 +55,8 @@ export function AnalyzerPage() {
 
     const normalized = normalizeUrl(paramUrl);
     reset();
-    analyze(normalized, projectId, (ff === 'mobile' || ff === 'desktop') ? ff : useAuditModeStore.getState().formFactor);
+    const mode = useAuditModeStore.getState();
+    analyze(normalized, projectId, (ff === 'mobile' || ff === 'desktop') ? ff : mode.formFactor, mode.precision);
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFormFactor(next: AuditFormFactor) {
@@ -67,7 +68,7 @@ export function AnalyzerPage() {
       const target = normalizeUrl(url.trim() || data.url);
       const projectId = searchParams.get('projectId') ?? undefined;
       reset();
-      analyze(target, projectId, next);
+      analyze(target, projectId, next, precision);
     }
   }
 
@@ -80,7 +81,7 @@ export function AnalyzerPage() {
       startAuthAudit(authSessionId, normalized, formFactor);
     } else {
       reset();
-      analyze(normalized, projectId, formFactor);
+      analyze(normalized, projectId, formFactor, precision);
     }
   }
 
@@ -138,6 +139,8 @@ export function AnalyzerPage() {
         progress={progress}
         formFactor={formFactor}
         onFormFactor={handleFormFactor}
+        precision={precision}
+        onPrecision={setPrecision}
         onSubmit={handleSubmit}
       />
 
