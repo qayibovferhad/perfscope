@@ -28,7 +28,13 @@ pnpm build:web      # web-dashboard only
 pnpm install
 ```
 
-There are no automated tests configured in this project.
+```bash
+pnpm test    # Vitest — shared (rating, formatters, forecast) + web-dashboard units
+pnpm e2e     # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
+pnpm --filter @perfscope/web-dashboard lint   # ESLint, incl. FSD layer-boundary rules (0 errors is the bar)
+```
+
+CI (`.github/workflows/ci.yml`) runs build + lint + unit tests, and a separate `e2e` job with a Mongo service. Two CI-only gotchas are already encoded there: puppeteer's Chrome download fails on runners (skipped, system Chrome via `setup-chrome` + `PUPPETEER_EXECUTABLE_PATH`), and `turbo dev` hangs without a TTY (the job calls the package dev scripts directly).
 
 ## Environment Setup
 
@@ -48,7 +54,10 @@ VITE_BACKEND_URL=http://localhost:3101   # defaults to this if omitted
 VITE_GOOGLE_CLIENT_ID=<oauth client id>
 ```
 
-MongoDB is gracefully optional — the server starts and runs analysis even without it; only history persistence is skipped.
+Optional keys all degrade silently when unset — the feature simply turns off, it never crashes:
+`GEMINI_API_KEY` (AI insights) · `CRUX_API_KEY` (real-user field data) · `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (budget alert emails) · `MAX_CONCURRENT_AUDITS` (default 2) · `MONGODB_URI` (history persistence) · `VITE_GOOGLE_CLIENT_ID` (the login page hides Google auth without it).
+
+`docker compose up -d` starts MongoDB only — the apps stay on the host because Lighthouse drives host Chrome.
 
 ## Architecture
 
@@ -67,18 +76,24 @@ perfscope/
 
 ### Analysis pipeline (the core flow)
 
-Analysis is driven entirely over **WebSocket**, not REST. The sequence:
+Analysis is driven over **WebSocket**; the REST endpoint (`analyzer.routes.ts`) survives only because the Chrome extension and CLI login flow use it.
 
-1. Frontend calls `startAnalysis(url, callbacks)` → emits `analysis:start` via Socket.io.
-2. Backend `socket/analysis.handler.ts` receives it, looks up saved sessions from both `Website` and `CompetitorSession` collections and auto-injects credentials if found (matching by URL prefix), then calls `lighthouseService.analyzeStreaming()` or `analyzeWithInjectedSession()`.
-3. `LighthouseService` spawns **two parallel Worker threads** (one for `performance + accessibility`, one for `seo + best-practices`), each with its own Chrome instance (Puppeteer). Whichever finishes first emits `analysis:partial`, so the UI updates progressively.
-4. Both workers resolve → results merged into a single `AnalysisResult`, enriched with AI insights via Gemini (`ai.service.ts`), then emitted as `analysis:complete`.
-5. `HistoryService` saves a lightweight summary to MongoDB asynchronously (non-blocking).
+1. Frontend `startAnalysis(url, callbacks, { projectId, formFactor, precision })` → emits `analysis:start`.
+2. `socket/analysis.handler.ts` **generates the analysisId itself** and forwards only progress/partials carrying that id — concurrent audits share the service's EventEmitter, so unfiltered listeners leak other users' progress. It also auto-injects a saved session when the target is **same-origin** with a stored one (prefix matching would leak a session to `example.com.evil.test`).
+3. `LighthouseService` runs everything through `AuditQueue` (`MAX_CONCURRENT_AUDITS`, interactive beats background). Audits competing for CPU do not just run slower — they *report worse numbers*, so the cap is a correctness feature. Queued callers receive their position as progress.
+4. Measurement:
+   - `runs === 1` (Fast): two worker threads in parallel — `performance + accessibility` and `seo + best-practices`, each with its own Chrome. Whichever finishes first emits `analysis:partial`.
+   - `runs > 1` (Precise, and always for nightly): static categories first, then N **isolated sequential** timed runs. `pickMedianRun` reports the median run *whole* — averaging metrics would describe a page load that never happened, and the waterfall/filmstrip must match the score beside them. Spread is reported as `MeasurementQuality`.
+5. `lhr-transform.ts` merges the LHRs and runs every parser; the result is enriched and persisted by `auditPipeline.ts` — the one choke point every entry path shares: `enrichWithAi` → `persistAudit` → `checkBudgets`.
 
-Socket events (client → server): `analysis:start { url, projectId? }`, `analysis:cancel { analysisId }`, `auth-audit:start { sessionId, url, projectId?, context? }`.  
+Socket events (client → server): `analysis:start { url, projectId?, formFactor?, precision? }`, `analysis:cancel { analysisId }`, `auth-audit:start { sessionId, url, projectId?, context?, formFactor? }`.
 Socket events (server → client): `analysis:progress`, `analysis:partial`, `analysis:complete`, `analysis:error`.
 
-The REST endpoint (`analyzer.routes.ts`) uses a single-Chrome, non-streaming path — it exists but the UI uses the WebSocket path exclusively.
+### Budgets, alerts and sharing
+
+- **Budgets** live on `Website.budgets` (min performance score, max LCP/TBT/CLS, `webhookUrl`, `alertEmail`) and are checked in `budget.service.ts` for every persisted audit. A breach is recorded on the site (badge on the websites page) and pushed to the webhook — `hooks.slack.com` gets Slack's `{text}` envelope, Discord `{content}`, anything else the full JSON payload — plus an email when SMTP is configured. A later clean audit of the same URL clears the breach; all-zero failed runs never count.
+- **Share links**: `POST /api/history/:id/share` mints a 32-hex token, `GET /api/public/report/:token` serves the stored result unauthenticated, `/report/:token` renders it read-only.
+- **Field data**: `crux.service.ts` queries the Chrome UX Report (URL level, falling back to origin) so real-user p75s sit next to the lab numbers.
 
 ### Auth-Audit flow
 
@@ -87,6 +102,8 @@ For auditing login-protected pages, there is a separate two-phase flow:
 1. `POST /api/auth-audit/session` → backend launches a **visible** (non-headless) Puppeteer browser at the target URL and returns a `sessionId`. The user manually logs in.
 2. Frontend polls `GET /api/auth-audit/session/:sessionId` until the user signals ready.
 3. Frontend emits `auth-audit:start { sessionId, url, context? }` over the same Socket.io connection. Backend calls `extractSessionData()` to harvest cookies + localStorage from the live browser, injects them into the Lighthouse run, then **auto-persists** the session: if `context === 'competitor'` it upserts into `CompetitorSession`; otherwise it upserts into `Website`. The visible browser is left open for re-use.
+
+If a run that injected a session still lands on a login page, `SessionExpiredError` is thrown: the dead session is dropped, the site is flagged `requiresLogin`, and **nothing is persisted** — a stored 0-score audit of a login screen would poison the site's history and budgets.
 
 Session state (live browser handles) lives in an in-memory Map in `services/authAuditSession.ts`. The `authAuditStore` (Zustand, persisted to localStorage) tracks UI state for this flow on the frontend.
 
@@ -105,15 +122,16 @@ The `projects` feature groups audits by website and route. A `projectId` can be 
 - `config/index.ts` — single config object from env vars
 - `controllers/` — route handler logic (thin layer; most business logic lives in `services/`)
 - `socket/analysis.handler.ts` — WebSocket event handling; orchestrates standard, auth-audit, and session auto-injection pipelines
-- `services/lighthouse.service.ts` — `LighthouseService` (EventEmitter); the main Chrome/Worker engine
-- `services/lighthouse.worker.ts` — Worker thread entry point; one thread per audit category pair
-- `services/ai.service.ts` — Gemini API calls for insights and per-resource advice
-- `services/authAuditSession.ts` — in-memory session store; manages visible Puppeteer browser handles for auth-audit flow
-- `services/*-parser.ts` — transform raw Lighthouse artifacts into typed structures (flame chart, heap memory, resource waterfall, interactions, CLS, dependencies)
+- `services/lighthouse.service.ts` — `LighthouseService` (EventEmitter); orchestration only (~370 lines) — Chrome/Worker lifecycle, queueing, run iteration
+- `services/lighthouse.worker.ts` — Worker thread entry point. **Must stay self-contained**: tsx's `.js`→`.ts` remap does not apply inside Worker threads, so a relative import here fails at runtime only
+- `services/lhr-transform.ts` — LHR → `AnalysisResult` (scores, audits, auth-redirect detection); calls the parsers
+- `services/*-parser.ts` — typed structures from raw artifacts: resource waterfall, timeline/filmstrip, CLS, dependencies, flame chart, heap memory, interactions, third parties
+- `services/auditPipeline.ts` — `enrichWithAi` + `persistAudit` (+ budget check); used by the socket handler, nightly audits and the REST controller alike
+- `services/auditQueue.ts` — concurrency cap + priority for every audit
+- `services/budget.service.ts`, `mailer.service.ts`, `crux.service.ts`, `ai.service.ts`, `authAuditSession.ts`
+- `lib/` — `url.ts` (`isValidUrl`, `hostOf`, `sameOrigin`, `normalizeUrl`, `escapeRegex`, `hostPrefixRegex`), `chrome.ts` (launch flags), `errors.ts`
 - `models/` — Mongoose schemas: `User`, `Website`, `History`, `CompareHistory`, `CompetitorSession`
-- `routes/` — REST endpoints for auth, website CRUD, history, compare history, auth-audit sessions, competitor sessions, analysis (legacy non-streaming)
-
-> **Note:** The backend has both **Mongoose** (primary, used for all models) and **Prisma** (`@prisma/client`) as dependencies. Only Mongoose is actively wired up; Prisma is present but not yet integrated.
+- `routes/` — auth, website CRUD + budgets, history + share links, public report, compare history, auth-audit sessions, competitor sessions, CrUX, CLI auth, legacy analyze
 
 ### Frontend layout (`apps/web-dashboard/src/`) — Feature-Sliced Design
 
