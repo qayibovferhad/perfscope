@@ -8,6 +8,8 @@ import { Button } from '@/shared/ui/button';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useComparisonSide } from '@/features/compare/model/useComparisonSide';
 import { useWebsites } from '@/entities/website';
+import { useAuditModeStore } from '@/entities/analysis/model/auditModeStore';
+import { FormFactorToggle } from '@/entities/analysis/ui/FormFactorToggle';
 import { useCompetitorSessions } from '@/features/compare/model/useCompetitorSessions';
 import { SideInputBar } from '@/features/compare/ui/SideInputBar';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
@@ -73,14 +75,18 @@ export function ComparisonPage() {
   const competitorReady = !isBlank(competitorUrl) || competitor.isSuccess;
   const canLaunch       = targetReady && competitorReady && !isRunning && !bothLoaded;
 
+  // Both sides always share one device profile — a desktop run against a mobile one is
+  // not a comparison. Read from the same persisted store the analyzer uses.
+  const { formFactor, setFormFactor } = useAuditModeStore();
+
   const handleLaunch = () => {
     if (!target.isSuccess && !isBlank(targetUrl)) {
-      if (targetAuthSession) target.startAuthAudit(targetAuthSession, normalizeUrl(targetUrl));
-      else                   target.analyze(normalizeUrl(targetUrl));
+      if (targetAuthSession) target.startAuthAudit(targetAuthSession, normalizeUrl(targetUrl), formFactor);
+      else                   target.analyze(normalizeUrl(targetUrl), formFactor);
     }
     if (!competitor.isSuccess && !isBlank(competitorUrl)) {
-      if (competitorAuthSession) competitor.startAuthAudit(competitorAuthSession, normalizeUrl(competitorUrl));
-      else                       competitor.analyze(normalizeUrl(competitorUrl));
+      if (competitorAuthSession) competitor.startAuthAudit(competitorAuthSession, normalizeUrl(competitorUrl), formFactor);
+      else                       competitor.analyze(normalizeUrl(competitorUrl), formFactor);
     }
   };
 
@@ -177,6 +183,12 @@ export function ComparisonPage() {
       {/* ── Launch + progress strip ────────────────────────────────────────── */}
       {!bothLoaded && (
         <div className="flex flex-col items-center gap-3">
+          <FormFactorToggle
+            value={formFactor}
+            onChange={setFormFactor}
+            disabled={isRunning}
+          />
+
           <Button
             size="lg"
             disabled={!canLaunch}

@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Lock, ShieldCheck, Globe, Monitor, Smartphone, Zap, Crosshair } from 'lucide-react';
+import { Search, Lock, ShieldCheck, Globe, Zap, Crosshair } from 'lucide-react';
+import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
+import { DEVICE_MODES } from '@/entities/analysis/ui/FormFactorToggle';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { ProgressStepper } from '@/entities/analysis';
@@ -18,59 +20,6 @@ interface Props {
   onPrecision:   (p: AuditPrecision) => void;
   onSubmit:      (e: React.FormEvent) => void;
 }
-
-interface SegmentOption<T> {
-  value: T;
-  label: string;
-  icon:  typeof Monitor;
-  title: string;
-}
-
-function Segmented<T extends string>({
-  options, value, onChange, disabled, ariaLabel,
-}: {
-  options:  SegmentOption<T>[];
-  value:    T;
-  onChange: (v: T) => void;
-  disabled: boolean;
-  ariaLabel: string;
-}) {
-  return (
-    <div
-      className="inline-flex rounded-[10px] border border-ld-border-strong bg-ld-surface-2 p-[3px]"
-      role="radiogroup"
-      aria-label={ariaLabel}
-    >
-      {options.map(({ value: v, label, icon: Icon, title }) => {
-        const active = value === v;
-        return (
-          <button
-            key={v}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            title={title}
-            disabled={disabled}
-            onClick={() => onChange(v)}
-            className={`inline-flex items-center gap-[6px] text-[12px] font-semibold px-[11px] py-[6px] rounded-[8px] transition-all duration-150 disabled:opacity-50 ${
-              active
-                ? 'bg-ld-accent-soft text-ld-accent-2 [box-shadow:inset_0_0_0_1px_var(--ld-accent-line)]'
-                : 'text-ld-text-3 hover:text-ld-text-2'
-            }`}
-          >
-            <Icon className="w-[13px] h-[13px]" />
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-const DEVICE_MODES: SegmentOption<AuditFormFactor>[] = [
-  { value: 'desktop', label: 'Desktop', icon: Monitor,    title: 'Audit as a desktop browser' },
-  { value: 'mobile',  label: 'Mobile',  icon: Smartphone, title: 'Emulate a phone (412×823) — what Google ranks on' },
-];
 
 const PRECISION_MODES: SegmentOption<AuditPrecision>[] = [
   { value: 'single', label: 'Fast',    icon: Zap,       title: 'One measurement — quickest, but a single run swings by ±10 points' },

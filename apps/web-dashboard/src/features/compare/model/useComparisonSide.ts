@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startCompareAnalysis, startCompareAuthAudit } from '../api/compareSocket';
+import type { AuditFormFactor } from '@perfscope/shared';
 import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
 
 
@@ -24,16 +25,16 @@ export function useComparisonSide() {
     onError:    (error: string)               => setState({ status: 'error', error, data: null, progress: null }),
   };
 
-  const analyze = useCallback((url: string) => {
+  const analyze = useCallback((url: string, formFactor?: AuditFormFactor) => {
     cleanupRef.current?.();
     setState({ status: 'loading', data: null, progress: null, error: null });
-    cleanupRef.current = startCompareAnalysis(url, callbacks);
+    cleanupRef.current = startCompareAnalysis(url, callbacks, formFactor);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startAuthAudit = useCallback((sessionId: string, url: string) => {
+  const startAuthAudit = useCallback((sessionId: string, url: string, formFactor?: AuditFormFactor) => {
     cleanupRef.current?.();
     setState({ status: 'loading', data: null, progress: null, error: null });
-    cleanupRef.current = startCompareAuthAudit(sessionId, url, callbacks);
+    cleanupRef.current = startCompareAuthAudit(sessionId, url, callbacks, formFactor);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setData = useCallback((data: AnalysisResult) => {
