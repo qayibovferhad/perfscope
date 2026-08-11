@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { RefreshCw, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import type { ProjectAuditEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
@@ -19,17 +18,15 @@ const BAND: Record<ScoreBand, string> = {
 // ─── Audit row ────────────────────────────────────────────────────────────────
 
 export function AuditRow({
-  entry, projectId, compareMode, isSelected, onToggleSelect, onOpen, loadingId,
+  entry, compareMode, isSelected, onToggleSelect, onOpen, loadingId,
 }: {
   entry: ProjectAuditEntry;
-  projectId: string;
   compareMode: boolean;
   isSelected: boolean;
   onToggleSelect: (entry: ProjectAuditEntry) => void;
   onOpen: (entry: ProjectAuditEntry) => void;
   loadingId: string | null;
 }) {
-  const navigate  = useNavigate();
   const perf      = entry.scores.performance;
   const isLoading = loadingId === entry.id;
   const m         = entry.metrics;
@@ -95,19 +92,6 @@ export function AuditRow({
       <td className="py-[13px] px-[10px] border-b border-ld-border">
         {!compareMode && (
           <div className="flex items-center gap-[8px] justify-end">
-            {/* Re-audit ghost */}
-            <Button
-              variant="outline"
-              size="icon"
-              title="Re-audit"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/app?url=${encodeURIComponent(entry.url)}&projectId=${projectId}`);
-              }}
-            >
-              <RefreshCw />
-            </Button>
-
             {/* Report primary */}
             <Button
               size="sm"

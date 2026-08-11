@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
 import type { RouteGroup, ProjectAuditEntry } from '@/entities/history';
 import { AuditRow }  from './AuditRow';
 import { timeAgo }   from '../lib/formatters';
@@ -69,36 +71,60 @@ export function RouteGroupCard({
   initialOpen?: boolean;
 }) {
   const [open, setOpen] = useState(compareMode || initialOpen);
+  const navigate   = useNavigate();
   const isOpen     = compareMode ? true : open;
   const lastEntry  = group.entries.at(-1);
   const auditLabel = `${group.entries.length} audit${group.entries.length !== 1 ? 's' : ''} · last ${timeAgo(lastEntry?.timestamp ?? null)}`;
 
+  // Re-auditing is a property of the route, not of one past run — every row used
+  // to carry its own button even though they all audited the same URL.
+  function handleAnalyze() {
+    if (!lastEntry) return;
+    navigate(`/app?url=${encodeURIComponent(lastEntry.url)}&projectId=${projectId}`);
+  }
+
   return (
     <div className={`rounded-[16px] border bg-ld-surface overflow-hidden transition-[border-color] duration-[250ms] ${isOpen ? 'border-ld-accent-line' : 'border-ld-border'}`}>
 
-      {/* Route row */}
-      <button
-        className="w-full flex items-center gap-[13px] px-[20px] py-[16px] cursor-pointer bg-transparent border-none text-left transition-[background] duration-[180ms] hover:bg-ld-surface-2"
-        onClick={() => !compareMode && setOpen(v => !v)}
-      >
-        <span className={`w-[22px] h-[22px] shrink-0 grid place-items-center transition-[transform,color] duration-[280ms] ${isOpen ? 'rotate-90 text-ld-accent' : 'text-ld-text-3'}`}>
-          <ChevronRight className="w-[16px] h-[16px]" />
-        </span>
+      {/* Route row — the expander and the action are siblings, never nested buttons */}
+      <div className={`flex items-center gap-[13px] pr-[16px] transition-[background] duration-[180ms] ${isOpen ? '' : 'hover:bg-ld-surface-2'}`}>
+        <button
+          className="flex-1 min-w-0 flex items-center gap-[13px] px-[20px] py-[16px] cursor-pointer bg-transparent border-none text-left"
+          onClick={() => !compareMode && setOpen(v => !v)}
+          aria-expanded={isOpen}
+        >
+          <span className={`w-[22px] h-[22px] shrink-0 grid place-items-center transition-[transform,color] duration-[280ms] ${isOpen ? 'rotate-90 text-ld-accent' : 'text-ld-text-3'}`}>
+            <ChevronRight className="w-[16px] h-[16px]" />
+          </span>
 
-        <span className="w-[38px] h-[38px] rounded-[11px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
-          <LinkIcon className="w-[18px] h-[18px]" />
-        </span>
+          <span className="w-[38px] h-[38px] rounded-[11px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
+            <LinkIcon className="w-[18px] h-[18px]" />
+          </span>
 
-        <span className="flex-1 min-w-0 text-left">
-          <b className="block font-mono text-[15px] font-semibold text-ld-text truncate">
-            {group.routePath}
-          </b>
-          <span className="block text-[12px] text-ld-text-3 mt-[2px]">{auditLabel}</span>
-        </span>
+          <span className="flex-1 min-w-0 text-left">
+            <b className="block font-mono text-[15px] font-semibold text-ld-text truncate">
+              {group.routePath}
+            </b>
+            <span className="block text-[12px] text-ld-text-3 mt-[2px]">{auditLabel}</span>
+          </span>
 
-        <Sparkline entries={group.entries} />
-        <ScoreRing score={group.lastScore} />
-      </button>
+          <Sparkline entries={group.entries} />
+          <ScoreRing score={group.lastScore} />
+        </button>
+
+        {!compareMode && lastEntry && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-[7px]"
+            title={`Run a new audit of ${group.routePath}`}
+            onClick={handleAnalyze}
+          >
+            <RefreshCw className="w-[14px] h-[14px]" />
+            Analyze
+          </Button>
+        )}
+      </div>
 
       {/* Collapsible body — CSS max-height toggle, no JS measurement */}
       <div
@@ -130,7 +156,6 @@ export function RouteGroupCard({
                 <AuditRow
                   key={entry.id}
                   entry={entry}
-                  projectId={projectId}
                   compareMode={compareMode}
                   isSelected={selectedIds.has(entry.id)}
                   onToggleSelect={onToggleSelect}
