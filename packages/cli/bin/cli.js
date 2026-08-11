@@ -28,6 +28,9 @@ import { appendFileSync } from 'node:fs';
  */
 const EXIT = { OK: 0, BUDGET: 1, ERROR: 2 };
 
+/** CI configs usually set an env var rather than threading a flag through every step. */
+const DEFAULT_API_URL = process.env.PERFSCOPE_API_URL || 'https://api.perfscope.com';
+
 const _require = createRequire(import.meta.url);
 const pkg = _require(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'));
 
@@ -372,6 +375,38 @@ async function audit(targetUrl, opts) {
 }
 
 
+// ── Socket streaming audit ───────────────────────────────
+// Same pipeline the web dashboard uses: progress + per-category partial scores
+// stream in live, and the run is not subject to the HTTP server timeout.
+function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const socket = io(apiUrl, { auth: token ? { token } : {} });
+
+    const finish = (fn, value) => {
+      clearTimeout(timer);
+      socket.disconnect();
+      fn(value);
+    };
+    const timer = setTimeout(
+      () => finish(reject, new Error(`Audit timed out after ${timeoutMs / 1000} s`)),
+      timeoutMs,
+    );
+
+    socket.on('connect', () => socket.emit('analysis:start', { url }));
+    socket.on('connect_error', (err) =>
+      finish(reject, new Error(`Cannot reach ${apiUrl} — is the backend running? (${err.message})`)));
+
+    socket.on('analysis:progress', (p) => {
+      spinner.text = chalk.dim(`${p.message ?? 'Auditing…'} (${Math.round(p.progress ?? 0)}%)`);
+    });
+    socket.on('analysis:partial', (partial) => {
+      spinner.text = chalk.dim(`${partial.category}: ${partial.score} — waiting for remaining categories…`);
+    });
+    socket.on('analysis:complete', (result) => finish(resolve, result));
+    socket.on('analysis:error', (e) => finish(reject, new Error(e?.message ?? 'Analysis failed')));
+  });
+}
+
 // ── CI mode ──────────────────────────────────────────────
 
 /** GitHub Actions picks these up as inline annotations on the workflow run. */
@@ -456,16 +491,19 @@ async function ciCmd(opts) {
 
   const apiKey = requireApiKey(opts);
 
-  console.log(chalk.bold('\n  PerfScope CI'));
-  console.log(chalk.dim(`  ${targetUrl}`));
-  if (sourceFile) console.log(chalk.dim(`  budget: ${sourceFile}`));
-  console.log('');
+  // --json output must be the only thing on stdout so `perfscope ci --json | jq` works;
+  // everything human-facing goes to stderr (where ora already writes its spinner).
+  const say = opts.json ? (line) => console.error(line) : (line) => console.log(line);
+  say(chalk.bold('\n  PerfScope CI'));
+  say(chalk.dim(`  ${targetUrl}`));
+  if (sourceFile) say(chalk.dim(`  budget: ${sourceFile}`));
+  say('');
 
   // Spinners animate on a TTY; CI logs get a plain line instead of escape soup.
   const isTty   = Boolean(process.stdout.isTTY);
   const spinner = isTty
     ? ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start()
-    : { text: '', start() { return this; }, succeed(t) { if (t) console.log(t); }, fail(t) { if (t) console.error(t); }, warn(t) { if (t) console.warn(t); }, stop() {} };
+    : { text: '', start() { return this; }, succeed(t) { if (t) console.error(t); }, fail(t) { if (t) console.error(t); }, warn(t) { if (t) console.error(t); }, stop() {} };
 
   let result;
   try {
@@ -499,13 +537,11 @@ async function ciCmd(opts) {
   writeGithubSummary(targetUrl, rows, passed);
 
   if (passed) {
-    if (!opts.json) console.log(chalk.greenBright('  ✓ Budget passed') + chalk.dim(` — ${rows.length} threshold(s) checked\n`));
+    say(chalk.greenBright('  ✓ Budget passed') + chalk.dim(` — ${rows.length} threshold(s) checked\n`));
     process.exit(EXIT.OK);
   }
 
-  if (!opts.json) {
-    console.log(chalk.redBright(`  ✗ Budget failed`) + chalk.dim(` — ${failures.length} of ${rows.length} threshold(s)\n`));
-  }
+  say(chalk.redBright('  ✗ Budget failed') + chalk.dim(` — ${failures.length} of ${rows.length} threshold(s)\n`));
   for (const f of failures) ghAnnotate('error', `${targetUrl} — ${describeFailure(f)}`);
 
   process.exit(opts.warnOnly ? EXIT.OK : EXIT.BUDGET);
@@ -516,7 +552,11 @@ async function ciCmd(opts) {
 program
   .name('perfscope')
   .version(pkg.version)
-  .description(chalk.bold('⚡ PerfScope') + chalk.dim(' — lightweight Lighthouse audit companion'));
+  .description(chalk.bold('⚡ PerfScope') + chalk.dim(' — lightweight Lighthouse audit companion'))
+  // The bare `perfscope --url X` form declares --url on the program itself, which would
+  // otherwise swallow the identically-named flag of the `ci` subcommand. Positional
+  // options bind anything after a subcommand name to that subcommand.
+  .enablePositionalOptions();
 
 // login
 program
@@ -558,7 +598,7 @@ program
   .requiredOption('-u, --url <url>',      'URL to audit')
   .option('-b, --budget <spec>',          'Inline budget, e.g. "performance=80,lcp=2500"')
   .option('-f, --budget-file <path>',     `Budget JSON (auto-detects ${DEFAULT_BUDGET_FILES.join(' / ')})`)
-  .option('--api-url <url>',              'PerfScope API base URL',          'https://api.perfscope.com')
+  .option('--api-url <url>',              'PerfScope API base URL ($PERFSCOPE_API_URL)', DEFAULT_API_URL)
   .option('-k, --key <apiKey>',           'API key (overrides saved login)')
   .option('-t, --timeout <ms>',           'Audit timeout in ms',             '180000')
   .option('--json',                       'Emit machine-readable JSON instead of a table')
@@ -586,7 +626,7 @@ ${chalk.bold('GitHub Actions:')}
 // audit (default)
 program
   .option('-u, --url <url>',         'Target URL to audit (local or public)')
-  .option('--api-url <url>',         'PerfScope API base URL',         'https://api.perfscope.com')
+  .option('--api-url <url>',         'PerfScope API base URL ($PERFSCOPE_API_URL)', DEFAULT_API_URL)
   .option('-k, --key <apiKey>',      'API key (overrides saved login)')
   .option('-o, --output <format>',   'Output: report | json | minimal', 'report')
   .option('-t, --timeout <ms>',      'Request timeout in ms',           '180000')
