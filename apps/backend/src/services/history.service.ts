@@ -98,12 +98,18 @@ export const HistoryService = {
    * seven for a site whose audits all live under sub-routes. Failed runs are dropped for
    * the same reason: charted, they draw a cliff to zero.
    */
-  async get(url: string): Promise<HistoryEntry[]> {
+  /** Audits of a host, for one owner. The owner filter is the access boundary:
+   *  a URL is trivially guessable, so an unscoped lookup exposes one account's
+   *  audit history to anyone who can name the site. */
+  async get(url: string, userId: string): Promise<HistoryEntry[]> {
     let host: string;
     try { host = new URL(url).hostname; } catch { host = normalizeUrl(url).split('/')[0]!; }
 
     const docs = await HistoryModel
-      .find({ normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`) })
+      .find({
+        userId,
+        normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`),
+      })
       .sort({ createdAt: 1 })
       .lean();
 

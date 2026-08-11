@@ -16,3 +16,8 @@ export function consumeComparePreload(): ComparePreload | null {
   _preload = null;
   return data;
 }
+
+/** Drop a pending pair — used when the signed-in identity changes. */
+export function clearComparePreload(): void {
+  _preload = null;
+}

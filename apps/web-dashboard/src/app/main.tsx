@@ -10,6 +10,10 @@ import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
 import { configureApiToken, configureUnauthorizedHandler } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
 import { useAuthStore } from '@/features/auth/model/authStore';
+import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
+import { useAuthAuditStore } from '@/features/auth-audit';
+import { usePrefetchStore } from '@/entities/analysis';
+import { clearComparePreload } from '@/features/compare/model/comparePreloadStore';
 
 const getToken = () => useAuthStore.getState().token;
 configureApiToken(getToken);
@@ -32,6 +36,26 @@ const queryClient = new QueryClient({
   defaultOptions: {
     mutations: { retry: false },
   },
+});
+
+/**
+ * Signing out and back in as someone else never reloads the page, so every cache
+ * that outlives a route change would otherwise show the previous account's data:
+ * the React Query cache is keyed by resource, not by user, and the analysis and
+ * auth-audit stores hold whatever the last person looked at. Wipe all of it the
+ * moment the signed-in identity changes — including to null on logout.
+ */
+let currentUserId = useAuthStore.getState().user?.sub ?? null;
+useAuthStore.subscribe((state) => {
+  const nextUserId = state.user?.sub ?? null;
+  if (nextUserId === currentUserId) return;
+  currentUserId = nextUserId;
+
+  queryClient.clear();
+  useAnalysisStore.getState().clear();
+  usePrefetchStore.getState().clear();
+  useAuthAuditStore.getState().clearSession();
+  clearComparePreload();
 });
 
 createRoot(document.getElementById('root')!).render(

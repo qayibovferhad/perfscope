@@ -16,6 +16,17 @@ import { printReport, printJson, printMinimal } from '../src/reporter.js';
 import {
   loadCredentials, saveCredentials, clearCredentials, getConfigPath,
 } from '../src/auth.js';
+import {
+  resolveBudget, evaluateBudget, evaluateAll, describeFailure,
+  formatValue, labelOf, BUDGET_KEYS, DEFAULT_BUDGET_FILES,
+} from '../src/budget.js';
+import { appendFileSync } from 'node:fs';
+
+/**
+ * Distinct codes so a pipeline can tell "the site is too slow" from "the audit never
+ * ran". Only BUDGET means the site failed its own thresholds.
+ */
+const EXIT = { OK: 0, BUDGET: 1, ERROR: 2 };
 
 const _require = createRequire(import.meta.url);
 const pkg = _require(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'));
@@ -283,71 +294,77 @@ async function pickUrl(apiUrl, apiKey, customUrl = '') {
 
 // ── Audit ────────────────────────────────────────────────
 
-async function audit(targetUrl, opts) {
+/** Resolve the API key: flag → env → saved credentials. Exits when none is available. */
+function requireApiKey(opts) {
+  const fromFlagOrEnv = opts.key || process.env.PERFSCOPE_API_KEY || '';
+  if (fromFlagOrEnv) return fromFlagOrEnv;
+
+  const creds = loadCredentials();
+  if (creds?.token) return creds.token;
+
+  console.error(
+    chalk.red('Not logged in.') +
+    chalk.dim(' Run ') + chalk.white('perfscope login') + chalk.dim(' first.')
+  );
+  process.exit(EXIT.ERROR);
+}
+
+/**
+ * Run one audit and return the raw result.
+ *
+ * Throws instead of exiting so callers own the exit code — `ci` needs to distinguish an
+ * audit that could not run (operational failure) from one that ran and broke its budget.
+ */
+async function performAudit(targetUrl, opts, apiKey, spinner) {
   const apiUrl  = opts.apiUrl.replace(/\/$/, '');
   const timeout = parseInt(opts.timeout, 10);
-  const output  = opts.output;
 
-  // Resolve API key: flag → env → saved credentials
-  let apiKey = opts.key || process.env.PERFSCOPE_API_KEY || '';
-  if (!apiKey) {
-    const creds = loadCredentials();
-    if (creds?.token) {
-      apiKey = creds.token;
-    } else {
-      console.error(
-        chalk.red('Not logged in.') +
-        chalk.dim(' Run ') + chalk.white('perfscope login') + chalk.dim(' first.')
-      );
-      process.exit(1);
-    }
-  }
-
-  let tunnel  = null;
+  let tunnel   = null;
   let auditUrl = targetUrl;
 
-  const spinner = ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start();
-
-  // ── Tunnel for local URLs ──────────────────────────────
-  // Skip tunnel when API is also local — backend can reach the target directly
+  // Tunnel for local URLs. Skipped when the API is also local — the backend
+  // can reach the target directly, and a tunnel would only add a failure mode.
   if (isLocal(targetUrl) && opts.tunnel !== false && !isLocal(apiUrl)) {
     const port = portOf(targetUrl);
     spinner.text = chalk.dim(`Opening tunnel on port ${port}…`);
-    try {
-      tunnel = await openTunnel(port, spinner);
-      const parsed       = new URL(targetUrl);
-      const tunnelOrigin = new URL(tunnel.url);
-      parsed.hostname = tunnelOrigin.hostname;
-      parsed.port     = '';
-      parsed.protocol = tunnelOrigin.protocol;
-      auditUrl = parsed.toString();
-      spinner.succeed(chalk.dim(`Tunnel → ${chalk.greenBright(tunnel.url)}`));
-      spinner.start(chalk.dim('Running audit… (this may take up to 2 min)'));
-    } catch (err) {
-      spinner.fail(chalk.red(err.message));
-      process.exit(1);
-    }
+    tunnel = await openTunnel(port, spinner);
+
+    const parsed       = new URL(targetUrl);
+    const tunnelOrigin = new URL(tunnel.url);
+    parsed.hostname = tunnelOrigin.hostname;
+    parsed.port     = '';
+    parsed.protocol = tunnelOrigin.protocol;
+    auditUrl = parsed.toString();
+
+    spinner.succeed(chalk.dim(`Tunnel → ${chalk.greenBright(tunnel.url)}`));
+    spinner.start(chalk.dim('Running audit… (this may take up to 2 min)'));
   } else {
     spinner.text = chalk.dim('Running audit… (this may take up to 2 min)');
   }
 
-  // ── Stream over WebSocket ──────────────────────────────
-  let result;
   try {
-    result = await runSocketAnalysis(apiUrl, apiKey, auditUrl, spinner, timeout);
+    const result = await runSocketAnalysis(apiUrl, apiKey, auditUrl, spinner, timeout);
     if (!result || typeof result !== 'object') throw new Error('Unexpected API response shape');
-
-    spinner.succeed(chalk.greenBright('Audit complete'));
-  } catch (err) {
-    spinner.fail(chalk.red(err.message));
-    if (tunnel) tunnel.close();
-    process.exit(1);
+    return result;
   } finally {
     if (tunnel) tunnel.close();
   }
+}
 
-  // ── Output ─────────────────────────────────────────────
-  switch (output) {
+async function audit(targetUrl, opts) {
+  const apiKey  = requireApiKey(opts);
+  const spinner = ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start();
+
+  let result;
+  try {
+    result = await performAudit(targetUrl, opts, apiKey, spinner);
+    spinner.succeed(chalk.greenBright('Audit complete'));
+  } catch (err) {
+    spinner.fail(chalk.red(err.message));
+    process.exit(EXIT.ERROR);
+  }
+
+  switch (opts.output) {
     case 'json':    printJson(result);              break;
     case 'minimal': printMinimal(result);           break;
     default:        printReport(result, targetUrl); break;
@@ -355,36 +372,143 @@ async function audit(targetUrl, opts) {
 }
 
 
-// ── Socket streaming audit ───────────────────────────────
-// Same pipeline the web dashboard uses: progress + per-category partial scores
-// stream in live, and the run is not subject to the HTTP server timeout.
-function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const socket = io(apiUrl, { auth: token ? { token } : {} });
+// ── CI mode ──────────────────────────────────────────────
 
-    const finish = (fn, value) => {
-      clearTimeout(timer);
-      socket.disconnect();
-      fn(value);
-    };
-    const timer = setTimeout(
-      () => finish(reject, new Error(`Audit timed out after ${timeoutMs / 1000} s`)),
-      timeoutMs,
+/** GitHub Actions picks these up as inline annotations on the workflow run. */
+function ghAnnotate(level, message) {
+  if (!process.env.GITHUB_ACTIONS) return;
+  console.log(`::${level}::${message.replace(/\n/g, '%0A')}`);
+}
+
+/** Markdown table appended to the workflow run page, when running under GitHub Actions. */
+function writeGithubSummary(url, rows, passed) {
+  const file = process.env.GITHUB_STEP_SUMMARY;
+  if (!file) return;
+
+  const head = passed ? '### ✅ PerfScope budget passed' : '### ❌ PerfScope budget failed';
+  const lines = [
+    head,
+    '',
+    `\`${url}\``,
+    '',
+    '| Metric | Measured | Budget | Result |',
+    '| --- | --- | --- | --- |',
+    ...rows.map(r => {
+      const measured = r.value == null ? '—' : formatValue(r.metric, r.value);
+      const comparator = r.kind === 'floor' ? '≥' : '≤';
+      const verdict = r.passed == null ? 'skipped' : r.passed ? 'pass' : '**fail**';
+      return `| ${labelOf(r.metric)} | ${measured} | ${comparator} ${formatValue(r.metric, r.budget)} | ${verdict} |`;
+    }),
+    '',
+  ].join('\n');
+
+  try {
+    appendFileSync(file, lines + '\n');
+  } catch {
+    // A summary is a nicety — never fail the run over it.
+  }
+}
+
+function printBudgetTable(rows) {
+  console.log('');
+  for (const r of rows) {
+    const measured   = r.value == null ? chalk.dim('—') : formatValue(r.metric, r.value);
+    const comparator = r.kind === 'floor' ? '≥' : '≤';
+    const target     = chalk.dim(`${comparator} ${formatValue(r.metric, r.budget)}`);
+
+    const mark = r.passed == null ? chalk.dim('•')
+      : r.passed ? chalk.greenBright('✓')
+      : chalk.redBright('✗');
+    const value = r.passed === false ? chalk.redBright(measured)
+      : r.passed ? chalk.greenBright(measured)
+      : measured;
+
+    console.log(`  ${mark} ${labelOf(r.metric).padEnd(18)} ${String(value).padStart(9)}  ${target}`);
+  }
+  console.log('');
+}
+
+async function ciCmd(opts) {
+  const target = (opts.url || '').trim();
+  if (!target) {
+    console.error(chalk.red('--url is required.') + chalk.dim(' Example: perfscope ci --url https://example.com'));
+    process.exit(EXIT.ERROR);
+  }
+  const targetUrl = target.startsWith('http') ? target : `https://${target}`;
+
+  // Resolve the budget before spending two minutes on an audit nothing will assert.
+  let budget, sourceFile;
+  try {
+    ({ budget, sourceFile } = resolveBudget({ budget: opts.budget, budgetFile: opts.budgetFile }));
+  } catch (err) {
+    console.error(chalk.red(err.message));
+    process.exit(EXIT.ERROR);
+  }
+
+  if (Object.keys(budget).length === 0) {
+    console.error(
+      chalk.red('No budget configured.') + '\n' +
+      chalk.dim(`  Pass --budget "performance=80,lcp=2500", or add one of: ${DEFAULT_BUDGET_FILES.join(', ')}\n`) +
+      chalk.dim(`  Valid keys: ${BUDGET_KEYS.join(', ')}`)
     );
+    process.exit(EXIT.ERROR);
+  }
 
-    socket.on('connect', () => socket.emit('analysis:start', { url }));
-    socket.on('connect_error', (err) =>
-      finish(reject, new Error(`Cannot reach ${apiUrl} — is the backend running? (${err.message})`)));
+  const apiKey = requireApiKey(opts);
 
-    socket.on('analysis:progress', (p) => {
-      spinner.text = chalk.dim(`${p.message ?? 'Auditing…'} (${Math.round(p.progress ?? 0)}%)`);
+  console.log(chalk.bold('\n  PerfScope CI'));
+  console.log(chalk.dim(`  ${targetUrl}`));
+  if (sourceFile) console.log(chalk.dim(`  budget: ${sourceFile}`));
+  console.log('');
+
+  // Spinners animate on a TTY; CI logs get a plain line instead of escape soup.
+  const isTty   = Boolean(process.stdout.isTTY);
+  const spinner = isTty
+    ? ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start()
+    : { text: '', start() { return this; }, succeed(t) { if (t) console.log(t); }, fail(t) { if (t) console.error(t); }, warn(t) { if (t) console.warn(t); }, stop() {} };
+
+  let result;
+  try {
+    result = await performAudit(targetUrl, opts, apiKey, spinner);
+    spinner.succeed(chalk.dim('Audit complete'));
+  } catch (err) {
+    spinner.fail(chalk.red(err.message));
+    ghAnnotate('error', `PerfScope audit failed: ${err.message}`);
+    process.exit(EXIT.ERROR);
+  }
+
+  const rows     = evaluateAll(result, budget);
+  const failures = evaluateBudget(result, budget);
+  const passed   = failures.length === 0;
+
+  if (opts.json) {
+    printJson({
+      url: targetUrl,
+      analysisId: result.id,
+      formFactor: result.formFactor ?? null,
+      scores: result.scores,
+      metrics: result.metrics,
+      budget,
+      passed,
+      failures,
     });
-    socket.on('analysis:partial', (partial) => {
-      spinner.text = chalk.dim(`${partial.category}: ${partial.score} — waiting for remaining categories…`);
-    });
-    socket.on('analysis:complete', (result) => finish(resolve, result));
-    socket.on('analysis:error', (e) => finish(reject, new Error(e?.message ?? 'Analysis failed')));
-  });
+  } else {
+    printBudgetTable(rows);
+  }
+
+  writeGithubSummary(targetUrl, rows, passed);
+
+  if (passed) {
+    if (!opts.json) console.log(chalk.greenBright('  ✓ Budget passed') + chalk.dim(` — ${rows.length} threshold(s) checked\n`));
+    process.exit(EXIT.OK);
+  }
+
+  if (!opts.json) {
+    console.log(chalk.redBright(`  ✗ Budget failed`) + chalk.dim(` — ${failures.length} of ${rows.length} threshold(s)\n`));
+  }
+  for (const f of failures) ghAnnotate('error', `${targetUrl} — ${describeFailure(f)}`);
+
+  process.exit(opts.warnOnly ? EXIT.OK : EXIT.BUDGET);
 }
 
 // ── CLI definition ───────────────────────────────────────
@@ -426,6 +550,38 @@ program
       );
     }
   });
+
+// ci — audit once, assert a budget, exit non-zero on breach
+program
+  .command('ci')
+  .description('Run an audit and fail the build when a performance budget is breached')
+  .requiredOption('-u, --url <url>',      'URL to audit')
+  .option('-b, --budget <spec>',          'Inline budget, e.g. "performance=80,lcp=2500"')
+  .option('-f, --budget-file <path>',     `Budget JSON (auto-detects ${DEFAULT_BUDGET_FILES.join(' / ')})`)
+  .option('--api-url <url>',              'PerfScope API base URL',          'https://api.perfscope.com')
+  .option('-k, --key <apiKey>',           'API key (overrides saved login)')
+  .option('-t, --timeout <ms>',           'Audit timeout in ms',             '180000')
+  .option('--json',                       'Emit machine-readable JSON instead of a table')
+  .option('--warn-only',                  'Report breaches but always exit 0')
+  .option('--no-tunnel',                  'Disable auto-tunneling for local URLs')
+  .addHelpText('after', `
+${chalk.bold('Exit codes:')}
+  ${chalk.dim('0')}  budget passed (or --warn-only)
+  ${chalk.dim('1')}  budget breached
+  ${chalk.dim('2')}  audit could not run
+
+${chalk.bold('Budget keys:')} ${chalk.dim(BUDGET_KEYS.join(', '))}
+  ${chalk.dim('performance is a floor (score must stay above); the rest are ceilings.')}
+
+${chalk.bold('perfscope.json:')}
+  ${chalk.dim('{ "performance": 80, "lcp": 2500, "cls": 0.1 }')}
+
+${chalk.bold('GitHub Actions:')}
+  ${chalk.dim('- run: npx perfscope ci --url https://example.com')}
+  ${chalk.dim('  env:')}
+  ${chalk.dim('    PERFSCOPE_API_KEY: ${{ secrets.PERFSCOPE_API_KEY }}')}
+  `)
+  .action(ciCmd);
 
 // audit (default)
 program

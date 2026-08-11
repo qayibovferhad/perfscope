@@ -18,14 +18,14 @@ historyRouter.get('/history/all', requireAuth, async (req: AuthRequest, res: Res
 });
 
 // GET /api/history?url=...  — entries for a specific URL
-historyRouter.get('/history', async (req: Request, res: Response) => {
+historyRouter.get('/history', requireAuth, async (req: AuthRequest, res: Response) => {
   const url = req.query['url'];
   if (!url || typeof url !== 'string') {
     res.status(400).json({ success: false, error: 'url query param required' });
     return;
   }
   try {
-    const data = await HistoryService.get(url);
+    const data = await HistoryService.get(url, req.userId!);
     res.json({ success: true, data });
   } catch (err) {
     console.error('[history]', err);
