@@ -1,10 +1,11 @@
-import { useState }           from 'react';
+import { useState } from 'react';
 import { Moon, Plus, X, Route, Loader2 } from 'lucide-react';
+import { expandSchedule, type AutomationScheduleMode, type AutomationSlot } from '@perfscope/shared';
 import { Modal }              from '@/shared/ui/modal/Modal';
 import { Input }              from '@/shared/ui/input';
 import { Button }             from '@/shared/ui/button';
 import { Toggle }             from '@/shared/ui/toggle';
-import { TimePicker }         from '@/shared/ui/time-picker';
+import { ScheduleEditor }     from './ScheduleEditor';
 import { useAutomation }      from '@/features/automation/model/useAutomation';
 import { getHostname, useWebsites } from '@/entities/website';
 import type { Website }       from '@/entities/website';
@@ -19,11 +20,19 @@ export function SetupModal({ site, open, onClose }: Props) {
   const automation = useAutomation(site._id);
   const { setBudgets } = useWebsites();
 
-  const [routes,       setRoutes]       = useState<string[]>([]);
-  const [input,        setInput]        = useState('');
-  const [inputError,   setInputError]   = useState('');
-  const [enabled,      setEnabled]      = useState(false);
-  const [scheduleTime, setScheduleTime] = useState('00:00');
+  const [routes,        setRoutes]        = useState<string[]>(site.automation?.routes ?? []);
+  const [input,         setInput]         = useState('');
+  const [inputError,    setInputError]    = useState('');
+  const [enabled,       setEnabled]       = useState(site.automation?.enabled ?? false);
+  const [scheduleTime,  setScheduleTime]  = useState(site.automation?.scheduleTime ?? '00:00');
+  const [mode,          setMode]          = useState<AutomationScheduleMode>(site.automation?.scheduleMode ?? 'single');
+  const [slots,         setSlots]         = useState<AutomationSlot[]>(site.automation?.slots ?? []);
+  const [spreadMinutes, setSpreadMinutes] = useState(site.automation?.spreadMinutes ?? 60);
+
+  // These initialisers are the hydration: the modal is mounted fresh per opening and keyed
+  // by site at the call site. They used to be hardcoded empty, so reopening showed a blank
+  // form and saving from it wiped the site's real schedule — a configured automation would
+  // just stop, with the UI still claiming it was set up.
 
   // Budgets — hydrated from the site so reopening the modal shows current thresholds.
   const [budgetPerf, setBudgetPerf] = useState(site.budgets?.performance?.toString() ?? '');
@@ -49,9 +58,23 @@ export function SetupModal({ site, open, onClose }: Props) {
     setRoutes(prev => [...prev, route]);
   }
 
+  // Slots referencing a route the user just deleted would be rejected by the API, and
+  // empty slots are meaningless — drop both rather than failing the save.
+  const cleanedSlots = slots
+    .map(slot => ({ ...slot, routes: slot.routes.filter(r => routes.includes(r)) }))
+    .filter(slot => slot.routes.length > 0);
+
+  const timetable = expandSchedule({
+    enabled, routes, scheduleTime, scheduleMode: mode,
+    slots: cleanedSlots, spreadMinutes, lastRunAt: null,
+  });
+
   async function handleSave() {
     await Promise.all([
-      automation.save({ routes, enabled, scheduleTime }),
+      automation.save({
+        routes, enabled, scheduleTime,
+        scheduleMode: mode, slots: cleanedSlots, spreadMinutes,
+      }),
       setBudgets.mutateAsync({
         id:          site._id,
         performance: parseNum(budgetPerf),
@@ -128,11 +151,18 @@ export function SetupModal({ site, open, onClose }: Props) {
           )}
         </div>
 
-        {/* Schedule time */}
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest mb-2 text-ld-text-3">Run at</p>
-          <TimePicker value={scheduleTime} onChange={setScheduleTime} />
-        </div>
+        {/* Schedule */}
+        <ScheduleEditor
+          routes={routes}
+          mode={mode}
+          onMode={setMode}
+          scheduleTime={scheduleTime}
+          onScheduleTime={setScheduleTime}
+          slots={slots}
+          onSlots={setSlots}
+          spreadMinutes={spreadMinutes}
+          onSpreadMinutes={setSpreadMinutes}
+        />
 
         {/* Performance budgets */}
         <div>
@@ -192,12 +222,18 @@ export function SetupModal({ site, open, onClose }: Props) {
         <div className="flex items-center justify-between py-3 px-3 rounded-xl bg-ld-surface-2 border border-ld-border">
           <div>
             <p className="text-xs font-semibold text-ld-text">Enable automation</p>
-            <p className="text-[10px] text-ld-text-3">Runs daily at {scheduleTime}</p>
+            <p className="text-[10px] text-ld-text-3">
+              {timetable.length === 0
+                ? 'Nothing scheduled yet'
+                : timetable.length === 1
+                  ? `Runs daily at ${timetable[0]!.time}`
+                  : `Runs daily at ${timetable.map(s => s.time).join(', ')}`}
+            </p>
           </div>
           <Toggle
             enabled={enabled}
             onChange={setEnabled}
-            disabled={routes.length === 0}
+            disabled={timetable.length === 0}
           />
         </div>
       </div>

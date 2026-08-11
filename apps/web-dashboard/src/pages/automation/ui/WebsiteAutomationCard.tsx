@@ -1,7 +1,8 @@
 import { useState }           from 'react';
 import { useNavigate }        from 'react-router-dom';
 import { motion }             from 'framer-motion';
-import { Globe, Plus, X, Link2, ExternalLink, Loader2 } from 'lucide-react';
+import { Globe, Plus, X, Link2, ExternalLink, Loader2, SlidersHorizontal } from 'lucide-react';
+import { expandSchedule }     from '@perfscope/shared';
 import { Toggle }             from '@/shared/ui/toggle';
 import { TimePicker }         from '@/shared/ui/time-picker';
 import { useAutomation }      from '@/features/automation/model/useAutomation';
@@ -11,13 +12,14 @@ import { useAnalysisStore }   from '@/features/analyzer/model/analysisStore';
 import { getHostname }        from '@/entities/website';
 import type { Website }       from '@/entities/website';
 
-export function WebsiteAutomationCard({ site }: { site: Website }) {
+export function WebsiteAutomationCard({ site, onConfigure }: { site: Website; onConfigure: () => void }) {
   const navigate  = useNavigate();
   const setResult = useAnalysisStore(s => s.setResult);
   const automation = useAutomation(site._id);
 
   const auto = site.automation ?? { enabled: false, routes: [], scheduleTime: '00:00', lastRunAt: null };
   const hostname = getHostname(site.url);
+  const timetable = expandSchedule(auto);
 
   const [input,      setInput]      = useState('');
   const [inputError, setInputError] = useState('');
@@ -73,6 +75,18 @@ export function WebsiteAutomationCard({ site }: { site: Website }) {
           Last result
         </button>
 
+        {/* Setup was previously reachable only for sites with nothing configured, so a
+            timetable could be created and then never edited again. */}
+        <button
+          onClick={onConfigure}
+          className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-ld-text-2 px-[13px] py-[7px] rounded-[9px]
+                     border border-ld-border-strong bg-ld-surface
+                     transition-all duration-200 hover:border-ld-accent-line hover:text-ld-accent"
+        >
+          <SlidersHorizontal className="w-[14px] h-[14px]" />
+          Configure
+        </button>
+
         <Toggle
           enabled={auto.enabled}
           onChange={e => automation.toggle(e)}
@@ -87,10 +101,23 @@ export function WebsiteAutomationCard({ site }: { site: Website }) {
         <div className="grid grid-cols-[auto_1fr_1fr] gap-[14px] mt-[18px]">
           <div className="px-4 py-[14px] rounded-[13px] border border-ld-border bg-ld-surface-2">
             <p className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-text-3 mb-[10px]">Schedule</p>
-            <TimePicker
-              value={auto.scheduleTime ?? '00:00'}
-              onChange={v => automation.setTime(v)}
-            />
+            {/* Only one time can be edited in place. A timetable is set up in the modal —
+                showing a lone picker there would imply the other slots do not exist. */}
+            {(auto.scheduleMode ?? 'single') === 'single' ? (
+              <TimePicker
+                value={auto.scheduleTime ?? '00:00'}
+                onChange={v => automation.setTime(v)}
+              />
+            ) : (
+              <div className="min-w-[132px]">
+                <p className="font-mono text-[16px] font-semibold text-ld-accent-2 leading-none">
+                  {timetable.length} slot{timetable.length === 1 ? '' : 's'}
+                </p>
+                <p className="font-mono text-[10px] text-ld-text-3 mt-[6px] leading-[1.4] break-all">
+                  {timetable.map(s => s.time).join(' · ') || '—'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="px-4 py-[14px] rounded-[13px] border border-ld-border bg-ld-surface-2">
@@ -103,7 +130,7 @@ export function WebsiteAutomationCard({ site }: { site: Website }) {
           <div className="px-4 py-[14px] rounded-[13px] border border-ld-border bg-ld-surface-2">
             <p className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-text-3 mb-[10px]">Next run</p>
             <p className={`font-mono text-[16px] font-semibold ${auto.enabled ? 'text-ld-accent-2' : 'text-ld-text-3'}`}>
-              {auto.enabled ? nextRunAt(auto.scheduleTime ?? '00:00') : 'Paused'}
+              {auto.enabled ? nextRunAt(auto) : 'Paused'}
             </p>
           </div>
         </div>

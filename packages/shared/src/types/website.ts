@@ -15,10 +15,32 @@ export interface WebsiteSession {
   capturedAt:   string
 }
 
+/** A group of routes and the time of day they are audited. */
+export interface AutomationSlot {
+  /** 24-hour local time, 'HH:MM'. */
+  time:   string
+  routes: string[]
+}
+
+/**
+ * How a site's routes are distributed across the day.
+ * - `single` — every route in one block at `scheduleTime` (the original behaviour)
+ * - `slots`  — explicit groups: /checkout at 02:00, /blog at 14:00
+ * - `spread` — all routes fanned out evenly across `spreadMinutes` from `scheduleTime`
+ */
+export type AutomationScheduleMode = 'single' | 'slots' | 'spread'
+
 export interface WebsiteAutomation {
   enabled:      boolean
+  /** Every route the site audits. Stays the canonical list in all three modes. */
   routes:       string[]
+  /** Start of the run in `single`, start of the window in `spread`. */
   scheduleTime: string
+  /** Absent on documents written before slots existed — read it as 'single'. */
+  scheduleMode?:  AutomationScheduleMode
+  slots?:         AutomationSlot[]
+  /** Window length in minutes for `spread`; 60 means "all of them within an hour". */
+  spreadMinutes?: number
   lastRunAt:    string | null
 }
 

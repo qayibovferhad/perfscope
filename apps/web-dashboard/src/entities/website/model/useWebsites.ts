@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
-import type { WebsiteDoc as Website } from '@perfscope/shared';
+import type {
+  WebsiteDoc as Website, AutomationScheduleMode, AutomationSlot,
+} from '@perfscope/shared';
 
 const KEY = ['websites'];
 
@@ -49,7 +51,15 @@ export function useWebsites() {
   });
 
   const setAutomation = useMutation({
-    mutationFn: ({ id, ...patch }: { id: string; enabled?: boolean; routes?: string[]; scheduleTime?: string }) =>
+    mutationFn: ({ id, ...patch }: {
+      id:             string;
+      enabled?:       boolean;
+      routes?:        string[];
+      scheduleTime?:  string;
+      scheduleMode?:  AutomationScheduleMode;
+      slots?:         AutomationSlot[];
+      spreadMinutes?: number;
+    }) =>
       apiClient.patch<Website>(`/websites/${id}/automation`, patch).then(r => r.data),
     onSuccess: () => invalidate(qc),
   });

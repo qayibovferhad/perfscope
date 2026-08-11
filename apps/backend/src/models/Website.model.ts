@@ -1,4 +1,5 @@
 import { Schema, model, type Types } from 'mongoose';
+import type { AutomationScheduleMode } from '@perfscope/shared';
 
 const cookieSchema = new Schema({
   name:     { type: String },
@@ -17,12 +18,28 @@ const sessionSchema = new Schema({
   capturedAt:   { type: Date, default: Date.now },
 }, { _id: false });
 
+/** One group of routes and the time of day they run. */
+const automationSlotSchema = new Schema(
+  {
+    time:   { type: String, required: true },   // 'HH:MM', validated at the route
+    routes: { type: [String], default: [] },
+  },
+  { _id: false },
+);
+
 const automationSchema = new Schema(
   {
     enabled:      { type: Boolean, default: false },
     routes:       { type: [String], default: [] },
     scheduleTime: { type: String, default: '00:00' },
-    lastRunAt:    { type: Date, default: null },
+    /**
+     * Documents written before this existed have no scheduleMode; `expandSchedule` reads
+     * that as 'single', which is exactly what they did before — so no migration.
+     */
+    scheduleMode:  { type: String, enum: ['single', 'slots', 'spread'], default: 'single' },
+    slots:         { type: [automationSlotSchema], default: [] },
+    spreadMinutes: { type: Number, default: 60 },
+    lastRunAt:     { type: Date, default: null },
   },
   { _id: false },
 );
@@ -94,11 +111,19 @@ export interface IWebsiteSession {
   capturedAt: Date;
 }
 
+export interface IWebsiteAutomationSlot {
+  time:   string;
+  routes: string[];
+}
+
 export interface IWebsiteAutomation {
-  enabled:      boolean;
-  routes:       string[];
-  scheduleTime: string;
-  lastRunAt:    Date | null;
+  enabled:        boolean;
+  routes:         string[];
+  scheduleTime:   string;
+  scheduleMode:   AutomationScheduleMode;
+  slots:          IWebsiteAutomationSlot[];
+  spreadMinutes:  number;
+  lastRunAt:      Date | null;
 }
 
 export interface IWebsiteBudgets {

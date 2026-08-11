@@ -85,7 +85,7 @@ export function AutomationPage() {
           <SectionLabel>Configured</SectionLabel>
           <div className="flex flex-col gap-4">
             {configured.map(site => (
-              <WebsiteAutomationCard key={site._id} site={site} />
+              <WebsiteAutomationCard key={site._id} site={site} onConfigure={() => setSetupSite(site)} />
             ))}
           </div>
         </>
@@ -106,6 +106,9 @@ export function AutomationPage() {
       {/* ── Setup modal ────────────────────────────────────────────────────── */}
       {setupSite && (
         <SetupModal
+          // Remount when the site changes: the form hydrates from `site` in its useState
+          // initialisers, which only run on mount.
+          key={setupSite._id}
           site={setupSite}
           open={!!setupSite}
           onClose={() => setSetupSite(null)}

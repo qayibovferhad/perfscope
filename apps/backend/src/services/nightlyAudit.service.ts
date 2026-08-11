@@ -1,3 +1,4 @@
+import { routesDueAt } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { lighthouseService } from './lighthouse.service.js';
 import { enrichWithAi, persistAudit } from './auditPipeline.js';
@@ -35,31 +36,51 @@ async function runSingleAudit(
   }
 }
 
+/**
+ * Slots in flight, keyed by `${websiteId}:${hhmm}`.
+ *
+ * The cron ticks every minute while a slot's routes take minutes to audit (each is a
+ * 3-run median). Without this, a tick that arrives while the previous one is still
+ * working — a clock adjustment, a slow queue, a restart — starts the same routes again.
+ * A single time per site made that unlikely; a timetable makes it routine.
+ */
+const inFlight = new Set<string>();
+
 export const NightlyAuditService = {
+  /**
+   * @param scheduleTime 'HH:MM' from the cron tick. Omitted means "run everything now",
+   *   which only the manual path uses.
+   */
   async runAllEnabled(scheduleTime?: string): Promise<void> {
     const label = scheduleTime ?? 'manual';
-    console.log(`[NightlyAudit] Starting run (${label})…`);
-
-    const query: Record<string, unknown> = { 'automation.enabled': true };
-    if (scheduleTime) query['automation.scheduleTime'] = scheduleTime;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let websites: any[];
     try {
-      websites = await Website.find(query).lean();
+      websites = await Website.find({ 'automation.enabled': true }).lean();
     } catch (err) {
       console.error('[NightlyAudit] Failed to query websites:', (err as Error).message);
       return;
     }
 
-    if (websites.length === 0) {
-      console.log('[NightlyAudit] No websites with automation enabled — skipping.');
-      return;
-    }
+    if (websites.length === 0) return;
 
-    console.log(`[NightlyAudit] Processing ${websites.length} website(s).`);
+    // Which routes each site owes this minute. Computed with the same helper the setup
+    // modal previews, so the timetable the user was shown is the one that runs.
+    const due = websites
+      .map(website => ({
+        website,
+        routes: scheduleTime
+          ? routesDueAt(website.automation, scheduleTime)
+          : (website.automation?.routes ?? []),
+      }))
+      .filter(({ routes }) => routes.length > 0);
 
-    for (const website of websites) {
+    if (due.length === 0) return;
+
+    console.log(`[NightlyAudit] Starting run (${label}) — ${due.length} website(s) due.`);
+
+    for (const { website, routes } of due) {
       const userId    = website.userId.toString();
       const projectId = website._id.toString();
       const baseUrl   = website.url.replace(/\/$/, '');
@@ -67,32 +88,40 @@ export const NightlyAuditService = {
         ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
         : null;
 
-      const routes: string[] = website.automation?.routes ?? [];
-      if (routes.length === 0) {
-        console.log(`[NightlyAudit] ${website.name || baseUrl} — no routes configured, skipping.`);
+      const key = `${projectId}:${label}`;
+      if (inFlight.has(key)) {
+        console.log(`[NightlyAudit] ${website.name || baseUrl} — ${label} still running, skipping this tick.`);
         continue;
       }
-      console.log(`[NightlyAudit] ${website.name || baseUrl} — ${routes.length} route(s): ${routes.join(', ')}`);
+      inFlight.add(key);
 
-      for (const route of routes) {
-        const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
-        await runSingleAudit(fullUrl, userId, projectId, session);
-        if (routes.indexOf(route) < routes.length - 1) {
-          await sleep(AUDIT_DELAY_MS);
+      try {
+        console.log(`[NightlyAudit] ${website.name || baseUrl} @ ${label} — ${routes.length} route(s): ${routes.join(', ')}`);
+
+        for (let i = 0; i < routes.length; i++) {
+          const route   = routes[i]!;
+          const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
+          await runSingleAudit(fullUrl, userId, projectId, session);
+          if (i < routes.length - 1) await sleep(AUDIT_DELAY_MS);
         }
-      }
 
-      // Mark last run timestamp.
-      await Website.updateOne(
-        { _id: website._id },
-        { 'automation.lastRunAt': new Date() },
-      ).catch(() => {});
+        await Website.updateOne(
+          { _id: website._id },
+          { 'automation.lastRunAt': new Date() },
+        ).catch(() => {});
+      } finally {
+        inFlight.delete(key);
+      }
     }
 
-    console.log('[NightlyAudit] Nightly run complete.');
+    console.log(`[NightlyAudit] Run complete (${label}).`);
   },
 
-  // Exposed for manual trigger via API.
+  /**
+   * Manual "Run now" from the UI. Deliberately ignores the timetable and audits every
+   * route: the user pressed the button because they want the site checked, not because
+   * they want to know what 14:00 would have done.
+   */
   async runForWebsite(websiteId: string, userId: string): Promise<void> {
     const website = await Website.findOne({ _id: websiteId, userId }).lean();
     if (!website) throw new Error('Website not found');

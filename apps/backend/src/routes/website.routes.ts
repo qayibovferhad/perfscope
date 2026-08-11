@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
-import { SCORE_BANDS } from '@perfscope/shared';
+import { SCORE_BANDS, isValidTime, MINUTES_PER_DAY, type AutomationScheduleMode } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
@@ -16,6 +16,10 @@ import { HAS_RESULT_FILTER } from '../lib/history.js';
 export const websiteRouter: Router = Router();
 
 const MAX_LIMIT = 100;
+
+const SCHEDULE_MODES: AutomationScheduleMode[] = ['single', 'slots', 'spread'];
+/** One slot per hour is already a very busy site; past that it is a mistake, not a plan. */
+const MAX_SLOTS = 24;
 
 /**
  * Owner scope plus an optional free-text filter over the site's label and URL.
@@ -143,13 +147,63 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
 // PATCH /api/websites/:id/automation — update automation settings (enabled, routes)
 websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const body = req.body as { enabled?: boolean; routes?: string[]; scheduleTime?: string };
+    const body = req.body as {
+      enabled?:       boolean;
+      routes?:        string[];
+      scheduleTime?:  string;
+      scheduleMode?:  AutomationScheduleMode;
+      slots?:         Array<{ time?: string; routes?: string[] }>;
+      spreadMinutes?: number;
+    };
 
     const update: Record<string, unknown> = {};
-    if (typeof body.enabled === 'boolean')  update['automation.enabled']      = body.enabled;
-    if (Array.isArray(body.routes))         update['automation.routes']        = body.routes;
-    if (typeof body.scheduleTime === 'string' && /^\d{2}:\d{2}$/.test(body.scheduleTime))
-                                            update['automation.scheduleTime']  = body.scheduleTime;
+    if (typeof body.enabled === 'boolean')  update['automation.enabled'] = body.enabled;
+    if (Array.isArray(body.routes))         update['automation.routes']  = body.routes;
+
+    // Rejected rather than dropped. The old handler ignored a malformed time silently,
+    // which is how an automation ends up looking configured and never firing.
+    if (body.scheduleTime !== undefined) {
+      if (typeof body.scheduleTime !== 'string' || !isValidTime(body.scheduleTime)) {
+        return res.status(400).json({ success: false, error: 'scheduleTime must be HH:MM (00:00–23:59)' });
+      }
+      update['automation.scheduleTime'] = body.scheduleTime;
+    }
+
+    if (body.scheduleMode !== undefined) {
+      if (!SCHEDULE_MODES.includes(body.scheduleMode)) {
+        return res.status(400).json({ success: false, error: `scheduleMode must be one of ${SCHEDULE_MODES.join(', ')}` });
+      }
+      update['automation.scheduleMode'] = body.scheduleMode;
+    }
+
+    if (body.slots !== undefined) {
+      if (!Array.isArray(body.slots)) {
+        return res.status(400).json({ success: false, error: 'slots must be an array' });
+      }
+      if (body.slots.length > MAX_SLOTS) {
+        return res.status(400).json({ success: false, error: `At most ${MAX_SLOTS} slots` });
+      }
+      const slots: Array<{ time: string; routes: string[] }> = [];
+      for (const slot of body.slots) {
+        if (typeof slot?.time !== 'string' || !isValidTime(slot.time)) {
+          return res.status(400).json({ success: false, error: `Slot time must be HH:MM (got "${String(slot?.time)}")` });
+        }
+        const routes = Array.isArray(slot.routes) ? slot.routes.filter(r => typeof r === 'string' && r.length > 0) : [];
+        if (routes.length === 0) {
+          return res.status(400).json({ success: false, error: `Slot ${slot.time} has no routes` });
+        }
+        slots.push({ time: slot.time, routes });
+      }
+      update['automation.slots'] = slots;
+    }
+
+    if (body.spreadMinutes !== undefined) {
+      const n = Number(body.spreadMinutes);
+      if (!Number.isInteger(n) || n < 1 || n > MINUTES_PER_DAY) {
+        return res.status(400).json({ success: false, error: `spreadMinutes must be an integer between 1 and ${MINUTES_PER_DAY}` });
+      }
+      update['automation.spreadMinutes'] = n;
+    }
 
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ success: false, error: 'Provide enabled or routes to update' });
