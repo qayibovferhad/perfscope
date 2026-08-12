@@ -9,14 +9,15 @@ export interface AnalysisCallbacks {
   onProgress: (data: AnalysisProgress) => void;
   onPartial:  (data: CategoryPartial)  => void;
   onComplete: (result: AnalysisResult) => void;
-  onError:    (message: string)        => void;
+  /** `code` is set for the failures the UI can act on — currently SESSION_EXPIRED. */
+  onError:    (message: string, code?: string) => void;
 }
 
 function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
   const onPartial  = (data: CategoryPartial)     => callbacks.onPartial(data);
   const onComplete = (result: AnalysisResult)    => callbacks.onComplete(result);
-  const onError    = (data: { message: string }) => callbacks.onError(data.message);
+  const onError    = (data: { message: string; code?: string }) => callbacks.onError(data.message, data.code);
 
   s.on('analysis:progress', onProgress);
   s.on('analysis:partial',  onPartial);

@@ -193,7 +193,11 @@ export function registerAnalysisSocket(io: TypedServer): void {
             .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
         }
         const message = err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', { analysisId, message });
+        socket.emit('analysis:error', {
+          analysisId,
+          message,
+          ...(err instanceof SessionExpiredError ? { code: err.code } : {}),
+        });
       } finally {
         lighthouseService.off('progress', onProgress);
       }
@@ -280,7 +284,11 @@ export function registerAnalysisSocket(io: TypedServer): void {
         const message = err instanceof SessionExpiredError
           ? 'The captured session did not authenticate — log in inside the opened browser, then run the audit again.'
           : err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', { analysisId, message });
+        socket.emit('analysis:error', {
+          analysisId,
+          message,
+          ...(err instanceof SessionExpiredError ? { code: err.code } : {}),
+        });
       } finally {
         lighthouseService.off('progress', onProgress);
       }

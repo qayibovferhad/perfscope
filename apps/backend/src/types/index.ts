@@ -59,7 +59,9 @@ export interface ServerToClientEvents {
   'analysis:progress': (data: AnalysisProgress) => void;
   'analysis:partial':  (data: CategoryPartial)  => void;
   'analysis:complete': (result: AnalysisResult) => void;
-  'analysis:error':    (data: { analysisId: string; message: string }) => void;
+  // `code` lets the client offer the fix rather than only naming the problem: an expired
+  // login session is repaired by capturing a new one, which is one button away.
+  'analysis:error':    (data: { analysisId: string; message: string; code?: string }) => void;
 }
 
 export interface ClientToServerEvents {
