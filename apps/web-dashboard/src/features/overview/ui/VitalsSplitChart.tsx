@@ -2,6 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import type { OverviewVitalSplit } from '@perfscope/shared';
 import { GLOSSARY, isVitalKey, type GlossaryKey } from '@/entities/analysis';
 import { CHART, AXIS_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { hasVitalsData } from '../lib/hasChartData';
 
 /**
  * Where every audited run lands in the web.dev bands, per metric.
@@ -30,13 +31,13 @@ export function VitalsSplitChart({ vitals }: { vitals: OverviewVitalSplit[] }) {
     }))
     .filter(row => row.total > 0);
 
-  if (!rows.length) {
+  if (!hasVitalsData(vitals)) {
     return <p className="text-[13px] text-ld-text-3 py-[14px]">No audits to break down yet.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-[10px]">
-      <ResponsiveContainer width="100%" height={rows.length * 44 + 18}>
+    <div className="flex flex-col gap-[10px] h-full">
+      <ResponsiveContainer width="100%" height="100%" className="flex-1 min-h-0">
         <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 8, bottom: 0, left: 0 }} barCategoryGap="28%">
           <XAxis type="number" hide />
           <YAxis
@@ -60,6 +61,9 @@ export function VitalsSplitChart({ vitals }: { vitals: OverviewVitalSplit[] }) {
               key={series.key}
               dataKey={series.key} name={series.label} stackId="band"
               fill={series.color} fillOpacity={0.85}
+              // Capped: with three rows in a full-height panel the bars would otherwise
+              // grow into slabs that read as a different chart type entirely.
+              maxBarSize={30}
               radius={i === 0 ? [4, 0, 0, 4] : i === SERIES.length - 1 ? [0, 4, 4, 0] : 0}
               isAnimationActive={false}
             />

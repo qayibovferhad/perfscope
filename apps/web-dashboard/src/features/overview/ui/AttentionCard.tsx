@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ListChecks, CheckCircle2 } from 'lucide-react';
 import type { OverviewAttention, OverviewAttentionReason } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { cn } from '@/shared/lib/utils';
 import { scoreBand } from '@/entities/analysis';
 
 /** Each reason states what is wrong, not what the field is called. */
@@ -25,16 +26,16 @@ const BAND_TONE = {
   poor: 'text-ld-rose',
 } as const;
 
-export function AttentionCard({ rows }: { rows: OverviewAttention[] }) {
+export function AttentionCard({ rows, className }: { rows: OverviewAttention[]; className?: string }) {
   return (
-    <Panel>
+    <Panel className={cn('flex flex-col', className)}>
       <PanelHeader
         icon={<ListChecks />}
         title="Needs attention"
         meta={rows.length ? `${rows.length} site${rows.length === 1 ? '' : 's'}` : 'all healthy'}
       />
 
-      <PanelBody>
+      <PanelBody className="flex-1 min-h-0 overflow-y-auto">
         {!rows.length ? (
           <div className="flex items-start gap-[10px] py-[6px]">
             <CheckCircle2 className="w-[16px] h-[16px] text-ld-accent shrink-0 mt-[1px]" />

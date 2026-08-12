@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { OverviewActivityPoint } from '@perfscope/shared';
 import { CHART, AXIS_PROPS, GRID_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { hasActivityData } from '../lib/hasChartData';
 
 /**
  * Audits per day.
@@ -16,9 +17,7 @@ function fmtDay(iso: string): string {
 }
 
 export function ActivityChart({ activity, days }: { activity: OverviewActivityPoint[]; days: number }) {
-  const total = activity.reduce((sum, point) => sum + point.audits, 0);
-
-  if (!total) {
+  if (!hasActivityData(activity)) {
     return (
       <p className="text-[13px] text-ld-text-3 py-[14px]">
         No audits in the last {days} days.
@@ -27,7 +26,7 @@ export function ActivityChart({ activity, days }: { activity: OverviewActivityPo
   }
 
   return (
-    <ResponsiveContainer width="100%" height={140}>
+    <ResponsiveContainer width="100%" height="100%" className="flex-1 min-h-0">
       <BarChart data={activity} margin={{ top: 6, right: 20, bottom: 4, left: 0 }}>
         <CartesianGrid {...GRID_PROPS} />
         <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDay} minTickGap={34} />

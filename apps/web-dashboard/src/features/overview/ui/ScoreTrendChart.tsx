@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ResponsiveContainer } from 'recharts';
 import { SCORE_BANDS, type OverviewSiteTrend } from '@perfscope/shared';
 import { CHART, SERIES_COLORS, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { hasTrendData } from '../lib/hasChartData';
 
 /**
  * Every site's performance score over the window, one line each.
@@ -19,7 +20,7 @@ function fmtDay(iso: string): string {
 export function ScoreTrendChart({ trend, days }: { trend: OverviewSiteTrend[]; days: number }) {
   const withData = trend.filter(site => site.points.some(p => p.score !== null));
 
-  if (!withData.length) {
+  if (!hasTrendData(trend)) {
     return (
       <p className="text-[13px] text-ld-text-3 py-[14px]">
         No audits in the last {days} days. Runs appear here as they happen — nightly audits
@@ -38,8 +39,10 @@ export function ScoreTrendChart({ trend, days }: { trend: OverviewSiteTrend[]; d
   const nameById = new Map(withData.map(s => [s.websiteId, s.name]));
 
   return (
-    <div className="flex flex-col gap-[10px]">
-      <ResponsiveContainer width="100%" height={230}>
+    // h-full + a flexible plot area: the panel decides the height so this chart and the
+    // one beside it line up, instead of each being as tall as its own content happened to be.
+    <div className="flex flex-col gap-[10px] h-full">
+      <ResponsiveContainer width="100%" height="100%" className="flex-1 min-h-0">
         <LineChart data={rows} margin={{ top: 8, right: 22, bottom: 4, left: 0 }}>
           {/* web.dev bands: good ≥ 90, poor < 50. */}
           <ReferenceArea y1={SCORE_BANDS.good} y2={100} fill={CHART.accent} fillOpacity={0.06} />

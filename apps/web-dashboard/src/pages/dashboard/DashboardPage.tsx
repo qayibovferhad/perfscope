@@ -13,6 +13,8 @@ import { RumPulseCard } from '@/features/overview/ui/RumPulseCard';
 import { ScoreTrendChart } from '@/features/overview/ui/ScoreTrendChart';
 import { ActivityChart } from '@/features/overview/ui/ActivityChart';
 import { VitalsSplitChart } from '@/features/overview/ui/VitalsSplitChart';
+import { hasActivityData, hasTrendData, hasVitalsData } from '@/features/overview/lib/hasChartData';
+import { cn } from '@/shared/lib/utils';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { Skeleton } from '@/shared/ui/skeleton';
 
@@ -41,6 +43,11 @@ function PanelSkeleton({ className }: { className: string }) {
 export function DashboardPage() {
   const { data, isPending } = useOverview();
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Both charts in the top row take the fixed height together, or neither does: sizing
+  // them independently is what put a 340px panel next to a 90px one in the first place,
+  // and a brand-new account should not open onto a screen of tall empty boxes.
+  const chartsTall = !!data && (hasTrendData(data.charts.trend) || hasVitalsData(data.charts.vitals));
 
   return (
     <div className="w-[min(1180px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[34px] pb-20">
@@ -98,55 +105,59 @@ export function DashboardPage() {
       ) : (
         <div className="flex flex-col gap-[20px]">
 
-          {/* Trend leads: the shape over time is the one thing no other page shows. */}
-          <Panel>
-            <PanelHeader
-              icon={<TrendingUp />}
-              title="Performance over time"
-              meta={`last ${data.charts.days} days`}
-            />
-            <PanelBody>
-              <ScoreTrendChart trend={data.charts.trend} days={data.charts.days} />
-            </PanelBody>
-          </Panel>
+          {/* One rhythm for the whole page: every row is a pair of equal-height panels on
+              a 12-column grid, and each row is only as tall as it needs to be. Panels used
+              to be stacked full width at whatever height their own content produced — 352,
+              then 235, then 272 — with a short card parked beside a tall one leaving a
+              hole where a panel should be. */}
+          <div className="grid grid-cols-12 gap-[18px] max-[1100px]:grid-cols-1">
 
-          {/* Full width: thirty daily bars in half a row compress into noise, and the
-              gaps between runs are the whole point of this chart. */}
-          <Panel>
-            <PanelHeader
-              icon={<CalendarDays />}
-              title="Audit activity"
-              meta={`last ${data.charts.days} days`}
-            />
-            <PanelBody>
-              <ActivityChart activity={data.charts.activity} days={data.charts.days} />
-            </PanelBody>
-          </Panel>
+            {/* Trend leads, and takes the wider half: it carries thirty days on the x axis
+                against the split's three rows. Both are pinned to the same height. */}
+            <Panel className={cn('col-span-7 flex flex-col max-[1100px]:col-span-1', chartsTall && 'h-[340px]')}>
+              <PanelHeader
+                icon={<TrendingUp />}
+                title="Performance over time"
+                meta={`last ${data.charts.days} days`}
+              />
+              <PanelBody className="flex-1 min-h-0">
+                <ScoreTrendChart trend={data.charts.trend} days={data.charts.days} />
+              </PanelBody>
+            </Panel>
 
-          <Panel>
-            <PanelHeader
-              icon={<BarChart3 />}
-              title="Where the runs land"
-              meta="all audits in window"
-            />
-            <PanelBody>
-              <VitalsSplitChart vitals={data.charts.vitals} />
-            </PanelBody>
-          </Panel>
+            <Panel className={cn('col-span-5 flex flex-col max-[1100px]:col-span-1', chartsTall && 'h-[340px]')}>
+              <PanelHeader
+                icon={<BarChart3 />}
+                title="Where the runs land"
+                meta="all audits in window"
+              />
+              <PanelBody className="flex-1 min-h-0">
+                <VitalsSplitChart vitals={data.charts.vitals} />
+              </PanelBody>
+            </Panel>
 
-          {/* The two "act now" blocks, side by side. items-start on both pairs: these
-              cards hold wildly different row counts, and stretching the shorter one
-              leaves a half-empty panel that reads as a loading failure. */}
-          <div className="grid grid-cols-2 gap-[18px] items-start max-[1100px]:grid-cols-1">
-            <IncidentsCard incidents={data.incidents} />
-            <AttentionCard rows={data.attention} />
-          </div>
+            {/* Full width, and short: thirty daily bars in half a row compress into noise,
+                but the bars themselves carry one number each and need no more height. */}
+            <Panel className={cn('col-span-12 flex flex-col max-[1100px]:col-span-1', hasActivityData(data.charts.activity) && 'h-[228px]')}>
+              <PanelHeader
+                icon={<CalendarDays />}
+                title="Audit activity"
+                meta={`last ${data.charts.days} days`}
+              />
+              <PanelBody className="flex-1 min-h-0 flex flex-col">
+                <ActivityChart activity={data.charts.activity} days={data.charts.days} />
+              </PanelBody>
+            </Panel>
 
-          {/* The RUM card is a single line; stretching it to the height of the audit log
-              left a panel of empty space beside it. */}
-          <div className="grid grid-cols-2 gap-[18px] items-start max-[1100px]:grid-cols-1">
-            <RecentAuditsCard audits={data.recentAudits} />
-            <RumPulseCard rum={data.rum} />
+            {/* The four cards hold wildly different row counts. Each pair shares a row
+                height and the longer list scrolls inside its panel, so neither a hole nor
+                a page that scrolls for a screen and a half. The cap only binds when there
+                is enough to fill it — an empty account still gets short cards. */}
+            <IncidentsCard incidents={data.incidents} className="col-span-6 max-h-[420px] max-[1100px]:col-span-1" />
+            <AttentionCard  rows={data.attention}     className="col-span-6 max-h-[420px] max-[1100px]:col-span-1" />
+
+            <RecentAuditsCard audits={data.recentAudits} className="col-span-6 max-h-[380px] max-[1100px]:col-span-1" />
+            <RumPulseCard     rum={data.rum}            className="col-span-6 max-h-[380px] max-[1100px]:col-span-1" />
           </div>
         </div>
       )}

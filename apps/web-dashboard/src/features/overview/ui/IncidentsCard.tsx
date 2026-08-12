@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { BellRing, Mail, Webhook, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import type { OverviewIncident } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
 
 /**
@@ -44,16 +45,19 @@ function DeliveryNote({ delivery }: { delivery: OverviewIncident['delivery'] }) 
   );
 }
 
-export function IncidentsCard({ incidents }: { incidents: OverviewIncident[] }) {
+export function IncidentsCard({ incidents, className }: { incidents: OverviewIncident[]; className?: string }) {
   return (
-    <Panel>
+    <Panel className={cn('flex flex-col', className)}>
       <PanelHeader
         icon={<BellRing />}
         title="Open alerts"
         meta={incidents.length ? `${incidents.length} firing` : 'all clear'}
       />
 
-      <PanelBody>
+      {/* The list scrolls inside the panel rather than growing it: this card and the one
+          beside it hold unrelated numbers of rows, and the taller one used to set a height
+          the other could not fill, leaving a hole where a panel should be. */}
+      <PanelBody className="flex-1 min-h-0 overflow-y-auto">
         {!incidents.length ? (
           <div className="flex items-start gap-[10px] py-[6px]">
             <CheckCircle2 className="w-[16px] h-[16px] text-ld-accent shrink-0 mt-[1px]" />

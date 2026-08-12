@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { History, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import type { OverviewAudit } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
 import { scoreBand } from '@/entities/analysis';
 
@@ -36,9 +37,9 @@ function Delta({ delta }: { delta: number | null }) {
   );
 }
 
-export function RecentAuditsCard({ audits }: { audits: OverviewAudit[] }) {
+export function RecentAuditsCard({ audits, className }: { audits: OverviewAudit[]; className?: string }) {
   return (
-    <Panel>
+    <Panel className={cn('flex flex-col', className)}>
       <PanelHeader icon={<History />} title="Recent audits" meta={audits.length ? undefined : 'nothing yet'}>
         <Link
           to="/history"
@@ -60,7 +61,7 @@ export function RecentAuditsCard({ audits }: { audits: OverviewAudit[] }) {
         // Rows run edge to edge on purpose: the dividers should reach the panel border
         // rather than stopping short, so the list reads as one column instead of
         // floating cards. Horizontal breathing room comes from the row padding.
-        <ul className="flex flex-col">
+        <ul className="flex flex-col flex-1 min-h-0 overflow-y-auto">
           {audits.map((audit, i) => (
             <li
               key={audit.id}

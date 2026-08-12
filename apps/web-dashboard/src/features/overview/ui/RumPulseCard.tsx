@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle } from 'lucide-react';
 import type { OverviewRum } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { cn } from '@/shared/lib/utils';
 
 /**
  * Whether the snippet is actually reporting.
@@ -10,12 +11,14 @@ import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
  * arrives, so "3 installed, 0 reporting" is the state worth surfacing — it means the
  * snippet was generated and then never pasted into the site.
  */
-export function RumPulseCard({ rum }: { rum: OverviewRum | null }) {
+export function RumPulseCard({ rum, className }: { rum: OverviewRum | null; className?: string }) {
   return (
-    <Panel>
+    <Panel className={cn('flex flex-col', className)}>
       <PanelHeader icon={<Activity />} title="Field data · your visitors" meta="last 24h" />
 
-      <PanelBody className="flex flex-col gap-[12px]">
+      {/* Centred: this card is two lines beside a list of eight, and pinning them to the
+          top of a shared row height left the number floating above a field of nothing. */}
+      <PanelBody className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center gap-[12px]">
         {!rum ? (
           <p className="text-[13px] text-ld-text-2 leading-[1.6]">
             No RUM snippet installed. Lab runs measure your server; the snippet measures
