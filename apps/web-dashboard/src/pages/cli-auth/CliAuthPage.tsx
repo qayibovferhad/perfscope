@@ -28,7 +28,7 @@ export function CliAuthPage() {
     }
 
     apiClient
-      .post('/auth/cli/complete', { code, token })
+      .post('/auth/cli/complete', { code })
       .then(() => setState('done'))
       .catch(() => {
         setState('error');

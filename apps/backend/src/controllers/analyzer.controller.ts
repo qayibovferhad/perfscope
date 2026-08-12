@@ -5,15 +5,7 @@ import { HistoryService }  from '../services/history.service.js';
 import { Website }         from '../models/Website.model.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import type { ApiResponse, AnalysisResult } from '../types/index.js';
-
-function isValidUrl(raw: string): boolean {
-  try {
-    const { protocol } = new URL(raw);
-    return protocol === 'http:' || protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
+import { isValidUrl } from '../lib/url.js';
 
 export class AnalyzerController {
   static async analyze(
@@ -61,7 +53,6 @@ export class AnalyzerController {
     const baseUrl  = `${parsed.protocol}//${hostname}`;
 
     const allWebsites = await Website.find({ userId }).lean();
-    console.log(`[Analyzer] userId=${userId} websites=${allWebsites.length}`, allWebsites.map(w => w.url));
 
     let website = allWebsites.find(w => {
       try { return new URL(w.url).hostname === hostname; }
@@ -69,15 +60,9 @@ export class AnalyzerController {
     });
 
     if (!website) {
-      console.log(`[Analyzer] No match for hostname=${hostname}, creating new website`);
       website = await Website.create({ userId, url: baseUrl, name: hostname });
-    } else {
-      console.log(`[Analyzer] Matched website _id=${website._id} url=${website.url}`);
     }
 
-    const projectId = String(website._id);
-    console.log(`[Analyzer] Saving history with projectId=${projectId}`);
-    await persistAudit(result, userId, projectId);
-    console.log(`[Analyzer] History saved ✓`);
+    await persistAudit(result, userId, String(website._id));
   }
 }

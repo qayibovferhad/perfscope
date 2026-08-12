@@ -6,12 +6,17 @@ import { isDbReady } from '../config/database.js';
 
 export const compareHistoryRouter: Router = Router();
 
+// Path-scoped on purpose: every router is mounted at the bare `/api` prefix in app.ts, so
+// an unscoped `.use()` here would also run for every request that merely passes through on
+// its way to a router mounted later — an unscoped requireAuth silently locked the public
+// CLI login handshake (/api/auth/cli/init) behind a token.
+
 // Saving a comparison needs somewhere to save it; listing past ones does not.
-compareHistoryRouter.use(requireStorageForWrites);
+compareHistoryRouter.use('/compare-history', requireStorageForWrites);
 
 // Comparisons are a user's own work. Every route here used to be open and every query
 // unscoped, so each account was shown every other account's comparisons.
-compareHistoryRouter.use(requireAuth);
+compareHistoryRouter.use('/compare-history', requireAuth);
 
 // GET /api/compare-history — list unique pairs (latest per pair)
 compareHistoryRouter.get('/compare-history', async (req: AuthRequest, res: Response) => {

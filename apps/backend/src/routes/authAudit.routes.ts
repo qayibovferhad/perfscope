@@ -1,7 +1,13 @@
 import { Router, type Request, type Response } from 'express';
 import { createAuthAuditSession, hasSession, destroySession } from '../services/authAuditSession.js';
+import { requireAuth } from '../middleware/auth.middleware.js';
 
 export const authAuditRouter: Router = Router();
+
+// Opening a session launches a visible browser on this machine — never anonymous. This
+// used to be enforced only by accident (an unscoped requireAuth in a router mounted
+// earlier); now it is explicit. Path-scoped for the same reason that one was a bug.
+authAuditRouter.use('/auth-audit', requireAuth);
 
 // POST /api/auth-audit/session — open a visible browser at url, return sessionId
 authAuditRouter.post('/auth-audit/session', async (req: Request, res: Response) => {
@@ -12,6 +18,7 @@ authAuditRouter.post('/auth-audit/session', async (req: Request, res: Response) 
     return res.json({ sessionId });
   } catch (err) {
     return res.status(500).json({
+      success: false,
       error: err instanceof Error ? err.message : 'Failed to launch browser',
     });
   }

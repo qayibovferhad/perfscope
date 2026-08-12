@@ -7,19 +7,24 @@ import { Website } from '../models/Website.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { RUM_METRIC_KEYS } from '@perfscope/shared';
 import { getRumSummary, getRumPaths, getRumTrend } from '../services/rum.service.js';
-import { HistoryModel } from '../models/History.model.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 import { escapeRegex, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
 import { computeSiteScores } from '../services/overview.service.js';
-import { HAS_RESULT_FILTER } from '../lib/history.js';
 import { isDbReady } from '../config/database.js';
 import { requireStorageForWrites } from '../middleware/storage.middleware.js';
 
 export const websiteRouter: Router = Router();
 
+// Path-scoped because every router shares the bare `/api` mount in app.ts: an unscoped
+// `.use()` would also intercept requests bound for routers mounted after this one.
+
 // Every route here is pure persistence: without a database a write cannot be honoured, and
 // saying so beats a 500. Reads answer with their empty shape instead — see below.
-websiteRouter.use(requireStorageForWrites);
+websiteRouter.use('/websites', requireStorageForWrites);
+
+// Every route here is per-user data. Router-level so a newly added route cannot be
+// forgotten and ship unauthenticated.
+websiteRouter.use('/websites', requireAuth);
 
 const MAX_LIMIT = 100;
 
@@ -44,7 +49,7 @@ function ownedFilter(userId: string | undefined, q?: string): QueryFilter<Record
 // GET /api/websites?q=&page=&limit=
 // Without any of those params this returns the plain array it always has, so the
 // sidebar, compare picker and automation page keep working untouched.
-websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.get('/websites', async (req: AuthRequest, res: Response) => {
   try {
     const { q, page: rawPage, limit: rawLimit } = req.query as Record<string, string | undefined>;
     const filter = ownedFilter(req.userId, q);
@@ -87,7 +92,7 @@ websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Respon
 // GET /api/websites/summary — account-wide headline numbers.
 // Deliberately ignores the list's search term so the strip stays put while the
 // user types and does not vanish when a filter matches nothing.
-websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.get('/websites/summary', async (req: AuthRequest, res: Response) => {
   try {
     if (!isDbReady()) {
       return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });
@@ -115,7 +120,7 @@ websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res
 });
 
 // POST /api/websites
-websiteRouter.post('/websites', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.post('/websites', async (req: AuthRequest, res: Response) => {
   try {
     const { url, name } = req.body as { url: string; name?: string };
     if (!url) return res.status(400).json({ success: false, error: 'url is required' });
@@ -134,7 +139,7 @@ websiteRouter.post('/websites', requireAuth, async (req: AuthRequest, res: Respo
 });
 
 // PATCH /api/websites/:id/session — save extracted session data to the website doc
-websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.patch('/websites/:id/session', async (req: AuthRequest, res: Response) => {
   try {
     const { cookies = [], localStorage: ls = {} } = req.body as {
       cookies?: unknown[];
@@ -162,7 +167,7 @@ websiteRouter.patch('/websites/:id/session', requireAuth, async (req: AuthReques
 });
 
 // PATCH /api/websites/:id/automation — update automation settings (enabled, routes)
-websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.patch('/websites/:id/automation', async (req: AuthRequest, res: Response) => {
   try {
     const body = req.body as {
       enabled?:       boolean;
@@ -243,7 +248,7 @@ websiteRouter.patch('/websites/:id/automation', requireAuth, async (req: AuthReq
 // GET /api/websites/:id/rum — field data from the site's own visitors.
 // Complements the lab audit and CrUX: this is your traffic, every browser, and the only
 // view that can see pages behind a login.
-websiteRouter.get('/websites/:id/rum', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.get('/websites/:id/rum', async (req: AuthRequest, res: Response) => {
   try {
     const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! })
       .select('_id rumKey').lean();
@@ -268,7 +273,7 @@ websiteRouter.get('/websites/:id/rum', requireAuth, async (req: AuthRequest, res
 });
 
 // GET /api/websites/:id/rum/trend — daily p75 for one metric
-websiteRouter.get('/websites/:id/rum/trend', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.get('/websites/:id/rum/trend', async (req: AuthRequest, res: Response) => {
   try {
     const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).select('_id').lean();
     if (!site) return res.status(404).json({ success: false, error: 'Website not found' });
@@ -295,7 +300,7 @@ websiteRouter.get('/websites/:id/rum/trend', requireAuth, async (req: AuthReques
 // Not a secret: it ships in the page source of whatever site embeds the collector. Its
 // only job is to say which Website a beacon belongs to, so rotating it simply orphans
 // any snippet still carrying the old one.
-websiteRouter.post('/websites/:id/rum-key', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.post('/websites/:id/rum-key', async (req: AuthRequest, res: Response) => {
   try {
     const rumKey = randomBytes(12).toString('base64url');
 
@@ -315,7 +320,7 @@ websiteRouter.post('/websites/:id/rum-key', requireAuth, async (req: AuthRequest
 
 // GET /api/websites/:id/alerts — what was sent, when, and whether it landed.
 // Delivery is fire-and-forget, so without this "I never got an alert" is undebuggable.
-websiteRouter.get('/websites/:id/alerts', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.get('/websites/:id/alerts', async (req: AuthRequest, res: Response) => {
   try {
     const site = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).select('_id').lean();
     if (!site) return res.status(404).json({ success: false, error: 'Website not found' });
@@ -334,7 +339,7 @@ websiteRouter.get('/websites/:id/alerts', requireAuth, async (req: AuthRequest, 
 });
 
 // PATCH /api/websites/:id/budgets — set or clear performance budgets
-websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.patch('/websites/:id/budgets', async (req: AuthRequest, res: Response) => {
   try {
     const body = req.body as {
       performance?: number | null; lcp?: number | null; tbt?: number | null;
@@ -395,7 +400,7 @@ websiteRouter.patch('/websites/:id/budgets', requireAuth, async (req: AuthReques
 });
 
 // POST /api/websites/:id/automation/run — manual trigger for a single website
-websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.post('/websites/:id/automation/run', async (req: AuthRequest, res: Response) => {
   try {
     const website = await Website.findOne({ _id: req.params['id']!, userId: req.userId! }).lean();
     if (!website) return res.status(404).json({ success: false, error: 'Website not found' });
@@ -413,7 +418,7 @@ websiteRouter.post('/websites/:id/automation/run', requireAuth, async (req: Auth
 });
 
 // DELETE /api/websites/:id
-websiteRouter.delete('/websites/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+websiteRouter.delete('/websites/:id', async (req: AuthRequest, res: Response) => {
   try {
     await Website.deleteOne({ _id: req.params['id']!, userId: req.userId! });
     return res.json({ ok: true });

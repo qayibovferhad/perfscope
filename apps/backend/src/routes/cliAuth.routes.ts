@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 
 const router: Router = Router();
 
@@ -24,13 +25,16 @@ router.post('/cli/init', (req, res) => {
   res.json({ ok: true });
 });
 
-// Browser (CliAuthPage) → store token against the code
-router.post('/cli/complete', (req, res) => {
-  const { code, token } = req.body as { code?: string; token?: string };
-  if (!code || !token) { res.status(400).json({ success: false, error: 'Missing fields' }); return; }
+// Browser (CliAuthPage) → store token against the code.
+// The token handed to the CLI comes from the verified Authorization header, never the
+// body: a body token would let anyone who learned a pending code plant an arbitrary
+// token into the waiting CLI.
+router.post('/cli/complete', requireAuth, (req: AuthRequest, res) => {
+  const { code } = req.body as { code?: string };
+  if (!code)  { res.status(400).json({ success: false, error: 'Missing code' }); return; }
   const entry = pending.get(code);
-  if (!entry)           { res.status(404).json({ success: false, error: 'Unknown or expired code' }); return; }
-  entry.token = token;
+  if (!entry) { res.status(404).json({ success: false, error: 'Unknown or expired code' }); return; }
+  entry.token = (req.headers.authorization as string).slice(7);
   res.json({ ok: true });
 });
 
