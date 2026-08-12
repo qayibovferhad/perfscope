@@ -1,4 +1,5 @@
 import { useState }                    from 'react';
+import { Link }                        from 'react-router-dom';
 import { Moon, Globe, Loader2 }        from 'lucide-react';
 import { useWebsites }                 from '@/entities/website';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
@@ -33,11 +34,18 @@ export function AutomationPage() {
           <Moon className="w-[25px] h-[25px]" />
         </div>
         <div>
+          {/* Named for what it is rather than when it runs: routes can be spread across
+              the day or given a timetable of their own, so "nightly" stopped being true. */}
           <h1 className="text-[clamp(24px,3vw,30px)] font-extrabold tracking-[-0.03em] text-ld-text">
-            Nightly Automation
+            Audit schedule
           </h1>
           <p className="text-[14.5px] text-ld-text-2 mt-1">
-            Schedule a daily audit for each site and let PerfScope run while you sleep.
+            Decide when each site is audited without anyone pressing anything. What the
+            timetable finds lands in{' '}
+            <Link to="/scheduled" className="font-semibold text-ld-accent hover:underline">
+              Scheduled reports
+            </Link>
+            .
           </p>
 
           {websites.length > 0 && (

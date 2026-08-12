@@ -19,9 +19,10 @@ export const NAV: NavItem[] = [
   { to: '/websites',   icon: LayoutGrid,       label: 'My Websites' },
   // Review
   { to: '/history',    icon: History,          label: 'History'     },
-  // Automate / extend. Scheduled sits under Automation because it is what Automation
-  // produced — the audit lists upstream deliberately leave those runs out.
-  { to: '/automation', icon: Moon,             label: 'Automation'  },
+  // Automate / extend. The pair reads as one sentence: the schedule is what you set, the
+  // reports are what it brought back — which is also why the results page sits right under
+  // it rather than with the audit lists, which deliberately leave those runs out.
+  { to: '/automation', icon: Moon,             label: 'Audit schedule'    },
   { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled reports' },
   { to: '/extension',  icon: Puzzle,           label: 'Extension'   },
   // Account
