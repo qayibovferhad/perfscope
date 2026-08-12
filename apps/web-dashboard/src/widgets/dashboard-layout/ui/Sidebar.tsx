@@ -50,7 +50,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
 
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-1 pb-5">
-        <Link to="/" className="flex items-center gap-2.5 flex-1 min-w-0">
+        {/* Straight to the dashboard, not to "/". This sidebar only exists for a signed-in
+            user, and routing them through the landing page tore the whole shell down and
+            rebuilt it a frame later — the redirect was correct and the flash was real. */}
+        <Link to="/dashboard" className="flex items-center gap-2.5 flex-1 min-w-0">
           <span className="w-[30px] h-[30px] rounded-[9px] grid place-items-center bg-ld-grad shadow-ld-glow shrink-0">
             <svg viewBox="0 0 24 24" fill="none" className="w-[17px] h-[17px]">
               <path d="M3 12h3l2.5-7 4 14 3-9 2 2H21" stroke="#04130d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -61,12 +64,15 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
           </span>
         </Link>
         {onClose && (
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onClose}
-            className="shrink-0 text-ld-text-3 hover:text-ld-text transition-colors"
+            aria-label="Close sidebar"
+            className="shrink-0"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <X />
+          </Button>
         )}
       </div>
 
@@ -183,13 +189,15 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
           <b className="block text-[13px] font-semibold text-ld-text truncate">{user?.name}</b>
           <span className="block text-[11px] text-ld-text-3 font-mono truncate">{user?.email}</span>
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => setLogoutOpen(true)}
           aria-label="Sign out"
-          className="w-[30px] h-[30px] rounded-lg grid place-items-center text-ld-text-3 border border-transparent bg-transparent cursor-pointer transition-all duration-200 hover:text-ld-rose hover:border-ld-border"
+          className="hover:text-ld-rose"
         >
-          <LogOut className="w-[15px] h-[15px]" />
-        </button>
+          <LogOut />
+        </Button>
       </div>
 
       <ConfirmModal
