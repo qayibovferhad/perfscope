@@ -1,5 +1,6 @@
 import { HistoryModel } from '../models/History.model.js';
 import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
+import { pruneToLimit } from '../lib/mongo.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { hostOf, normalizedUrlHostRegex } from '../lib/url.js';
@@ -172,15 +173,7 @@ export const HistoryService = {
     // person does, so one shared cap of ten would quietly evict the audits the user ran by
     // hand — the very ones they go looking for.
     const scope = { normalizedUrl, ...(source === 'scheduled' ? SCHEDULED_ONLY_FILTER : MANUAL_ONLY_FILTER) };
-    const count = await HistoryModel.countDocuments(scope);
-    if (count > MAX_PER_URL) {
-      const oldest = await HistoryModel
-        .find(scope)
-        .sort({ createdAt: 1 })
-        .limit(count - MAX_PER_URL)
-        .select('_id');
-      await HistoryModel.deleteMany({ _id: { $in: oldest.map((d) => d._id) } });
-    }
+    await pruneToLimit(HistoryModel, scope, MAX_PER_URL);
   },
 
   /**

@@ -25,12 +25,20 @@ import type {
   SocketData,
 } from './types/index.js';
 
+/**
+ * How long a request may block before the server hangs up.
+ *
+ * NOTE: this is shorter than `RUN_TIMEOUT_MS` (4 min) in lighthouse.service.ts, which the
+ * REST audit path can legitimately take. Left at its existing value rather than changed
+ * as a side effect of a refactor — raising it is a behaviour decision.
+ */
+const HTTP_TIMEOUT_MS = 70_000;
+
 export function createApp(): { app: Application; httpServer: Server } {
   const app = express();
   const httpServer = createServer(app);
 
-  // Increase server timeout for long-running Lighthouse analyses
-  httpServer.setTimeout(70_000);
+  httpServer.setTimeout(HTTP_TIMEOUT_MS);
 
   // ── Socket.io ────────────────────────────────────────────────────────────
   const io = new SocketServer<

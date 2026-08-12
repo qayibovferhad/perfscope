@@ -1,6 +1,7 @@
 import type { CompareEntry } from '@perfscope/shared';
 import { CompareHistoryModel } from '../models/CompareHistory.model.js';
 import { hostOf } from '../lib/url.js';
+import { pruneToLimit } from '../lib/mongo.js';
 
 const MAX_PER_PAIR = 10;
 
@@ -70,12 +71,7 @@ export const CompareHistoryService = {
     });
     // Scoped to the owner as well: pruning by pairId alone would delete another account's
     // runs of the same two sites.
-    const count = await CompareHistoryModel.countDocuments({ userId, pairId });
-    if (count > MAX_PER_PAIR) {
-      const oldest = await CompareHistoryModel
-        .find({ userId, pairId }).sort({ createdAt: 1 }).limit(count - MAX_PER_PAIR).select('_id');
-      await CompareHistoryModel.deleteMany({ _id: { $in: oldest.map(d => d._id) } });
-    }
+    await pruneToLimit(CompareHistoryModel, { userId, pairId }, MAX_PER_PAIR);
   },
 
   async getPair(userId: string, pairId: string): Promise<CompareEntry[]> {

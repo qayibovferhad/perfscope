@@ -6,13 +6,16 @@ const router: Router = Router();
 interface PendingEntry { token?: string; at: number }
 const pending = new Map<string, PendingEntry>();
 
-// Purge stale codes every minute (TTL = 10 min)
+/** Long enough to finish a browser login, short enough that an abandoned code dies. */
+const CODE_TTL_MS = 10 * 60_000;
+const SWEEP_MS    = 60_000;
+
 setInterval(() => {
-  const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [k, v] of pending) {
-    if (v.at < cutoff) pending.delete(k);
+  const cutoff = Date.now() - CODE_TTL_MS;
+  for (const [code, entry] of pending) {
+    if (entry.at < cutoff) pending.delete(code);
   }
-}, 60_000).unref();
+}, SWEEP_MS).unref();
 
 // CLI → register a new login code
 router.post('/cli/init', (req, res) => {
