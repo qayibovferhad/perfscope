@@ -52,6 +52,8 @@ export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
 export { MetricsGrid } from './ui/MetricsGrid'
 export { AuditList } from './ui/AuditList'
 export { ProgressStepper } from './ui/ProgressStepper'
+export { FormFactorToggle, DEVICE_MODES } from './ui/FormFactorToggle'
+export { PrecisionToggle, PRECISION_MODES } from './ui/PrecisionToggle'
 
 export { startAnalysis, joinAnalysis, emitAuthAuditStart } from './api/analysisSocket'
 export type { AnalysisCallbacks, AuditPrecision, StartAnalysisOptions } from './api/analysisSocket'

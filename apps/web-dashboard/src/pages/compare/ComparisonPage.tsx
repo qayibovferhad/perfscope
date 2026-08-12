@@ -8,9 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useComparisonSide } from '@/features/compare/model/useComparisonSide';
 import { useWebsites } from '@/entities/website';
-import { useAuditModeStore } from '@/entities/analysis/model/auditModeStore';
-import { FormFactorToggle } from '@/entities/analysis/ui/FormFactorToggle';
-import { PrecisionToggle } from '@/entities/analysis/ui/PrecisionToggle';
+import { useAuditModeStore, FormFactorToggle, PrecisionToggle } from '@/entities/analysis';
 import { useCompetitorSessions } from '@/features/compare/model/useCompetitorSessions';
 import { SideInputBar } from '@/features/compare/ui/SideInputBar';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
@@ -210,37 +208,6 @@ export function ComparisonPage() {
             Launch Competitive Analysis
           </Button>
 
-          {/* <AnimatePresence>
-            {isRunning && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="w-full max-w-[520px] overflow-hidden"
-              >
-                <div className="flex items-center justify-between text-[11.5px] mb-2 px-1">
-                  <span className="flex items-center gap-[7px]">
-                    <span className="w-2 h-2 rounded-full bg-ld-accent shrink-0" />
-                    <span className={target.isLoading ? 'text-ld-text-3 animate-pulse' : 'text-ld-accent-2'}>
-                      {target.isLoading ? (target.progress?.message ?? 'Analyzing…') : 'Ready'}
-                    </span>
-                  </span>
-                  <span className="flex items-center gap-[7px]">
-                    <span className={competitor.isLoading ? 'text-ld-text-3 animate-pulse' : 'text-ld-amber'}>
-                      {competitor.isLoading ? (competitor.progress?.message ?? 'Analyzing…') : 'Ready'}
-                    </span>
-                    <span className="w-2 h-2 rounded-full shrink-0 bg-ld-amber" />
-                  </span>
-                </div>
-                <DualProgressBar
-                  targetPct={target.progress?.progress ?? 0}
-                  competitorPct={competitor.progress?.progress ?? 0}
-                  targetDone={target.isSuccess}
-                  competitorDone={competitor.isSuccess}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence> */}
         </div>
       )}
 

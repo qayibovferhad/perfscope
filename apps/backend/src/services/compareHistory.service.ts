@@ -28,7 +28,7 @@ function hostname(url: string): string {
   try { return new URL(url).hostname; } catch { return url; }
 }
 
-export function makePairId(url1: string, url2: string): string {
+function makePairId(url1: string, url2: string): string {
   return [hostname(url1), hostname(url2)].sort().join('-vs-');
 }
 

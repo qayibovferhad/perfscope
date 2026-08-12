@@ -4,8 +4,7 @@ import {
 import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes } from '@/shared/lib/format';
-import { PanelHeader } from '@/shared/ui/panel/PanelHeader';
-import { Chip } from '@/shared/ui/panel/Chip';
+import { PanelHeader, Chip } from '@/shared/ui/panel';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
 

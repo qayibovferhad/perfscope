@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { isValidTime } from '@perfscope/shared';
 import { User } from '../models/User.model.js';
 import { config } from '../config/index.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
@@ -177,7 +178,7 @@ authRouter.patch('/auth/digest', requireAuth, async (req: AuthRequest, res: Resp
     if (typeof body.day === 'number' && Number.isInteger(body.day) && body.day >= 0 && body.day <= 6) {
       update['digest.day'] = body.day;
     }
-    if (typeof body.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(body.time)) {
+    if (typeof body.time === 'string' && isValidTime(body.time)) {
       update['digest.time'] = body.time;
     }
     if (Object.keys(update).length === 0) {

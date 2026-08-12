@@ -1,5 +1,5 @@
 import { Skeleton } from '@/shared/ui/skeleton';
-import { MetricsGrid } from '@/entities/analysis/ui/MetricsGrid';
+import { MetricsGrid } from '@/entities/analysis';
 import type { PartialMap } from '../model/useAnalysis';
 
 function VitalSkeleton() {

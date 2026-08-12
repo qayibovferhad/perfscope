@@ -1,4 +1,5 @@
-import { hasResult, fmtMs, HAS_RESULT_FIELDS } from '@perfscope/shared';
+import { hasResult, fmtMs } from '@perfscope/shared';
+import { HAS_RESULT_FILTER } from '../lib/history.js';
 import { User } from '../models/User.model.js';
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
@@ -40,9 +41,6 @@ function mean(values: number[]): number | null {
   if (!values.length) return null;
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
 }
-
-/** Mongo-side equivalent of hasResult, so a failed run never reaches the aggregation. */
-const HAS_RESULT_FILTER = { $or: HAS_RESULT_FIELDS.map(field => ({ [field]: { $gt: 0 } })) };
 
 export async function buildDigest(userId: string, now = new Date()): Promise<DigestData | null> {
   const to       = now;

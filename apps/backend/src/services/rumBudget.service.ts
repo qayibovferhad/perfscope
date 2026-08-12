@@ -67,7 +67,7 @@ async function evaluate(site: IWebsite): Promise<FieldFailure[]> {
  * name so a field breach and a lab breach are separate incidents — they can be true at
  * different times and mean different things.
  */
-export async function checkFieldBudgets(site: IWebsite): Promise<void> {
+async function checkFieldBudgets(site: IWebsite): Promise<void> {
   if (!site.budgets?.webhookUrl && !site.budgets?.alertEmail) return;
 
   const failures = await evaluate(site);

@@ -18,7 +18,7 @@ const WEBHOOK_TIMEOUT_MS = 5000;
  */
 const EVENT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
-export type AlertStatus = 'firing' | 'recovered' | 'event';
+type AlertStatus = 'firing' | 'recovered' | 'event';
 
 export interface Alert {
   /** Short headline, e.g. "budget breach". */
@@ -48,7 +48,7 @@ export interface Alert {
  * Slack and Discord incoming webhooks reject arbitrary JSON — they each need their own
  * envelope. Anything else receives the full structured payload.
  */
-export function webhookBody(webhookUrl: string, alert: Alert, site: { url: string; name: string }): unknown {
+function webhookBody(webhookUrl: string, alert: Alert, site: { url: string; name: string }): unknown {
   const icon  = alert.status === 'recovered' ? ':white_check_mark:' : ':warning:';
   const title = `${icon} PerfScope ${alert.kind} — ${site.name || site.url}`;
   const text  = `${title}\n${alert.url} (${alert.formFactor ?? 'desktop'})\n${alert.lines.map(l => `• ${l}`).join('\n')}`;
