@@ -18,28 +18,21 @@ export interface ProjectAuditEntry extends HistoryEntry {
   routePath: string
 }
 
-/** One site's scheduled runs, grouped by the route they measured. */
-export interface ScheduledRouteGroup {
-  routePath: string
-  entries:   ProjectAuditEntry[]
-}
-
-export interface ScheduledSiteGroup {
-  websiteId: string
-  name:      string
-  url:       string
-  /** Newest run across every route, so the page can lead with what happened last. */
-  lastRunAt: string
-  runs:      number
-  routes:    ScheduledRouteGroup[]
-}
-
 export interface RouteGroup {
   routePath: string
   entries:   ProjectAuditEntry[]
   trend:     'improving' | 'regressing' | 'stable' | 'single'
   lastScore: number
 }
+
+/**
+ * One site's scheduled runs, in the shape the project page already renders.
+ *
+ * Deliberately the same type rather than a parallel one: the scheduled page is that page
+ * repeated per site, so it reuses RouteGroupCard, the audit table and the stat strip
+ * instead of inventing a second way to show the same thing.
+ */
+export type ScheduledSiteReport = ProjectAuditsResult
 
 export interface ProjectAuditsResult {
   project: { id: string; name: string; url: string }

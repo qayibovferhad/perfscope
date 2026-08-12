@@ -3,7 +3,7 @@ import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { hostOf, normalizedUrlHostRegex } from '../lib/url.js';
-import type { AuditSource, ScheduledSiteGroup, ScheduledRouteGroup } from '@perfscope/shared';
+import type { AuditSource, ScheduledSiteReport } from '@perfscope/shared';
 import type {
   HistoryEntry,
   ProjectAuditEntry,
@@ -86,6 +86,62 @@ function toProjectEntry(d: any): ProjectAuditEntry {
   };
 }
 
+/**
+ * Group a site's audits by route and summarise them — the shape the project page renders.
+ *
+ * Shared by the project view and the scheduled report so the two cannot drift into showing
+ * the same audits differently.
+ */
+function toSiteReport(
+  project: { id: string; name: string; url: string },
+  entries: ProjectAuditEntry[],
+): ProjectAuditsResult {
+  const byRoute = new Map<string, ProjectAuditEntry[]>();
+  for (const entry of entries) {
+    const arr = byRoute.get(entry.routePath) ?? [];
+    arr.push(entry);
+    byRoute.set(entry.routePath, arr);
+  }
+
+  const groups: RouteGroup[] = [];
+  for (const [routePath, routeEntries] of byRoute) {
+    const sorted = [...routeEntries].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+    // Failed runs stay in `entries` so the table still shows them, but the headline
+    // score and the trend arrow are computed from the runs that actually produced one.
+    const scored = sorted.filter(hasResult);
+    groups.push({
+      routePath,
+      entries:   sorted,
+      trend:     computeTrend(scored),
+      lastScore: scored[scored.length - 1]?.scores.performance ?? 0,
+    });
+  }
+
+  groups.sort((a, b) => a.routePath.localeCompare(b.routePath));
+
+  const allScores      = entries.filter(hasResult).map((e) => e.scores.performance);
+  const avgPerformance = allScores.length
+    ? Math.round(allScores.reduce((sum, score) => sum + score, 0) / allScores.length)
+    : 0;
+
+  const lastEntry = entries.length
+    ? entries.reduce((a, b) => (new Date(a.timestamp) > new Date(b.timestamp) ? a : b))
+    : null;
+
+  return {
+    project,
+    groups,
+    stats: {
+      totalAudits:    entries.length,
+      avgPerformance,
+      uniqueRoutes:   groups.length,
+      lastAuditAt:    lastEntry?.timestamp ?? null,
+    },
+  };
+}
+
 export const HistoryService = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async save(
@@ -157,66 +213,49 @@ export const HistoryService = {
   },
 
   /**
-   * Everything the timetable produced, grouped the way it was ordered: by site, then by
-   * the route each run measured.
+   * Everything the timetable produced, one report per site.
    *
-   * Flat, these read as noise — the same handful of URLs over and over, one line per
-   * night. Grouped, the page answers the question the schedule was set up to ask: what has
-   * each route been doing since I stopped watching it.
+   * Each site comes back in exactly the shape the project page renders, so the scheduled
+   * page is that page repeated rather than a second design for the same audits. Runs
+   * recorded before a site was adopted into a project fall back to their host, which keeps
+   * them on a card instead of dropping them.
    */
-  async getScheduled(userId: string): Promise<ScheduledSiteGroup[]> {
+  async getScheduled(userId: string): Promise<ScheduledSiteReport[]> {
     const [docs, sites] = await Promise.all([
       HistoryModel
         .find({ userId, ...SCHEDULED_ONLY_FILTER })
         .select(ENTRY_FIELDS + ' projectId')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: 1 })
         .lean(),
       Website.find({ userId }).select('url name').lean(),
     ]);
 
     const siteById = new Map(sites.map(site => [String(site._id), site]));
-
-    // Keyed by projectId, falling back to the host: runs recorded before a site was
-    // adopted into a project still belong on its card rather than in a nameless group.
-    const groups = new Map<string, { site: { url: string; name: string }; routes: Map<string, ProjectAuditEntry[]> }>();
+    const byProject = new Map<string, { project: { id: string; name: string; url: string }; entries: ProjectAuditEntry[] }>();
 
     for (const doc of docs) {
       const projectId = (doc as { projectId?: string }).projectId ?? '';
-      const site      = siteById.get(projectId);
-      const key       = projectId || hostOf(doc.url);
+      const host      = hostOf(doc.url);
+      const key       = projectId || host;
       if (!key) continue;
 
-      const group = groups.get(key) ?? {
-        site: {
-          url:  site?.url  ?? `https://${hostOf(doc.url)}`,
-          name: site?.name || site?.url || hostOf(doc.url),
+      const site  = siteById.get(projectId);
+      const group = byProject.get(key) ?? {
+        project: {
+          id:   projectId,
+          name: site?.name || site?.url || host,
+          url:  site?.url  ?? `https://${host}`,
         },
-        routes: new Map<string, ProjectAuditEntry[]>(),
+        entries: [],
       };
-
-      const entry = toProjectEntry(doc);
-      const list  = group.routes.get(entry.routePath) ?? [];
-      list.push(entry);
-      group.routes.set(entry.routePath, list);
-      groups.set(key, group);
+      group.entries.push(toProjectEntry(doc));
+      byProject.set(key, group);
     }
 
-    return [...groups.entries()]
-      .map(([websiteId, group]): ScheduledSiteGroup => {
-        const routes: ScheduledRouteGroup[] = [...group.routes.entries()]
-          .map(([routePath, entries]) => ({ routePath, entries }))
-          .sort((a, b) => a.routePath.localeCompare(b.routePath));
-
-        const runs      = routes.reduce((sum, route) => sum + route.entries.length, 0);
-        // Every list above is newest-first, so the first entry of each route is its latest.
-        const lastRunAt = routes
-          .map(route => route.entries[0]?.timestamp ?? '')
-          .sort()
-          .at(-1) ?? '';
-
-        return { websiteId, name: group.site.name, url: group.site.url, lastRunAt, runs, routes };
-      })
-      .sort((a, b) => b.lastRunAt.localeCompare(a.lastRunAt));
+    return [...byProject.values()]
+      .map(({ project, entries }) => toSiteReport(project, entries))
+      // Whoever ran most recently leads: that is the report the user came to read.
+      .sort((a, b) => (b.stats.lastAuditAt ?? '').localeCompare(a.stats.lastAuditAt ?? ''));
   },
 
   async getAll(userId: string): Promise<HistoryEntry[]> {
@@ -255,55 +294,13 @@ export const HistoryService = {
       .sort({ createdAt: 1 })
       .lean();
 
-    const entries = docs.map(toProjectEntry);
-
-    const byRoute = new Map<string, ProjectAuditEntry[]>();
-    for (const e of entries) {
-      const arr = byRoute.get(e.routePath) ?? [];
-      arr.push(e);
-      byRoute.set(e.routePath, arr);
-    }
-
-    const groups: RouteGroup[] = [];
-    for (const [routePath, routeEntries] of byRoute) {
-      const sorted = [...routeEntries].sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-      );
-      // Failed runs stay in `entries` so the table still shows them, but the headline
-      // score and the trend arrow are computed from the runs that actually produced one.
-      const scored = sorted.filter(hasResult);
-      groups.push({
-        routePath,
-        entries:   sorted,
-        trend:     computeTrend(scored),
-        lastScore: scored[scored.length - 1]?.scores.performance ?? 0,
-      });
-    }
-
-    groups.sort((a, b) => a.routePath.localeCompare(b.routePath));
-
-    const allScores    = entries.filter(hasResult).map((e) => e.scores.performance);
-    const avgPerformance = allScores.length
-      ? Math.round(allScores.reduce((s, v) => s + v, 0) / allScores.length)
-      : 0;
-
-    const lastEntry = entries.length
-      ? entries.reduce((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b)
-      : null;
-
-    return {
-      project: {
+    return toSiteReport(
+      {
         id:   projectId,
         name: website.name || hostOf(website.url) || website.url,
         url:  website.url,
       },
-      groups,
-      stats: {
-        totalAudits:    entries.length,
-        avgPerformance,
-        uniqueRoutes:   groups.length,
-        lastAuditAt:    lastEntry?.timestamp ?? null,
-      },
-    };
+      docs.map(toProjectEntry),
+    );
   },
 };

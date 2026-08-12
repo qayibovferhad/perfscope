@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, fetchJson } from '@/shared/api/client';
-import type { AnalysisResult, HistoryEntry, ScheduledSiteGroup } from '@perfscope/shared';
+import type { AnalysisResult, HistoryEntry, ScheduledSiteReport } from '@perfscope/shared';
 
 export function useHistory(url: string | null) {
   return useQuery<HistoryEntry[]>({
@@ -48,9 +48,9 @@ export function useAllHistory() {
  * exclude scheduled runs, so they are never in that cache to filter.
  */
 export function useScheduledRuns() {
-  return useQuery<ScheduledSiteGroup[]>({
+  return useQuery<ScheduledSiteReport[]>({
     queryKey: ['history', 'scheduled'],
-    queryFn:  async () => (await fetchJson<ScheduledSiteGroup[]>('/history/scheduled')) ?? [],
+    queryFn:  async () => (await fetchJson<ScheduledSiteReport[]>('/history/scheduled')) ?? [],
     staleTime: 0,
   });
 }

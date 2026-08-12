@@ -6,8 +6,7 @@ export type {
   ProjectAuditEntry,
   RouteGroup,
   ProjectAuditsResult,
-  ScheduledSiteGroup,
-  ScheduledRouteGroup,
+  ScheduledSiteReport,
   AuditSource,
 } from '@perfscope/shared'
 

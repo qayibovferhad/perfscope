@@ -1,64 +1,32 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarClock, Loader2, Moon, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import { scoreVerdict } from '@perfscope/shared';
-import { scoreBand } from '@/entities/analysis';
+import {
+  BarChart3, Clock, ExternalLink, Globe, Loader2, Moon, Route, Timer,
+} from 'lucide-react';
 import { useScheduledRuns, fetchHistoryResult } from '@/entities/history';
 import type { ProjectAuditEntry } from '@/entities/history';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
-import { Panel, PanelHeader } from '@/shared/ui/panel';
-import { QueryErrorPanel, StatePanel } from '@/shared/ui/state-panel';
+import { RouteGroupCard } from '@/features/projects/ui/RouteGroupCard';
+import { timeAgo } from '@/features/projects/lib/formatters';
+import { scoreBand } from '@/entities/analysis';
+import { getHostname } from '@/entities/website';
 import { Button } from '@/shared/ui/button';
+import { StatCard } from '@/shared/ui/stat-card';
+import { QueryErrorPanel, StatePanel } from '@/shared/ui/state-panel';
 
-const BAND_TONE = {
-  good: 'text-ld-score-good',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-} as const;
+/** The badge the project header carries, so a site reads the same on both pages. */
+function AvgBadge({ score }: { score: number }) {
+  const band = scoreBand(score);
+  const cls = band === 'good'
+    ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
+    : band === 'warn'
+    ? 'text-ld-amber border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)]'
+    : 'text-ld-rose border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.1)]';
 
-/** "Aug 12, 03:00" — the date is the point of this page, so it is never relative. */
-function fmtRunDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
-function timeAgo(iso: string): string {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 60) return `${Math.max(mins, 0)}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
-
-/**
- * Change against the run before it — the previous *scheduled* run of the same route, which
- * is the only fair comparison on a page of unattended runs. Arrowed only when it clears
- * the shared noise threshold; anything smaller is the measurement, not the page.
- */
-function Delta({ entry, prev }: { entry: ProjectAuditEntry; prev: ProjectAuditEntry | undefined }) {
-  if (!prev) {
-    return <span className="font-mono text-[11.5px] text-ld-text-3 w-[64px] text-right">first run</span>;
-  }
-
-  const delta   = entry.scores.performance - prev.scores.performance;
-  const verdict = scoreVerdict(entry.scores.performance, prev.scores.performance);
-
-  if (verdict === 'stable') {
-    return (
-      <span className="inline-flex items-center justify-end gap-[4px] font-mono text-[11.5px] text-ld-text-3 w-[64px]">
-        <Minus className="w-[12px] h-[12px]" />{delta === 0 ? '0' : delta > 0 ? `+${delta}` : delta}
-      </span>
-    );
-  }
-
-  const up = verdict === 'improved';
   return (
-    <span className={`inline-flex items-center justify-end gap-[4px] font-mono text-[11.5px] font-semibold w-[64px] ${
-      up ? 'text-ld-accent' : 'text-ld-rose'
-    }`}>
-      {up ? <ArrowUpRight className="w-[12px] h-[12px]" /> : <ArrowDownRight className="w-[12px] h-[12px]" />}
-      {up ? `+${delta}` : delta}
+    <span className={`inline-flex items-center gap-[8px] text-[13px] font-semibold px-[14px] py-[8px] rounded-full border ${cls}`}>
+      <b className="font-mono font-bold">{score}</b>
+      Avg performance
     </span>
   );
 }
@@ -66,18 +34,18 @@ function Delta({ entry, prev }: { entry: ProjectAuditEntry; prev: ProjectAuditEn
 /**
  * Everything the automation ran, kept out of the audit lists.
  *
- * A nightly timetable produces more runs in a week than a person does in a month, so the
- * history page and the dashboard's recent audits stay a record of what the user did, and
- * this page answers the other question: what has each route been doing unattended.
+ * Laid out as the project page repeated once per site — same header, same stat strip, same
+ * expandable route cards with the full metrics table — because it shows the same thing:
+ * a site's audits grouped by route. The difference is only which runs are in it.
  */
 export function ScheduledPage() {
   const { data: sites = [], isLoading, isError, refetch } = useScheduledRuns();
-  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
   const navigate  = useNavigate();
   const setResult = useAnalysisStore(s => s.setResult);
 
-  async function openInAnalyzer(entry: ProjectAuditEntry) {
-    setOpeningId(entry.id);
+  async function openReport(entry: ProjectAuditEntry) {
+    setLoadingId(entry.id);
     try {
       const result = await fetchHistoryResult(entry.id);
       setResult(result, entry.url);
@@ -85,23 +53,24 @@ export function ScheduledPage() {
     } catch {
       // The full report is dropped for failed runs — the row simply stays put.
     } finally {
-      setOpeningId(null);
+      setLoadingId(null);
     }
   }
 
   return (
-    <div className="w-[min(1120px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[34px] pb-20">
+    <div className="px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] w-[min(1080px,100%)] mx-auto flex flex-col gap-[44px]">
 
-      <div className="mb-[26px]">
+      {/* ── Page header ──────────────────────────────────────────────── */}
+      <div>
         <p className="font-mono text-[12px] tracking-[.16em] uppercase text-ld-accent font-semibold">
           Automation
         </p>
-        <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
+        <h1 className="text-[clamp(24px,3.2vw,32px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
           Scheduled reports
         </h1>
         <p className="text-[14.5px] text-ld-text-2 mt-[6px]">
-          Every run the timetable made, by site and route. Each is a median of three
-          measurements, so a change here is the page, not the noise.
+          Every run the timetable made, by site and route. Each is the median of three
+          measurements, so a change here is the page and not the noise.
         </p>
       </div>
 
@@ -124,62 +93,73 @@ export function ScheduledPage() {
         />
       )}
 
-      <div className="flex flex-col gap-[18px]">
-        {sites.map(site => (
-          <Panel key={site.websiteId}>
-            <PanelHeader
-              icon={<CalendarClock />}
-              title={site.name}
-              meta={`${site.runs} run${site.runs === 1 ? '' : 's'} · last ${timeAgo(site.lastRunAt)}`}
+      {/* ── One site, one report ─────────────────────────────────────── */}
+      {sites.map(site => (
+        <section key={site.project.id || site.project.url} className="flex flex-col gap-[22px]">
+
+          <div className="flex items-center gap-[16px] flex-wrap">
+            <span className="w-[54px] h-[54px] rounded-[15px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
+              <Globe className="w-[26px] h-[26px]" />
+            </span>
+
+            <div className="flex-1 min-w-[200px]">
+              <h2 className="text-[22px] font-extrabold tracking-[-0.02em] text-ld-text leading-none">
+                {site.project.name}
+              </h2>
+              <span className="inline-flex items-center gap-[7px] font-mono text-[13.5px] text-ld-text-3 mt-[5px]">
+                {getHostname(site.project.url, site.project.url)}
+                <a
+                  href={site.project.url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex text-ld-text-3 transition-colors duration-200 hover:text-ld-accent"
+                  aria-label="Open site"
+                >
+                  <ExternalLink className="w-[14px] h-[14px]" />
+                </a>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-[11px] flex-wrap">
+              {site.stats.totalAudits > 0 && <AvgBadge score={site.stats.avgPerformance} />}
+              {/* The project page holds everything about this site — including the audits
+                  the user ran themselves, which this page deliberately leaves out. */}
+              {site.project.id && (
+                <Button variant="outline" asChild>
+                  <Link to={`/projects/${site.project.id}`}>Open project</Link>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 min-[680px]:grid-cols-2 min-[920px]:grid-cols-4 gap-[14px]">
+            <StatCard label="Scheduled Runs" value={site.stats.totalAudits}  icon={<Timer     className="w-5 h-5" />} />
+            <StatCard label="Routes"         value={site.stats.uniqueRoutes} icon={<Route     className="w-5 h-5" />} />
+            <StatCard label="Avg Score"      value={site.stats.avgPerformance} icon={<BarChart3 className="w-5 h-5" />} />
+            <StatCard
+              label="Last Run"
+              value={site.stats.lastAuditAt ? timeAgo(site.stats.lastAuditAt) : '—'}
+              icon={<Clock className="w-5 h-5" />}
             />
+          </div>
 
-            {site.routes.map(route => (
-              <div key={route.routePath} className="border-t border-ld-border first:border-t-0">
-                <div className="flex items-center justify-between gap-3 px-[18px] py-[10px] bg-ld-surface-2">
-                  <span className="font-mono text-[12.5px] font-semibold text-ld-text truncate">
-                    {route.routePath}
-                  </span>
-                  <span className="font-mono text-[11px] text-ld-text-3 shrink-0">
-                    {route.entries.length} run{route.entries.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-
-                <ul className="flex flex-col">
-                  {route.entries.map((entry, i) => (
-                    <li key={entry.id}>
-                      <button
-                        type="button"
-                        onClick={() => void openInAnalyzer(entry)}
-                        disabled={openingId === entry.id}
-                        className="w-full flex items-center gap-[14px] px-[18px] py-[11px] text-left
-                                   border-t border-ld-border transition-colors duration-150
-                                   hover:bg-ld-surface-hover disabled:opacity-60"
-                      >
-                        <span className={`font-mono text-[17px] font-semibold tabular-nums w-[30px] shrink-0 ${
-                          BAND_TONE[scoreBand(entry.scores.performance)]
-                        }`}>
-                          {entry.scores.performance}
-                        </span>
-
-                        <span className="font-mono text-[12.5px] text-ld-text-2 flex-1 min-w-0 truncate">
-                          {fmtRunDate(entry.timestamp)}
-                        </span>
-
-                        {/* Entries arrive newest-first, so the next one is the run before. */}
-                        <Delta entry={entry} prev={route.entries[i + 1]} />
-
-                        {openingId === entry.id && (
-                          <Loader2 className="w-[13px] h-[13px] animate-spin text-ld-accent shrink-0" />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <div className="flex flex-col gap-[14px]">
+            {site.groups.map((group, i) => (
+              <RouteGroupCard
+                key={group.routePath}
+                group={group}
+                projectId={site.project.id}
+                compareMode={false}
+                selectedIds={new Set<string>()}
+                onToggleSelect={() => {}}
+                onOpen={entry => void openReport(entry)}
+                loadingId={loadingId}
+                // The first route opens on arrival: a page of collapsed rows makes the
+                // reader click before it shows anything at all.
+                initialOpen={i === 0}
+              />
             ))}
-          </Panel>
-        ))}
-      </div>
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
