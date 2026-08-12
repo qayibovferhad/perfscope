@@ -3,8 +3,11 @@
  * database — the state in which every list is legitimately empty and the pages used to
  * report "the server did not respond" instead.
  *
- * Point E2E_WEB_URL at a dev server proxied to a backend started without MONGODB_URI.
- * Run with that pair up:  E2E_WEB_URL=http://localhost:5199 node e2e/empty-account.probe.mjs
+ * Needs the probe pair: a backend on 3197 started with an unreachable MONGODB_URI, and the
+ * dev server that proxies to it —
+ *   cd apps/backend && PORT=3197 MONGODB_URI=mongodb://127.0.0.1:27099/x JWT_SECRET=probe-secret npx tsx src/index.ts
+ *   cd apps/web-dashboard && npx vite --config vite.probe.config.ts
+ * then:  node e2e/empty-account.probe.mjs
  */
 import puppeteer from 'puppeteer';
 import { createHmac } from 'node:crypto';

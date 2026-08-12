@@ -33,6 +33,20 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * Whether a failed request is worth trying again unprompted.
+ *
+ * The distinction the retry loop needs: a request that never got an answer (a restarting
+ * server, a dropped connection, a timeout) will very likely succeed in a moment, while a
+ * 4xx *is* the answer — the server is up and saying no, and re-asking it every few seconds
+ * is a loop that never ends. 408 and 429 are the two that explicitly mean "later".
+ */
+export function isTransientError(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  if (status === undefined) return true;
+  return status >= 500 || status === 408 || status === 429;
+}
+
 /** Set by the backend on every response while it has no database. */
 const STORAGE_HEADER = 'x-perfscope-storage';
 

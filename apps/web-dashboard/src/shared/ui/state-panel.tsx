@@ -82,7 +82,7 @@ export function QueryErrorPanel({
     <StatePanel
       variant="error"
       title={`Could not load ${what}`}
-      description="The server did not respond. It may be restarting — everything else still works."
+      description="The server did not respond. It may be restarting — this keeps trying, and the page fills in on its own once it answers."
       className={className}
       {...(onRetry
         ? {

@@ -1,13 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, type Query } from '@tanstack/react-query';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import './styles/index.css';
 import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
-import { configureApiToken, configureUnauthorizedHandler } from '@/shared/api/client';
+import { configureApiToken, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
 import { useAuthStore } from '@/features/auth/model/authStore';
 import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
@@ -32,6 +32,15 @@ configureUnauthorizedHandler((reason) => {
   window.location.replace(`/login?reason=${reason}${back}`);
 });
 
+/** How often a failed query re-tries by itself. Short enough that a backend restart is
+ *  over before the user reaches for the reload button, slow enough to be free. */
+const ERROR_RETRY_MS = 5_000;
+
+/** A query that failed for a reason that may pass on its own. A 404 or a 400 never will,
+ *  and polling it for as long as the page is open would be a loop with no end. */
+const isRecoverable = (query: Query) =>
+  query.state.status === 'error' && isTransientError(query.state.error);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     mutations: { retry: false },
@@ -43,10 +52,20 @@ const queryClient = new QueryClient({
       // retry still absorbs a genuine blip; anything worse should be reported, not hidden.
       retry: 1,
       retryDelay: 400,
-      // With the ambient staleTime of 0, every return to the tab re-runs the full sequence
-      // above — a broken page re-enters the spinner each time the user comes back. Every
-      // mutation and finished audit already invalidates explicitly.
-      refetchOnWindowFocus: false,
+      // Nothing else notices that the backend came back. A dev server reloading, a laptop
+      // waking, a restart mid-deploy: the request fails once and the page keeps its error
+      // panel for as long as it stays open, long after the cause is gone. Only *failed*
+      // queries poll — a healthy page issues no extra requests — and the first success
+      // stops it, so the panel clears itself a few seconds after the backend is back.
+      refetchInterval: (query) => (isRecoverable(query) ? ERROR_RETRY_MS : false),
+      // Polling a hidden tab keeps a broken page busy for no one; the focus rule below
+      // covers coming back to it.
+      refetchIntervalInBackground: false,
+      // Healthy data is left alone — with the ambient staleTime of 0, refetching on every
+      // focus re-ran the whole app's requests each time the user changed tab, and every
+      // mutation and finished audit already invalidates explicitly. A *failed* query is the
+      // exception: returning to the tab is the clearest signal to try again.
+      refetchOnWindowFocus: (query) => isRecoverable(query),
     },
   },
 });
