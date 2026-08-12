@@ -1,14 +1,23 @@
-import { Router, type Response } from 'express';
-import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
+import { Router } from 'express';
+import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import type { OnboardingStatus, OnboardingStepId } from '@perfscope/shared';
-import { isDbReady } from '../config/database.js';
+import { emptyOnNoStorage } from '../middleware/storage.middleware.js';
+import { asyncHandler } from '../lib/errors.js';
 
 export const onboardingRouter = Router();
 
 /** Ceiling on the evidence counts — past this the exact number tells the user nothing. */
 const COUNT_CAP = 1000;
+
+/** Nothing stored means no step can have been completed — the checklist is exactly right
+ *  in that state, and far better than the dashboard reporting a failure. */
+const emptyStatus = (): OnboardingStatus => ({
+  steps:    { website: false, audit: false, automation: false },
+  counts:   { websites: 0, audits: 0 },
+  complete: false,
+});
 
 /**
  * GET /api/onboarding/status — how far the account has actually got.
@@ -18,24 +27,14 @@ const COUNT_CAP = 1000;
  * through the UI — and a step that is later undone (every site deleted) correctly goes
  * back to incomplete.
  */
-onboardingRouter.get('/onboarding/status', requireAuth, async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId!;
+onboardingRouter.get(
+  '/onboarding/status',
+  requireAuth,
+  emptyOnNoStorage(emptyStatus),
+  asyncHandler<AuthedRequest>(async (req, res) => {
+    const userId = req.userId;
 
-    // Nothing stored means no step can have been completed — the checklist is exactly
-    // right in that state, and far better than the dashboard reporting a failure.
-    if (!isDbReady()) {
-      const status: OnboardingStatus = {
-        steps:    { website: false, audit: false, automation: false },
-        counts:   { websites: 0, audits: 0 },
-        complete: false,
-      };
-      return res.json({ success: true, data: status });
-    }
-
-    const sites = await Website.find({ userId })
-      .select('_id automation')
-      .lean();
+    const sites = await Website.find({ userId }).select('_id automation').lean();
 
     // Capped: the panel needs "any, and roughly how many" — never an exact total, and
     // this runs on every dashboard visit. Counts at the cap are rendered as "1000+".
@@ -49,13 +48,10 @@ onboardingRouter.get('/onboarding/status', requireAuth, async (req: AuthRequest,
 
     const status: OnboardingStatus = {
       steps,
-      counts: { websites: sites.length, audits },
+      counts:   { websites: sites.length, audits },
       complete: Object.values(steps).every(Boolean),
     };
 
-    return res.json({ success: true, data: status });
-  } catch (err) {
-    console.error('[onboarding]', err);
-    return res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
+    res.json({ success: true, data: status });
+  }),
+);

@@ -40,3 +40,22 @@ export function requireStorageForWrites(req: Request, res: Response, next: NextF
   }
   requireStorage(req, res, next);
 }
+
+/**
+ * The read side of the same rule: with no database there is provably nothing stored,
+ * so a listing answers with its empty shape rather than a 500. The banner driven by
+ * STORAGE_HEADER is what tells the user why the page is empty.
+ *
+ * A route wrapper rather than a copied `if (!isDbReady()) return res.json(...)` in
+ * each handler — seven of those existed, and the eighth read route added would have
+ * been the one that forgot and 500'd.
+ */
+export function emptyOnNoStorage<T>(shape: () => T) {
+  return (_req: Request, res: Response, next: NextFunction): void => {
+    if (isDbReady()) {
+      next();
+      return;
+    }
+    res.json({ success: true, data: shape() });
+  };
+}

@@ -17,6 +17,7 @@ import { rumRouter } from './routes/rum.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
+import { errorMiddleware } from './lib/errors.js';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -74,6 +75,10 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use((_req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });
   });
+
+  // Last in the chain, after the routes: anything a handler throws lands here and
+  // becomes a response. Without it an uncaught throw hung until the 70s timeout.
+  app.use(errorMiddleware);
 
   return { app, httpServer };
 }
