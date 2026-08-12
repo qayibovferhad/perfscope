@@ -16,6 +16,7 @@ import { cliAuthRouter }           from './routes/cliAuth.routes.js';
 import { rumRouter } from './routes/rum.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
+import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -43,8 +44,11 @@ export function createApp(): { app: Application; httpServer: Server } {
   registerAnalysisSocket(io);
 
   // ── Middleware ───────────────────────────────────────────────────────────
-  app.use(cors({ origin: config.clientUrl }));
+  // The storage header has to be listed explicitly: a browser cannot read a custom
+  // response header across origins unless the server exposes it.
+  app.use(cors({ origin: config.clientUrl, exposedHeaders: [STORAGE_HEADER] }));
   app.use(express.json());
+  app.use(markStorageState);
 
   // ── Routes ───────────────────────────────────────────────────────────────
   // Mounted at the root: it serves /rum.js as well as /api/rum, and carries its own

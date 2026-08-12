@@ -12,8 +12,14 @@ import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 import { escapeRegex, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
 import { computeSiteScores } from '../services/overview.service.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
+import { isDbReady } from '../config/database.js';
+import { requireStorageForWrites } from '../middleware/storage.middleware.js';
 
 export const websiteRouter: Router = Router();
+
+// Every route here is pure persistence: without a database a write cannot be honoured, and
+// saying so beats a 500. Reads answer with their empty shape instead — see below.
+websiteRouter.use(requireStorageForWrites);
 
 const MAX_LIMIT = 100;
 
@@ -44,12 +50,20 @@ websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Respon
     const filter = ownedFilter(req.userId, q);
 
     const paginated = rawPage !== undefined || rawLimit !== undefined || q !== undefined;
+    const limit     = Math.min(Math.max(parseInt(rawLimit ?? '12', 10) || 12, 1), MAX_LIMIT);
+
+    // No database is not a failed request: there is provably nothing stored. Answering with
+    // the empty shape leaves the page on "no websites yet" — the storage header set in
+    // app.ts is what tells the user why — instead of "the server did not respond".
+    if (!isDbReady()) {
+      return res.json(paginated ? { items: [], total: 0, page: 1, limit, totalPages: 1 } : []);
+    }
+
     if (!paginated) {
       const websites = await Website.find(filter).sort({ createdAt: -1 });
       return res.json(websites);
     }
 
-    const limit     = Math.min(Math.max(parseInt(rawLimit ?? '12', 10) || 12, 1), MAX_LIMIT);
     const requested = Math.max(parseInt(rawPage ?? '1', 10) || 1, 1);
 
     // Count first so an out-of-range page is clamped before the skip is computed —
@@ -75,6 +89,9 @@ websiteRouter.get('/websites', requireAuth, async (req: AuthRequest, res: Respon
 // user types and does not vanish when a filter matches nothing.
 websiteRouter.get('/websites/summary', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    if (!isDbReady()) {
+      return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });
+    }
     const sites = await Website.find(ownedFilter(req.userId)).select('url').lean();
     if (!sites.length) {
       return res.json({ total: 0, audited: 0, avgScore: 0, needsAttention: 0 });

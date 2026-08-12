@@ -1,11 +1,20 @@
 import { Router, type Request, type Response } from 'express';
 import { CompareHistoryService } from '../services/compareHistory.service.js';
+import { requireStorageForWrites } from '../middleware/storage.middleware.js';
+import { isDbReady } from '../config/database.js';
 
 export const compareHistoryRouter: Router = Router();
+
+// Saving a comparison needs somewhere to save it; listing past ones does not.
+compareHistoryRouter.use(requireStorageForWrites);
 
 // GET /api/compare-history — list unique pairs (latest per pair)
 compareHistoryRouter.get('/compare-history', async (req: Request, res: Response) => {
   try {
+    if (!isDbReady()) {
+      res.json({ success: true, data: [] });
+      return;
+    }
     const search = typeof req.query['search'] === 'string'
       ? (req.query['search'] as string) : undefined;
     const data   = await CompareHistoryService.listPairs(search);
@@ -19,6 +28,10 @@ compareHistoryRouter.get('/compare-history', async (req: Request, res: Response)
 // GET /api/compare-history/:pairId — full trend for a pair
 compareHistoryRouter.get('/compare-history/:pairId', async (req: Request, res: Response) => {
   try {
+    if (!isDbReady()) {
+      res.json({ success: true, data: [] });
+      return;
+    }
     const pairId = String(req.params['pairId'] ?? '');
     const data   = await CompareHistoryService.getPair(pairId);
     res.json({ success: true, data });

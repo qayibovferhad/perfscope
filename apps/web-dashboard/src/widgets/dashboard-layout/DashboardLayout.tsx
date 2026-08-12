@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { AddWebsiteModal } from '@/features/websites/ui/AddWebsiteModal';
 import { Sidebar } from './ui/Sidebar';
+import { StorageBanner } from './ui/StorageBanner';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,6 +73,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </span>
           </span>
         </div>
+
+        {/* Outside `main` so it survives the per-route scroll reset above and cannot be
+            scrolled away from — the pages below are all showing empty lists because of it. */}
+        <StorageBanner />
 
         <main ref={mainRef} className="flex-1 overflow-y-auto">{children}</main>
       </div>

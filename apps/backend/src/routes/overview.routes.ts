@@ -1,6 +1,7 @@
 import { Router, type Response } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
-import { getOverview } from '../services/overview.service.js';
+import { emptyOverview, getOverview } from '../services/overview.service.js';
+import { isDbReady } from '../config/database.js';
 
 export const overviewRouter: Router = Router();
 
@@ -12,6 +13,10 @@ export const overviewRouter: Router = Router();
  */
 overviewRouter.get('/overview', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    // With no database the account demonstrably has nothing — the panels below say so
+    // themselves. Failing here turned a disabled optional feature into a page-wide outage.
+    if (!isDbReady()) return res.json({ success: true, data: emptyOverview() });
+
     return res.json({ success: true, data: await getOverview(req.userId!) });
   } catch (err) {
     console.error('[overview]', err);

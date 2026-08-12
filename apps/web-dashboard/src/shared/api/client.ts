@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useStorageStore } from '@/shared/model/storageStore';
 
 let _getToken: () => string | null = () => null;
 export function configureApiToken(getter: () => string | null) { _getToken = getter; }
@@ -32,11 +33,25 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/** Set by the backend on every response while it has no database. */
+const STORAGE_HEADER = 'x-perfscope-storage';
+
+/** Only meaningful when a response actually arrived: a network failure says nothing about
+ *  the state of storage, and treating it as "fine" would clear a banner that still holds. */
+function trackStorageState(res: { headers?: Record<string, unknown> } | undefined) {
+  if (!res?.headers) return;
+  useStorageStore.getState().setUnavailable(res.headers[STORAGE_HEADER] === 'unavailable');
+}
+
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    trackStorageState(res);
+    return res;
+  },
   (error) => {
     const status = error?.response?.status;
     const url    = error?.config?.url ?? '';
+    trackStorageState(error?.response);
 
     // 401 on /auth/* means bad credentials on the login/register form itself —
     // those pages render their own error, so never treat it as a dead session.

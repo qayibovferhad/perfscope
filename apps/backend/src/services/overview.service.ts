@@ -4,7 +4,7 @@ import { HistoryModel } from '../models/History.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { RumEvent } from '../models/RumEvent.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
-import { getOverviewCharts } from './overviewCharts.service.js';
+import { CHART_DAYS, getOverviewCharts } from './overviewCharts.service.js';
 import { escapeRegex, hostOf } from '../lib/url.js';
 import { Types, type QueryFilter } from 'mongoose';
 
@@ -129,6 +129,24 @@ function attentionFor(site: IWebsite, score: SiteScore | undefined): OverviewAtt
     return { ...base, reason: 'lowScore', detail: `Averaging ${score.avg} over ${score.runs} run${score.runs === 1 ? '' : 's'}.` };
   }
   return null;
+}
+
+/**
+ * The dashboard for an account with nothing behind it.
+ *
+ * Returned when the database is unreachable: every panel then renders its own "nothing
+ * yet" copy, which is the truth — nothing is stored — whereas failing the request made the
+ * whole page report an outage over what is a switched-off optional feature.
+ */
+export function emptyOverview(): OverviewData {
+  return {
+    totals:       { sites: 0, audited: 0, avgScore: 0, needsAttention: 0, audits7d: 0 },
+    incidents:    [],
+    recentAudits: [],
+    attention:    [],
+    rum:          null,
+    charts:       { days: CHART_DAYS, trend: [], activity: [], vitals: [] },
+  };
 }
 
 export async function getOverview(userId: string): Promise<OverviewData> {

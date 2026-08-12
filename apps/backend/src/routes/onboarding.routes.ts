@@ -3,6 +3,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js'
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import type { OnboardingStatus, OnboardingStepId } from '@perfscope/shared';
+import { isDbReady } from '../config/database.js';
 
 export const onboardingRouter = Router();
 
@@ -20,6 +21,17 @@ const COUNT_CAP = 1000;
 onboardingRouter.get('/onboarding/status', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
+
+    // Nothing stored means no step can have been completed — the checklist is exactly
+    // right in that state, and far better than the dashboard reporting a failure.
+    if (!isDbReady()) {
+      const status: OnboardingStatus = {
+        steps:    { website: false, audit: false, automation: false },
+        counts:   { websites: 0, audits: 0 },
+        complete: false,
+      };
+      return res.json({ success: true, data: status });
+    }
 
     const sites = await Website.find({ userId })
       .select('_id automation')

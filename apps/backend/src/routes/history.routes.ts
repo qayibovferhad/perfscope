@@ -3,12 +3,22 @@ import { randomBytes } from 'node:crypto';
 import { HistoryModel } from '../models/History.model.js';
 import { HistoryService } from '../services/history.service.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
+import { requireStorage, requireStorageForWrites } from '../middleware/storage.middleware.js';
+import { isDbReady } from '../config/database.js';
 
 export const historyRouter: Router = Router();
+
+// Deleting an audit or minting a share link needs a database; listing does not — with no
+// database there is simply no history, which every listing here reports as an empty list.
+historyRouter.use(requireStorageForWrites);
 
 // GET /api/history/all  — all entries for authenticated user
 historyRouter.get('/history/all', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    if (!isDbReady()) {
+      res.json({ success: true, data: [] });
+      return;
+    }
     const data = await HistoryService.getAll(req.userId!);
     res.json({ success: true, data });
   } catch (err) {
@@ -25,6 +35,10 @@ historyRouter.get('/history', requireAuth, async (req: AuthRequest, res: Respons
     return;
   }
   try {
+    if (!isDbReady()) {
+      res.json({ success: true, data: [] });
+      return;
+    }
     const data = await HistoryService.get(url, req.userId!);
     res.json({ success: true, data });
   } catch (err) {
@@ -69,7 +83,7 @@ historyRouter.delete('/history/:id/share', requireAuth, async (req: AuthRequest,
 });
 
 // GET /api/public/report/:token — no auth; the unguessable token IS the credential
-historyRouter.get('/public/report/:token', async (req: Request, res: Response) => {
+historyRouter.get('/public/report/:token', requireStorage, async (req: Request, res: Response) => {
   try {
     const token = String(req.params['token'] ?? '');
     if (!/^[a-f0-9]{32}$/.test(token)) {
@@ -85,7 +99,7 @@ historyRouter.get('/public/report/:token', async (req: Request, res: Response) =
   }
 });
 
-historyRouter.get('/history/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+historyRouter.get('/history/:id', requireAuth, requireStorage, async (req: AuthRequest, res: Response) => {
   try {
     const data = await HistoryService.getById(String(req.params['id']), req.userId!);
     if (!data) {
@@ -115,7 +129,9 @@ historyRouter.delete('/history/:id', requireAuth, async (req: AuthRequest, res: 
 });
 
 // GET /api/projects/:id/audits  — project audit history grouped by route
-historyRouter.get('/projects/:id/audits', requireAuth, async (req: AuthRequest, res: Response) => {
+// A single project, unlike a listing, cannot be answered without the database: "no
+// project" and "cannot look" are different answers and only one of them is true.
+historyRouter.get('/projects/:id/audits', requireAuth, requireStorage, async (req: AuthRequest, res: Response) => {
   try {
     const data = await HistoryService.getByProject(String(req.params['id']), req.userId!);
     if (!data) {
