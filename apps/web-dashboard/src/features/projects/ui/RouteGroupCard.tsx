@@ -5,56 +5,8 @@ import { Button } from '@/shared/ui/button';
 import type { RouteGroup, ProjectAuditEntry } from '@/entities/history';
 import { AuditRow }  from './AuditRow';
 import { timeAgo }   from '../lib/formatters';
-import { scoreBand, type ScoreBand } from '@/entities/analysis';
-
-// ─── Score ring ───────────────────────────────────────────────────────────────
-
-const CIRC = 2 * Math.PI * 19; // ≈ 119.38
-
-const RING_STROKE: Record<ScoreBand, string> = { good: 'stroke-ld-accent',   warn: 'stroke-ld-amber', poor: 'stroke-ld-rose' };
-const RING_NUM:    Record<ScoreBand, string> = { good: 'text-ld-accent-2',    warn: 'text-ld-amber',   poor: 'text-ld-rose'   };
-
-function ScoreRing({ score }: { score: number }) {
-  const b = scoreBand(score);
-  return (
-    <div className="relative w-[44px] h-[44px] shrink-0">
-      <svg viewBox="0 0 44 44" className="w-[44px] h-[44px] -rotate-90">
-        <circle cx="22" cy="22" r="19" fill="none" strokeWidth={5} className="stroke-ld-border" />
-        <circle
-          cx="22" cy="22" r="19" fill="none"
-          strokeWidth={5} strokeLinecap="round"
-          strokeDasharray={CIRC}
-          strokeDashoffset={CIRC * (1 - score / 100)}
-          className={RING_STROKE[b]}
-        />
-      </svg>
-      <span className={`absolute inset-0 grid place-items-center font-mono text-[14px] font-semibold ${RING_NUM[b]}`}>
-        {score}
-      </span>
-    </div>
-  );
-}
-
-// ─── Header sparkline ─────────────────────────────────────────────────────────
-
-function Sparkline({ entries }: { entries: ProjectAuditEntry[] }) {
-  const recent = entries.slice(-6);
-  if (recent.length < 2) return null;
-  const scores = recent.map(e => e.scores.performance);
-  const avg    = scores.reduce((s, v) => s + v, 0) / scores.length;
-  const max    = Math.max(...scores, 1);
-  return (
-    <span className="flex items-end gap-[3px] h-[26px] shrink-0">
-      {scores.map((s, i) => (
-        <i
-          key={i}
-          className={`w-[5px] rounded-sm not-italic transition-[height] ${s < avg ? 'bg-ld-border-strong' : 'bg-ld-accent-line'}`}
-          style={{ height: `${Math.max(Math.round((s / max) * 100), 12)}%` }}
-        />
-      ))}
-    </span>
-  );
-}
+import { ScoreRing } from '@/entities/analysis';
+import { Sparkline } from '@/shared/ui/chart';
 
 // ─── Route group card ─────────────────────────────────────────────────────────
 
@@ -108,8 +60,11 @@ export function RouteGroupCard({
             <span className="block text-[12px] text-ld-text-3 mt-[2px]">{auditLabel}</span>
           </span>
 
-          <Sparkline entries={group.entries} />
-          <ScoreRing score={group.lastScore} />
+          <Sparkline
+            values={group.entries.slice(-6).map(e => e.scores.performance)}
+            id={`route-${group.routePath}`}
+          />
+          <ScoreRing score={group.lastScore} size={44} />
         </button>
 
         {!compareMode && lastEntry && (

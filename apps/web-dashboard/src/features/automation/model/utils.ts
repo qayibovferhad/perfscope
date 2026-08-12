@@ -1,11 +1,8 @@
 import { nextRunDate, type WebsiteAutomation } from '@perfscope/shared';
+import { fmtDateTime } from '@/shared/lib/time';
 
 export function fmtDate(iso: string | null): string {
-  if (!iso) return 'Never';
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return iso ? fmtDateTime(iso) : 'Never';
 }
 
 /**

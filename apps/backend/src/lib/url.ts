@@ -36,3 +36,13 @@ export function escapeRegex(value: string): string {
 export function hostPrefixRegex(host: string): RegExp {
   return new RegExp(`^https?://${escapeRegex(host)}(/|$)`);
 }
+
+/**
+ * Like hostPrefixRegex, but for `History.normalizedUrl`, which is stored WITHOUT a scheme
+ * (`host/path`). The two stored forms are the trap: `Website.url` keeps its scheme,
+ * `normalizedUrl` does not, so the two regexes are deliberately different.
+ */
+export function normalizedUrlHostRegex(hosts: string | string[]): RegExp {
+  const list = Array.isArray(hosts) ? hosts : [hosts];
+  return new RegExp(`^(${list.map(escapeRegex).join('|')})(/|$)`);
+}

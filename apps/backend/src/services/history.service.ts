@@ -2,7 +2,7 @@ import { HistoryModel } from '../models/History.model.js';
 import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
-import { hostOf } from '../lib/url.js';
+import { hostOf, normalizedUrlHostRegex } from '../lib/url.js';
 import type { AuditSource, ScheduledSiteGroup, ScheduledRouteGroup } from '@perfscope/shared';
 import type {
   HistoryEntry,
@@ -27,7 +27,12 @@ const ENTRY_FIELDS = 'analysisId shortId url routePath scores metrics createdAt 
 // Re-export shared types so existing imports `from '.../history.service.js'` keep working.
 export type { HistoryEntry, ProjectAuditEntry, RouteGroup, ProjectAuditsResult };
 
-function normalizeUrl(url: string): string {
+/**
+ * The scheme-less `host/path` key audits are deduped and pruned by. Named for what it is:
+ * lib/url.ts also has a `normalizeUrl`, which does the opposite job (prepends a scheme),
+ * and the two sharing a name is how one nearly got swapped for the other.
+ */
+function auditKey(url: string): string {
   try {
     const u = new URL(url);
     return `${u.hostname}${u.pathname}`.replace(/\/$/, '');
@@ -90,7 +95,7 @@ export const HistoryService = {
     fullResult?: Record<string, any>,
     source: AuditSource = 'manual',
   ): Promise<void> {
-    const normalizedUrl = normalizeUrl(entry.url);
+    const normalizedUrl = auditKey(entry.url);
     const routePath     = extractRoutePath(entry.url);
 
     await HistoryModel.create({
@@ -134,13 +139,12 @@ export const HistoryService = {
    *  a URL is trivially guessable, so an unscoped lookup exposes one account's
    *  audit history to anyone who can name the site. */
   async get(url: string, userId: string): Promise<HistoryEntry[]> {
-    let host: string;
-    try { host = new URL(url).hostname; } catch { host = normalizeUrl(url).split('/')[0]!; }
+    const host = hostOf(url) || auditKey(url).split('/')[0]!;
 
     const docs = await HistoryModel
       .find({
         userId,
-        normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`),
+        normalizedUrl: normalizedUrlHostRegex(host),
         // The audit history is a record of what the user did; the timetable's runs have
         // their own page, and there are far more of them.
         ...MANUAL_ONLY_FILTER,
@@ -290,7 +294,7 @@ export const HistoryService = {
     return {
       project: {
         id:   projectId,
-        name: website.name || new URL(website.url).hostname,
+        name: website.name || hostOf(website.url) || website.url,
         url:  website.url,
       },
       groups,

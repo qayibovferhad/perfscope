@@ -3,7 +3,7 @@ import { ListChecks, CheckCircle2 } from 'lucide-react';
 import type { OverviewAttention, OverviewAttentionReason } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
-import { scoreBand } from '@/entities/analysis';
+import { scoreBand, BAND_TEXT } from '@/entities/analysis';
 
 /** Each reason states what is wrong, not what the field is called. */
 const REASON_LABEL: Record<OverviewAttentionReason, string> = {
@@ -19,12 +19,6 @@ const REASON_TONE: Record<OverviewAttentionReason, string> = {
   lowScore:      'text-ld-amber',
   neverAudited:  'text-ld-text-3',
 };
-
-const BAND_TONE = {
-  good: 'text-ld-accent',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-} as const;
 
 export function AttentionCard({ rows, className }: { rows: OverviewAttention[]; className?: string }) {
   return (
@@ -66,7 +60,7 @@ export function AttentionCard({ rows, className }: { rows: OverviewAttention[]; 
                   </span>
 
                   <span className={`font-mono text-[20px] font-semibold tabular-nums shrink-0 w-[32px] text-right ${
-                    row.score === null ? 'text-ld-text-3' : BAND_TONE[scoreBand(row.score)]
+                    row.score === null ? 'text-ld-text-3' : BAND_TEXT[scoreBand(row.score)]
                   }`}>
                     {row.score ?? '—'}
                   </span>

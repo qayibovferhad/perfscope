@@ -1,19 +1,10 @@
+import type { CompareEntry } from '@perfscope/shared';
 import { CompareHistoryModel } from '../models/CompareHistory.model.js';
+import { hostOf } from '../lib/url.js';
 
 const MAX_PER_PAIR = 10;
 
-export interface CompareEntry {
-  id:             string;
-  pairId:         string;
-  sourceUrl:      string;
-  targetUrl:      string;
-  sourceHostname: string;
-  targetHostname: string;
-  source:         { scores: Record<string, number>; metrics: Record<string, number> };
-  competitor:     { scores: Record<string, number>; metrics: Record<string, number> };
-  winner:         'source' | 'competitor' | 'tie';
-  timestamp:      string;
-}
+export type { CompareEntry };
 
 interface RawDoc {
   _id: unknown;
@@ -24,8 +15,10 @@ interface RawDoc {
   createdAt: unknown;
 }
 
+/** Host for display and the pairId key. Falls back to the raw string — pairIds derived
+ *  from unparseable input must keep matching the ones already stored. */
 function hostname(url: string): string {
-  try { return new URL(url).hostname; } catch { return url; }
+  return hostOf(url) || url;
 }
 
 function makePairId(url1: string, url2: string): string {

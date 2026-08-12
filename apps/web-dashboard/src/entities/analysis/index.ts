@@ -40,7 +40,10 @@ export type {
 export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS, SCORE_BANDS } from '@perfscope/shared'
 export type { ScoreRating, VitalKey, AuditFormFactor } from '@perfscope/shared'
 
-export { scoreColor, scoreBand, vitalBand, SCORE_GOOD, SCORE_WARN, SCORE_BAD } from './lib'
+export {
+  scoreColor, scoreBand, vitalBand, findFrameAt, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
+  BAND_TEXT, BAND_STROKE, BAND_TILE, BAND_BAR, BAND_LABEL,
+} from './lib'
 export { FIELD_METRICS, FIELD_METRIC_ORDER, RATING_TEXT, RATING_LABEL } from './fieldMetrics'
 export { GLOSSARY, thresholdLine, goodThreshold, CATEGORY_BAND_LINE, isVitalKey } from './glossary'
 export type { GlossaryKey, CategoryKey } from './glossary'
@@ -52,10 +55,11 @@ export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
 export { MetricsGrid } from './ui/MetricsGrid'
 export { AuditList } from './ui/AuditList'
 export { ProgressStepper } from './ui/ProgressStepper'
+export { ScoreRing } from './ui/ScoreRing'
 export { FormFactorToggle, DEVICE_MODES } from './ui/FormFactorToggle'
 export { PrecisionToggle, PRECISION_MODES } from './ui/PrecisionToggle'
 
-export { startAnalysis, joinAnalysis, emitAuthAuditStart } from './api/analysisSocket'
+export { startAnalysis, joinAnalysis, emitAuthAuditStart, attachAnalysisListeners } from './api/analysisSocket'
 export type { AnalysisCallbacks, AuditPrecision, StartAnalysisOptions } from './api/analysisSocket'
 
 export { usePrefetchStore } from './model/prefetchStore'

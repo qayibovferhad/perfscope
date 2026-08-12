@@ -5,6 +5,7 @@ import { isRegression } from '@perfscope/shared';
 import type { HistoryEntry } from '@/entities/history';
 import { fmtMs } from '@/shared/lib/format';
 import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, MONO } from '@/shared/ui/chart';
+import { fmtDay } from '@/shared/lib/time';
 
 // Re-exported so existing importers keep resolving it from here.
 export { isRegression };
@@ -20,10 +21,6 @@ export { isRegression };
  * The panel above owns the detailed hover card, so this reports the active index rather
  * than drawing a tooltip of its own — the cursor line is the only thing rendered.
  */
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 interface Row {
   date:       string;
@@ -98,7 +95,7 @@ export function EvolutionChart({
   const rows: Row[] = entries.map((entry, i) => {
     const prev = entries[i - 1];
     return {
-      date:    fmtDate(entry.timestamp),
+      date:    fmtDay(entry.timestamp),
       shortId: entry.shortId,
       lcp:     entry.metrics.lcp,
       tbt:     entry.metrics.tbt,

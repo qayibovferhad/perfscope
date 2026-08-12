@@ -12,6 +12,10 @@ export const fmtMsOrDash = (ms: number): string => (ms <= 0 ? '—' : fmtMs(ms))
 /** Vitals-style: always seconds with one decimal (e.g. "2.5s", "0.1s"). */
 export const fmtSec = (ms: number): string => `${(ms / 1000).toFixed(1)}s`
 
+/** Timeline/scrubber timestamps: always seconds with two decimals ("0.42s") — playback
+ *  positions need the 10 ms resolution that fmtSec deliberately rounds away. */
+export const fmtSec2 = (ms: number): string => `${(ms / 1000).toFixed(2)}s`
+
 export const fmtCls = (v: number): string => v.toFixed(3)
 
 export function fmtBytes(b: number): string {

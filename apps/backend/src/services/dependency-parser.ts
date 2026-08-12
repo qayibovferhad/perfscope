@@ -9,7 +9,7 @@ import type { NetworkRequest, DependencyNode, DependencyLink, DependencyGraph, R
 
 // ─── Compact event shape passed from the worker ───────────────────────────────
 
-interface InitiatorData {
+export interface InitiatorData {
   type: 'parser' | 'script' | 'other' | 'preload' | 'redirect';
   url?: string;
   stack?: {

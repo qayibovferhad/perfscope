@@ -4,6 +4,7 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Lightbulb, Minus,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
+import { VITAL_THRESHOLDS, scoreBand, type VitalKey } from '@/entities/analysis';
 import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '../model/types';
 import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct } from '../lib/format';
 import { sortRows } from '../lib/computeRows';
@@ -217,7 +218,7 @@ function ScoreCell({
   value: number; prev: number | null;
 }) {
   const pct  = prev !== null ? deltaPct(value, prev) : null;
-  const isBad = value < 50;
+  const isBad = scoreBand(value) === 'poor';
   let dir: 'up' | 'down' | null = null;
   if (pct !== null && Math.abs(pct) >= 0.05) {
     dir = pct > 0 ? 'down' : 'up'; // score increase = good = down(emerald)
@@ -271,13 +272,8 @@ function SortTh({
 
 // ─── Bad-value thresholds ─────────────────────────────────────────────────────
 
-const BAD: Record<string, (v: number) => boolean> = {
-  lcp: v => v > 4000,
-  tbt: v => v > 600,
-  cls: v => v > 0.25,
-  fcp: v => v > 3000,
-  tti: v => v > 7300,
-};
+/** "Bad" is web.dev's poor band — read from the shared table, never retyped. */
+const isBadVital = (key: VitalKey, v: number) => v > VITAL_THRESHOLDS[key].poor;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -400,27 +396,27 @@ export function HistoryDeepDiveTable({
 
                       {/* LCP */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <MetricCell value={m.lcp} prev={pm?.lcp ?? null} fmt={fmtMs} isBad={BAD['lcp']!(m.lcp)} />
+                        <MetricCell value={m.lcp} prev={pm?.lcp ?? null} fmt={fmtMs} isBad={isBadVital('lcp', m.lcp)} />
                       </td>
 
                       {/* TBT */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <MetricCell value={m.tbt} prev={pm?.tbt ?? null} fmt={fmtMs} isBad={BAD['tbt']!(m.tbt)} />
+                        <MetricCell value={m.tbt} prev={pm?.tbt ?? null} fmt={fmtMs} isBad={isBadVital('tbt', m.tbt)} />
                       </td>
 
                       {/* CLS */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <MetricCell value={m.cls} prev={pm?.cls ?? null} fmt={fmtCls} isBad={BAD['cls']!(m.cls)} />
+                        <MetricCell value={m.cls} prev={pm?.cls ?? null} fmt={fmtCls} isBad={isBadVital('cls', m.cls)} />
                       </td>
 
                       {/* FCP */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <MetricCell value={m.fcp} prev={pm?.fcp ?? null} fmt={fmtMs} isBad={BAD['fcp']!(m.fcp)} />
+                        <MetricCell value={m.fcp} prev={pm?.fcp ?? null} fmt={fmtMs} isBad={isBadVital('fcp', m.fcp)} />
                       </td>
 
                       {/* TTI */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <MetricCell value={m.tti} prev={pm?.tti ?? null} fmt={fmtMs} isBad={BAD['tti']!(m.tti)} />
+                        <MetricCell value={m.tti} prev={pm?.tti ?? null} fmt={fmtMs} isBad={isBadVital('tti', m.tti)} />
                       </td>
 
                       {/* Status */}

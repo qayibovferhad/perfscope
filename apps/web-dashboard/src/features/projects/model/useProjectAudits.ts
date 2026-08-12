@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { fetchJson } from '@/shared/api/client';
 import type {
   ProjectAuditEntry,
   RouteGroup,
@@ -11,12 +11,7 @@ export type { ProjectAuditEntry, RouteGroup, ProjectAuditsData };
 export function useProjectAudits(projectId: string) {
   return useQuery<ProjectAuditsData>({
     queryKey: ['project-audits', projectId],
-    queryFn:  async () => {
-      const res = await apiClient.get<{ success: boolean; data: ProjectAuditsData }>(
-        `/projects/${projectId}/audits`,
-      );
-      return res.data.data;
-    },
+    queryFn:  () => fetchJson<ProjectAuditsData>(`/projects/${projectId}/audits`),
     enabled: !!projectId,
   });
 }

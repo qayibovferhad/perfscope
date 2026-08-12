@@ -8,7 +8,7 @@ import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { useAuthStore } from '@/features/auth/model/authStore';
 import type { AuthUser } from '@/entities/user';
-import { apiClient } from '@/shared/api/client';
+import { apiClient, fetchJson } from '@/shared/api/client';
 
 interface ProfileForm  { name: string }
 interface PasswordForm { currentPassword: string; newPassword: string; confirmPassword: string }
@@ -50,9 +50,8 @@ function DigestSection() {
 
   // The digest preference lives on the user document, which the auth store does not carry.
   useEffect(() => {
-    apiClient.get<{ success: boolean; data: { enabled: boolean; day: number; time: string } }>('/auth/digest')
-      .then(res => {
-        const d = res.data.data;
+    fetchJson<{ enabled: boolean; day: number; time: string }>('/auth/digest')
+      .then(d => {
         setEnabled(d.enabled); setDay(d.day); setTime(d.time);
       })
       .catch(() => { /* leave defaults */ })

@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Film, Play, Pause, Clock } from 'lucide-react';
+import { findFrameAt } from '@/entities/analysis';
 import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
+import { fmtSec2 } from '@/shared/lib/format';
 
 // ─── Metric defs (timeline marker colors — not you/rival) ─────────────────────
 
@@ -14,18 +16,6 @@ const METRIC_DEFS = [
 const NEAR_MS = 400;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const fmt = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
-
-function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame {
-  if (!frames.length) return { timing: 0, data: '' };
-  let best = frames[0];
-  for (const f of frames) {
-    if (f.timing <= ms) best = f;
-    else break;
-  }
-  return best;
-}
 
 function metricBadgesForFrame(
   frame: TimelineFrame,
@@ -115,7 +105,7 @@ const Thumb = memo(function Thumb({
         <FrameImage
           key={frame.timing}
           src={frame.data}
-          alt={fmt(frame.timing)}
+          alt={fmtSec2(frame.timing)}
           width={76} height={56}
           dimmed={!isActive}
         />
@@ -138,7 +128,7 @@ const Thumb = memo(function Thumb({
         {/* Timing label */}
         <div className="absolute bottom-0 inset-x-0 text-center text-[8px] font-bold tabular-nums py-0.5 z-10 bg-black/70">
           <span style={{ color: isActive ? (isYou ? 'var(--ld-accent-2)' : 'var(--ld-amber)') : 'rgba(255,255,255,0.45)' }}>
-            {fmt(frame.timing)}
+            {fmtSec2(frame.timing)}
           </span>
         </div>
       </div>
@@ -202,10 +192,10 @@ function FilmstripRow({
               onClick={() => onSeek(val)}
               className="flex items-center gap-1 px-[7px] py-[3px] rounded-[6px] text-[9px] font-bold hover:opacity-80 transition-opacity"
               style={{ background: `${m.color}18`, border: `1px solid ${m.color}50`, color: m.color }}
-              title={`Seek to ${m.label}: ${fmt(val)}`}
+              title={`Seek to ${m.label}: ${fmtSec2(val)}`}
             >
               <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: m.color }} />
-              {m.label} {fmt(val)}
+              {m.label} {fmtSec2(val)}
             </button>
           );
         })}
@@ -244,7 +234,7 @@ function FilmstripRow({
           />
           <div className="text-center text-[10px] font-bold tabular-nums py-1 bg-black/80">
             <span style={{ color: nearbyMetricColor ?? (isYou ? 'var(--ld-accent-2)' : 'var(--ld-amber)') }}>
-              {fmt(active.timing)}
+              {fmtSec2(active.timing)}
             </span>
           </div>
         </div>
@@ -300,7 +290,7 @@ function TrackMarker({
         >
           <span style={{ color }}>{sideLabel}</span>
           <span className="text-ld-text-3 mx-1">·</span>
-          <span>{metricLabel}: {fmt(timeMs)}</span>
+          <span>{metricLabel}: {fmtSec2(timeMs)}</span>
         </div>
       )}
     </button>
@@ -369,8 +359,8 @@ function TimeAxis({
 
         <div className="flex items-center gap-1 shrink-0">
           <Clock className="w-3 h-3 text-ld-text-3" />
-          <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmt(currentMs)}</span>
-          <span className="text-[10px] text-ld-text-3">/ {fmt(totalMs)}</span>
+          <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmtSec2(currentMs)}</span>
+          <span className="text-[10px] text-ld-text-3">/ {fmtSec2(totalMs)}</span>
         </div>
       </div>
 
@@ -397,7 +387,7 @@ function TimeAxis({
       <div className="flex justify-between pt-[6px]">
         {Array.from({ length: 5 }).map((_, i) => (
           <span key={i} className="text-[8px] tabular-nums text-ld-text-3 opacity-60">
-            {fmt((i / 4) * totalMs)}
+            {fmtSec2((i / 4) * totalMs)}
           </span>
         ))}
       </div>

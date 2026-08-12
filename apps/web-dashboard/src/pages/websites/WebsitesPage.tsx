@@ -7,6 +7,7 @@ import {
 import { Input }                     from '@/shared/ui/input';
 import { QueryErrorPanel }           from '@/shared/ui/state-panel';
 import { useWebsites }              from '@/entities/website';
+import { BAND_TILE, BAND_TEXT }     from '@/entities/analysis';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites/model/useWebsitesQuery';
 import { useWebsiteScores }         from '@/features/websites/model/useWebsiteScores';
 import { useWebsiteActions }        from '@/features/websites/model/useWebsiteActions';
@@ -30,13 +31,13 @@ function SumCard({ icon, value, label, variant = 'default' }: {
 }) {
   const iconCls: Record<SumVariant, string> = {
     default: 'bg-ld-surface-2 border-ld-border text-ld-accent',
-    good:    'bg-ld-accent-soft border-ld-accent-line text-ld-accent',
-    warn:    'bg-[rgba(230,162,60,0.10)] border-[rgba(230,162,60,0.30)] text-ld-amber',
+    good:    BAND_TILE.good,
+    warn:    BAND_TILE.warn,
   };
   const valueCls: Record<SumVariant, string> = {
     default: 'text-ld-text',
-    good:    'text-ld-score-good',
-    warn:    'text-ld-amber',
+    good:    BAND_TEXT.good,
+    warn:    BAND_TEXT.warn,
   };
   return (
     <div className="flex items-center gap-[13px] px-[18px] py-4 rounded-[15px] border border-ld-border bg-ld-surface

@@ -2,31 +2,14 @@ import { motion } from 'framer-motion';
 import { Clock, Shield, Gauge, Eye, Code2, Search } from 'lucide-react';
 import {
   scoreBand, vitalBand, GlossaryTip,
-  type AnalysisResult, type ScoreBand, type VitalKey, type GlossaryKey,
+  BAND_STROKE, BAND_TEXT, BAND_LABEL,
+  type AnalysisResult, type VitalKey, type GlossaryKey,
 } from '@/entities/analysis';
-import { fmtSec, fmtCls } from '@/shared/lib/format';
+import { fmtMs, fmtSec, fmtCls } from '@/shared/lib/format';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CIRC = 2 * Math.PI * 33; // ≈ 207.3
-
-// ─── Score band styling ───────────────────────────────────────────────────────
-
-const RING_STROKE: Record<ScoreBand, string> = {
-  good: 'stroke-ld-accent',
-  warn: 'stroke-ld-amber',
-  poor: 'stroke-ld-rose',
-};
-const NUM_CLASS: Record<ScoreBand, string> = {
-  good: 'text-ld-accent-2',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-};
-const BAND_LABEL: Record<ScoreBand, string> = {
-  good: 'Good',
-  warn: 'Needs improvement',
-  poor: 'Poor',
-};
 
 // ─── Score card ───────────────────────────────────────────────────────────────
 
@@ -64,10 +47,10 @@ function ScoreCard({
             initial={{ strokeDashoffset: CIRC }}
             animate={{ strokeDashoffset: offset }}
             transition={{ duration: 0.9, ease: 'easeOut', delay: delay + 0.05 }}
-            className={RING_STROKE[band]}
+            className={BAND_STROKE[band]}
           />
         </svg>
-        <span className={`absolute inset-0 grid place-items-center font-mono text-[22px] font-semibold ${NUM_CLASS[band]}`}>
+        <span className={`absolute inset-0 grid place-items-center font-mono text-[22px] font-semibold ${BAND_TEXT[band]}`}>
           {score}
         </span>
       </div>
@@ -85,30 +68,12 @@ function ScoreCard({
   );
 }
 
-// ─── Core Web Vitals styling ──────────────────────────────────────────────────
-
-const VITAL_VAL_CLASS: Record<ScoreBand, string> = {
-  good: 'text-ld-accent-2',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-};
-const VITAL_ST_CLASS: Record<ScoreBand, string> = {
-  good: 'text-ld-accent',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-};
-const VITAL_ST_LABEL: Record<ScoreBand, string> = {
-  good: 'Good',
-  warn: 'Needs work',
-  poor: 'Poor',
-};
-
-function fmtRaw(v: number) { return `${Math.round(v)}ms`; }
+// ─── Core Web Vitals ──────────────────────────────────────────────────────────
 
 const METRICS = [
   { key: 'fcp' as const, abbr: 'FCP', fmt: fmtSec },
   { key: 'lcp' as const, abbr: 'LCP', fmt: fmtSec },
-  { key: 'tbt' as const, abbr: 'TBT', fmt: fmtRaw },
+  { key: 'tbt' as const, abbr: 'TBT', fmt: fmtMs  },
   { key: 'cls' as const, abbr: 'CLS', fmt: fmtCls },
   { key: 'si'  as const, abbr: 'SI',  fmt: fmtSec },
   { key: 'tti' as const, abbr: 'TTI', fmt: fmtSec },
@@ -124,11 +89,11 @@ function VitalsCell({ abbr, metricKey, value }: { abbr: string; metricKey: Vital
         {abbr}
         <GlossaryTip term={metricKey} />
       </div>
-      <div className={`font-mono text-[18px] font-semibold mt-[6px] ${VITAL_VAL_CLASS[band]}`}>
+      <div className={`font-mono text-[18px] font-semibold mt-[6px] ${BAND_TEXT[band]}`}>
         {fmt(value)}
       </div>
-      <div className={`text-[10px] font-semibold mt-[2px] ${VITAL_ST_CLASS[band]}`}>
-        {VITAL_ST_LABEL[band]}
+      <div className={`text-[10px] font-semibold mt-[2px] ${BAND_TEXT[band]}`}>
+        {BAND_LABEL[band]}
       </div>
     </div>
   );

@@ -1,13 +1,12 @@
 import type { Socket } from 'socket.io-client';
 import type { AuditFormFactor } from '@perfscope/shared';
-import type { AnalysisCallbacks, AuditPrecision } from '@/entities/analysis';
+import { attachAnalysisListeners, type AnalysisCallbacks, type AuditPrecision } from '@/entities/analysis';
 import { createSocket } from '@/shared/api/socket';
 
+// The event wiring is the entity's; only the teardown differs — these sockets are
+// per-analysis and die with it, so the whole connection goes, not just the listeners.
 function attachCallbacks(socket: Socket, callbacks: AnalysisCallbacks) {
-  socket.on('analysis:progress', callbacks.onProgress);
-  socket.on('analysis:partial',  callbacks.onPartial);
-  socket.on('analysis:complete', callbacks.onComplete);
-  socket.on('analysis:error',    (d: { message: string; code?: string }) => callbacks.onError(d.message, d.code));
+  attachAnalysisListeners(socket, callbacks);
   return () => { socket.disconnect(); socket.removeAllListeners(); };
 }
 
@@ -22,7 +21,11 @@ export function startCompareAnalysis(
   const socket = createSocket();
   socket.connect();
   const cleanup = attachCallbacks(socket, callbacks);
-  socket.emit('analysis:start', { url, formFactor, precision });
+  socket.emit('analysis:start', {
+    url,
+    ...(formFactor ? { formFactor } : {}),
+    ...(precision  ? { precision }  : {}),
+  });
   return cleanup;
 }
 
@@ -35,6 +38,9 @@ export function startCompareAuthAudit(
   const socket = createSocket();
   socket.connect();
   const cleanup = attachCallbacks(socket, callbacks);
-  socket.emit('auth-audit:start', { sessionId, url, context: 'competitor', formFactor });
+  socket.emit('auth-audit:start', {
+    sessionId, url, context: 'competitor',
+    ...(formFactor ? { formFactor } : {}),
+  });
   return cleanup;
 }

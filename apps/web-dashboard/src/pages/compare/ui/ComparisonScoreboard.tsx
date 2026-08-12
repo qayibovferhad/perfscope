@@ -1,14 +1,15 @@
 import { Trophy } from 'lucide-react';
 import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
+import { fmtMs, fmtCls } from '@/shared/lib/format';
 
 const CIRC = 2 * Math.PI * 72; // r=72 → ≈ 452.4
 
 const METRICS: { key: keyof CoreWebVitals; abbr: string; label: string; fmt: (v: number) => string }[] = [
-  { key: 'lcp', abbr: 'LCP', label: 'Largest Contentful Paint', fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'fcp', abbr: 'FCP', label: 'First Contentful Paint',   fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'tbt', abbr: 'TBT', label: 'Total Blocking Time',      fmt: v => `${Math.round(v)}ms`          },
-  { key: 'si',  abbr: 'SI',  label: 'Speed Index',              fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'cls', abbr: 'CLS', label: 'Cumulative Layout Shift',  fmt: v => v.toFixed(3)                 },
+  { key: 'lcp', abbr: 'LCP', label: 'Largest Contentful Paint', fmt: fmtMs  },
+  { key: 'fcp', abbr: 'FCP', label: 'First Contentful Paint',   fmt: fmtMs  },
+  { key: 'tbt', abbr: 'TBT', label: 'Total Blocking Time',      fmt: fmtMs  },
+  { key: 'si',  abbr: 'SI',  label: 'Speed Index',              fmt: fmtMs  },
+  { key: 'cls', abbr: 'CLS', label: 'Cumulative Layout Shift',  fmt: fmtCls },
 ];
 
 // ─── Score gauge ──────────────────────────────────────────────────────────────

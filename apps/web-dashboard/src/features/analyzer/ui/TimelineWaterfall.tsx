@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
-import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes } from '@/shared/lib/format';
+import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes, fmtSec2 } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
 import { FlameChart } from './FlameChart';
 import type {
@@ -76,8 +76,6 @@ function resourceFilename(url: string): string {
     return url.split('/').pop() || url;
   }
 }
-
-const fmtSec = (ms: number) => (ms / 1000).toFixed(2) + 's';
 
 function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): number {
   let lo = 0, hi = frames.length - 1;
@@ -521,7 +519,7 @@ export function TimelineWaterfall({
                   )}
                 >
                   <span className="w-[7px] h-[7px] rounded-full shrink-0 bg-current" />
-                  {m.label} {fmtSec(val)}
+                  {m.label} {fmtSec2(val)}
                 </span>
               );
             })}
@@ -535,7 +533,7 @@ export function TimelineWaterfall({
                 draggable={false}
               />
               <div className="absolute bottom-1 right-1 text-[8px] font-mono text-ld-text-3 bg-ld-surface/80 px-1 rounded tabular-nums">
-                {fmtSec(frames[activeFrameIdx].timing)}
+                {fmtSec2(frames[activeFrameIdx].timing)}
               </div>
             </div>
           </div>

@@ -7,15 +7,9 @@ import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { InfoTip } from '@/shared/ui/info-tip';
 import { cn } from '@/shared/lib/utils';
 import type { ParsedResources, ResourceType, NetworkRequest } from '@/entities/analysis';
+import { fmtBytes } from '@/shared/lib/format';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
 
 function pct(part: number, total: number): number {
   return total === 0 ? 0 : Math.min(100, Math.round((part / total) * 100));
@@ -91,9 +85,9 @@ function WeightStats({ resources }: { resources: ParsedResources }) {
 
   return (
     <div className="grid grid-cols-4 max-[760px]:grid-cols-2 gap-[14px] px-[18px] py-[16px]">
-      <StatCard label="Total Weight" value={formatBytes(total.transferSize)}  sub={`${total.requestCount} requests`} />
-      <StatCard label="JavaScript"   value={formatBytes(script.transferSize)} sub={`${script.requestCount} files`}   />
-      <StatCard label="Images"       value={formatBytes(image.transferSize)}  sub={`${image.requestCount} files`}    />
+      <StatCard label="Total Weight" value={fmtBytes(total.transferSize)}  sub={`${total.requestCount} requests`} />
+      <StatCard label="JavaScript"   value={fmtBytes(script.transferSize)} sub={`${script.requestCount} files`}   />
+      <StatCard label="Images"       value={fmtBytes(image.transferSize)}  sub={`${image.requestCount} files`}    />
       <StatCard
         label="Critical"
         value={String(criticalCount)}
@@ -146,7 +140,7 @@ function ResourceTypeRows({ resources }: { resources: ParsedResources }) {
                 {share}%
               </span>
               <span className="text-[12px] font-mono font-medium text-ld-text text-right tabular-nums">
-                {formatBytes(bucket.transferSize)}
+                {fmtBytes(bucket.transferSize)}
               </span>
             </div>
           );
@@ -205,7 +199,7 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
                   </td>
                   <td className="px-[12px] py-[8px] text-ld-text-3 capitalize">{req.resourceType}</td>
                   <td className={cn('px-[12px] py-[8px] text-right font-semibold font-mono tabular-nums', text)}>
-                    {formatBytes(req.transferSize)}
+                    {fmtBytes(req.transferSize)}
                   </td>
                   <td className="px-[12px] py-[8px] text-center">
                     {req.advice ? (
@@ -273,7 +267,7 @@ function LibraryRows({ resources }: { resources: ParsedResources }) {
                   'text-[12px] font-mono font-medium text-right tabular-nums',
                   lib.isCritical ? 'text-ld-rose' : 'text-ld-text',
                 )}>
-                  {formatBytes(lib.transferSize)}
+                  {fmtBytes(lib.transferSize)}
                 </span>
               </div>
               <div className="h-[5px] rounded-full bg-ld-border overflow-hidden">
@@ -296,9 +290,7 @@ function LibraryRows({ resources }: { resources: ParsedResources }) {
 
 export function ResourceBreakdown({ resources }: { resources: ParsedResources }) {
   const totalSize = resources.summary.total.transferSize;
-  const totalLabel = totalSize >= 1024 * 1024
-    ? `${(totalSize / (1024 * 1024)).toFixed(2)} MB`
-    : `${(totalSize / 1024).toFixed(1)} KB`;
+  const totalLabel = fmtBytes(totalSize);
 
   return (
     <Panel>

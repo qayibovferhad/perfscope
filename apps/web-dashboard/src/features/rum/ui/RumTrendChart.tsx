@@ -6,6 +6,7 @@ import { VITAL_THRESHOLDS } from '@perfscope/shared';
 import type { RumTrend } from '@perfscope/shared';
 import { FIELD_METRICS, type FieldMetricKey } from '@/entities/analysis';
 import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { fmtDayKey } from '@/shared/lib/time';
 
 /**
  * Daily p75 over the window, drawn against the web.dev bands.
@@ -16,10 +17,6 @@ import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/sha
  * `connectNulls={false}`, and it is the one behaviour this chart must not lose.
  */
 
-function fmtDay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
 
 export function RumTrendChart({ trend }: { trend: RumTrend }) {
   const meta = FIELD_METRICS[trend.metric as FieldMetricKey];
@@ -67,7 +64,7 @@ export function RumTrendChart({ trend }: { trend: RumTrend }) {
         />
 
         <CartesianGrid {...GRID_PROPS} />
-        <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDay} minTickGap={28} />
+        <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDayKey} minTickGap={28} />
         <YAxis
           {...AXIS_PROPS}
           domain={[0, max]}
@@ -79,7 +76,7 @@ export function RumTrendChart({ trend }: { trend: RumTrend }) {
           cursor={CURSOR_PROPS}
           content={
             <ChartTooltip
-              formatLabel={fmtDay}
+              formatLabel={fmtDayKey}
               formatValue={(value, key) => (key === 'p75' ? meta.format(value) : String(value))}
             />
           }

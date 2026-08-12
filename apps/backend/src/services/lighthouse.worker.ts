@@ -2,11 +2,12 @@ import { workerData, parentPort } from 'worker_threads';
 import puppeteer from 'puppeteer';
 import lighthouse from 'lighthouse';
 import type { RunnerResult } from 'lighthouse';
+// Type-only, erased at compile time, so the wire shape cannot drift from the parser's.
+import type { CompactNetworkEvent, InitiatorData } from './dependency-parser.js';
 
-
-// NOTE: this worker must stay self-contained (no imports from other src files) —
-// the tsx loader inside worker threads cannot resolve cross-file .js→.ts specifiers.
-// Keep in sync with CHROME_ARGS in lib/chrome.ts.
+// NOTE: this worker must stay self-contained (no VALUE imports from other src files;
+// type-only imports are erased and safe) — the tsx loader inside worker threads cannot
+// resolve cross-file .js→.ts specifiers. Keep in sync with CHROME_ARGS in lib/chrome.ts.
 const CHROME_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
@@ -22,16 +23,6 @@ interface WorkerInput { url: string; categories: string[]; formFactor?: 'mobile'
 // Compact trace sent back to the service so parseFlameChart can run there
 // (avoids worker-thread module-resolution issues with tsx's .js→.ts remapping)
 type CompactTrace = { defaultPass: { traceEvents: unknown[] } };
-
-interface InitiatorData {
-  type: string;
-  url?: string;
-  stack?: {
-    callFrames?: Array<{ url?: string }>;
-    parent?: { callFrames?: Array<{ url?: string }> };
-  };
-}
-type CompactNetworkEvent = { url: string; initiator: InitiatorData };
 
 type WorkerMessage =
   | {

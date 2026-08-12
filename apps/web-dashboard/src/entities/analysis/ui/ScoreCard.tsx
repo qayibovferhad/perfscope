@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Gauge, Eye, Code2, Search } from 'lucide-react';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import { scoreBand, type ScoreBand } from '../lib';
+import { scoreBand, BAND_STROKE, BAND_TEXT, BAND_LABEL } from '../lib';
 import { GlossaryTip } from './GlossaryTip';
 import type { CategoryKey } from '../glossary';
 
@@ -21,24 +21,6 @@ const TERM: Record<ScoreLabel, CategoryKey> = {
   Accessibility:    'accessibility',
   'Best Practices': 'best-practices',
   SEO:              'seo',
-};
-
-const ARC_STROKE: Record<ScoreBand, string> = {
-  good: '[stroke:var(--ld-accent)]',
-  warn: '[stroke:var(--ld-amber)]',
-  poor: '[stroke:var(--ld-rose)]',
-};
-
-const COLOR: Record<ScoreBand, string> = {
-  good: 'text-[var(--ld-score-good)]',
-  warn: 'text-[var(--ld-amber)]',
-  poor: 'text-[var(--ld-rose)]',
-};
-
-const LABEL: Record<ScoreBand, string> = {
-  good: 'Good',
-  warn: 'Needs improvement',
-  poor: 'Poor',
 };
 
 const DASH = 289; // 2π * 46
@@ -85,12 +67,12 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
             initial={{ strokeDashoffset: DASH }}
             animate={{ strokeDashoffset: offset }}
             transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
-            className={ARC_STROKE[status]}
+            className={BAND_STROKE[status]}
           />
         </svg>
         <span className={cn(
           'absolute inset-0 grid place-items-center font-mono text-[30px] font-semibold',
-          COLOR[status],
+          BAND_TEXT[status],
         )}>
           {score}
         </span>
@@ -98,14 +80,14 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
 
       {/* Title */}
       <h3 className="flex items-center justify-center gap-[7px] text-[15px] font-bold text-ld-text">
-        <Icon className={cn('w-[15px] h-[15px]', COLOR[status])} />
+        <Icon className={cn('w-[15px] h-[15px]', BAND_TEXT[status])} />
         {label}
         <GlossaryTip term={TERM[label]} />
       </h3>
 
       {/* Status */}
-      <p className={cn('text-[12.5px] font-semibold mt-1', COLOR[status])}>
-        {LABEL[status]}
+      <p className={cn('text-[12.5px] font-semibold mt-1', BAND_TEXT[status])}>
+        {BAND_LABEL[status]}
       </p>
     </motion.div>
   );

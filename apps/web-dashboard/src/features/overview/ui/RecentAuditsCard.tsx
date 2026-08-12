@@ -4,13 +4,7 @@ import type { OverviewAudit } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
-import { scoreBand } from '@/entities/analysis';
-
-const BAND_TONE = {
-  good: 'text-ld-accent',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-} as const;
+import { scoreBand, BAND_TEXT } from '@/entities/analysis';
 
 /**
  * The delta is against the run immediately before this one on the same URL — not
@@ -69,7 +63,7 @@ export function RecentAuditsCard({ audits, className }: { audits: OverviewAudit[
                 i < audits.length - 1 ? 'border-b border-ld-border' : ''
               }`}
             >
-              <span className={`font-mono text-[18px] font-semibold tabular-nums w-[32px] shrink-0 ${BAND_TONE[scoreBand(audit.score)]}`}>
+              <span className={`font-mono text-[18px] font-semibold tabular-nums w-[32px] shrink-0 ${BAND_TEXT[scoreBand(audit.score)]}`}>
                 {audit.score}
               </span>
               <span className="min-w-0 flex-1">

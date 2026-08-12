@@ -1,17 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { apiClient, fetchJson } from '@/shared/api/client';
 import type { AnalysisResult, HistoryEntry, ScheduledSiteGroup } from '@perfscope/shared';
 
 export function useHistory(url: string | null) {
   return useQuery<HistoryEntry[]>({
     queryKey: ['history', url],
     enabled:  !!url,
-    queryFn:  async () => {
-      const res = await apiClient.get<{ success: boolean; data: HistoryEntry[] }>(
-        `/history?url=${encodeURIComponent(url!)}`,
-      );
-      return res.data.data ?? [];
-    },
+    queryFn:  async () => (await fetchJson<HistoryEntry[]>(`/history?url=${encodeURIComponent(url!)}`)) ?? [],
     staleTime: 0,
   });
 }
@@ -35,19 +30,13 @@ export function useDeleteAudit() {
 }
 
 export async function fetchHistoryResult(analysisId: string): Promise<AnalysisResult> {
-  const res = await apiClient.get<{ success: boolean; data: AnalysisResult }>(
-    `/history/${encodeURIComponent(analysisId)}`,
-  );
-  return res.data.data;
+  return fetchJson<AnalysisResult>(`/history/${encodeURIComponent(analysisId)}`);
 }
 
 export function useAllHistory() {
   return useQuery<HistoryEntry[]>({
     queryKey: ['history', 'all'],
-    queryFn:  async () => {
-      const res = await apiClient.get<{ success: boolean; data: HistoryEntry[] }>('/history/all');
-      return res.data.data ?? [];
-    },
+    queryFn:  async () => (await fetchJson<HistoryEntry[]>('/history/all')) ?? [],
     staleTime: 0,
   });
 }
@@ -61,10 +50,7 @@ export function useAllHistory() {
 export function useScheduledRuns() {
   return useQuery<ScheduledSiteGroup[]>({
     queryKey: ['history', 'scheduled'],
-    queryFn:  async () => {
-      const res = await apiClient.get<{ success: boolean; data: ScheduledSiteGroup[] }>('/history/scheduled');
-      return res.data.data ?? [];
-    },
+    queryFn:  async () => (await fetchJson<ScheduledSiteGroup[]>('/history/scheduled')) ?? [],
     staleTime: 0,
   });
 }

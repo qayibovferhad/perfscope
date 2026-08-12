@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Moon, Plus, X, Route, Loader2 } from 'lucide-react';
-import { expandSchedule, type AutomationScheduleMode, type AutomationSlot } from '@perfscope/shared';
+import { expandSchedule, SCORE_BANDS, VITAL_THRESHOLDS, type AutomationScheduleMode, type AutomationSlot } from '@perfscope/shared';
 import { Modal }              from '@/shared/ui/modal/Modal';
 import { Input }              from '@/shared/ui/input';
 import { Button }             from '@/shared/ui/button';
@@ -171,11 +171,12 @@ export function SetupModal({ site, open, onClose }: Props) {
           </p>
           <div className="grid grid-cols-5 gap-2 max-[560px]:grid-cols-3">
             {([
-              ['Min score', budgetPerf, setBudgetPerf, '90'],
-              ['Max LCP ms', budgetLcp, setBudgetLcp, '2500'],
-              ['Max TBT ms', budgetTbt, setBudgetTbt, '200'],
-              ['Max CLS', budgetCls, setBudgetCls, '0.1'],
-              ['Max INP ms', budgetInp, setBudgetInp, '200'],
+              // Placeholders are web.dev's "good" thresholds, read from the shared table.
+              ['Min score', budgetPerf, setBudgetPerf, String(SCORE_BANDS.good)],
+              ['Max LCP ms', budgetLcp, setBudgetLcp, String(VITAL_THRESHOLDS.lcp.good)],
+              ['Max TBT ms', budgetTbt, setBudgetTbt, String(VITAL_THRESHOLDS.tbt.good)],
+              ['Max CLS', budgetCls, setBudgetCls, String(VITAL_THRESHOLDS.cls.good)],
+              ['Max INP ms', budgetInp, setBudgetInp, String(VITAL_THRESHOLDS.inp.good)],
             ] as const).map(([label, value, setter, ph]) => (
               <div key={label}>
                 <p className="text-[9px] text-ld-text-3 mb-1">{label}</p>

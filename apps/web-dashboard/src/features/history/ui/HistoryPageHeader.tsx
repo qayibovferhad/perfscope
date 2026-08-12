@@ -5,16 +5,8 @@ import { isReg } from '../lib/format';
 import { exportJson, exportCsv } from '../lib/export';
 import { ScoreSparkline } from './ScoreSparkline';
 import { getHostname } from '@/entities/website';
-import { vitalBand, type ScoreBand } from '@/entities/analysis';
+import { vitalBand, BAND_TEXT } from '@/entities/analysis';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
-
-// ─── CWV band styling ─────────────────────────────────────────────────────────
-
-const BAND_CLS: Record<ScoreBand, string> = {
-  good: 'text-ld-accent-2',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-};
 
 // right border: all except last; on mobile (2-col) also hide from index 1
 function borderR(i: number) {
@@ -101,7 +93,7 @@ export function HistoryPageHeader({ url, entries }: Props) {
         {metrics.map(({ label, value, band }, i) => (
           <div key={label} className={`px-[20px] py-[16px] text-center ${borderR(i)}`}>
             <p className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-text-3">{label}</p>
-            <p className={`font-mono text-[22px] font-semibold mt-[6px] ${BAND_CLS[band]}`}>{value}</p>
+            <p className={`font-mono text-[22px] font-semibold mt-[6px] ${BAND_TEXT[band]}`}>{value}</p>
           </div>
         ))}
       </div>

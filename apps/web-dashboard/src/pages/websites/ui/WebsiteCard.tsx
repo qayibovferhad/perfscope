@@ -5,7 +5,7 @@ import { getHostname, sessionState } from '@/entities/website';
 import type { Website }    from '@/entities/website';
 import type { SiteScoreInfo } from '@/features/websites/model/useWebsiteScores';
 import { Button }          from '@/shared/ui/button';
-import { ScoreRing }       from './ScoreRing';
+import { ScoreRing }       from '@/entities/analysis';
 import { SparkBars }       from './SparkBars';
 
 function timeAgo(iso: string): string {

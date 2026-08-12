@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { apiClient, fetchJson } from '@/shared/api/client';
 import type { AuditFormFactor } from '@/entities/analysis';
 import type { RumSummary, RumPathRow, RumTrend, RumMetricKey } from '@perfscope/shared';
 
@@ -20,13 +20,10 @@ interface Params {
 export function useRum({ websiteId, days = 7, device = 'all' }: Params) {
   return useQuery<RumResponse>({
     queryKey: ['rum', websiteId, days, device],
-    queryFn: async () => {
-      const res = await apiClient.get<{ success: boolean; data: RumResponse }>(
-        `/websites/${websiteId}/rum`,
-        { params: { days, ...(device !== 'all' ? { device } : {}) } },
-      );
-      return res.data.data;
-    },
+    queryFn: () => fetchJson<RumResponse>(
+      `/websites/${websiteId}/rum`,
+      { days, ...(device !== 'all' ? { device } : {}) },
+    ),
     enabled: Boolean(websiteId),
     // Beacons arrive continuously; a minute-old aggregate is plenty fresh.
     staleTime: 60_000,
@@ -37,13 +34,10 @@ export function useRum({ websiteId, days = 7, device = 'all' }: Params) {
 export function useRumTrend({ websiteId, metric, days = 30, device = 'all' }: Params & { metric: RumMetricKey }) {
   return useQuery<RumTrend>({
     queryKey: ['rum', websiteId, 'trend', metric, days, device],
-    queryFn: async () => {
-      const res = await apiClient.get<{ success: boolean; data: RumTrend }>(
-        `/websites/${websiteId}/rum/trend`,
-        { params: { metric, days, ...(device !== 'all' ? { device } : {}) } },
-      );
-      return res.data.data;
-    },
+    queryFn: () => fetchJson<RumTrend>(
+      `/websites/${websiteId}/rum/trend`,
+      { metric, days, ...(device !== 'all' ? { device } : {}) },
+    ),
     enabled: Boolean(websiteId),
     staleTime: 60_000,
   });

@@ -13,7 +13,12 @@ export interface AnalysisCallbacks {
   onError:    (message: string, code?: string) => void;
 }
 
-function attachListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
+/**
+ * Wires the four analysis events to callbacks; returns the detach. Exported so the
+ * compare feature's short-lived sockets share the exact wiring — the two copies had
+ * already drifted on how the error payload was unpacked.
+ */
+export function attachAnalysisListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
   const onPartial  = (data: CategoryPartial)     => callbacks.onPartial(data);
   const onComplete = (result: AnalysisResult)    => callbacks.onComplete(result);
@@ -46,7 +51,7 @@ export function startAnalysis(
 ): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
-  const cleanup = attachListeners(s, callbacks);
+  const cleanup = attachAnalysisListeners(s, callbacks);
   s.emit('analysis:start', {
     url,
     ...(opts.projectId  ? { projectId:  opts.projectId }  : {}),
@@ -58,7 +63,7 @@ export function startAnalysis(
 
 export function joinAnalysis(callbacks: AnalysisCallbacks): () => void {
   const s = getSocket();
-  return attachListeners(s, callbacks);
+  return attachAnalysisListeners(s, callbacks);
 }
 
 export function emitAuthAuditStart(
@@ -69,7 +74,7 @@ export function emitAuthAuditStart(
 ): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
-  const cleanup = attachListeners(s, callbacks);
+  const cleanup = attachAnalysisListeners(s, callbacks);
   s.emit('auth-audit:start', { sessionId, url, ...(formFactor ? { formFactor } : {}) });
   return cleanup;
 }

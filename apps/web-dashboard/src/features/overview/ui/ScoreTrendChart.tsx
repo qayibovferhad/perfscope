@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ResponsiveContainer } from 'recharts';
 import { SCORE_BANDS, type OverviewSiteTrend } from '@perfscope/shared';
 import { CHART, SERIES_COLORS, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { fmtDayKey } from '@/shared/lib/time';
 import { hasTrendData } from '../lib/hasChartData';
 
 /**
@@ -11,12 +12,6 @@ import { hasTrendData } from '../lib/hasChartData';
  * than being drawn through: interpolating would invent a measurement nobody took, and on
  * a nightly schedule with occasional failures those gaps are the interesting part.
  */
-
-function fmtDay(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`)
-    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
-
 export function ScoreTrendChart({ trend, days }: { trend: OverviewSiteTrend[]; days: number }) {
   const withData = trend.filter(site => site.points.some(p => p.score !== null));
 
@@ -50,12 +45,12 @@ export function ScoreTrendChart({ trend, days }: { trend: OverviewSiteTrend[]; d
           <ReferenceArea y1={0} y2={SCORE_BANDS.needsImprovement} fill={CHART.rose} fillOpacity={0.05} />
 
           <CartesianGrid {...GRID_PROPS} />
-          <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDay} minTickGap={34} />
+          <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDayKey} minTickGap={34} />
           <YAxis {...AXIS_PROPS} domain={[0, 100]} ticks={[0, 50, 90, 100]} width={34} />
 
           <Tooltip
             cursor={CURSOR_PROPS}
-            content={<ChartTooltip formatLabel={fmtDay} formatValue={(v) => String(Math.round(v))} />}
+            content={<ChartTooltip formatLabel={fmtDayKey} formatValue={(v) => String(Math.round(v))} />}
           />
 
           {withData.map((site, i) => (

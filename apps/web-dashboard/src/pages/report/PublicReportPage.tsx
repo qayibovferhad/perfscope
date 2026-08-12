@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Activity, Loader2, FileQuestion, Monitor, Smartphone } from 'lucide-react';
-import { apiClient } from '@/shared/api/client';
+import { fetchJson } from '@/shared/api/client';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { Button } from '@/shared/ui/button';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
@@ -19,8 +19,8 @@ export function PublicReportPage() {
 
   useEffect(() => {
     if (!token) { setState({ status: 'error' }); return; }
-    apiClient.get<{ success: boolean; data: AnalysisResult }>(`/public/report/${token}`)
-      .then(res => setState({ status: 'ready', result: res.data.data }))
+    fetchJson<AnalysisResult>(`/public/report/${token}`)
+      .then(result => setState({ status: 'ready', result }))
       .catch(() => setState({ status: 'error' }));
   }, [token]);
 

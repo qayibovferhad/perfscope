@@ -3,6 +3,7 @@ import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { TimelineData, TimelineFrame } from '@/entities/analysis';
+import { fmtSec2 } from '@/shared/lib/format';
 
 const METRICS = [
   { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    border: 'border-blue-500',    hex: '#3b82f6' },
@@ -30,11 +31,9 @@ function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): numbe
   return lo;
 }
 
-const fmt = (ms: number) => (ms / 1000).toFixed(2) + 's';
-
 const LiveTime = memo(function LiveTime({ value, className }: { value: MotionValue<number>; className?: string }) {
-  const [display, setDisplay] = useState(() => fmt(value.get()));
-  useEffect(() => value.on('change', v => setDisplay(fmt(v))), [value]);
+  const [display, setDisplay] = useState(() => fmtSec2(value.get()));
+  useEffect(() => value.on('change', v => setDisplay(fmtSec2(v))), [value]);
   return <span className={className}>{display}</span>;
 });
 
@@ -56,7 +55,7 @@ const TimelineHeader = memo(function TimelineHeader({
       <Film className="w-4 h-4 text-slate-400 flex-shrink-0" />
       <span className="text-sm font-semibold text-slate-200 tracking-tight">Performance Timeline</span>
       <LiveTime value={motionMs} className="ml-1 font-mono text-sm font-bold text-white tabular-nums" />
-      <span className="text-slate-600 text-xs font-mono">/ {fmt(maxTiming)}</span>
+      <span className="text-slate-600 text-xs font-mono">/ {fmtSec2(maxTiming)}</span>
       <div className="ml-auto flex items-center gap-2 flex-wrap">
         {METRICS.map(m => {
           const val = metrics[m.key];
@@ -65,7 +64,7 @@ const TimelineHeader = memo(function TimelineHeader({
             <div key={m.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800 border border-slate-700/50">
               <span className={`w-2 h-2 rounded-full ${m.bg} flex-shrink-0`} />
               <span className={`text-[11px] font-bold ${m.text}`}>{m.label}</span>
-              <span className="text-[11px] text-slate-500 font-mono tabular-nums">{fmt(val)}</span>
+              <span className="text-[11px] text-slate-500 font-mono tabular-nums">{fmtSec2(val)}</span>
             </div>
           );
         })}
@@ -108,7 +107,7 @@ const MainViewer = memo(function MainViewer({ frame, activeMetrics }: { frame: T
         </div>
       )}
       <div className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm border border-slate-700/60 text-slate-100 text-xs font-mono px-2.5 py-1 rounded-md tabular-nums">
-        {fmt(frame.timing)}
+        {fmtSec2(frame.timing)}
       </div>
     </div>
   );
@@ -141,7 +140,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
             >
               <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${m.bg}/20 border ${m.border}/40`}>
                 <span className={`text-[10px] font-bold ${m.text} leading-none`}>{m.label}</span>
-                <span className={`text-[10px] font-mono ${m.text} leading-none opacity-80`}>{fmt(val)}</span>
+                <span className={`text-[10px] font-mono ${m.text} leading-none opacity-80`}>{fmtSec2(val)}</span>
               </div>
               <div className="w-px h-1.5 opacity-50" style={{ background: m.hex }} />
             </div>
@@ -181,7 +180,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
 
       <div className="flex justify-between text-[10px] font-mono text-slate-500 tabular-nums px-0.5">
         <span>0s</span>
-        <span>{fmt(maxTiming)}</span>
+        <span>{fmtSec2(maxTiming)}</span>
       </div>
     </div>
   );

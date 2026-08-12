@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { OverviewActivityPoint } from '@perfscope/shared';
 import { CHART, AXIS_PROPS, GRID_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { fmtDayKey } from '@/shared/lib/time';
 import { hasActivityData } from '../lib/hasChartData';
 
 /**
@@ -11,10 +12,6 @@ import { hasActivityData } from '../lib/hasChartData';
  * nothing goes wrong loudly when an audit simply never happens.
  */
 
-function fmtDay(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`)
-    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
 
 export function ActivityChart({ activity, days }: { activity: OverviewActivityPoint[]; days: number }) {
   if (!hasActivityData(activity)) {
@@ -29,11 +26,11 @@ export function ActivityChart({ activity, days }: { activity: OverviewActivityPo
     <ResponsiveContainer width="100%" height="100%" className="flex-1 min-h-0">
       <BarChart data={activity} margin={{ top: 6, right: 20, bottom: 4, left: 0 }}>
         <CartesianGrid {...GRID_PROPS} />
-        <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDay} minTickGap={34} />
+        <XAxis dataKey="day" {...AXIS_PROPS} tickFormatter={fmtDayKey} minTickGap={34} />
         <YAxis {...AXIS_PROPS} allowDecimals={false} width={28} />
         <Tooltip
           cursor={{ fill: 'var(--ld-surface-hover)' }}
-          content={<ChartTooltip formatLabel={fmtDay} />}
+          content={<ChartTooltip formatLabel={fmtDayKey} />}
         />
         <Bar
           dataKey="audits" name="Audits"

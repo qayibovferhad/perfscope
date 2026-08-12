@@ -3,7 +3,9 @@ import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { SkipForward, Zap, Layers } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
+import { vitalBand, findFrameAt } from '@/entities/analysis';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
+import { fmtSec2, fmtCls } from '@/shared/lib/format';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // ld-rose dark: #f2647a — used in SVG/rgba contexts where CSS vars can't reach.
@@ -18,20 +20,9 @@ const PREVIEW_H = 264;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function clsScoreColor(score: number): string {
-  if (score < 0.1)  return 'var(--ld-accent-2)';
-  if (score < 0.25) return 'var(--ld-amber)';
-  return 'var(--ld-rose)';
-}
-
-function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame {
-  let best = frames[0];
-  for (const f of frames) {
-    if (f.timing <= ms) best = f;
-    else break;
-  }
-  return best;
-}
+const BAND_VAR = { good: 'var(--ld-accent-2)', warn: 'var(--ld-amber)', poor: 'var(--ld-rose)' } as const;
+/** Thresholds come from the shared vitals table, never retyped here. */
+const clsScoreColor = (score: number) => BAND_VAR[vitalBand('cls', score)];
 
 function aiSuggestion(selector: string, snippet: string, score: number, rootCause?: string): string {
   if (score < 0.005)
@@ -257,10 +248,10 @@ function FramePreview({
         {/* Frame footer */}
         <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-[8px] py-[4px] bg-[rgba(0,0,0,.65)]">
           <span className="font-mono text-[9px] tabular-nums text-ld-text-3">
-            {(frame.timing / 1000).toFixed(2)}s
+            {fmtSec2(frame.timing)}
           </span>
           <span className="font-mono text-[9px] font-bold" style={{ color: clsScoreColor(cls) }}>
-            CLS {cls.toFixed(3)}
+            CLS {fmtCls(cls)}
           </span>
         </div>
       </div>
@@ -281,7 +272,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
         </span>
         <div className="flex items-baseline gap-[8px]">
           <span className="font-mono font-semibold text-[18px] tabular-nums" style={{ color: clsScoreColor(currentCls) }}>
-            {currentCls.toFixed(3)}
+            {fmtCls(currentCls)}
           </span>
           <CLSChip score={currentCls} />
         </div>
@@ -295,7 +286,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
       </div>
       <div className="flex justify-between font-mono text-[8px] text-ld-text-3 opacity-50">
         <span>0.000</span>
-        <span>Total: {totalCls.toFixed(3)}</span>
+        <span>Total: {fmtCls(totalCls)}</span>
       </div>
     </div>
   );
@@ -330,7 +321,7 @@ function Scrubber({
           style={{ left: pct }}
         />
         <span className="shrink-0 font-mono text-[10px] text-ld-text-3 tabular-nums min-w-[44px]">
-          {(currentMs / 1000).toFixed(2)}s
+          {fmtSec2(currentMs)}
         </span>
       </div>
 
@@ -353,7 +344,7 @@ function Scrubber({
               {frame.data && (
                 <img
                   src={frame.data}
-                  alt={(frame.timing / 1000).toFixed(2) + 's'}
+                  alt={fmtSec2(frame.timing)}
                   draggable={false}
                   className="w-[56px] h-[40px] object-cover"
                   style={{ opacity: isActive ? 1 : 0.45 }}
@@ -496,7 +487,7 @@ export function CLSVisualizer({
             className="font-mono font-semibold text-[30px] leading-none tabular-nums"
             style={{ color: clsScoreColor(clsData.totalScore) }}
           >
-            {clsData.totalScore.toFixed(3)}
+            {fmtCls(clsData.totalScore)}
           </span>
           <CLSChip score={clsData.totalScore} />
         </span>

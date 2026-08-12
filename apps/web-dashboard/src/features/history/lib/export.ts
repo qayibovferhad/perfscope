@@ -1,4 +1,5 @@
 import type { HistoryEntry } from '@/entities/history';
+import { getHostname } from '@/entities/website';
 
 function downloadBlob(blob: Blob, filename: string): void {
   const a = document.createElement('a');
@@ -8,9 +9,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(a.href);
 }
 
-function hostnameOf(url: string): string {
-  try { return new URL(url).hostname; } catch { return 'history'; }
-}
+const hostnameOf = (url: string): string => getHostname(url, 'history');
 
 export function exportJson(entries: HistoryEntry[], url: string): void {
   const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });

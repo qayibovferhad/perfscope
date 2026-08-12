@@ -1,23 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { fetchJson } from '@/shared/api/client';
+import type { CompareEntry } from '@perfscope/shared';
 
-export interface CompareEntry {
-  id:             string;
-  pairId:         string;
-  sourceUrl:      string;
-  targetUrl:      string;
-  sourceHostname: string;
-  targetHostname: string;
-  source:         { scores: Record<string, number>; metrics: Record<string, number> };
-  competitor:     { scores: Record<string, number>; metrics: Record<string, number> };
-  winner:         'source' | 'competitor' | 'tie';
-  timestamp:      string;
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await apiClient.get<{ success: boolean; data: T }>(path);
-  return res.data.data;
-}
+export type { CompareEntry };
 
 export function useCompareHistoryList(search: string) {
   return useQuery<CompareEntry[]>({

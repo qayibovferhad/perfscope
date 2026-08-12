@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { fetchJson } from '@/shared/api/client';
 import type { AuditFormFactor } from '@/entities/analysis';
 // CruxData has no entity-layer alias yet; the shared package is the source of truth.
 import type { CruxData } from '@perfscope/shared';
@@ -14,12 +14,7 @@ import type { CruxData } from '@perfscope/shared';
 export function useCruxData(url: string | null | undefined, formFactor: AuditFormFactor) {
   return useQuery<CruxData | null>({
     queryKey: ['crux', url, formFactor],
-    queryFn:  async () => {
-      const res = await apiClient.get<{ success: boolean; data: CruxData | null }>('/crux', {
-        params: { url, formFactor },
-      });
-      return res.data.data ?? null;
-    },
+    queryFn:  async () => (await fetchJson<CruxData | null>('/crux', { url, formFactor })) ?? null,
     enabled: Boolean(url),
     // CrUX aggregates 28 days and refreshes daily — the backend already caches 6h.
     staleTime: 6 * 60 * 60 * 1000,

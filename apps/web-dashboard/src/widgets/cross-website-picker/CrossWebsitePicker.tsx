@@ -4,6 +4,7 @@ import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 import { useWebsites } from '@/entities/website';
 import { scoreColor } from '@/entities/analysis';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
+import { fmtDateTime } from '@/shared/lib/time';
 
 interface Props {
   excludeProjectId: string;
@@ -11,11 +12,6 @@ interface Props {
   onClose: () => void;
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
 
 function AuditList({ projectId, onSelect }: {
   projectId: string; onSelect: (entry: ProjectAuditEntry) => void;
@@ -61,7 +57,7 @@ function AuditList({ projectId, onSelect }: {
               {entry.routePath}
             </span>
             <span className="text-[11px] text-ld-text-3">
-              {formatDate(entry.timestamp)}
+              {fmtDateTime(entry.timestamp)}
             </span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0"
               style={{ background: `${color}18`, border: `1px solid ${color}35`, color }}>

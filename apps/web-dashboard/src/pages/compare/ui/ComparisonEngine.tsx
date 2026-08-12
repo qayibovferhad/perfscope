@@ -1,26 +1,19 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Trophy, AlertTriangle, TrendingUp } from 'lucide-react';
+import { VITAL_THRESHOLDS } from '@/entities/analysis';
 import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
+import { fmtMs, fmtCls } from '@/shared/lib/format';
 
-// ─── Thresholds & meta ────────────────────────────────────────────────────────
-
-const THRESHOLDS: Record<keyof CoreWebVitals, { good: number; poor: number }> = {
-  fcp: { good: 1800, poor: 3000 },
-  lcp: { good: 2500, poor: 4000 },
-  tbt: { good: 200,  poor: 600  },
-  cls: { good: 0.1,  poor: 0.25 },
-  si:  { good: 3400, poor: 5800 },
-  tti: { good: 3800, poor: 7300 },
-};
+// ─── Metric meta ──────────────────────────────────────────────────────────────
 
 const METRIC_META: { key: keyof CoreWebVitals; label: string; fmt: (v: number) => string }[] = [
-  { key: 'lcp', label: 'LCP',         fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'fcp', label: 'FCP',         fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'tbt', label: 'TBT',         fmt: v => `${Math.round(v)}ms`         },
-  { key: 'tti', label: 'TTI',         fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'si',  label: 'Speed Index', fmt: v => `${(v / 1000).toFixed(2)}s` },
-  { key: 'cls', label: 'CLS',         fmt: v => v.toFixed(3)                },
+  { key: 'lcp', label: 'LCP',         fmt: fmtMs  },
+  { key: 'fcp', label: 'FCP',         fmt: fmtMs  },
+  { key: 'tbt', label: 'TBT',         fmt: fmtMs  },
+  { key: 'tti', label: 'TTI',         fmt: fmtMs  },
+  { key: 'si',  label: 'Speed Index', fmt: fmtMs  },
+  { key: 'cls', label: 'CLS',         fmt: fmtCls },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -250,7 +243,7 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
 
 function NormalisedMetrics({ target, competitor }: { target: AnalysisResult; competitor: AnalysisResult }) {
   const rows = useMemo(() => METRIC_META.map(({ key, label, fmt }) => {
-    const th     = THRESHOLDS[key];
+    const th     = VITAL_THRESHOLDS[key];
     const tVal   = target.metrics[key];
     const cVal   = competitor.metrics[key];
     const tNorm  = normalise(tVal, th.good, th.poor);

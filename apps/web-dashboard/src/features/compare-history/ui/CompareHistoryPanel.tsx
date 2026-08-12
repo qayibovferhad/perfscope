@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from '../model/useCompareHistory';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
+import { fmtDay } from '@/shared/lib/time';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -211,10 +212,6 @@ const PC_IW  = PC_VW - PC_PAD.left - PC_PAD.right;
 const PC_IH  = PC_VH - PC_PAD.top  - PC_PAD.bottom;
 const PC_MONO = "'Geist Mono', ui-monospace, monospace";
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 function PairChart({ entries }: { entries: CompareEntry[] }) {
   const n = entries.length;
   if (!n) return null;
@@ -293,7 +290,7 @@ function PairChart({ entries }: { entries: CompareEntry[] }) {
             textAnchor="middle" fill="var(--ld-text-3)"
             fontSize="11" fontFamily={PC_MONO}
           >
-            {fmtDate(entry.timestamp)}
+            {fmtDay(entry.timestamp)}
           </text>
         </g>
       ))}

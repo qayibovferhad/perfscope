@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 import { Clock, Maximize2, Layers, LayoutGrid, Zap, Timer } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fmtSec, fmtCls } from '@/shared/lib/format';
+import { fmtMs, fmtSec, fmtCls } from '@/shared/lib/format';
 import { VITAL_THRESHOLDS, type CoreWebVitals } from '@perfscope/shared';
-import { vitalBand, type ScoreBand } from '../lib';
+import { vitalBand, BAND_TEXT, BAND_TILE, BAND_BAR } from '../lib';
 import { goodThreshold } from '../glossary';
 import { GlossaryTip } from './GlossaryTip';
 
@@ -12,29 +12,11 @@ function clamp(v: number) { return Math.min(100, Math.max(0, v)); }
 const VITALS = [
   { key: 'fcp' as const, abbr: 'FCP', label: 'First Contentful Paint',   icon: Clock,      fmt: fmtSec },
   { key: 'lcp' as const, abbr: 'LCP', label: 'Largest Contentful Paint', icon: Maximize2,  fmt: fmtSec },
-  { key: 'tbt' as const, abbr: 'TBT', label: 'Total Blocking Time',      icon: Layers,     fmt: (v: number) => `${Math.round(v)}ms` },
+  { key: 'tbt' as const, abbr: 'TBT', label: 'Total Blocking Time',      icon: Layers,     fmt: fmtMs },
   { key: 'cls' as const, abbr: 'CLS', label: 'Cumulative Layout Shift',  icon: LayoutGrid, fmt: fmtCls },
   { key: 'si'  as const, abbr: 'SI',  label: 'Speed Index',              icon: Zap,        fmt: fmtSec },
   { key: 'tti' as const, abbr: 'TTI', label: 'Time to Interactive',      icon: Timer,      fmt: fmtSec },
 ] as const;
-
-const VAL_COLOR: Record<ScoreBand, string> = {
-  good: 'text-[var(--ld-score-good)]',
-  warn: 'text-[var(--ld-amber)]',
-  poor: 'text-[var(--ld-rose)]',
-};
-
-const TILE_CLS: Record<ScoreBand, string> = {
-  good: 'text-[var(--ld-accent)] border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
-  warn: 'text-[var(--ld-amber)] border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.1)]',
-  poor: 'text-[var(--ld-rose)] border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]',
-};
-
-const BAR_CLS: Record<ScoreBand, string> = {
-  good: 'bg-[var(--ld-accent)]',
-  warn: 'bg-[var(--ld-amber)]',
-  poor: 'bg-[var(--ld-rose)]',
-};
 
 export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
   return (
@@ -54,7 +36,7 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
               <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-ld-text-2">
                 <span className={cn(
                   'w-[28px] h-[28px] rounded-[8px] grid place-items-center border',
-                  TILE_CLS[status],
+                  BAND_TILE[status],
                 )}>
                   <Icon className="w-[15px] h-[15px]" />
                 </span>
@@ -66,7 +48,7 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
             </div>
 
             {/* Value */}
-            <p className={cn('font-mono text-[26px] font-semibold tracking-[-0.02em]', VAL_COLOR[status])}>
+            <p className={cn('font-mono text-[26px] font-semibold tracking-[-0.02em]', BAND_TEXT[status])}>
               {fmt(value)}
             </p>
 
@@ -76,7 +58,7 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
             {/* Severity bar */}
             <div className="h-1 rounded-[3px] bg-ld-border mt-[14px] overflow-hidden">
               <motion.div
-                className={cn('h-full rounded-[3px]', BAR_CLS[status])}
+                className={cn('h-full rounded-[3px]', BAND_BAR[status])}
                 initial={{ width: 0 }}
                 animate={{ width: `${barW}%` }}
                 transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}

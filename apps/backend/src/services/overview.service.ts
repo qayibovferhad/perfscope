@@ -5,7 +5,7 @@ import { AlertLog } from '../models/AlertLog.model.js';
 import { RumEvent } from '../models/RumEvent.model.js';
 import { HAS_RESULT_FILTER, MANUAL_ONLY_FILTER } from '../lib/history.js';
 import { CHART_DAYS, getOverviewCharts } from './overviewCharts.service.js';
-import { escapeRegex, hostOf } from '../lib/url.js';
+import { hostOf, normalizedUrlHostRegex } from '../lib/url.js';
 import { Types, type QueryFilter } from 'mongoose';
 
 /**
@@ -45,7 +45,7 @@ export async function computeSiteScores(userId: string, sites: { url: string }[]
   const hosts = [...new Set(sites.map((s) => hostOf(s.url)).filter(Boolean))];
   if (!hosts.length) return byHost;
 
-  const hostRx = new RegExp(`^(${hosts.map(escapeRegex).join('|')})(/|$)`);
+  const hostRx = normalizedUrlHostRegex(hosts);
   const entries = await HistoryModel
     .find({ userId, normalizedUrl: hostRx, ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>)
     .select('normalizedUrl scores.performance')

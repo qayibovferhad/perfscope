@@ -4,16 +4,9 @@ import type { ProjectAuditEntry } from '@/entities/history';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { useDeleteAudit } from '@/entities/history';
-import { scoreBand, vitalBand, type ScoreBand } from '@/entities/analysis';
-import { formatAuditDate, formatMs, formatTbt } from '../lib/formatters';
-
-// ─── CWV band styling ─────────────────────────────────────────────────────────
-
-const BAND: Record<ScoreBand, string> = {
-  good: 'text-ld-accent-2',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
-};
+import { scoreBand, vitalBand, BAND_TEXT } from '@/entities/analysis';
+import { fmtMs, fmtSec, fmtCls } from '@/shared/lib/format';
+import { formatAuditDate } from '../lib/formatters';
 
 // ─── Audit row ────────────────────────────────────────────────────────────────
 
@@ -64,28 +57,28 @@ export function AuditRow({
       </td>
 
       {/* LCP */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[vitalBand('lcp', m.lcp)]}`}>
-        {formatMs(m.lcp)}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND_TEXT[vitalBand('lcp', m.lcp)]}`}>
+        {fmtSec(m.lcp)}
       </td>
 
       {/* CLS */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND[vitalBand('cls', m.cls)]}`}>
-        {m.cls.toFixed(2)}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] ${BAND_TEXT[vitalBand('cls', m.cls)]}`}>
+        {fmtCls(m.cls)}
       </td>
 
       {/* TBT — hidden under 680px */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[vitalBand('tbt', m.tbt)]}`}>
-        {formatTbt(m.tbt)}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND_TEXT[vitalBand('tbt', m.tbt)]}`}>
+        {fmtMs(m.tbt)}
       </td>
 
       {/* FCP — hidden under 680px */}
-      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND[vitalBand('fcp', m.fcp)]}`}>
-        {formatMs(m.fcp)}
+      <td className={`py-[13px] px-[10px] border-b border-ld-border font-mono text-[13px] max-[680px]:hidden ${BAND_TEXT[vitalBand('fcp', m.fcp)]}`}>
+        {fmtSec(m.fcp)}
       </td>
 
       {/* Score */}
       <td className="py-[13px] px-[10px] border-b border-ld-border">
-        <span className={`font-mono text-[14px] font-bold ${BAND[scoreBand(perf)]}`}>{perf}</span>
+        <span className={`font-mono text-[14px] font-bold ${BAND_TEXT[scoreBand(perf)]}`}>{perf}</span>
       </td>
 
       {/* Actions */}

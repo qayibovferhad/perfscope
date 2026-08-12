@@ -4,12 +4,9 @@ import { TrendingUp, AlertTriangle, GitCommit, Info } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import { EvolutionChart, isRegression } from './EvolutionChart';
 import { fmtMs } from '@/shared/lib/format';
+import { fmtDay } from '@/shared/lib/time';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 function deltaPct(curr: number, prev: number) {
   return !prev ? 0 : ((curr - prev) / prev) * 100;
@@ -41,7 +38,7 @@ function HoverTooltip({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry
       <div className="flex items-center gap-[8px]">
         <GitCommit className="w-[12px] h-[12px] text-ld-text-3 shrink-0" />
         <span className="font-mono font-bold text-ld-text-2">#{entry.shortId}</span>
-        <span className="text-ld-text-3">{fmtDate(entry.timestamp)}</span>
+        <span className="text-ld-text-3">{fmtDay(entry.timestamp)}</span>
       </div>
 
       {/* Regression badge */}

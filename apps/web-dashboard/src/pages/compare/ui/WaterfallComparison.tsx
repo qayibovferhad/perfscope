@@ -4,13 +4,11 @@ import { Activity, Zap, Play, Pause, Clock } from 'lucide-react';
 import type { AnalysisResult } from '@/entities/analysis';
 import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
+import { fmtMs } from '@/shared/lib/format';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TICK_MS = 50;
-
-const fmt = (ms: number) =>
-  ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${Math.round(ms)}ms`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +135,7 @@ function WfBox({
         <Activity className="w-[15px] h-[15px] text-ld-text-3" />
         <b className="font-mono text-[12px] font-semibold text-ld-text-2">Network Waterfall</b>
         <span className="ml-auto font-mono text-[11px] text-ld-text-3">
-          {reqCount} req · {fmt(totalMs)}
+          {reqCount} req · {fmtMs(totalMs)}
         </span>
       </div>
       {empty
@@ -295,15 +293,15 @@ export function WaterfallComparison({
 
           <div className="flex items-center gap-1 shrink-0">
             <Clock className="w-3 h-3 text-ld-text-3" />
-            <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmt(currentMs)}</span>
-            <span className="text-[10px] text-ld-text-3">/ {fmt(totalMs)}</span>
+            <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmtMs(currentMs)}</span>
+            <span className="text-[10px] text-ld-text-3">/ {fmtMs(totalMs)}</span>
           </div>
         </div>
 
         <div className="flex justify-between pl-10 pr-20">
           {Array.from({ length: 5 }).map((_, i) => (
             <span key={i} className="text-[8px] tabular-nums text-ld-text-3 opacity-60">
-              {fmt((i / 4) * totalMs)}
+              {fmtMs((i / 4) * totalMs)}
             </span>
           ))}
         </div>

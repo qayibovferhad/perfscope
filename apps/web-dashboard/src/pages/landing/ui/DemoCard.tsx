@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/shared/ui/button';
-import { scoreBand } from '@/entities/analysis';
+import { scoreColor } from '@/entities/analysis';
 import { CIRC, METRICS_DATA, FINAL_METRICS } from '../model/heroData';
 import { easeOut } from '../lib/animations';
 
@@ -21,7 +21,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
   const circleRef    = useRef<SVGCircleElement>(null);
   const autoFiredRef = useRef(false);
 
-  const gaugeStroke = { good: 'var(--ld-accent)', warn: 'var(--ld-amber)', poor: 'var(--ld-rose)' }[scoreBand(score)];
+  const gaugeStroke = scoreColor(score);
 
   const runAudit = useCallback(() => {
     if (runningRef.current) return;

@@ -33,6 +33,12 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/** GET an endpoint that answers with the `{ success, data }` envelope and unwrap it. */
+export async function fetchJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+  const res = await apiClient.get<{ success: boolean; data: T }>(path, params ? { params } : undefined);
+  return res.data.data;
+}
+
 /**
  * Whether a failed request is worth trying again unprompted.
  *

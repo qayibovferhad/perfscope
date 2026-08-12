@@ -1,23 +1,21 @@
+import { scoreBand, BAND_TEXT } from '../lib';
+
 const CIRC = 2 * Math.PI * 25; // r=25 → ≈157.08
 
-function ringStatus(score: number | null): 'good' | 'warn' | 'poor' | 'none' {
-  if (score === null) return 'none';
-  if (score >= 90)    return 'good';
-  if (score >= 50)    return 'warn';
-  return 'poor';
-}
+/** `none` is "never audited" — a hollow ring, not a zero. */
+type RingStatus = 'good' | 'warn' | 'poor' | 'none';
 
-const STROKE: Record<string, string> = {
+const STROKE: Record<RingStatus, string> = {
   good: 'var(--ld-accent)',
   warn: 'var(--ld-amber)',
   poor: 'var(--ld-rose)',
   none: 'var(--ld-border-strong)',
 };
 
-const NUM_CLS: Record<string, string> = {
-  good: 'text-ld-score-good',
-  warn: 'text-ld-amber',
-  poor: 'text-ld-rose',
+const NUM_CLS: Record<RingStatus, string> = {
+  good: BAND_TEXT.good,
+  warn: BAND_TEXT.warn,
+  poor: BAND_TEXT.poor,
   none: 'text-ld-text-3',
 };
 
@@ -32,7 +30,7 @@ interface Props {
 }
 
 export function ScoreRing({ score, size = 58 }: Props) {
-  const status  = ringStatus(score);
+  const status: RingStatus = score === null ? 'none' : scoreBand(score);
   const offset  = score === null ? CIRC : CIRC * (1 - score / 100);
   const sizeCls = SIZE_CLS[size] ?? SIZE_CLS[58];
 

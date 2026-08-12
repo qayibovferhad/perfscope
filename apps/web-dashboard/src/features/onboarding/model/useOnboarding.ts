@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/shared/api/client';
+import { fetchJson } from '@/shared/api/client';
 import type { OnboardingStatus } from '@perfscope/shared';
 
 /**
@@ -11,10 +11,7 @@ import type { OnboardingStatus } from '@perfscope/shared';
 export function useOnboarding() {
   return useQuery<OnboardingStatus>({
     queryKey: ['onboarding'],
-    queryFn: async () => {
-      const res = await apiClient.get<{ success: boolean; data: OnboardingStatus }>('/onboarding/status');
-      return res.data.data;
-    },
+    queryFn: () => fetchJson<OnboardingStatus>('/onboarding/status'),
     // Steps flip as the user works, and the query is a handful of counts.
     staleTime: 30_000,
     // Guidance must never look like a broken page — a failure just hides the panel.
