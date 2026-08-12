@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Lock, ShieldCheck, ShieldAlert, Globe, Zap, Crosshair } from 'lucide-react';
+import { Search, Lock, ShieldCheck, ShieldAlert, Globe } from 'lucide-react';
 import type { SessionState } from '@/entities/website';
-import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
+import { Segmented } from '@/shared/ui/segmented';
 import { DEVICE_MODES } from '@/entities/analysis/ui/FormFactorToggle';
+import { PrecisionToggle } from '@/entities/analysis/ui/PrecisionToggle';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { ProgressStepper } from '@/entities/analysis';
@@ -24,11 +25,6 @@ interface Props {
    *  dead end: the session cannot be repaired from anywhere else on this page. */
   onFixSession:  () => void;
 }
-
-const PRECISION_MODES: SegmentOption<AuditPrecision>[] = [
-  { value: 'single', label: 'Fast',    icon: Zap,       title: 'One measurement — quickest, but a single run swings by ±10 points' },
-  { value: 'median', label: 'Precise', icon: Crosshair, title: 'Measure three times and report the median run — ~3× slower, far less noise' },
-];
 
 export function AnalyzerSearchForm({
   url, setUrl, isPending, authSessionId, sessionStatus, progress,
@@ -72,13 +68,7 @@ export function AnalyzerSearchForm({
             disabled={isPending}
             ariaLabel="Audit device profile"
           />
-          <Segmented
-            options={PRECISION_MODES}
-            value={precision}
-            onChange={onPrecision}
-            disabled={isPending}
-            ariaLabel="Measurement precision"
-          />
+          <PrecisionToggle value={precision} onChange={onPrecision} disabled={isPending} />
         </div>
       </div>
 

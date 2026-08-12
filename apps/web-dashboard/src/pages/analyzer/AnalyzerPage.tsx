@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
@@ -19,7 +19,7 @@ import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
 export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
-  const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, reset, lastUrl } = useAnalysis();
+  const { analyze, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, isError, error, errorCode, reset, lastUrl } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
@@ -143,13 +143,30 @@ export function AnalyzerPage() {
         precision={precision}
         onPrecision={setPrecision}
         onSubmit={handleSubmit}
+        onFixSession={() => setAuthModalOpen(true)}
       />
 
       {isError && (
         <Card className="border-destructive/40 bg-destructive/5">
-          <CardContent className="flex items-center gap-2 pt-4 pb-4 text-destructive">
+          <CardContent className="flex items-center gap-3 pt-4 pb-4 text-destructive flex-wrap">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <p className="text-sm">{error ?? 'Analysis failed'}</p>
+            <p className="text-sm flex-1 min-w-[240px]">{error ?? 'Analysis failed'}</p>
+
+            {/* An expired session is the one failure with a known repair, and it was being
+                reported as plain text: the audit had already dropped the dead session, so
+                the user's only route back was hunting for "Locked Page?" in the header. */}
+            {errorCode === 'SESSION_EXPIRED' && (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="inline-flex items-center gap-[7px] shrink-0 px-[13px] py-[7px] rounded-[10px]
+                           text-[13px] font-semibold border border-destructive/40 bg-ld-surface
+                           text-destructive transition-colors duration-150 hover:bg-destructive/10"
+              >
+                <Lock className="w-[13px] h-[13px]" />
+                Log in again
+              </button>
+            )}
           </CardContent>
         </Card>
       )}
