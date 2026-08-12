@@ -245,23 +245,23 @@ export const FlameChart = memo(function FlameChart({ data, axisMs, leftW }: Prop
       {/* Tooltip — fixed position, managed imperatively */}
       <div
         ref={tooltipRef}
-        className="pointer-events-none fixed z-[200] hidden rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-[11px] text-slate-200 shadow-xl"
+        className="pointer-events-none fixed z-[200] hidden rounded-lg border border-ld-border-strong bg-ld-surface-2 px-3 py-2 text-[11px] text-ld-text shadow-xl"
         style={{ maxWidth: 260 }}
       />
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-1.5 border-t border-slate-800/60 flex-wrap">
+      <div className="flex items-center gap-4 px-4 py-1.5 border-t border-ld-border flex-wrap">
         {(Object.entries(COLORS) as [FlameChartEvent['category'], string][]).map(([cat, color]) => (
           <div key={cat} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
-            <span className="text-[10px] text-slate-500">{CATEGORY_LABELS[cat]}</span>
+            <span className="text-[10px] text-ld-text-3">{CATEGORY_LABELS[cat]}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-sm border border-red-500 bg-transparent" />
-          <span className="text-[10px] text-slate-500">Long Task (&gt;50ms)</span>
+          <span className="text-[10px] text-ld-text-3">Long Task (&gt;50ms)</span>
         </div>
-        <span className="ml-auto text-[10px] text-slate-600">Scroll to zoom · Double-click to reset</span>
+        <span className="ml-auto text-[10px] text-ld-text-3">Scroll to zoom · Double-click to reset</span>
       </div>
     </div>
   );

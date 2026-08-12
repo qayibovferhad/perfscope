@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Globe, GitCompareArrows, X } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
 
 export function CompareBar({
   selectedCount,
@@ -41,13 +42,10 @@ export function CompareBar({
       <div className="w-px h-4 bg-ld-border" />
 
       {selectedCount === 1 && (
-        <button
-          onClick={onCrossSite}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors bg-ld-surface text-ld-text-2 border border-ld-border hover:bg-ld-surface-hover"
-        >
+        <Button variant="outline" size="sm" onClick={onCrossSite}>
           <Globe className="w-3.5 h-3.5" />
           Compare with another website
-        </button>
+        </Button>
       )}
 
       {selectedCount < 2 && (
@@ -57,21 +55,15 @@ export function CompareBar({
       )}
 
       {selectedCount === 2 && (
-        <button
-          onClick={onCompare}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity bg-ld-accent text-white hover:opacity-90"
-        >
+        <Button variant="accent-flat" size="sm" onClick={onCompare}>
           <GitCompareArrows className="w-3.5 h-3.5" />
           Compare
-        </button>
+        </Button>
       )}
 
-      <button
-        onClick={onExit}
-        className="p-1.5 rounded-lg transition-colors text-ld-text-3 hover:text-ld-text"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      <Button variant="ghost" size="icon-sm" onClick={onExit} aria-label="Exit compare mode">
+        <X />
+      </Button>
     </motion.div>
   );
 }

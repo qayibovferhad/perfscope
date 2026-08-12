@@ -6,6 +6,10 @@ import {
   TrendingUp, TrendingDown, Minus, Zap, Lightbulb, FileText,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from '../model/useCompareHistory';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Panel } from '@/shared/ui/panel';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
 import { fmtDay } from '@/shared/lib/time';
 
@@ -80,16 +84,14 @@ function Highlight({ text }: { text: string }) {
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <label className="flex items-center gap-[11px] px-[15px] rounded-[12px] border border-ld-border-strong bg-ld-surface mb-[18px] transition-[border-color,box-shadow] duration-200 focus-within:border-ld-accent focus-within:[box-shadow:0_0_0_4px_var(--ld-accent-soft)] cursor-text">
-      <Search className="w-[17px] h-[17px] text-ld-text-3 shrink-0" />
-      <input
-        type="text"
-        placeholder="Search by rival URL…"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-transparent border-none outline-none text-ld-text text-[14.5px] py-[13px] min-w-0 placeholder:text-ld-text-3"
-      />
-    </label>
+    <Input
+      icon={<Search />}
+      type="text"
+      placeholder="Search by rival URL…"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      wrapperClassName="mb-[18px]"
+    />
   );
 }
 
@@ -347,7 +349,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
   }
 
   return (
-    <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card mt-[16px]">
+    <Panel className="shadow-ld-shadow-card mt-[16px]">
 
       {/* Header */}
       <div className="flex items-center gap-[11px] px-[24px] py-[20px] border-b border-ld-border">
@@ -355,14 +357,16 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
           <GitCompareArrows className="w-[15px] h-[15px]" />
         </span>
         <h3 className="text-[16px] font-bold text-ld-text">Pair Detail</h3>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
           onClick={handleExport}
           disabled={exporting || isLoading}
-          className="ml-auto inline-flex items-center gap-[8px] text-[13px] font-semibold px-[15px] py-[9px] rounded-[10px] border border-ld-border-strong bg-ld-surface text-ld-text-2 transition-[color,border-color,background] duration-200 disabled:opacity-50 hover:text-ld-accent hover:border-ld-accent-line hover:bg-ld-accent-soft"
         >
-          <FileText className="w-[15px] h-[15px]" />
+          <FileText />
           {exporting ? 'Generating…' : 'Generate Report'}
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -500,7 +504,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
           </div>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -508,23 +512,18 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-[16px] py-[80px] text-center">
-      <div className="w-[56px] h-[56px] rounded-[16px] grid place-items-center bg-ld-accent-soft border border-ld-accent-line">
-        <GitCompareArrows className="w-[26px] h-[26px] text-ld-accent" />
-      </div>
-      <div>
-        <p className="text-[14px] font-semibold text-ld-text">No comparisons yet</p>
-        <p className="text-[12.5px] text-ld-text-3 mt-[6px]">
-          Run a competitive analysis to start tracking performance battles.
-        </p>
-      </div>
-      <Link
-        to="/compare"
-        className="inline-flex items-center gap-[8px] text-[13px] font-semibold px-[16px] py-[9px] rounded-[10px] border border-ld-border-strong bg-ld-surface text-ld-text-2 transition-[color,border-color,background] duration-200 hover:text-ld-accent hover:border-ld-accent-line hover:bg-ld-accent-soft"
-      >
-        <GitCompareArrows className="w-[15px] h-[15px]" /> Go to Compare
-      </Link>
-    </div>
+    <StatePanel
+      icon={<GitCompareArrows className="w-7 h-7" />}
+      title="No comparisons yet"
+      description="Run a competitive analysis to start tracking performance battles."
+      action={
+        <Button asChild variant="outline" size="sm">
+          <Link to="/compare">
+            <GitCompareArrows /> Go to Compare
+          </Link>
+        </Button>
+      }
+    />
   );
 }
 
@@ -564,7 +563,7 @@ export function CompareHistoryPanel() {
       ) : (
         <>
           {/* Comparison list */}
-          <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
+          <Panel className="shadow-ld-shadow-card">
             <div className="flex items-center gap-[9px] px-[20px] py-[16px] border-b border-ld-border">
               <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
               <b className="font-mono text-[12px] tracking-[.12em] uppercase text-ld-text-2 font-semibold">
@@ -589,7 +588,7 @@ export function CompareHistoryPanel() {
                 />
               ))
             )}
-          </div>
+          </Panel>
 
           {/* Pair detail */}
           <AnimatePresence>

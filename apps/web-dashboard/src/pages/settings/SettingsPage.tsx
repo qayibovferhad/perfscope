@@ -6,6 +6,9 @@ import { Toggle } from '@/shared/ui/toggle';
 import { TimePicker } from '@/shared/ui/time-picker';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/shared/ui/select';
 import { useAuthStore } from '@/features/auth/model/authStore';
 import type { AuthUser } from '@/entities/user';
 import { apiClient, fetchJson } from '@/shared/api/client';
@@ -93,13 +96,25 @@ function DigestSection() {
           <div className="flex items-end gap-[14px] flex-wrap pt-[4px]">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-semibold text-ld-text-2">Day</label>
-              <select
-                value={day}
-                onChange={e => { const d = Number(e.target.value); setDay(d); void save({ day: d }); }}
-                className="h-9 rounded-[10px] border border-ld-border-strong bg-ld-bg-2 px-[10px] text-[13px] text-ld-text outline-none focus:border-ld-accent"
+              <Select
+                value={String(day)}
+                onValueChange={v => { const d = Number(v); setDay(d); void save({ day: d }); }}
               >
-                {DAYS.map((label, i) => <option key={label} value={i}>{label}</option>)}
-              </select>
+                <SelectTrigger className="h-9 w-[140px] text-[13px] text-ld-text bg-ld-bg-2 border-ld-border-strong rounded-[10px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-ld-bg-2 border-ld-border">
+                  {DAYS.map((label, i) => (
+                    <SelectItem
+                      key={label}
+                      value={String(i)}
+                      className="text-[13px] cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent"
+                    >
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-semibold text-ld-text-2">Time</label>
@@ -108,7 +123,7 @@ function DigestSection() {
           </div>
         )}
 
-        {serverErr && <p className="text-xs px-3 py-2 rounded-lg ps-badge-reg">{serverErr}</p>}
+        {serverErr && <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>}
         {saved && !serverErr && (
           <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
             <CheckCircle2 className="w-4 h-4" /> Saved
@@ -178,7 +193,7 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
         </div>
 
         {serverErr && (
-          <p className="text-xs px-3 py-2 rounded-lg ps-badge-reg">{serverErr}</p>
+          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>
         )}
 
         <div className="flex items-center gap-3">
@@ -279,7 +294,7 @@ function PasswordSection() {
         </div>
 
         {serverErr && (
-          <p className="text-xs px-3 py-2 rounded-lg ps-badge-reg">{serverErr}</p>
+          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>
         )}
 
         <div className="flex items-center gap-3">

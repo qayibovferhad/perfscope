@@ -4,6 +4,8 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Lightbulb, Minus,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
+import { Button } from '@/shared/ui/button';
+import { Panel } from '@/shared/ui/panel';
 import { VITAL_THRESHOLDS, scoreBand, type VitalKey } from '@/entities/analysis';
 import type { RowData, StatusFilter, SortKey, SortOrder, RowStatus } from '../model/types';
 import { fmtMs, fmtCls, fmtPct, fmtDateFull, deltaPct } from '../lib/format';
@@ -301,7 +303,7 @@ export function HistoryDeepDiveTable({
       <SeniorInsight rows={reversedRows} />
 
       {/* Deep Dive card */}
-      <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
+      <Panel className="shadow-ld-shadow-card">
 
         {/* Card head */}
         <div className="flex items-center gap-[11px] px-[22px] pt-[20px] pb-0">
@@ -426,16 +428,17 @@ export function HistoryDeepDiveTable({
 
                       {/* Open */}
                       <td className="px-[14px] py-[13px] text-right">
-                        <button
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => onOpen(entry)}
                           disabled={loadingId === entry.id}
-                          className="inline-flex items-center gap-[6px] text-[12.5px] font-semibold text-ld-text-2 px-[13px] py-[7px] rounded-[9px] border border-ld-border-strong bg-ld-surface transition-[color,border-color,background] duration-[180ms] disabled:opacity-50 hover:text-ld-accent hover:border-ld-accent-line hover:bg-ld-accent-soft"
                         >
                           {loadingId === entry.id
-                            ? <Loader2 className="w-[13px] h-[13px] animate-spin" />
-                            : <ExternalLink className="w-[13px] h-[13px]" />}
+                            ? <Loader2 className="animate-spin" />
+                            : <ExternalLink />}
                           Open
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   );
@@ -444,7 +447,7 @@ export function HistoryDeepDiveTable({
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

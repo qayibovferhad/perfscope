@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { X, Globe, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
+import { Globe, ChevronDown, Loader2 } from 'lucide-react';
 import { useWebsites } from '@/entities/website';
 import { scoreColor } from '@/entities/analysis';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
+import { Modal } from '@/shared/ui/modal';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { fmtDateTime } from '@/shared/lib/time';
 
 interface Props {
@@ -25,17 +26,11 @@ function AuditList({ projectId, onSelect }: {
   );
 
   if (isError) return (
-    <div className="flex items-center gap-2 py-6 justify-center text-xs text-ld-rose">
-      <AlertCircle className="w-3.5 h-3.5" />
-      Could not load this website&apos;s audits
-    </div>
+    <StatePanel compact variant="error" title="Could not load this website's audits" />
   );
 
   if (!data || data.stats.totalAudits === 0) return (
-    <div className="flex items-center gap-2 py-6 justify-center text-xs text-ld-text-3">
-      <AlertCircle className="w-3.5 h-3.5" />
-      No audits found for this website
-    </div>
+    <StatePanel compact title="No audits found for this website" />
   );
 
   const allEntries = data.groups
@@ -81,32 +76,16 @@ export function CrossWebsitePicker({ excludeProjectId, onSelect, onClose }: Prop
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[4px]"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.18 }}
-        className="w-full max-w-md rounded-2xl overflow-hidden bg-ld-surface border border-ld-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-ld-border">
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-ld-accent" />
-            <span className="text-sm font-bold text-ld-text">
-              Compare with another website
-            </span>
-          </div>
-          <button onClick={onClose} className="text-ld-text-3 hover:text-ld-text transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Modal open onClose={onClose}>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-5">
+        <Globe className="w-4 h-4 text-ld-accent" />
+        <span className="text-sm font-bold text-ld-text">
+          Compare with another website
+        </span>
+      </div>
 
-        <div className="p-5 space-y-4">
+      <div className="space-y-4">
           {/* Website selector */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest text-ld-text-3">
@@ -162,8 +141,7 @@ export function CrossWebsitePicker({ excludeProjectId, onSelect, onClose }: Prop
               <AuditList projectId={selectedId} onSelect={handleSelect} />
             </div>
           )}
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </Modal>
   );
 }

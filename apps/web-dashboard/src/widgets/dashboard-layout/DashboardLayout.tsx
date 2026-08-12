@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
+import { Button } from '@/shared/ui/button';
 import { AddWebsiteModal } from '@/features/websites/ui/AddWebsiteModal';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
@@ -22,7 +23,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-ps-page">
+    <div className="flex h-screen overflow-hidden bg-ld-bg-2">
 
       {/* Desktop sidebar */}
       <div className="hidden md:flex shrink-0">
@@ -59,9 +60,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile topbar */}
         <div className="md:hidden flex items-center gap-3 px-4 h-14 shrink-0 border-b border-ld-border">
-          <button onClick={() => setMobileOpen(true)} className="text-ld-text-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="-ml-2"
+          >
             <Menu className="w-5 h-5" />
-          </button>
+          </Button>
           <span className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg grid place-items-center bg-ld-grad shadow-ld-glow">
               <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">

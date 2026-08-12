@@ -1,6 +1,7 @@
 import { useGoogleLogin } from '@react-oauth/google';
 import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
+import { Button } from '@/shared/ui/button';
 
 /**
  * Google sign-in is optional infrastructure: without a configured client id the
@@ -38,10 +39,11 @@ export function GoogleButton({ onSuccess, onError }: Props) {
   });
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       onClick={() => login()}
-      className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 bg-ld-surface border border-ld-border text-ld-text-3 hover:border-ld-accent-line hover:text-ld-text hover:[box-shadow:0_0_0_3px_var(--ld-accent-soft)]"
+      className="w-full gap-3 font-medium text-ld-text-3 hover:text-ld-text"
     >
       {/* Google "G" logo */}
       <svg width="18" height="18" viewBox="0 0 48 48">
@@ -52,6 +54,6 @@ export function GoogleButton({ onSuccess, onError }: Props) {
         <path fill="none" d="M0 0h48v48H0z"/>
       </svg>
       Continue with Google
-    </button>
+    </Button>
   );
 }

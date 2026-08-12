@@ -11,6 +11,8 @@ interface Props {
   /** Usually a Button — "Add Website", "Try again", "Go to Analyzer". */
   action?:      React.ReactNode;
   variant?:     StatePanelVariant;
+  /** In-card one-liner: a single compact row instead of the full-height panel. */
+  compact?:     boolean;
   className?:   string;
 }
 
@@ -24,10 +26,26 @@ interface Props {
  * Giving both a single component makes the error variant the path of least resistance.
  */
 export function StatePanel({
-  icon, title, description, action, variant = 'empty', className,
+  icon, title, description, action, variant = 'empty', compact = false, className,
 }: Props) {
   const isError = variant === 'error';
-  const shownIcon = icon ?? (isError ? <AlertTriangle className="w-7 h-7" /> : null);
+  const shownIcon = icon ?? (isError ? <AlertTriangle className={compact ? 'w-4 h-4' : 'w-7 h-7'} /> : null);
+
+  if (compact) {
+    return (
+      <div className={cn('flex items-center gap-[10px] px-[4px] py-[10px]', className)}>
+        {shownIcon && (
+          <span className={cn('shrink-0', isError ? 'text-ld-rose' : 'text-ld-text-3')}>
+            {shownIcon}
+          </span>
+        )}
+        <span className={cn('text-[12.5px]', isError ? 'text-ld-rose' : 'text-ld-text-3')}>
+          {title}{description ? <> — {description}</> : null}
+        </span>
+        {action && <span className="ml-auto shrink-0">{action}</span>}
+      </div>
+    );
+  }
 
   return (
     <div

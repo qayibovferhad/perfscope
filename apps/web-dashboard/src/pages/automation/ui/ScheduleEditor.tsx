@@ -127,14 +127,15 @@ export function ScheduleEditor({
               <div key={i} className="rounded-[12px] border border-ld-border bg-ld-surface-2 p-3">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <TimePicker value={slot.time} onChange={time => updateSlot(i, { time })} />
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => onSlots(slots.filter((_, j) => j !== i))}
                     aria-label={`Remove the ${slot.time} slot`}
-                    className="w-7 h-7 rounded-[8px] grid place-items-center text-ld-rose hover:bg-ld-surface"
+                    className="text-ld-rose hover:text-ld-rose hover:bg-ld-surface"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <Trash2 />
+                  </Button>
                 </div>
 
                 {routes.length === 0 ? (

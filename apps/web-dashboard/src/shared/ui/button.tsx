@@ -21,13 +21,27 @@ const buttonVariants = cva(
           "text-[var(--ld-text-2)] hover:bg-[var(--ld-surface-hover)] hover:text-[var(--ld-text)]",
         link: "text-[var(--ld-accent)] underline-offset-4 hover:underline",
         dark: "bg-[#04130d] text-[#eafff5] font-bold shadow-none hover:-translate-y-px hover:shadow-none",
+        // Tinted, not solid: "something is wrong here" as a state pill, where solid
+        // `destructive` is the commit button of a delete dialog.
+        "destructive-soft":
+          "border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)] text-[var(--ld-rose)] hover:bg-[rgba(242,100,122,.14)]",
+        // Flat accent fill for dense toolbars where the gradient default is too loud.
+        "accent-flat":
+          "bg-[var(--ld-accent)] text-[#04130d] font-bold hover:opacity-90",
+        // "Nothing here yet — set it up": dashed until hovered.
+        dashed:
+          "border border-dashed border-[var(--ld-border-strong)] text-[var(--ld-text-2)] hover:border-solid hover:border-[var(--ld-accent-line)] hover:text-[var(--ld-accent)]",
       },
       size: {
         default: "h-11 px-6 py-3 text-[14.5px]",
         md:      "h-10 px-[14px] text-[13px] rounded-[10px]",
         sm:      "h-8 px-3 text-xs rounded-[9px]",
         lg:      "h-12 px-6 text-[15.5px] rounded-[13px]",
-        icon:    "h-10 w-10",
+        icon:       "h-10 w-10",
+        "icon-sm":  "h-8 w-8 rounded-[9px] [&_svg]:size-[15px]",
+        "icon-xs":  "h-7 w-7 rounded-[8px] [&_svg]:size-[14px]",
+        // Circular transport buttons (play/pause on the timeline scrubbers).
+        "icon-round": "h-7 w-7 rounded-full [&_svg]:size-[13px]",
       },
     },
     defaultVariants: {

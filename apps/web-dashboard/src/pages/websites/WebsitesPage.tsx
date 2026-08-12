@@ -4,8 +4,10 @@ import {
   LayoutGrid, List, Search,
   CheckSquare, Gauge, AlertTriangle, Layers,
 } from 'lucide-react';
+import { Button }                    from '@/shared/ui/button';
 import { Input }                     from '@/shared/ui/input';
-import { QueryErrorPanel }           from '@/shared/ui/state-panel';
+import { Segmented }                 from '@/shared/ui/segmented';
+import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { useWebsites }              from '@/entities/website';
 import { BAND_TILE, BAND_TEXT }     from '@/entities/analysis';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites/model/useWebsitesQuery';
@@ -119,14 +121,9 @@ export function WebsitesPage() {
             Audit, compare and keep an eye on every site in one place.
           </p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-[9px] font-bold text-[14.5px] px-5 py-3 rounded-[12px]
-                     bg-ld-grad text-ld-grad-text shadow-ld-glow border-0
-                     transition-transform duration-[150ms] hover:-translate-y-px"
-        >
-          <Plus className="w-[17px] h-[17px]" /> Add Website
-        </button>
+        <Button onClick={() => setModalOpen(true)}>
+          <Plus /> Add Website
+        </Button>
       </div>
 
       {/* ── Summary strip — account-wide counts from the server. Independent of
@@ -153,23 +150,15 @@ export function WebsitesPage() {
           />
 
           {/* Grid / List toggle */}
-          <div className="flex gap-[3px] p-[3px] rounded-[11px] border border-ld-border bg-ld-bg-2">
-            {(['grid', 'list'] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => switchView(v)}
-                className={`inline-flex items-center gap-[7px] text-[13px] font-medium px-[13px] py-2 rounded-[8px]
-                            transition-all duration-200
-                            ${view === v
-                              ? 'bg-ld-surface text-ld-text font-semibold shadow-[0_1px_0_rgba(0,0,0,0.18)]'
-                              : 'text-ld-text-2 hover:text-ld-text'}`}
-              >
-                {v === 'grid'
-                  ? <><LayoutGrid className="w-[15px] h-[15px]" /> Grid</>
-                  : <><List       className="w-[15px] h-[15px]" /> List</>}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            ariaLabel="View mode"
+            value={view}
+            onChange={switchView}
+            options={[
+              { value: 'grid', label: 'Grid', icon: LayoutGrid },
+              { value: 'list', label: 'List', icon: List },
+            ]}
+          />
         </div>
       )}
 
@@ -187,20 +176,16 @@ export function WebsitesPage() {
 
       {/* ── Empty state (no websites at all) ───────────────────────────── */}
       {!isLoading && !failed && total === 0 && !isFiltering && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-[16px] grid place-items-center mb-4 bg-ld-accent-soft">
-            <Globe className="w-7 h-7 text-ld-accent" />
-          </div>
-          <p className="text-sm font-semibold text-ld-text mb-1">No websites yet</p>
-          <p className="text-xs text-ld-text-3 mb-5">Add your first website to start tracking performance.</p>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-[11px] text-sm font-semibold
-                       bg-ld-grad text-ld-grad-text shadow-ld-glow"
-          >
-            <Plus className="w-4 h-4" /> Add Website
-          </button>
-        </div>
+        <StatePanel
+          icon={<Globe className="w-7 h-7" />}
+          title="No websites yet"
+          description="Add your first website to start tracking performance."
+          action={
+            <Button size="md" onClick={() => setModalOpen(true)}>
+              <Plus /> Add Website
+            </Button>
+          }
+        />
       )}
 
       {/* ── Cards grid / list ──────────────────────────────────────────── */}
@@ -234,9 +219,7 @@ export function WebsitesPage() {
 
       {/* ── No search results ──────────────────────────────────────────── */}
       {!isLoading && !failed && items.length === 0 && isFiltering && (
-        <p className="text-center text-[14px] text-ld-text-3 py-10">
-          No websites match “{debouncedQ}”.
-        </p>
+        <StatePanel title={`No websites match “${debouncedQ}”.`} />
       )}
 
       <AddWebsiteModal open={modalOpen} onClose={() => setModalOpen(false)} />

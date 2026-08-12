@@ -1,17 +1,18 @@
 import { useState, useRef, useId } from 'react';
 import { TriangleAlert, Zap, ChevronDown } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { Segmented } from '@/shared/ui/segmented';
 import type { AuditItem } from '@/entities/analysis';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FilterKey = 'all' | 'critical' | 'high' | 'other';
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all',      label: 'All'      },
-  { key: 'critical', label: 'Critical' },
-  { key: 'high',     label: 'High'     },
-  { key: 'other',    label: 'Other'    },
+const FILTERS: { value: FilterKey; label: string }[] = [
+  { value: 'all',      label: 'All'      },
+  { value: 'critical', label: 'Critical' },
+  { value: 'high',     label: 'High'     },
+  { value: 'other',    label: 'Other'    },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -164,20 +165,14 @@ export function AuditList({ audits }: { audits: AuditItem[] }) {
         )}
 
         {/* Segmented filter */}
-        <div className="ml-auto flex gap-[4px] p-[3px] rounded-[10px] border border-ld-border bg-ld-bg-2 max-[760px]:w-full">
-          {FILTERS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => applyFilter(key)}
-              className={cn(
-                'text-[12.5px] font-medium text-ld-text-2 px-[12px] py-[6px] rounded-[7px] transition-all duration-200 cursor-pointer border-0 bg-transparent',
-                filter === key && 'bg-ld-surface text-ld-text font-semibold [box-shadow:0_1px_0_rgba(0,0,0,.2)]',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          size="sm"
+          ariaLabel="Severity filter"
+          className="ml-auto max-[760px]:w-full"
+          options={FILTERS}
+          value={filter}
+          onChange={applyFilter}
+        />
       </div>
 
       {/* ── Issue list ──────────────────────────────────────────────────── */}

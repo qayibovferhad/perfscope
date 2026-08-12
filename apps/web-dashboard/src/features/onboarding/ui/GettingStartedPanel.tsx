@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { OnboardingStepId, OnboardingStatus } from '@perfscope/shared';
 import { Button } from '@/shared/ui/button';
+import { Panel } from '@/shared/ui/panel';
 import { useWebsites } from '@/entities/website';
 import { useOnboarding } from '../model/useOnboarding';
 
@@ -97,7 +98,7 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
     : '/websites';
 
   return (
-    <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden mb-[26px]">
+    <Panel className="mb-[26px]">
 
       {/* Heading band */}
       <div className="flex items-center gap-[12px] px-[22px] py-[16px] border-b border-ld-border">
@@ -112,14 +113,15 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
             {first ? ` · next: ${first.title}` : ''}
           </span>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={dismiss}
           aria-label="Dismiss getting started"
-          className="w-[28px] h-[28px] rounded-[8px] grid place-items-center text-ld-text-3 transition-colors duration-200 hover:text-ld-text hover:bg-ld-surface-hover shrink-0"
+          className="shrink-0 text-ld-text-3"
         >
-          <X className="w-[15px] h-[15px]" />
-        </button>
+          <X />
+        </Button>
       </div>
 
       {/* Steps */}
@@ -181,6 +183,6 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
           );
         })}
       </div>
-    </div>
+    </Panel>
   );
 }

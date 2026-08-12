@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceArea, ResponsiveContainer } from 'recharts';
 import { SCORE_BANDS, type OverviewSiteTrend } from '@perfscope/shared';
 import { CHART, SERIES_COLORS, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { fmtDayKey } from '@/shared/lib/time';
 import { hasTrendData } from '../lib/hasChartData';
 
@@ -17,10 +18,11 @@ export function ScoreTrendChart({ trend, days }: { trend: OverviewSiteTrend[]; d
 
   if (!hasTrendData(trend)) {
     return (
-      <p className="text-[13px] text-ld-text-3 py-[14px]">
-        No audits in the last {days} days. Runs appear here as they happen — nightly audits
-        keep the line moving without anyone remembering to press anything.
-      </p>
+      <StatePanel
+        compact
+        title={`No audits in the last ${days} days`}
+        description="Runs appear here as they happen — nightly audits keep the line moving without anyone remembering to press anything."
+      />
     );
   }
 

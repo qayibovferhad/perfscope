@@ -3,9 +3,9 @@ import type { LucideIcon } from 'lucide-react';
 export interface SegmentOption<T> {
   value: T;
   label: string;
-  icon:  LucideIcon;
+  icon?: LucideIcon;
   /** Tooltip — the place to explain what the option actually does. */
-  title: string;
+  title?: string;
 }
 
 interface Props<T extends string> {
@@ -15,12 +15,17 @@ interface Props<T extends string> {
   disabled?: boolean;
   ariaLabel: string;
   className?: string;
+  /** `sm` is for in-panel filter strips; the default fits page-level toolbars. */
+  size?: 'default' | 'sm';
 }
 
-/** Icon + label radio group styled as one control. */
+/** (Icon +) label radio group styled as one control. */
 export function Segmented<T extends string>({
-  options, value, onChange, disabled = false, ariaLabel, className,
+  options, value, onChange, disabled = false, ariaLabel, className, size = 'default',
 }: Props<T>) {
+  const btnSize = size === 'sm'
+    ? 'text-[11px] px-[9px] py-[4px] rounded-[7px]'
+    : 'text-[12px] px-[11px] py-[6px] rounded-[8px]';
   return (
     <div
       className={`inline-flex rounded-[10px] border border-ld-border-strong bg-ld-surface-2 p-[3px] ${className ?? ''}`}
@@ -38,13 +43,13 @@ export function Segmented<T extends string>({
             title={title}
             disabled={disabled}
             onClick={() => onChange(v)}
-            className={`inline-flex items-center gap-[6px] text-[12px] font-semibold px-[11px] py-[6px] rounded-[8px] transition-all duration-150 disabled:opacity-50 ${
+            className={`inline-flex items-center gap-[6px] font-semibold transition-all duration-150 disabled:opacity-50 ${btnSize} ${
               active
                 ? 'bg-ld-accent-soft text-ld-accent-2 [box-shadow:inset_0_0_0_1px_var(--ld-accent-line)]'
                 : 'text-ld-text-3 hover:text-ld-text-2'
             }`}
           >
-            <Icon className="w-[13px] h-[13px]" />
+            {Icon && <Icon className="w-[13px] h-[13px]" />}
             {label}
           </button>
         );

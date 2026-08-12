@@ -1,4 +1,5 @@
 import { Globe, Settings2 } from 'lucide-react';
+import { Button }           from '@/shared/ui/button';
 import { getHostname }      from '@/entities/website';
 import type { Website }     from '@/entities/website';
 
@@ -23,16 +24,10 @@ export function UnconfiguredRow({ site, onSetup }: Props) {
         <span className="block font-mono text-[12px] text-ld-text-3 mt-0.5 truncate">{hostname}</span>
       </div>
 
-      <button
-        onClick={onSetup}
-        className="inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-[9px] rounded-[10px]
-                   border border-dashed border-ld-border-strong text-ld-text bg-transparent
-                   transition-all duration-200
-                   hover:border-solid hover:border-ld-accent-line hover:text-ld-accent hover:bg-ld-accent-soft"
-      >
-        <Settings2 className="w-[15px] h-[15px]" />
+      <Button variant="dashed" size="md" onClick={onSetup}>
+        <Settings2 />
         Set up
-      </button>
+      </Button>
     </div>
   );
 }

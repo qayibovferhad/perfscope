@@ -4,6 +4,7 @@ import type { SessionState } from '@/entities/website';
 import { Segmented } from '@/shared/ui/segmented';
 import { DEVICE_MODES, PrecisionToggle } from '@/entities/analysis';
 import { Button } from '@/shared/ui/button';
+import { Panel } from '@/shared/ui/panel';
 import { Input } from '@/shared/ui/input';
 import { ProgressStepper } from '@/entities/analysis';
 import type { AnalysisProgress, AuditFormFactor, AuditPrecision } from '@/entities/analysis';
@@ -30,7 +31,7 @@ export function AnalyzerSearchForm({
   formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession,
 }: Props) {
   return (
-    <div className="rounded-[18px] border border-ld-border-strong bg-ld-surface shadow-ld-shadow-card p-[22px]">
+    <Panel border="strong" className="shadow-ld-shadow-card p-[22px]">
 
       {/* Header row */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
@@ -46,18 +47,18 @@ export function AnalyzerSearchForm({
               A button, not a label — naming the problem while leaving the user to find the
               repair themselves is the whole complaint. It opens the capture flow. */}
           {sessionStatus === 'expired' && (
-            <button
+            <Button
               type="button"
+              variant="destructive-soft"
+              size="sm"
+              className="rounded-full"
               onClick={onFixSession}
               disabled={isPending}
               title="The saved login session no longer works — log in again to refresh it"
-              className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-ld-rose px-[11px] py-[5px]
-                         rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)]
-                         transition-colors duration-150 hover:bg-[rgba(242,100,122,0.16)] disabled:opacity-50"
             >
               <ShieldAlert className="w-[13px] h-[13px]" />
               Session expired · Fix
-            </button>
+            </Button>
           )}
           {/* Device profile + measurement precision */}
           <Segmented
@@ -108,6 +109,6 @@ export function AnalyzerSearchForm({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Panel>
   );
 }

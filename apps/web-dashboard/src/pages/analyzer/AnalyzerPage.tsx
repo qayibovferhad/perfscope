@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
+import { Button } from '@/shared/ui/button';
 import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer/model/useAnalysis';
@@ -156,16 +157,16 @@ export function AnalyzerPage() {
                 reported as plain text: the audit had already dropped the dead session, so
                 the user's only route back was hunting for "Locked Page?" in the header. */}
             {errorCode === 'SESSION_EXPIRED' && (
-              <button
+              <Button
                 type="button"
+                variant="destructive-soft"
+                size="sm"
+                className="shrink-0"
                 onClick={() => setAuthModalOpen(true)}
-                className="inline-flex items-center gap-[7px] shrink-0 px-[13px] py-[7px] rounded-[10px]
-                           text-[13px] font-semibold border border-destructive/40 bg-ld-surface
-                           text-destructive transition-colors duration-150 hover:bg-destructive/10"
               >
-                <Lock className="w-[13px] h-[13px]" />
+                <Lock />
                 Log in again
-              </button>
+              </Button>
             )}
           </CardContent>
         </Card>

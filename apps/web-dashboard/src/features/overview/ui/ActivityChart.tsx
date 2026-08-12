@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { OverviewActivityPoint } from '@perfscope/shared';
 import { CHART, AXIS_PROPS, GRID_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { fmtDayKey } from '@/shared/lib/time';
 import { hasActivityData } from '../lib/hasChartData';
 
@@ -15,11 +16,7 @@ import { hasActivityData } from '../lib/hasChartData';
 
 export function ActivityChart({ activity, days }: { activity: OverviewActivityPoint[]; days: number }) {
   if (!hasActivityData(activity)) {
-    return (
-      <p className="text-[13px] text-ld-text-3 py-[14px]">
-        No audits in the last {days} days.
-      </p>
-    );
+    return <StatePanel compact title={`No audits in the last ${days} days.`} />;
   }
 
   return (

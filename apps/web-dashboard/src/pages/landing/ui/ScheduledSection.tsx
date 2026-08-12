@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Button } from '@/shared/ui/button';
+import { Segmented } from '@/shared/ui/segmented';
+import { Toggle } from '@/shared/ui/toggle';
 
 type Freq = 'Daily' | 'Weekdays' | 'Weekly';
 
@@ -88,53 +91,27 @@ export function ScheduledSection() {
               {/* Header */}
               <div className="flex items-center justify-between mb-5">
                 <span className="font-mono text-[13px] text-[var(--ld-text-2)] tracking-[.04em]">Daily report</span>
-                <label className="relative inline-flex cursor-pointer">
-                  <input type="checkbox" checked={schedOn} onChange={e => setSchedOn(e.target.checked)} className="absolute opacity-0 w-0 h-0" />
-                  <span
-                    className="w-[42px] h-6 rounded-full block transition-[background,border-color] duration-[250ms]"
-                    style={{
-                      background:   schedOn ? 'var(--ld-accent-soft)' : 'var(--ld-surface-hover)',
-                      border:       `1px solid ${schedOn ? 'var(--ld-accent-line)' : 'var(--ld-border-strong)'}`,
-                    }}
-                  >
-                    <span
-                      className="absolute top-1 w-4 h-4 rounded-full transition-[left,background] duration-[250ms]"
-                      style={{
-                        left:       schedOn ? 22 : 4,
-                        background: schedOn ? 'var(--ld-accent)' : 'var(--ld-text-3)',
-                      }}
-                    />
-                  </span>
-                </label>
+                <Toggle enabled={schedOn} onChange={setSchedOn} />
               </div>
 
               {/* Frequency */}
               <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-[var(--ld-border)]">
                 <span className="font-mono text-[11px] tracking-[.1em] text-[var(--ld-text-3)]">FREQUENCY</span>
-                <div className="flex gap-1 p-[3px] rounded-[10px] border border-[var(--ld-border)] bg-[var(--ld-bg-2)]">
-                  {FREQS.map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFreq(f)}
-                      className={`text-[12.5px] px-[11px] py-[6px] rounded-[7px] transition-all duration-200 cursor-pointer font-[inherit] ${
-                        freq === f
-                          ? 'font-semibold text-[var(--ld-accent-2)] bg-[var(--ld-accent-soft)] shadow-[inset_0_0_0_1px_var(--ld-accent-line)]'
-                          : 'font-medium text-[var(--ld-text-2)] bg-transparent'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
+                <Segmented
+                  ariaLabel="Report frequency"
+                  value={freq}
+                  onChange={setFreq}
+                  options={FREQS.map(f => ({ value: f, label: f }))}
+                />
               </div>
 
               {/* Time */}
               <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-[var(--ld-border)]">
                 <span className="font-mono text-[11px] tracking-[.1em] text-[var(--ld-text-3)]">TIME</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => stepTime(-30)} aria-label="Earlier" className="w-[30px] h-[30px] rounded-lg border border-[var(--ld-border-strong)] bg-[var(--ld-surface-2)] text-[var(--ld-text-2)] text-[18px] leading-none grid place-items-center cursor-pointer transition-all duration-150 font-[inherit]">−</button>
+                  <Button variant="outline" size="icon-sm" onClick={() => stepTime(-30)} aria-label="Earlier" className="text-[18px] font-normal text-[var(--ld-text-2)] bg-[var(--ld-surface-2)]">−</Button>
                   <span className="font-mono text-[17px] font-semibold text-[var(--ld-text)] min-w-[56px] text-center">{fmtTime(mins)}</span>
-                  <button onClick={() => stepTime(30)}  aria-label="Later"   className="w-[30px] h-[30px] rounded-lg border border-[var(--ld-border-strong)] bg-[var(--ld-surface-2)] text-[var(--ld-text-2)] text-[18px] leading-none grid place-items-center cursor-pointer transition-all duration-150 font-[inherit]">+</button>
+                  <Button variant="outline" size="icon-sm" onClick={() => stepTime(30)}  aria-label="Later"   className="text-[18px] font-normal text-[var(--ld-text-2)] bg-[var(--ld-surface-2)]">+</Button>
                   <span className="font-mono text-[11px] text-[var(--ld-text-3)] px-[7px] py-[3px] rounded-md border border-[var(--ld-border)]">GMT+4</span>
                 </div>
               </div>

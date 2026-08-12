@@ -3,14 +3,17 @@ import { cn } from '@/shared/lib/utils';
 
 interface InputProps extends React.ComponentProps<'input'> {
   icon?: React.ReactNode;
+  /** Suffix slot inside the field — a password-visibility toggle, a unit, a spinner.
+   *  Interactive content is fine; it sits inside the focus ring like the icon does. */
+  trailing?: React.ReactNode;
   error?: boolean;
   mono?: boolean;
   wrapperClassName?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, icon, error, mono, wrapperClassName, ...props }, ref) => {
-    if (icon) {
+  ({ className, icon, trailing, error, mono, wrapperClassName, ...props }, ref) => {
+    if (icon || trailing) {
       return (
         <div className={cn(
           'group flex items-center gap-[10px] px-[14px] rounded-[12px] border bg-ld-bg-2 transition-all duration-200',
@@ -19,12 +22,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ? 'border-ld-rose shadow-[0_0_0_4px_rgba(242,100,122,0.13)]'
             : 'border-ld-border-strong focus-within:border-ld-accent focus-within:shadow-[0_0_0_4px_var(--ld-accent-soft)]',
         )}>
-          <span className={cn(
-            'shrink-0 transition-colors duration-200 [&>svg]:w-[17px] [&>svg]:h-[17px]',
-            error ? 'text-ld-rose' : 'text-ld-text-3 group-focus-within:text-ld-accent',
-          )}>
-            {icon}
-          </span>
+          {icon && (
+            <span className={cn(
+              'shrink-0 transition-colors duration-200 [&>svg]:w-[17px] [&>svg]:h-[17px]',
+              error ? 'text-ld-rose' : 'text-ld-text-3 group-focus-within:text-ld-accent',
+            )}>
+              {icon}
+            </span>
+          )}
           <input
             ref={ref}
             className={cn(
@@ -34,6 +39,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             )}
             {...props}
           />
+          {trailing && <span className="shrink-0 flex items-center text-ld-text-3">{trailing}</span>}
         </div>
       );
     }

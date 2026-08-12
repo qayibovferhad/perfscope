@@ -2,6 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import type { OverviewVitalSplit } from '@perfscope/shared';
 import { GLOSSARY, isVitalKey, type GlossaryKey } from '@/entities/analysis';
 import { CHART, AXIS_PROPS, ChartTooltip } from '@/shared/ui/chart';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { hasVitalsData } from '../lib/hasChartData';
 
 /**
@@ -32,7 +33,7 @@ export function VitalsSplitChart({ vitals }: { vitals: OverviewVitalSplit[] }) {
     .filter(row => row.total > 0);
 
   if (!hasVitalsData(vitals)) {
-    return <p className="text-[13px] text-ld-text-3 py-[14px]">No audits to break down yet.</p>;
+    return <StatePanel compact title="No audits to break down yet." />;
   }
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Surface } from '@/shared/ui/surface';
+import { Panel } from '@/shared/ui/panel';
 import { Button } from '@/shared/ui/button';
 
 interface State {
@@ -33,16 +33,16 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-ps-page">
-        <Surface tone="danger" padding="lg" className="max-w-md w-full flex flex-col gap-4">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-ld-bg-2">
+        <Panel className="max-w-md w-full flex flex-col gap-4 p-6">
           <div>
-            <h1 className="text-lg font-semibold text-ps-heading mb-1">Something went wrong</h1>
-            <p className="text-sm text-ps-secondary">
+            <h1 className="text-lg font-semibold text-ld-text mb-1">Something went wrong</h1>
+            <p className="text-sm text-ld-text-3">
               An unexpected error happened while rendering this page.
             </p>
           </div>
 
-          <pre className="text-xs font-mono p-3 rounded-lg overflow-x-auto bg-black/30 text-ps-regression border border-ps-reg-border">
+          <pre className="text-xs font-mono p-3 rounded-lg overflow-x-auto bg-ld-bg-2 text-ld-rose border border-[rgba(242,100,122,.3)]">
             {this.state.error.message}
           </pre>
 
@@ -54,7 +54,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
               Reload page
             </Button>
           </div>
-        </Surface>
+        </Panel>
       </div>
     );
   }

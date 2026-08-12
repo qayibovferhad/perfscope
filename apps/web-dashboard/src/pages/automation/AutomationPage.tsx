@@ -1,7 +1,7 @@
 import { useState }                    from 'react';
 import { Moon, Globe, Loader2 }        from 'lucide-react';
 import { useWebsites }                 from '@/entities/website';
-import { QueryErrorPanel }             from '@/shared/ui/state-panel';
+import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { WebsiteAutomationCard }       from './ui/WebsiteAutomationCard';
 import { UnconfiguredRow }             from './ui/UnconfiguredRow';
 import { SetupModal }                  from './ui/SetupModal';
@@ -72,11 +72,11 @@ export function AutomationPage() {
 
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!isLoading && !isError && websites.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-[18px] border border-ld-border bg-ld-surface">
-          <Globe className="w-8 h-8 mb-3 text-ld-text-3" />
-          <p className="text-sm font-semibold text-ld-text">No websites yet</p>
-          <p className="text-xs mt-1 text-ld-text-3">Add a website first to configure nightly audits.</p>
-        </div>
+        <StatePanel
+          icon={<Globe className="w-7 h-7" />}
+          title="No websites yet"
+          description="Add a website first to configure nightly audits."
+        />
       )}
 
       {/* ── Configured ─────────────────────────────────────────────────────── */}

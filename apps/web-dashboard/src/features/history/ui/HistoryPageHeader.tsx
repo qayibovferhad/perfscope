@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Globe, AlertTriangle, Download, FileText } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
+import { Button } from '@/shared/ui/button';
 import { isReg } from '../lib/format';
 import { exportJson, exportCsv } from '../lib/export';
 import { ScoreSparkline } from './ScoreSparkline';
@@ -72,18 +73,12 @@ export function HistoryPageHeader({ url, entries }: Props) {
             <ScoreSparkline entries={entries} />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <button
-              onClick={() => exportJson(entries, url)}
-              className="inline-flex items-center gap-[8px] text-[12.5px] font-semibold px-[13px] py-[8px] rounded-[9px] border border-ld-border-strong bg-ld-surface text-ld-text-2 transition-[color,border-color] duration-200 hover:text-ld-accent hover:border-ld-accent-line"
-            >
-              <Download className="w-[14px] h-[14px]" /> Export JSON
-            </button>
-            <button
-              onClick={() => exportCsv(entries, url)}
-              className="inline-flex items-center gap-[8px] text-[12.5px] font-semibold px-[13px] py-[8px] rounded-[9px] border border-ld-border-strong bg-ld-surface text-ld-text-2 transition-[color,border-color] duration-200 hover:text-ld-accent hover:border-ld-accent-line"
-            >
-              <FileText className="w-[14px] h-[14px]" /> Export CSV
-            </button>
+            <Button variant="outline" size="sm" onClick={() => exportJson(entries, url)}>
+              <Download /> Export JSON
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportCsv(entries, url)}>
+              <FileText /> Export CSV
+            </Button>
           </div>
         </div>
       </div>

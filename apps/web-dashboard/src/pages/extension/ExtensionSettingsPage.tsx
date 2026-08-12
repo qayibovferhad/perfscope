@@ -2,6 +2,7 @@ import { Download, CheckCircle2, Circle, Lightbulb, ArrowRight } from 'lucide-re
 import { useExtensionConnected }      from '@/features/extension/model/useExtensionConnected';
 import { CopySnippet }                from '@/shared/ui/copy-snippet';
 import { Button }                     from '@/shared/ui/button';
+import { Panel }                      from '@/shared/ui/panel';
 import { FeatureCard }                from './ui/FeatureCard';
 import { StepRow }                    from './ui/StepRow';
 import { FEATURES, INSTALL_STEPS, HOW_IT_WORKS } from './config';
@@ -73,9 +74,7 @@ export function ExtensionSettingsPage() {
       </div>
 
       {/* ── Installation guide ────────────────────────────────────────────── */}
-      <div
-        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
-      >
+      <Panel className="p-[26px] shadow-ld-shadow-card">
         <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
           Installation guide
         </h2>
@@ -87,7 +86,7 @@ export function ExtensionSettingsPage() {
         </div>
 
         {/* Amber tip */}
-        <div className="flex gap-3 items-start mt-[22px] px-4 py-[14px] rounded-[12px] bg-ps-amber-muted border border-ps-amber-border">
+        <div className="flex gap-3 items-start mt-[22px] px-4 py-[14px] rounded-[12px] bg-[rgba(230,162,60,0.08)] border border-[rgba(230,162,60,0.3)]">
           <Lightbulb className="w-[18px] h-[18px] text-ld-amber shrink-0 mt-[1px]" />
           <p className="text-[13px] text-ld-text-2 leading-[1.55]">
             After a PerfScope update, download again and reload the extension in{' '}
@@ -95,12 +94,10 @@ export function ExtensionSettingsPage() {
             {' '}to get the latest version.
           </p>
         </div>
-      </div>
+      </Panel>
 
       {/* ── Developer: load from source ───────────────────────────────────── */}
-      <div
-        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
-      >
+      <Panel className="p-[26px] shadow-ld-shadow-card">
         <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
           Developer: load from source
         </h2>
@@ -108,12 +105,10 @@ export function ExtensionSettingsPage() {
           If you are running PerfScope locally you can load the extension directly from the build output:
         </p>
         <CopySnippet text="apps/chrome-extension/.output/chrome-mv3" />
-      </div>
+      </Panel>
 
       {/* ── How it works ──────────────────────────────────────────────────── */}
-      <div
-        className="rounded-[18px] border border-ld-border bg-ld-surface p-[26px] shadow-ld-shadow-card"
-      >
+      <Panel className="p-[26px] shadow-ld-shadow-card">
         <h2 className="text-[18px] font-bold tracking-[-0.01em] mb-[22px] text-ld-text">
           How it works
         </h2>
@@ -134,7 +129,7 @@ export function ExtensionSettingsPage() {
           View your audit history
           <ArrowRight className="w-[15px] h-[15px]" />
         </a>
-      </div>
+      </Panel>
 
     </div>
   );

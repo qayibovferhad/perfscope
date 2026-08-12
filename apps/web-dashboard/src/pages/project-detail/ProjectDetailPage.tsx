@@ -14,7 +14,7 @@ import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
 import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/shared/ui/stat-card';
-import { QueryErrorPanel }      from '@/shared/ui/state-panel';
+import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { TabBar }               from '@/shared/ui/tab-bar';
 import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
 import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
@@ -105,9 +105,17 @@ export function ProjectDetailPage() {
 
   if (!data) {
     return (
-      <div className="p-6 max-w-5xl mx-auto flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-sm font-medium mb-2 text-ld-text">Project not found</p>
-        <Link to="/websites" className="text-sm text-ld-accent">← Back to Websites</Link>
+      <div className="p-6 max-w-5xl mx-auto">
+        <StatePanel
+          variant="error"
+          title="Project not found"
+          description="This project may have been deleted, or the link is out of date."
+          action={
+            <Button variant="outline" size="md" asChild>
+              <Link to="/websites"><ArrowLeft /> Back to Websites</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -179,13 +187,15 @@ export function ProjectDetailPage() {
       <div className={`px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] w-[min(1080px,100%)] mx-auto flex flex-col gap-[44px] ${compareMode ? '!pb-28' : ''}`}>
         {/* ── Header section: back link + title ─────────── */}
         <div className="flex flex-col gap-[18px]">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate('/websites')}
-            className="inline-flex items-center gap-[8px] text-[13.5px] font-medium text-ld-text-3 self-start transition-[color,gap] duration-200 hover:text-ld-accent hover:gap-[11px]"
+            className="self-start -ml-3 text-[13.5px] font-medium text-ld-text-3 hover:bg-transparent hover:text-ld-accent"
           >
             <ArrowLeft className="w-[15px] h-[15px] shrink-0" />
             My Websites
-          </button>
+          </Button>
 
         {/* Site header */}
         <div className="flex items-center gap-[16px] flex-wrap">
@@ -314,20 +324,16 @@ export function ProjectDetailPage() {
         <>
         {/* Empty state */}
         {groups.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl bg-ld-surface border border-ld-border">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-ld-accent-soft">
-              <Activity className="w-7 h-7 text-ld-accent" />
-            </div>
-            <p className="text-sm font-semibold mb-1 text-ld-text">
-              No audits yet
-            </p>
-            <p className="text-xs mb-5 text-ld-text-3">
-              Run your first audit to start tracking performance across routes
-            </p>
-            <Button onClick={() => setAuditOpen(true)}>
-              <Plus /> New Audit
-            </Button>
-          </div>
+          <StatePanel
+            icon={<Activity className="w-7 h-7" />}
+            title="No audits yet"
+            description="Run your first audit to start tracking performance across routes"
+            action={
+              <Button onClick={() => setAuditOpen(true)}>
+                <Plus /> New Audit
+              </Button>
+            }
+          />
         )}
 
         {/* Route groups */}

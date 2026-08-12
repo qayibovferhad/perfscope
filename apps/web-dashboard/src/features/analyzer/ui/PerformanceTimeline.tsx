@@ -4,6 +4,15 @@ import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-m
 import { useTimelineContext } from '../model/TimelineContext';
 import type { TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
+import { Button } from '@/shared/ui/button';
+import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
+
+type PlaySpeed = 0.5 | 1;
+
+const SPEED_OPTIONS: SegmentOption<string>[] = [
+  { value: '0.5', label: '0.5x' },
+  { value: '1',   label: '1x'   },
+];
 
 const METRICS = [
   { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    border: 'border-blue-500',    hex: '#3b82f6' },
@@ -51,43 +60,35 @@ const TimelineHeader = memo(function TimelineHeader({
   isPlaying, playSpeed, metrics, maxTiming, motionMs, onTogglePlay, onSpeedChange,
 }: HeaderProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/60">
-      <Film className="w-4 h-4 text-slate-400 flex-shrink-0" />
-      <span className="text-sm font-semibold text-slate-200 tracking-tight">Performance Timeline</span>
-      <LiveTime value={motionMs} className="ml-1 font-mono text-sm font-bold text-white tabular-nums" />
-      <span className="text-slate-600 text-xs font-mono">/ {fmtSec2(maxTiming)}</span>
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-ld-border">
+      <Film className="w-4 h-4 text-ld-text-3 flex-shrink-0" />
+      <span className="text-sm font-semibold text-ld-text tracking-tight">Performance Timeline</span>
+      <LiveTime value={motionMs} className="ml-1 font-mono text-sm font-bold text-ld-text tabular-nums" />
+      <span className="text-ld-text-3 text-xs font-mono">/ {fmtSec2(maxTiming)}</span>
       <div className="ml-auto flex items-center gap-2 flex-wrap">
         {METRICS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
           return (
-            <div key={m.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800 border border-slate-700/50">
+            <div key={m.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-ld-surface-2 border border-ld-border">
               <span className={`w-2 h-2 rounded-full ${m.bg} flex-shrink-0`} />
               <span className={`text-[11px] font-bold ${m.text}`}>{m.label}</span>
-              <span className="text-[11px] text-slate-500 font-mono tabular-nums">{fmtSec2(val)}</span>
+              <span className="text-[11px] text-ld-text-3 font-mono tabular-nums">{fmtSec2(val)}</span>
             </div>
           );
         })}
-        <button
-          onClick={onTogglePlay}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-semibold transition-colors"
-        >
-          {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+        <Button variant="outline" size="sm" onClick={onTogglePlay}>
+          {isPlaying ? <Pause /> : <Play />}
           {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <div className="flex rounded-md overflow-hidden border border-slate-700 text-xs font-mono">
-          {([0.5, 1] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => onSpeedChange(s)}
-              className={`px-2.5 py-1.5 transition-colors ${
-                playSpeed === s ? 'bg-slate-600 text-white' : 'text-slate-500 hover:text-slate-300 bg-slate-800'
-              }`}
-            >
-              {s}x
-            </button>
-          ))}
-        </div>
+        </Button>
+        <Segmented
+          ariaLabel="Playback speed"
+          size="sm"
+          className="font-mono"
+          value={String(playSpeed)}
+          onChange={v => onSpeedChange(Number(v) as PlaySpeed)}
+          options={SPEED_OPTIONS}
+        />
       </div>
     </div>
   );
@@ -95,7 +96,7 @@ const TimelineHeader = memo(function TimelineHeader({
 
 const MainViewer = memo(function MainViewer({ frame, activeMetrics }: { frame: TimelineFrame; activeMetrics: MetricEntry[] }) {
   return (
-    <div className="relative w-full rounded-lg overflow-hidden bg-slate-950 border border-slate-700/50" style={{ aspectRatio: '16/9' }}>
+    <div className="relative w-full rounded-lg overflow-hidden bg-ld-bg-2 border border-ld-border aspect-video">
       <img src={frame.data} alt="" className="w-full h-full object-contain" draggable={false} />
       {activeMetrics.length > 0 && (
         <div className="absolute top-3 left-3 flex gap-1.5">
@@ -106,7 +107,7 @@ const MainViewer = memo(function MainViewer({ frame, activeMetrics }: { frame: T
           ))}
         </div>
       )}
-      <div className="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-sm border border-slate-700/60 text-slate-100 text-xs font-mono px-2.5 py-1 rounded-md tabular-nums">
+      <div className="absolute bottom-3 right-3 bg-ld-surface/90 backdrop-blur-sm border border-ld-border text-ld-text text-xs font-mono px-2.5 py-1 rounded-md tabular-nums">
         {fmtSec2(frame.timing)}
       </div>
     </div>
@@ -149,8 +150,8 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
       </div>
 
       <div className="relative h-5 flex items-center">
-        <div className="absolute inset-x-0 h-1.5 rounded-full bg-slate-700" />
-        <motion.div className="absolute left-0 h-1.5 rounded-full bg-slate-400" style={{ width: progressWidth }} />
+        <div className="absolute inset-x-0 h-1.5 rounded-full bg-ld-border" />
+        <motion.div className="absolute left-0 h-1.5 rounded-full bg-ld-text-3" style={{ width: progressWidth }} />
         {METRICS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
@@ -163,7 +164,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
           );
         })}
         <motion.div
-          className="absolute w-4 h-4 rounded-full bg-white shadow-lg border-2 border-slate-300 -translate-x-1/2 z-20"
+          className="absolute w-4 h-4 rounded-full bg-ld-surface shadow-lg border-2 border-ld-accent -translate-x-1/2 z-20"
           style={{ left: playheadLeft }}
         />
         <input
@@ -178,7 +179,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
         />
       </div>
 
-      <div className="flex justify-between text-[10px] font-mono text-slate-500 tabular-nums px-0.5">
+      <div className="flex justify-between text-[10px] font-mono text-ld-text-3 tabular-nums px-0.5">
         <span>0s</span>
         <span>{fmtSec2(maxTiming)}</span>
       </div>
@@ -201,7 +202,7 @@ const FilmstripItem = memo(
           className={`relative rounded-md overflow-hidden border-2 transition-all duration-100 ${
             isActive
               ? 'border-white shadow-[0_0_0_2px_rgba(255,255,255,0.12),0_0_16px_rgba(255,255,255,0.15)] scale-[1.02]'
-              : 'border-slate-700 hover:border-slate-500'
+              : 'border-ld-border hover:border-ld-border-strong'
           }`}
           style={{ width: THUMB_W, height: THUMB_H }}
         >
@@ -215,7 +216,7 @@ const FilmstripItem = memo(
           )}
         </div>
         <span className={`text-xs font-mono tabular-nums transition-colors duration-75 ${
-          isActive ? 'text-white font-semibold' : 'text-slate-500 group-hover:text-slate-400'
+          isActive ? 'text-ld-text font-semibold' : 'text-ld-text-3 group-hover:text-ld-text-2'
         }`}>
           {(frame.timing / 1000).toFixed(1)}s
         </span>
@@ -325,7 +326,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
   }, [stopPlayback, handleScrubInternal]);
 
   return (
-    <div className="rounded-xl border border-slate-700/60 bg-slate-900 overflow-hidden select-none">
+    <div className="rounded-xl border border-ld-border bg-ld-surface overflow-hidden select-none">
       <TimelineHeader
         isPlaying={isPlaying}
         playSpeed={playSpeed}
@@ -344,7 +345,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
           rangeRef={rangeRef}
           onScrub={handleScrub}
         />
-        <div className="flex gap-2.5 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}>
+        <div className="flex gap-2.5 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--ld-border-strong) transparent' }}>
           {frames.map((frame, i) => (
             <FilmstripItem
               key={i}

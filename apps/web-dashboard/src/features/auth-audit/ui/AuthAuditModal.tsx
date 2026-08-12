@@ -181,13 +181,15 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
                     <p className="text-xs text-ld-text-2">Audit any page — no need to log in again.</p>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={handleEndSession}
                   title="End session"
-                  className="p-1.5 rounded-[8px] transition-colors text-ld-text-3 hover:text-ld-rose hover:bg-[rgba(242,100,122,.1)]"
+                  className="hover:text-ld-rose hover:bg-[rgba(242,100,122,.1)]"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
+                  <LogOut />
+                </Button>
               </div>
 
               {/* Audit URL */}
@@ -206,12 +208,13 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
               </div>
 
               {/* New session button */}
-              <button
+              <Button
+                variant="link"
                 onClick={() => setStep('setup')}
-                className="flex items-center gap-1.5 text-xs text-ld-text-3 hover:text-ld-text transition-colors"
+                className="h-auto p-0 gap-1.5 text-xs font-medium text-ld-text-3 hover:text-ld-text"
               >
                 <RefreshCw className="w-3 h-3" /> Open a new browser / re-login
-              </button>
+              </Button>
 
               <Button
                 className="w-full gap-2"

@@ -3,6 +3,8 @@ import { useNavigate }        from 'react-router-dom';
 import { motion }             from 'framer-motion';
 import { Globe, Plus, X, Link2, ExternalLink, Loader2, SlidersHorizontal } from 'lucide-react';
 import { expandSchedule }     from '@perfscope/shared';
+import { Button }             from '@/shared/ui/button';
+import { Input }              from '@/shared/ui/input';
 import { Toggle }             from '@/shared/ui/toggle';
 import { TimePicker }         from '@/shared/ui/time-picker';
 import { useAutomation }      from '@/features/automation/model/useAutomation';
@@ -63,29 +65,17 @@ export function WebsiteAutomationCard({ site, onConfigure }: { site: Website; on
           <span className="block font-mono text-[12.5px] text-ld-text-3 mt-0.5 truncate">{hostname}</span>
         </div>
 
-        <button
-          onClick={handleOpenLast}
-          disabled={opening}
-          className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-ld-text-2 px-[13px] py-[7px] rounded-[9px]
-                     border border-ld-border-strong bg-ld-surface
-                     transition-all duration-200 hover:border-ld-accent-line hover:text-ld-accent
-                     disabled:opacity-40"
-        >
-          {opening ? <Loader2 className="w-[14px] h-[14px] animate-spin" /> : <ExternalLink className="w-[14px] h-[14px]" />}
+        <Button variant="outline" size="sm" onClick={handleOpenLast} disabled={opening}>
+          {opening ? <Loader2 className="animate-spin" /> : <ExternalLink />}
           Last result
-        </button>
+        </Button>
 
         {/* Setup was previously reachable only for sites with nothing configured, so a
             timetable could be created and then never edited again. */}
-        <button
-          onClick={onConfigure}
-          className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-ld-text-2 px-[13px] py-[7px] rounded-[9px]
-                     border border-ld-border-strong bg-ld-surface
-                     transition-all duration-200 hover:border-ld-accent-line hover:text-ld-accent"
-        >
-          <SlidersHorizontal className="w-[14px] h-[14px]" />
+        <Button variant="outline" size="sm" onClick={onConfigure}>
+          <SlidersHorizontal />
           Configure
-        </button>
+        </Button>
 
         <Toggle
           enabled={auto.enabled}
@@ -144,27 +134,20 @@ export function WebsiteAutomationCard({ site, onConfigure }: { site: Website; on
           </div>
 
           <div className="flex gap-[10px]">
-            <label className="flex-1 flex items-center gap-[10px] px-[14px] rounded-[11px] border border-ld-border-strong bg-ld-bg-2
-                              transition-[border-color,box-shadow] duration-200
-                              focus-within:border-ld-accent focus-within:shadow-[0_0_0_4px_var(--ld-accent-soft)]">
-              <Link2 className="w-[15px] h-[15px] text-ld-text-3 shrink-0" />
-              <input
-                value={input}
-                onChange={e => { setInput(e.target.value); setInputError(''); }}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddRoute(); } }}
-                placeholder="/dashboard"
-                className="flex-1 bg-transparent border-none outline-none text-ld-text font-mono text-[13.5px] py-3 min-w-0 placeholder:text-ld-text-3"
-              />
-            </label>
-            <button
-              onClick={handleAddRoute}
-              disabled={!input.trim()}
-              className="inline-flex items-center gap-2 font-bold text-[13.5px] px-[18px] rounded-[11px] bg-ld-grad shadow-ld-glow text-ld-grad-text
-                         transition-transform duration-150 hover:-translate-y-px disabled:opacity-40"
-            >
-              <Plus className="w-[15px] h-[15px]" />
+            <Input
+              icon={<Link2 />}
+              mono
+              value={input}
+              onChange={e => { setInput(e.target.value); setInputError(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddRoute(); } }}
+              placeholder="/dashboard"
+              className="text-[13.5px]"
+              wrapperClassName="flex-1"
+            />
+            <Button onClick={handleAddRoute} disabled={!input.trim()} className="h-auto px-[18px]">
+              <Plus />
               Add
-            </button>
+            </Button>
           </div>
 
           {inputError && <p className="text-[11px] text-ld-rose mt-1.5">{inputError}</p>}

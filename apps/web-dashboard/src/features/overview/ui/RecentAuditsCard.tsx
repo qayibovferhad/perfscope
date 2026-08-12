@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { History, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import type { OverviewAudit } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
 import { scoreBand, BAND_TEXT } from '@/entities/analysis';
@@ -45,11 +46,16 @@ export function RecentAuditsCard({ audits, className }: { audits: OverviewAudit[
 
       {!audits.length ? (
         <PanelBody>
-          <p className="text-[13px] text-ld-text-2 leading-[1.55]">
-            No audits yet —{' '}
-            <Link to="/app" className="font-semibold text-ld-accent hover:underline">run one</Link>
-            {' '}and it will appear here.
-          </p>
+          <StatePanel
+            compact
+            title="No audits yet"
+            description={
+              <>
+                <Link to="/app" className="font-semibold text-ld-accent hover:underline">run one</Link>
+                {' '}and it will appear here.
+              </>
+            }
+          />
         </PanelBody>
       ) : (
         // Rows run edge to edge on purpose: the dividers should reach the panel border

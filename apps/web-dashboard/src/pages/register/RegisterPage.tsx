@@ -113,23 +113,23 @@ export function RegisterPage() {
 
           {/* Password */}
           <div className="flex flex-col gap-1">
-            <div className="relative">
-              <Input
-                {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 characters' } })}
-                type={showPass ? 'text' : 'password'}
-                placeholder="Password"
-                icon={<Lock />}
-                error={!!errors.password}
-                className="pr-7"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((v) => !v)}
-                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-ps-muted hover:text-ps-heading transition-colors"
-              >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <Input
+              {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 characters' } })}
+              type={showPass ? 'text' : 'password'}
+              placeholder="Password"
+              icon={<Lock />}
+              error={!!errors.password}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
+                  className="text-ps-muted hover:text-ps-heading transition-colors"
+                >
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              }
+            />
             {errors.password && (
               <span className="text-[11px] px-1 text-ps-regression">{errors.password.message}</span>
             )}

@@ -4,6 +4,7 @@ import { Activity, Loader2, FileQuestion, Monitor, Smartphone } from 'lucide-rea
 import { fetchJson } from '@/shared/api/client';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { Button } from '@/shared/ui/button';
+import { StatePanel } from '@/shared/ui/state-panel';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import type { AnalysisResult } from '@/entities/analysis';
 
@@ -57,19 +58,19 @@ export function PublicReportPage() {
         )}
 
         {state.status === 'error' && (
-          <div className="min-h-[50vh] flex flex-col items-center justify-center gap-4 text-center">
-            <span className="w-12 h-12 rounded-[14px] grid place-items-center bg-ld-surface-2 border border-ld-border">
-              <FileQuestion className="w-6 h-6 text-ld-text-3" />
-            </span>
-            <div>
-              <p className="text-[17px] font-bold text-ld-text">Report not found</p>
-              <p className="text-[14px] text-ld-text-2 mt-1">
-                This share link is invalid or has been revoked by its owner.
-              </p>
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/">Go to PerfScope</Link>
-            </Button>
+          <div className="min-h-[50vh] grid place-items-center">
+            <StatePanel
+              variant="error"
+              icon={<FileQuestion className="w-7 h-7" />}
+              title="Report not found"
+              description="This share link is invalid or has been revoked by its owner."
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/">Go to PerfScope</Link>
+                </Button>
+              }
+              className="w-full"
+            />
           </div>
         )}
 

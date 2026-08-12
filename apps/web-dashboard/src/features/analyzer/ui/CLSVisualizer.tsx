@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { SkipForward, Zap, Layers } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
+import { Button } from '@/shared/ui/button';
+import { StatePanel } from '@/shared/ui/state-panel';
+import { Scrubber } from '@/shared/ui/scrubber';
 import { cn } from '@/shared/lib/utils';
 import { vitalBand, findFrameAt } from '@/entities/analysis';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
@@ -294,7 +297,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
 
 // ─── Timeline scrubber ────────────────────────────────────────────────────────
 
-function Scrubber({
+function ShiftScrubber({
   frames, currentMs, totalMs, jumpTargetMs, onSeek,
 }: {
   frames: TimelineFrame[];
@@ -303,23 +306,13 @@ function Scrubber({
   jumpTargetMs: number;
   onSeek: (ms: number) => void;
 }) {
-  const pct    = `${((currentMs / totalMs) * 100).toFixed(2)}%`;
   const active = findFrameAt(frames, currentMs);
 
   return (
     <div className="space-y-[10px]">
       {/* Range */}
-      <div className="relative flex items-center gap-[12px]">
-        <input
-          type="range" min={0} max={totalMs} step={16} value={currentMs}
-          onChange={e => onSeek(Number(e.target.value))}
-          className="w-full appearance-none h-[6px] rounded-full outline-none cursor-pointer"
-          style={{ background: `linear-gradient(to right, ${ROSE_HEX} ${pct}, var(--ld-border) ${pct})` }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[14px] h-[14px] rounded-full bg-ld-surface border-2 border-ld-rose pointer-events-none transition-all duration-200 [filter:drop-shadow(0_0_4px_rgba(242,100,122,0.55))]"
-          style={{ left: pct }}
-        />
+      <div className="flex items-center gap-[12px]">
+        <Scrubber value={currentMs} max={totalMs} onChange={onSeek} color="var(--ld-rose)" />
         <span className="shrink-0 font-mono text-[10px] text-ld-text-3 tabular-nums min-w-[44px]">
           {fmtSec2(currentMs)}
         </span>
@@ -455,15 +448,12 @@ export function CLSVisualizer({
     return (
       <Panel>
         <PanelHeader icon={<Layers />} title="Layout Shift Visualizer" meta="CLS" />
-        <div className="flex flex-col items-center justify-center py-[48px] gap-[8px]">
-          <div className="w-[40px] h-[40px] rounded-full grid place-items-center bg-ld-accent-soft border border-ld-accent-line">
-            <Layers className="w-[18px] h-[18px] text-[var(--ld-accent)]" />
-          </div>
-          <p className="text-[13px] font-semibold text-[var(--ld-accent-2)]">No layout shifts detected</p>
-          <p className="text-[11px] text-ld-text-3 text-center max-w-[280px]">
-            Lighthouse found no elements contributing to CLS. Your layout is stable.
-          </p>
-        </div>
+        <StatePanel
+          className="border-0 bg-transparent"
+          icon={<Layers className="w-7 h-7" />}
+          title="No layout shifts detected"
+          description="Lighthouse found no elements contributing to CLS. Your layout is stable."
+        />
       </Panel>
     );
   }
@@ -471,13 +461,10 @@ export function CLSVisualizer({
   return (
     <Panel>
       <PanelHeader icon={<Layers />} title="Layout Shift Visualizer" meta="CLS">
-        <button
-          onClick={handleJump}
-          className="inline-flex items-center gap-[8px] text-[13px] font-semibold px-[15px] py-[9px] rounded-[10px] border border-ld-accent-line bg-ld-accent-soft text-[var(--ld-accent-2)] cursor-pointer transition-all hover:bg-ld-accent hover:text-[var(--ld-grad-text)]"
-        >
-          <SkipForward className="w-[15px] h-[15px]" />
+        <Button variant="secondary" size="sm" onClick={handleJump}>
+          <SkipForward />
           Jump to biggest shift
-        </button>
+        </Button>
       </PanelHeader>
 
       {/* ── CLS score row ─────────────────────────────────────────────────── */}
@@ -529,7 +516,7 @@ export function CLSVisualizer({
             shakeControls={shakeControls}
           />
           <CLSTracker currentCls={currentCls} totalCls={clsData.totalScore} />
-          <Scrubber
+          <ShiftScrubber
             frames={frames}
             currentMs={currentMs}
             totalMs={totalMs}

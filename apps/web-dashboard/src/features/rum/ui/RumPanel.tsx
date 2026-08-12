@@ -253,19 +253,15 @@ export function RumPanel({ websiteId, lab }: Props) {
             <div className="border-t border-ld-border pt-[14px]">
               <div className="flex items-center justify-between gap-[12px] mb-[8px] flex-wrap">
                 <p className="font-mono text-[10.5px] tracking-[.12em] uppercase text-ld-text-3">Daily p75</p>
-                <div className="flex gap-[4px]">
-                  {FIELD_METRIC_ORDER.map(key => {
-                    if (!summary!.metrics[key as RumMetricKey]) return null;
-                    const active = trendMetric === key;
-                    return (
-                      <button key={key} type="button" onClick={() => setTrendMetric(key as RumMetricKey)}
-                        className={`font-mono text-[10.5px] font-semibold px-[8px] py-[3px] rounded-[6px] transition-colors ${
-                          active ? 'bg-ld-accent-soft text-ld-accent-2' : 'text-ld-text-3 hover:text-ld-text-2'}`}>
-                        {FIELD_METRICS[key].label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <Segmented
+                  size="sm"
+                  ariaLabel="Field metric"
+                  value={trendMetric}
+                  onChange={setTrendMetric}
+                  options={FIELD_METRIC_ORDER
+                    .filter(key => summary!.metrics[key as RumMetricKey])
+                    .map(key => ({ value: key as RumMetricKey, label: FIELD_METRICS[key].label }))}
+                />
               </div>
               {/* Checking only `trend.data` left a failed request saying "Loading trend…"
                   indefinitely — the three outcomes have to be told apart. */}
