@@ -1,5 +1,6 @@
 import { useGoogleLogin } from '@react-oauth/google';
 import type { AuthUser } from '@/entities/user';
+import { apiClient } from '@/shared/api/client';
 
 /**
  * Google sign-in is optional infrastructure: without a configured client id the
@@ -9,8 +10,9 @@ import type { AuthUser } from '@/entities/user';
 export const googleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 interface Props {
-  onSuccess: (user: AuthUser) => void;
-  onError:   (msg: string)    => void;
+  /** A real session: the user *and* the token every later request is signed with. */
+  onSuccess: (auth: { user: AuthUser; token: string }) => void;
+  onError:   (msg: string) => void;
 }
 
 export function GoogleButton({ onSuccess, onError }: Props) {
@@ -18,15 +20,18 @@ export function GoogleButton({ onSuccess, onError }: Props) {
     flow: 'implicit',
     onSuccess: async (tokenRes) => {
       try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenRes.access_token}` },
-        });
-        const info = await res.json() as {
-          sub: string; name: string; email: string; picture: string;
-        };
-        onSuccess({ sub: info.sub, name: info.name, email: info.email, picture: info.picture });
-      } catch {
-        onError('Failed to fetch Google profile');
+        // Google's token is handed to our backend rather than read here. Reading the
+        // profile in the browser produced a signed-in user with no PerfScope token — every
+        // request after it came back 401 — and no account, so the same address could be
+        // registered again afterwards. The backend verifies the token and owns the account.
+        const res = await apiClient.post<{ token: string; user: AuthUser }>(
+          '/auth/google',
+          { accessToken: tokenRes.access_token },
+        );
+        onSuccess({ user: res.data.user, token: res.data.token });
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        onError(msg ?? 'Google sign-in failed');
       }
     },
     onError: () => onError('Google sign-in failed'),

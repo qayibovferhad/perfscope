@@ -15,6 +15,9 @@ export const config = {
   clientUrl:   optionalEnv('CLIENT_URL', 'http://localhost:5173'),
   nodeEnv:     optionalEnv('NODE_ENV', 'development'),
   geminiApiKey: process.env['GEMINI_API_KEY'],
+  /** Must match the client id the dashboard signs in with: it is what proves a Google
+   *  token was issued for this app and not obtained by some other site. */
+  googleClientId: process.env['GOOGLE_CLIENT_ID'],
   /** Chrome UX Report field data is disabled unless this is set. */
   cruxApiKey:  process.env['CRUX_API_KEY'],
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
@@ -41,5 +44,8 @@ export const config = {
 export function validateConfig(): void {
   if (!config.geminiApiKey) {
     console.warn('[Config] GEMINI_API_KEY not found — AI insights will be disabled');
+  }
+  if (!config.googleClientId) {
+    console.warn('[Config] GOOGLE_CLIENT_ID not set — Google sign-in still works, but tokens cannot be checked against this app');
   }
 }

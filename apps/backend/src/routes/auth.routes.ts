@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.model.js';
 import { config } from '../config/index.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
+import { requireStorage } from '../middleware/storage.middleware.js';
+import { GoogleAuthError, verifyGoogleAccessToken } from '../services/googleAuth.service.js';
 
 export const authRouter: Router = Router();
 
@@ -21,11 +23,21 @@ authRouter.post('/auth/register', async (req: Request, res: Response) => {
     if (!name || !email || !password)
       return res.status(400).json({ success: false, error: 'name, email and password are required' });
 
-    if (await User.findOne({ email }))
-      return res.status(409).json({ success: false, error: 'Email already in use' });
+    // Emails are stored lowercase; comparing the raw input would let the same address be
+    // registered twice in different cases, each with its own websites and history.
+    const address = email.trim().toLowerCase();
+
+    const existing = await User.findOne({ email: address });
+    if (existing) {
+      // "Email already in use" sends a Google user looking for a password they never set.
+      const error = existing.provider === 'google' && !existing.password
+        ? 'That email already signs in with Google — use "Continue with Google" instead.'
+        : 'Email already in use';
+      return res.status(409).json({ success: false, error });
+    }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hash, provider: 'email' });
+    const user = await User.create({ name, email: address, password: hash, provider: 'email' });
 
     const token = sign({ sub: user._id, email: user.email, name: user.name });
     return res.status(201).json({
@@ -38,6 +50,58 @@ authRouter.post('/auth/register', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/auth/google — sign in (or sign up) with a Google access token.
+ *
+ * Google sign-in used to happen entirely in the browser: the page read the profile from
+ * Google and stored it as the signed-in user with **no token**, so every request that
+ * followed went out unauthenticated and came back 401, and no account was ever created —
+ * which is why the same address could then be registered a second time. The exchange
+ * belongs here, where the token can be verified and an account actually exists.
+ */
+authRouter.post('/auth/google', requireStorage, async (req: Request, res: Response) => {
+  try {
+    const { accessToken } = req.body as { accessToken?: string };
+    if (!accessToken) {
+      return res.status(400).json({ success: false, error: 'accessToken is required' });
+    }
+
+    const identity = await verifyGoogleAccessToken(accessToken);
+
+    // Matched on the address, not on the Google id: someone who registered with a password
+    // and later clicks "Continue with Google" is the same person, and a second account for
+    // the same email would silently hide the first one's websites and history.
+    let user = await User.findOne({ email: identity.email });
+    if (!user) {
+      user = await User.create({
+        name:     identity.name,
+        email:    identity.email,
+        picture:  identity.picture,
+        provider: 'google',
+        googleId: identity.googleId,
+      });
+    } else {
+      // Link, do not overwrite: the display name is the user's own, and a password account
+      // keeps its provider so the login form still explains itself.
+      user.googleId = identity.googleId;
+      if (!user.picture && identity.picture) user.picture = identity.picture;
+      await user.save();
+    }
+
+    const token = sign({ sub: user._id, email: user.email, name: user.name });
+    return res.json({
+      token,
+      user: { sub: user._id, name: user.name, email: user.email, picture: user.picture },
+    });
+  } catch (err) {
+    if (err instanceof GoogleAuthError) {
+      return res.status(401).json({ success: false, error: err.message });
+    }
+    console.error('[auth]', err);
+    return res.status(500).json({ success: false, error: 'Google sign-in failed' });
+  }
+});
+
 // POST /api/auth/login
 authRouter.post('/auth/login', async (req: Request, res: Response) => {
   try {
@@ -46,7 +110,7 @@ authRouter.post('/auth/login', async (req: Request, res: Response) => {
     if (!email || !password)
       return res.status(400).json({ success: false, error: 'email and password are required' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user || !user.password)
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
 

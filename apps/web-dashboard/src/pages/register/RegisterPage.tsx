@@ -18,7 +18,7 @@ interface FormValues {
 }
 
 export function RegisterPage() {
-  const { user, setAuth, setUser } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const navigate = useNavigate();
 
   const [showPass,  setShowPass]  = useState(false);
@@ -47,8 +47,8 @@ export function RegisterPage() {
     }
   }
 
-  function onGoogleSuccess(user: AuthUser) {
-    setUser(user);
+  function onGoogleSuccess({ user, token }: { user: AuthUser; token: string }) {
+    setAuth(user, token);
     navigate('/dashboard', { replace: true });
   }
 

@@ -17,7 +17,7 @@ interface FormValues {
 }
 
 export function LoginPage() {
-  const { user, setAuth, setUser } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   // The dashboard answers "what changed?"; the analyzer answers "audit this URL".
@@ -57,8 +57,8 @@ export function LoginPage() {
     }
   }
 
-  function onGoogleSuccess(user: AuthUser) {
-    setUser(user);
+  function onGoogleSuccess({ user, token }: { user: AuthUser; token: string }) {
+    setAuth(user, token);
     navigate(redirectTo, { replace: true });
   }
 

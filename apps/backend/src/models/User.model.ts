@@ -23,6 +23,9 @@ const userSchema = new Schema(
     password: { type: String },
     picture:  { type: String, default: '' },
     provider: { type: String, enum: ['email', 'google'], default: 'email' },
+    /** Google's stable account id, set the first time this address signs in with Google.
+     *  Accounts are matched on email — this records the link rather than establishing it. */
+    googleId: { type: String, default: null, index: true },
     digest:   { type: digestSchema, default: () => ({ enabled: false, day: 1, time: '09:00', lastSentAt: null }) },
   },
   { timestamps: true },

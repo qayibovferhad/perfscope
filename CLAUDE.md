@@ -55,7 +55,7 @@ VITE_GOOGLE_CLIENT_ID=<oauth client id>
 ```
 
 Optional keys all degrade silently when unset — the feature simply turns off, it never crashes:
-`GEMINI_API_KEY` (AI insights) · `CRUX_API_KEY` (real-user field data) · `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (budget alert emails) · `MAX_CONCURRENT_AUDITS` (default 2) · `MONGODB_URI` (history persistence) · `VITE_GOOGLE_CLIENT_ID` (the login page hides Google auth without it).
+`GEMINI_API_KEY` (AI insights) · `GOOGLE_CLIENT_ID` (Google sign-in still works without it, but tokens are not checked against this app) · `CRUX_API_KEY` (real-user field data) · `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (budget alert emails) · `MAX_CONCURRENT_AUDITS` (default 2) · `MONGODB_URI` (history persistence) · `VITE_GOOGLE_CLIENT_ID` (the login page hides Google auth without it).
 
 `docker compose up -d` starts MongoDB only — the apps stay on the host because Lighthouse drives host Chrome.
 
@@ -162,7 +162,11 @@ Path alias: `@/` resolves to `apps/web-dashboard/src/`. Entities expose `index.t
 
 ### Auth
 
-Dual auth: email/password (bcrypt + JWT, 30-day expiry) and Google OAuth. The JWT is stored in Zustand (`authStore`) with `persist` middleware (localStorage). The Socket.io connection sends the token in `handshake.auth.token`; `analysis.handler.ts` extracts `userId` from it to tag history entries. REST routes use `requireAuth` middleware (`middleware/auth.middleware.ts`) which validates the `Authorization: Bearer <token>` header.
+Dual auth: email/password (bcrypt + JWT, 30-day expiry) and Google OAuth. Google is not a
+browser-only flow: the page sends Google's access token to `POST /api/auth/google`, which
+verifies it with Google (audience must match `GOOGLE_CLIENT_ID`, address must be verified),
+upserts the `User` **by email** so a password account and a Google sign-in are one account,
+and returns the same `{ token, user }` as `/auth/login`. The JWT is stored in Zustand (`authStore`) with `persist` middleware (localStorage). The Socket.io connection sends the token in `handshake.auth.token`; `analysis.handler.ts` extracts `userId` from it to tag history entries. REST routes use `requireAuth` middleware (`middleware/auth.middleware.ts`) which validates the `Authorization: Bearer <token>` header.
 
 ### Styling
 
