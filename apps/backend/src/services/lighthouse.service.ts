@@ -68,10 +68,22 @@ type ActiveAnalysis =
 
 const CATEGORIES: AnalysisCategory[] = ['performance', 'accessibility', 'best-practices', 'seo'];
 
-/** Categories whose score is a property of the markup, not of this particular load. */
-const STATIC_CATEGORIES: AnalysisCategory[] = ['seo', 'best-practices'];
+/**
+ * Categories whose score is a property of the markup, not of this particular load.
+ *
+ * Accessibility belongs here: it inspects the rendered DOM and scores the same however
+ * the page was loaded. Verified against three sites — a local page, example.com and a
+ * slow production site — where seo/best-practices/accessibility came back identical
+ * whether measured load-accurately or not (82/100/90, 80/96/100, 83/57/67).
+ *
+ * That is why this group runs with `throttlingMethod: 'simulate'`: Lighthouse only
+ * enforces its 5.25s quiet windows when it has to observe real timings, and this group
+ * has no timings worth observing. The same three sites took 16.7s → 6.9s, 13.8s → 5.1s
+ * and 56.2s → 14.5s. No reported number changes.
+ */
+const STATIC_CATEGORIES: AnalysisCategory[] = ['seo', 'best-practices', 'accessibility'];
 /** Categories that measure the load itself and therefore vary run to run. */
-const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance', 'accessibility'];
+const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance'];
 
 /** More than this and the wait stops being worth the extra precision. */
 const MAX_RUNS = 5;
@@ -205,17 +217,17 @@ export class LighthouseService extends EventEmitter {
           this.emitProgress(analysisId, 'auditing', progress, msg);
         };
 
-        const staticRun = this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor)
+        const staticRun = this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate')
           .then((res): WorkerRunResult => {
             emitFor(STATIC_CATEGORIES, res.lhr);
-            advance(27, 'SEO & Best Practices complete');
+            advance(27, 'SEO, Best Practices & Accessibility complete');
             return res;
           });
 
         const timedRun = this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor)
           .then((res): WorkerRunResult => {
             emitFor(TIMED_CATEGORIES, res.lhr);
-            advance(27, 'Performance & Accessibility complete');
+            advance(27, 'Performance complete');
             return res;
           });
 
@@ -225,8 +237,8 @@ export class LighthouseService extends EventEmitter {
         // flight, otherwise the extra iterations measure contention instead of the
         // page. Static categories go first (they cannot be perturbed), then each
         // timed iteration runs alone.
-        this.emitProgress(analysisId, 'auditing', 20, 'Auditing SEO & Best Practices...');
-        staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor);
+        this.emitProgress(analysisId, 'auditing', 20, 'Auditing SEO, Best Practices & Accessibility...');
+        staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate');
         emitFor(STATIC_CATEGORIES, staticRes.lhr);
 
         timedRuns = [];
@@ -434,10 +446,13 @@ export class LighthouseService extends EventEmitter {
     categories: string[],
     workerRegistry: Worker[],
     formFactor?: AuditFormFactor,
+    /** Only the timed group needs Lighthouse to observe the load for real — see
+     *  STATIC_CATEGORIES for why the other group does not, and what it buys. */
+    throttlingMethod: 'provided' | 'simulate' = 'provided',
   ): Promise<WorkerRunResult> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
-        workerData: { url, categories, formFactor },
+        workerData: { url, categories, formFactor, throttlingMethod },
         execArgv: process.execArgv, // inherit tsx loader in dev
       });
 
@@ -585,6 +600,11 @@ export class LighthouseService extends EventEmitter {
               screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
           : { screenEmulation: { disabled: true } }),
         throttlingMethod: 'provided',
+        // Nothing downstream reads the full-page screenshot; the filmstrip comes from the
+        // trace. `skipAboutBlank` is deliberately NOT set here: the injected-session path
+        // hooks page creation over CDP to restore localStorage, and that sequence is not
+        // worth a second off a run that already carries a login.
+        disableFullPageScreenshot: true,
         ...(disableStorageReset ? { disableStorageReset: true } : {}),
       });
 

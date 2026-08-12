@@ -18,7 +18,15 @@ const CHROME_ARGS = [
   '--disable-backgrounding-occluded-windows',
 ];
 
-interface WorkerInput { url: string; categories: string[]; formFactor?: 'mobile' | 'desktop' }
+interface WorkerInput {
+  url: string;
+  categories: string[];
+  formFactor?: 'mobile' | 'desktop';
+  /** 'provided' observes the load for real; 'simulate' skips that observation, which is
+   *  only safe for categories that report no timings. The caller decides — see
+   *  STATIC_CATEGORIES in lighthouse.service.ts. */
+  throttlingMethod?: 'provided' | 'simulate';
+}
 
 // Compact trace sent back to the service so parseFlameChart can run there
 // (avoids worker-thread module-resolution issues with tsx's .js→.ts remapping)
@@ -135,7 +143,7 @@ function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] 
 }
 
 async function run(): Promise<void> {
-  const { url, categories, formFactor } = workerData as WorkerInput;
+  const { url, categories, formFactor, throttlingMethod = 'provided' } = workerData as WorkerInput;
   const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
   // Hand the pid to the parent immediately: if this thread is ever terminated
   // (cancel, timeout) its `finally` never runs, and only the parent can then
@@ -153,7 +161,13 @@ async function run(): Promise<void> {
         ? { formFactor: 'mobile' as const,
             screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
         : { screenEmulation: { disabled: true } }),
-      throttlingMethod: 'provided',
+      throttlingMethod,
+      // The full-page screenshot is a second capture of the whole document that nothing
+      // downstream reads — the filmstrip comes from the trace (`screenshot-thumbnails`,
+      // verified unaffected). about:blank exists to reset state between navigations, and
+      // every run here already gets a freshly launched Chrome. Together ~2-3s per run.
+      disableFullPageScreenshot: true,
+      skipAboutBlank: true,
     });
 
     if (!result) throw new Error('Lighthouse returned no result');
