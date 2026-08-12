@@ -38,4 +38,20 @@ export interface IUserDigest {
   lastSentAt: Date | null;
 }
 
-export const User = model('User', userSchema);
+export interface IUser {
+  name:      string;
+  email:     string;
+  password?: string;
+  picture:   string;
+  provider:  'email' | 'google';
+  googleId:  string | null;
+  digest:    IUserDigest;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Typed on purpose: `model('User', …)` with no generic left every user document as `any`,
+// so `digest` could only be reached through `user.get('digest')` — an escape that also
+// turns a typo in a field name into a silent runtime no-op. IUserDigest was written for
+// this and then never wired up.
+export const User = model<IUser>('User', userSchema);

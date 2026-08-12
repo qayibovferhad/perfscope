@@ -1,5 +1,7 @@
 import { AiService } from './ai.service.js';
 import { HistoryService } from './history.service.js';
+import { Website } from '../models/Website.model.js';
+import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
 import type { AnalysisResult } from '../types/index.js';
@@ -47,6 +49,22 @@ export async function enrichWithAi(result: AnalysisResult): Promise<void> {
 }
 
 /** Persist the audit summary + full result under the owning user/project. */
+/**
+ * The project an audit belongs to, creating the site on first sight.
+ *
+ * The REST entry path used to answer this itself, with a different algorithm from the
+ * socket path's — it loaded every website and matched hostnames in JS, so the two could
+ * file the same URL under different projects. One definition, one lookup.
+ */
+export async function resolveOrCreateProject(userId: string, url: string): Promise<string> {
+  const existing = await findWebsiteByHost(userId, url);
+  if (existing) return String(existing._id);
+
+  const { origin, hostname } = new URL(url);
+  const created = await Website.create({ userId, url: origin, name: hostname });
+  return String(created._id);
+}
+
 export async function persistAudit(
   result: AnalysisResult,
   userId: string | undefined,

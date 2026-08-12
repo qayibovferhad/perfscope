@@ -1,6 +1,9 @@
-import { Router, type Request, type Response } from 'express';
-import { createAuthAuditSession, hasSession, destroySession } from '../services/authAuditSession.js';
+import { Router } from 'express';
+import {
+  createAuthAuditSession, hasSession, destroySession, extractSessionData,
+} from '../services/authAuditSession.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
+import { AppError, asyncHandler } from '../lib/errors.js';
 
 export const authAuditRouter: Router = Router();
 
@@ -9,48 +12,41 @@ export const authAuditRouter: Router = Router();
 // earlier); now it is explicit. Path-scoped for the same reason that one was a bug.
 authAuditRouter.use('/auth-audit', requireAuth);
 
+/** Every route below addresses one live browser; there is nothing to say without an id. */
+function sessionIdOf(raw: unknown): string {
+  const id = typeof raw === 'string' ? raw : '';
+  if (!id || !hasSession(id)) throw new AppError(404, 'Session not found or already closed');
+  return id;
+}
+
 // POST /api/auth-audit/session — open a visible browser at url, return sessionId
-authAuditRouter.post('/auth-audit/session', async (req: Request, res: Response) => {
+authAuditRouter.post('/auth-audit/session', asyncHandler(async (req, res) => {
   const { url } = req.body as { url?: string };
-  if (!url) return res.status(400).json({ success: false, error: 'url is required' });
-  try {
-    const sessionId = await createAuthAuditSession(url);
-    return res.json({ sessionId });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err instanceof Error ? err.message : 'Failed to launch browser',
-    });
-  }
-});
+  if (!url) throw new AppError(400, 'url is required');
 
-// GET /api/auth-audit/session/:sessionId — check if session is still alive
-authAuditRouter.get('/auth-audit/session/:sessionId', (req: Request, res: Response) => {
-  const id = req.params['sessionId'];
-  if (typeof id === 'string' && hasSession(id)) return res.json({ ok: true });
-  return res.status(404).json({ success: false, error: 'Session not found' });
-});
+  res.json({ sessionId: await createAuthAuditSession(url) });
+}, 'Failed to launch browser'));
 
-// GET /api/auth-audit/session/:sessionId/extract — extract cookies+localStorage, destroy browser, return data
-authAuditRouter.get('/auth-audit/session/:sessionId/extract', async (req: Request, res: Response) => {
-  const id = req.params['sessionId'];
-  if (typeof id !== 'string' || !hasSession(id)) {
-    return res.status(404).json({ success: false, error: 'Session not found or already closed' });
-  }
-  try {
-    const { extractSessionData } = await import('../services/authAuditSession.js');
-    const data = await extractSessionData(id);
-    destroySession(id);
-    return res.json(data);
-  } catch (err) {
-    console.error('[AuthAudit] extract failed:', err);
-    return res.status(500).json({ success: false, error: 'Failed to extract session data' });
-  }
-});
+// GET /api/auth-audit/session/:sessionId — check if the session is still alive
+authAuditRouter.get('/auth-audit/session/:sessionId', asyncHandler(async (req, res) => {
+  sessionIdOf(req.params['sessionId']);
+  res.json({ ok: true });
+}));
 
-// DELETE /api/auth-audit/session/:sessionId — close browser and end session
-authAuditRouter.delete('/auth-audit/session/:sessionId', (req: Request, res: Response) => {
+// GET /api/auth-audit/session/:sessionId/extract — harvest cookies + localStorage,
+// then close the browser. The socket path keeps its browser open for re-use; this one
+// is the extension's single-shot equivalent.
+authAuditRouter.get('/auth-audit/session/:sessionId/extract', asyncHandler(async (req, res) => {
+  const id   = sessionIdOf(req.params['sessionId']);
+  const data = await extractSessionData(id);
+  destroySession(id);
+  res.json(data);
+}, 'Failed to extract session data'));
+
+// DELETE /api/auth-audit/session/:sessionId — close browser and end session.
+// Idempotent: closing an already-closed session is the caller getting what they asked for.
+authAuditRouter.delete('/auth-audit/session/:sessionId', asyncHandler(async (req, res) => {
   const id = req.params['sessionId'];
   if (typeof id === 'string') destroySession(id);
-  return res.json({ ok: true });
-});
+  res.json({ ok: true });
+}));
