@@ -13,7 +13,7 @@ import { parseFlameChart } from './flame-chart-parser.js';
 import { parseHeapMemory } from './heap-memory-parser.js';
 import { parseInteractions } from './interaction-parser.js';
 import type { CompactNetworkEvent } from './dependency-parser.js';
-import { buildPartial, buildFullResult, toScore } from './lhr-transform.js';
+import { buildPartial, buildFullResult, toScore, detectAuthRedirect } from './lhr-transform.js';
 import { AuditQueue, type AuditPriority } from './auditQueue.js';
 import { SessionExpiredError } from '../lib/errors.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
@@ -47,7 +47,9 @@ interface WorkerRunResult {
  * belong to the same load as the score beside them. Averaging metrics would
  * produce a page that never actually existed.
  */
-function pickMedianRun(runs: WorkerRunResult[]): { run: WorkerRunResult; measurement: MeasurementQuality } {
+function pickMedianRun<T extends { lhr: WorkerRunResult['lhr'] }>(
+  runs: T[],
+): { run: T; measurement: MeasurementQuality } {
   const scored = runs
     .map(run => ({ run, score: toScore(run.lhr.categories['performance']?.score) }))
     .sort((a, b) => a.score - b.score);
@@ -268,8 +270,8 @@ export class LighthouseService extends EventEmitter {
 
   // ─── Authenticated audit (session transfer) ──────────────────────────────
   // Accepts pre-extracted cookies + localStorage from the visible login browser.
-  // Launches a fresh headless Chrome, injects the session, runs a single
-  // Lighthouse pass (all categories), then closes the headless browser.
+  // Launches a fresh headless Chrome, injects the session, runs one or more
+  // Lighthouse passes (all categories), then closes the headless browser.
 
   async analyzeWithInjectedSession(
     url: string,
@@ -281,8 +283,9 @@ export class LighthouseService extends EventEmitter {
     opts: AnalyzeOptions = {},
   ): Promise<AnalysisResult> {
     const analysisId = opts.analysisId ?? uuidv4();
+    const runs = Math.max(1, Math.min(Math.floor(opts.runs ?? 1), MAX_RUNS));
     return auditQueue.run(
-      () => this.injectedSessionAudit(analysisId, url, sessionData, onPartial, opts.formFactor),
+      () => this.injectedSessionAudit(analysisId, url, sessionData, onPartial, opts.formFactor, runs),
       { priority: opts.priority ?? 'interactive', onQueue: this.queueReporter(analysisId) },
     );
   }
@@ -296,6 +299,7 @@ export class LighthouseService extends EventEmitter {
     },
     onPartial: (partial: CategoryPartial) => void,
     formFactor?: AuditFormFactor,
+    runs = 1,
   ): Promise<AnalysisResult> {
     let browser: Browser | null = null;
 
@@ -355,12 +359,34 @@ export class LighthouseService extends EventEmitter {
         this.emitProgress(analysisId, 'auditing', fakeProg, 'Running Lighthouse audit...');
       }, 3000);
 
-      let runnerResult: Awaited<ReturnType<typeof this.runLighthouse>>;
+      // A login-walled page gets the same treatment as any other when the caller asks for
+      // it: the scheduled runs that feed budgets and regressions cannot be a single noisy
+      // sample just because the page needs a cookie. Sequential and in the same browser —
+      // the session is already loaded, and parallel loads would compete for the CPU they
+      // are supposed to be measuring.
+      const passes: Array<Awaited<ReturnType<typeof this.runLighthouse>>> = [];
       try {
-        runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES, true, formFactor);
+        for (let i = 0; i < runs; i++) {
+          if (runs > 1) {
+            this.emitProgress(
+              analysisId, 'auditing',
+              Math.round(35 + (50 * i) / runs),
+              `Running Lighthouse audit — run ${i + 1} of ${runs}...`,
+            );
+          }
+          const pass = await this.runLighthouse(url, analysisId, browser, CATEGORIES, true, formFactor);
+          passes.push(pass);
+
+          // Stop after the first pass if the session is dead: the remaining runs would
+          // measure the login page, and the caller is about to throw either way.
+          const finalUrl = pass.lhr.finalDisplayedUrl ?? (pass.lhr as unknown as Record<string, string>)['finalUrl'];
+          if (detectAuthRedirect(pass.lhr.requestedUrl, finalUrl)) break;
+        }
       } finally {
         clearInterval(ticker);
       }
+
+      const { run: runnerResult, measurement } = pickMedianRun(passes);
 
       this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
 
@@ -386,6 +412,7 @@ export class LighthouseService extends EventEmitter {
         undefined, anyResult?.artifacts,
       );
       result.formFactor = formFactor ?? 'desktop';
+      if (passes.length > 1) result.measurement = measurement;
 
       // A session was injected and Lighthouse still ended up on a login screen:
       // the cookies are stale. Reporting this as a 0-score audit would poison the

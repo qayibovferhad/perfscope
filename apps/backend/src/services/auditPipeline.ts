@@ -3,6 +3,7 @@ import { HistoryService } from './history.service.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
 import type { AnalysisResult } from '../types/index.js';
+import type { AuditSource } from '@perfscope/shared';
 
 /** Cap on critical resources sent for per-resource AI advice. */
 const AI_CRITICAL_LIMIT = 6;
@@ -50,6 +51,8 @@ export async function persistAudit(
   result: AnalysisResult,
   userId: string | undefined,
   projectId: string | undefined,
+  /** 'scheduled' for anything the cron started — those are listed on their own page. */
+  source: AuditSource = 'manual',
 ): Promise<void> {
   await HistoryService.save(
     {
@@ -64,6 +67,7 @@ export async function persistAudit(
     projectId,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     result as unknown as Record<string, any>,
+    source,
   );
 
   // Budget and regression checks ride on the same choke point every entry path funnels

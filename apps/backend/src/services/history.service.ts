@@ -1,6 +1,9 @@
 import { HistoryModel } from '../models/History.model.js';
+import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
+import { hostOf } from '../lib/url.js';
+import type { AuditSource, ScheduledSiteGroup, ScheduledRouteGroup } from '@perfscope/shared';
 import type {
   HistoryEntry,
   ProjectAuditEntry,
@@ -19,7 +22,7 @@ const MAX_PER_URL = 10;
  * the history: measured at 223 ms for 28 audits against 5 ms for the website list, and it
  * scales linearly. `routePath` is here for the project grouping, which shares this shape.
  */
-const ENTRY_FIELDS = 'analysisId shortId url routePath scores metrics createdAt';
+const ENTRY_FIELDS = 'analysisId shortId url routePath scores metrics createdAt source';
 
 // Re-export shared types so existing imports `from '.../history.service.js'` keep working.
 export type { HistoryEntry, ProjectAuditEntry, RouteGroup, ProjectAuditsResult };
@@ -80,7 +83,13 @@ function toProjectEntry(d: any): ProjectAuditEntry {
 
 export const HistoryService = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async save(entry: HistoryEntry, userId?: string, projectId?: string, fullResult?: Record<string, any>): Promise<void> {
+  async save(
+    entry: HistoryEntry,
+    userId?: string,
+    projectId?: string,
+    fullResult?: Record<string, any>,
+    source: AuditSource = 'manual',
+  ): Promise<void> {
     const normalizedUrl = normalizeUrl(entry.url);
     const routePath     = extractRoutePath(entry.url);
 
@@ -95,12 +104,17 @@ export const HistoryService = {
       scores:        entry.scores,
       metrics:       entry.metrics,
       ...(fullResult ? { fullResult } : {}),
+      source,
     });
 
-    const count = await HistoryModel.countDocuments({ normalizedUrl });
+    // Pruned per source, not per URL: a nightly timetable produces runs far faster than a
+    // person does, so one shared cap of ten would quietly evict the audits the user ran by
+    // hand — the very ones they go looking for.
+    const scope = { normalizedUrl, ...(source === 'scheduled' ? SCHEDULED_ONLY_FILTER : MANUAL_ONLY_FILTER) };
+    const count = await HistoryModel.countDocuments(scope);
     if (count > MAX_PER_URL) {
       const oldest = await HistoryModel
-        .find({ normalizedUrl })
+        .find(scope)
         .sort({ createdAt: 1 })
         .limit(count - MAX_PER_URL)
         .select('_id');
@@ -127,6 +141,9 @@ export const HistoryService = {
       .find({
         userId,
         normalizedUrl: new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`),
+        // The audit history is a record of what the user did; the timetable's runs have
+        // their own page, and there are far more of them.
+        ...MANUAL_ONLY_FILTER,
       })
       .select(ENTRY_FIELDS)
       .sort({ createdAt: 1 })
@@ -135,9 +152,72 @@ export const HistoryService = {
     return docs.map(toEntry).filter(hasResult);
   },
 
+  /**
+   * Everything the timetable produced, grouped the way it was ordered: by site, then by
+   * the route each run measured.
+   *
+   * Flat, these read as noise — the same handful of URLs over and over, one line per
+   * night. Grouped, the page answers the question the schedule was set up to ask: what has
+   * each route been doing since I stopped watching it.
+   */
+  async getScheduled(userId: string): Promise<ScheduledSiteGroup[]> {
+    const [docs, sites] = await Promise.all([
+      HistoryModel
+        .find({ userId, ...SCHEDULED_ONLY_FILTER })
+        .select(ENTRY_FIELDS + ' projectId')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Website.find({ userId }).select('url name').lean(),
+    ]);
+
+    const siteById = new Map(sites.map(site => [String(site._id), site]));
+
+    // Keyed by projectId, falling back to the host: runs recorded before a site was
+    // adopted into a project still belong on its card rather than in a nameless group.
+    const groups = new Map<string, { site: { url: string; name: string }; routes: Map<string, ProjectAuditEntry[]> }>();
+
+    for (const doc of docs) {
+      const projectId = (doc as { projectId?: string }).projectId ?? '';
+      const site      = siteById.get(projectId);
+      const key       = projectId || hostOf(doc.url);
+      if (!key) continue;
+
+      const group = groups.get(key) ?? {
+        site: {
+          url:  site?.url  ?? `https://${hostOf(doc.url)}`,
+          name: site?.name || site?.url || hostOf(doc.url),
+        },
+        routes: new Map<string, ProjectAuditEntry[]>(),
+      };
+
+      const entry = toProjectEntry(doc);
+      const list  = group.routes.get(entry.routePath) ?? [];
+      list.push(entry);
+      group.routes.set(entry.routePath, list);
+      groups.set(key, group);
+    }
+
+    return [...groups.entries()]
+      .map(([websiteId, group]): ScheduledSiteGroup => {
+        const routes: ScheduledRouteGroup[] = [...group.routes.entries()]
+          .map(([routePath, entries]) => ({ routePath, entries }))
+          .sort((a, b) => a.routePath.localeCompare(b.routePath));
+
+        const runs      = routes.reduce((sum, route) => sum + route.entries.length, 0);
+        // Every list above is newest-first, so the first entry of each route is its latest.
+        const lastRunAt = routes
+          .map(route => route.entries[0]?.timestamp ?? '')
+          .sort()
+          .at(-1) ?? '';
+
+        return { websiteId, name: group.site.name, url: group.site.url, lastRunAt, runs, routes };
+      })
+      .sort((a, b) => b.lastRunAt.localeCompare(a.lastRunAt));
+  },
+
   async getAll(userId: string): Promise<HistoryEntry[]> {
     const docs = await HistoryModel
-      .find({ userId })
+      .find({ userId, ...MANUAL_ONLY_FILTER })
       .select(ENTRY_FIELDS)
       .sort({ createdAt: -1 })
       .lean();

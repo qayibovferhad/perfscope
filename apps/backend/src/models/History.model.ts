@@ -39,6 +39,9 @@ export interface IHistory extends Document {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fullResult?:   Record<string, any>;
   shareToken?:   string | null;
+  /** Who asked for this run. Absent on documents written before the field existed,
+   *  which were all manual — every query treats "not scheduled" as manual. */
+  source?:       'manual' | 'scheduled';
   createdAt:     Date;
 }
 
@@ -55,6 +58,10 @@ const HistorySchema = new Schema<IHistory>(
     metrics:       { type: MetricsSchema, required: true },
     fullResult:    { type: Schema.Types.Mixed },
     shareToken:    { type: String, default: null, index: true, sparse: true },
+    // Unattended runs pile up far faster than anything a person clicks, so they are kept
+    // apart: the audit lists stay a record of what the user did, and the scheduled page
+    // reports what the timetable found.
+    source:        { type: String, enum: ['manual', 'scheduled'], default: 'manual', index: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

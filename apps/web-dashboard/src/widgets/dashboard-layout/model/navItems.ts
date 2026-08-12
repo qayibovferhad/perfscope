@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
+import { CalendarClock, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -19,8 +19,10 @@ export const NAV: NavItem[] = [
   { to: '/websites',   icon: LayoutGrid,       label: 'My Websites' },
   // Review
   { to: '/history',    icon: History,          label: 'History'     },
-  // Automate / extend
+  // Automate / extend. Scheduled sits under Automation because it is what Automation
+  // produced — the audit lists upstream deliberately leave those runs out.
   { to: '/automation', icon: Moon,             label: 'Automation'  },
+  { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled'   },
   { to: '/extension',  icon: Puzzle,           label: 'Extension'   },
   // Account
   { to: '/settings',   icon: Settings,         label: 'Settings'    },

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
-import type { AnalysisResult, HistoryEntry } from '@perfscope/shared';
+import type { AnalysisResult, HistoryEntry, ScheduledSiteGroup } from '@perfscope/shared';
 
 export function useHistory(url: string | null) {
   return useQuery<HistoryEntry[]>({
@@ -46,6 +46,23 @@ export function useAllHistory() {
     queryKey: ['history', 'all'],
     queryFn:  async () => {
       const res = await apiClient.get<{ success: boolean; data: HistoryEntry[] }>('/history/all');
+      return res.data.data ?? [];
+    },
+    staleTime: 0,
+  });
+}
+
+/**
+ * What the automation ran, grouped by site and route.
+ *
+ * Its own query rather than a filter over `useAllHistory`: the audit lists deliberately
+ * exclude scheduled runs, so they are never in that cache to filter.
+ */
+export function useScheduledRuns() {
+  return useQuery<ScheduledSiteGroup[]>({
+    queryKey: ['history', 'scheduled'],
+    queryFn:  async () => {
+      const res = await apiClient.get<{ success: boolean; data: ScheduledSiteGroup[] }>('/history/scheduled');
       return res.data.data ?? [];
     },
     staleTime: 0,

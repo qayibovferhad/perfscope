@@ -3,7 +3,7 @@ import { Website, type IWebsite } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { RumEvent } from '../models/RumEvent.model.js';
-import { HAS_RESULT_FILTER } from '../lib/history.js';
+import { HAS_RESULT_FILTER, MANUAL_ONLY_FILTER } from '../lib/history.js';
 import { CHART_DAYS, getOverviewCharts } from './overviewCharts.service.js';
 import { escapeRegex, hostOf } from '../lib/url.js';
 import { Types, type QueryFilter } from 'mongoose';
@@ -160,8 +160,10 @@ export async function getOverview(userId: string): Promise<OverviewData> {
   const [scores, audits7d, recent, incidents, rumRows, charts] = await Promise.all([
     computeSiteScores(userId, sites),
     HistoryModel.countDocuments({ userId, createdAt: { $gte: since }, ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>),
+    // Manual only, like the history page: eight rows filled with last night's timetable
+    // tell the user nothing they did, and the scheduled page reports those in full.
     HistoryModel
-      .find({ userId, ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>)
+      .find({ userId, ...HAS_RESULT_FILTER, ...MANUAL_ONLY_FILTER } as QueryFilter<Record<string, unknown>>)
       .sort({ createdAt: -1 })
       .limit(LIST_LIMIT)
       .select('url normalizedUrl routePath scores.performance createdAt')

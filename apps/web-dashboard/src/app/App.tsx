@@ -17,6 +17,7 @@ const HistoryPage           = lazy(() => import('@/pages/history/HistoryPage').t
 const CompareHistoryPage    = lazy(() => import('@/pages/compare-history/CompareHistoryPage').then(m => ({ default: m.CompareHistoryPage })));
 const WebsitesPage          = lazy(() => import('@/pages/websites/WebsitesPage').then(m => ({ default: m.WebsitesPage })));
 const ProjectDetailPage     = lazy(() => import('@/pages/project-detail/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
+const ScheduledPage         = lazy(() => import('@/pages/scheduled/ScheduledPage').then(m => ({ default: m.ScheduledPage })));
 const AutomationPage        = lazy(() => import('@/pages/automation/AutomationPage').then(m => ({ default: m.AutomationPage })));
 const ExtensionSettingsPage = lazy(() => import('@/pages/extension/ExtensionSettingsPage').then(m => ({ default: m.ExtensionSettingsPage })));
 const SettingsPage          = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/websites"        element={<DashboardRoute><WebsitesPage /></DashboardRoute>} />
         <Route path="/projects/:id"    element={<DashboardRoute><ProjectDetailPage /></DashboardRoute>} />
         <Route path="/automation"      element={<DashboardRoute><AutomationPage /></DashboardRoute>} />
+        <Route path="/scheduled"       element={<DashboardRoute><ScheduledPage /></DashboardRoute>} />
         <Route path="/extension"       element={<DashboardRoute><ExtensionSettingsPage /></DashboardRoute>} />
         <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
         <Route path="/cli-auth"        element={<CliAuthPage />} />

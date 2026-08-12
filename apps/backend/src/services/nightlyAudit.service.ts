@@ -6,6 +6,16 @@ import { enrichWithAi, persistAudit } from './auditPipeline.js';
 // Milliseconds between each audit within a nightly run — avoids saturating the host.
 const AUDIT_DELAY_MS = 15_000;
 
+/**
+ * Every unattended run is a median of this many, login-walled pages included.
+ *
+ * These runs are the only measurement of a page nobody is watching: they feed the trend,
+ * the budgets and the regression alerts, and a single sample swings by around ten points
+ * on its own. Waking someone for a swing that was never there is worse than the extra
+ * minutes — and the queue keeps them behind anyone waiting on a page.
+ */
+const SCHEDULED_RUNS = 3;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -24,11 +34,11 @@ async function runSingleAudit(
     // also yield to anyone waiting on a page.
     const result = sessionData
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {}, { priority: 'background' })
-      : await lighthouseService.analyzeStreaming(fullUrl, () => {}, { priority: 'background', runs: 3 });
+      ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {}, { priority: 'background', runs: SCHEDULED_RUNS })
+      : await lighthouseService.analyzeStreaming(fullUrl, () => {}, { priority: 'background', runs: SCHEDULED_RUNS });
 
     await enrichWithAi(result);
-    await persistAudit(result, userId, projectId);
+    await persistAudit(result, userId, projectId, 'scheduled');
 
     console.log(`[NightlyAudit] Done — perf score: ${result.scores.performance}`);
   } catch (err) {

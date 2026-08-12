@@ -6,7 +6,10 @@ export type {
   ProjectAuditEntry,
   RouteGroup,
   ProjectAuditsResult,
+  ScheduledSiteGroup,
+  ScheduledRouteGroup,
+  AuditSource,
 } from '@perfscope/shared'
 
-export { useHistory, useAllHistory, useDeleteAudit, fetchHistoryResult } from './model/useHistory'
+export { useHistory, useAllHistory, useScheduledRuns, useDeleteAudit, fetchHistoryResult } from './model/useHistory'
 export { hasResult } from './lib/hasResult'
