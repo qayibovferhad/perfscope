@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Compass, Loader2 } from 'lucide-react';
 import { ProtectedRoute }  from '@/features/auth/ui/ProtectedRoute';
 import { useAuthStore }    from '@/features/auth/model/authStore';
@@ -30,6 +30,19 @@ function PageFallback() {
       <Loader2 className="w-6 h-6 animate-spin text-ld-text-3" />
     </div>
   );
+}
+
+/**
+ * The home route.
+ *
+ * The landing page sells the product, which is not what a signed-in user opening the app
+ * — or clicking the logo — is asking for: they want the account. The redirect is the route
+ * itself rather than an effect inside the landing page, so there is no frame of marketing
+ * copy before it moves.
+ */
+function HomeRoute() {
+  const { user } = useAuthStore();
+  return user ? <Navigate to="/dashboard" replace /> : <LandingPage />;
 }
 
 function NotFoundRoute() {
@@ -70,7 +83,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
-        <Route path="/"      element={<LandingPage />} />
+        <Route path="/"         element={<HomeRoute />} />
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
