@@ -22,7 +22,7 @@ export const NAV: NavItem[] = [
   // Automate / extend. Scheduled sits under Automation because it is what Automation
   // produced — the audit lists upstream deliberately leave those runs out.
   { to: '/automation', icon: Moon,             label: 'Automation'  },
-  { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled'   },
+  { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled reports' },
   { to: '/extension',  icon: Puzzle,           label: 'Extension'   },
   // Account
   { to: '/settings',   icon: Settings,         label: 'Settings'    },
