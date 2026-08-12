@@ -171,9 +171,16 @@ export function AnalyzerPage() {
         </div>
       )}
 
-      {/* Idle: the page below the form was otherwise blank on first visit */}
-      {!isPending && !data && !isError && (
-        <AnalysisIdlePanel variant="analyze" sites={websites} onPick={setUrl} />
+      {/* Idle: the page below the form was otherwise blank on first visit — and after a
+          failed run, which used to leave the error card alone on an empty page with no
+          way forward. The site shortcuts are exactly what a failed attempt needs. */}
+      {!isPending && !data && (
+        <AnalysisIdlePanel
+          variant="analyze"
+          sites={websites}
+          onPick={setUrl}
+          state={isError ? 'failed' : 'idle'}
+        />
       )}
 
       <AnimatePresence>

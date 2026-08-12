@@ -13,6 +13,8 @@ interface Props {
   /** Tracked sites offered as one-click starters. */
   sites:   Website[];
   onPick:  (url: string) => void;
+  /** `failed` when the last attempt errored — the panel is then the way back, not a welcome. */
+  state?:  'idle' | 'failed';
 }
 
 const OUTPUTS: Record<Variant, { icon: React.ElementType; title: string; body: string }[]> = {
@@ -28,6 +30,19 @@ const OUTPUTS: Record<Variant, { icon: React.ElementType; title: string; body: s
     { icon: Film,             title: 'Filmstrip comparison',    body: 'Frame-by-frame loading, so you can see which page paints first.' },
     { icon: Layers,           title: 'Deep comparison',         body: 'Resource weight, counts and third parties, broken down per side.' },
   ],
+};
+
+/** Shown in place of the heading above when the previous run errored. The error card
+ *  right above already says what went wrong, so this says what to do about it. */
+const FAILED_COPY: Record<Variant, { title: string; body: string }> = {
+  analyze: {
+    title: 'That run did not finish',
+    body:  'Check the URL above and try again — or start from one of your sites below.',
+  },
+  compare: {
+    title: 'That comparison did not finish',
+    body:  'Check both URLs above and try again — or start from one of your sites below.',
+  },
 };
 
 const COPY: Record<Variant, { title: string; body: string; pick: string }> = {
@@ -48,8 +63,9 @@ const COPY: Record<Variant, { title: string; body: string; pick: string }> = {
  * on first visit. Doubles as a shortcut: tracked sites are one click away, which is the
  * most common thing to audit.
  */
-export function AnalysisIdlePanel({ variant, sites, onPick }: Props) {
-  const copy    = COPY[variant];
+export function AnalysisIdlePanel({ variant, sites, onPick, state = 'idle' }: Props) {
+  const failed  = state === 'failed';
+  const copy    = { ...COPY[variant], ...(failed ? FAILED_COPY[variant] : {}) };
   const outputs = OUTPUTS[variant];
   const picks   = sites.slice(0, 6);
 
@@ -58,7 +74,9 @@ export function AnalysisIdlePanel({ variant, sites, onPick }: Props) {
 
       {/* Heading */}
       <div className="px-[24px] pt-[26px] pb-[20px] text-center">
-        <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center mx-auto mb-[14px] bg-ld-surface-2 border border-ld-border text-ld-accent">
+        <span className={`w-[46px] h-[46px] rounded-[13px] grid place-items-center mx-auto mb-[14px] bg-ld-surface-2 border border-ld-border ${
+          failed ? 'text-ld-text-3' : 'text-ld-accent'
+        }`}>
           {variant === 'compare'
             ? <GitCompareArrows className="w-[22px] h-[22px]" />
             : <Gauge className="w-[22px] h-[22px]" />}
