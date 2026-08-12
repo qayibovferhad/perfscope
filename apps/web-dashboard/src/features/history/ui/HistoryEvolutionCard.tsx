@@ -1,3 +1,4 @@
+import { REGRESSION_PCT, SCORE_NOISE_POINTS } from '@perfscope/shared';
 import type { HistoryEntry } from '@/entities/history';
 import { HistoryPageHeader } from './HistoryPageHeader';
 import { EvolutionChartPanel } from './EvolutionChartPanel';
@@ -5,7 +6,7 @@ import { EvolutionChartPanel } from './EvolutionChartPanel';
 interface Props {
   url:     string;
   entries: HistoryEntry[];
-  /** Right-hand footer slot. Defaults to the regression threshold note. */
+  /** Right-hand footer slot. Defaults to the note explaining how a run is judged. */
   action?: React.ReactNode;
 }
 
@@ -34,7 +35,7 @@ export function HistoryEvolutionCard({ url, entries, action }: Props) {
         </span>
         {action ?? (
           <span className="font-mono text-[11px] text-ld-text-3 opacity-60">
-            Regression threshold: &gt;15% degradation vs previous run
+            Judged vs the previous run: &gt;{SCORE_NOISE_POINTS} score points, or &gt;{REGRESSION_PCT}% on LCP/TBT
           </span>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { HistoryModel } from '../models/History.model.js';
-import { hasResult } from '@perfscope/shared';
+import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import type {
   HistoryEntry,
@@ -42,12 +42,19 @@ function extractRoutePath(url: string): string {
 }
 
 
+/**
+ * Where a route's score ended up against where it started.
+ *
+ * The same points threshold the history table and the alerts use: three points was inside
+ * the spread between two runs of an unchanged page, so most routes were labelled improving
+ * or regressing at random.
+ */
 function computeTrend(entries: ProjectAuditEntry[]): RouteGroup['trend'] {
   if (entries.length < 2) return 'single';
   const scores = entries.map((e) => e.scores.performance);
-  const delta  = scores[scores.length - 1]! - scores[0]!;
-  if (delta >= 3) return 'improving';
-  if (delta <= -3) return 'regressing';
+  const verdict = scoreVerdict(scores[scores.length - 1]!, scores[0]!);
+  if (verdict === 'improved')  return 'improving';
+  if (verdict === 'regressed') return 'regressing';
   return 'stable';
 }
 

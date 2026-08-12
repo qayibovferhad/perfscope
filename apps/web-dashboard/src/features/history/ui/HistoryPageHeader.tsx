@@ -35,8 +35,8 @@ export function HistoryPageHeader({ url, entries }: Props) {
   const regCount = useMemo(() => {
     let n = 0;
     for (let i = 1; i < entries.length; i++) {
-      if (isReg(entries[i]!.metrics.lcp, entries[i - 1]!.metrics.lcp) ||
-          isReg(entries[i]!.metrics.tbt, entries[i - 1]!.metrics.tbt)) n++;
+      if (isReg('lcp', entries[i]!.metrics.lcp, entries[i - 1]!.metrics.lcp) ||
+          isReg('tbt', entries[i]!.metrics.tbt, entries[i - 1]!.metrics.tbt)) n++;
     }
     return n;
   }, [entries]);

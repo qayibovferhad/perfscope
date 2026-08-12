@@ -18,8 +18,8 @@ function deltaPct(curr: number, prev: number) {
 // ─── Hover Tooltip ────────────────────────────────────────────────────────────
 
 function HoverTooltip({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry | null }) {
-  const regLcp = prev ? isRegression(entry.metrics.lcp, prev.metrics.lcp) : false;
-  const regTbt = prev ? isRegression(entry.metrics.tbt, prev.metrics.tbt) : false;
+  const regLcp = prev ? isRegression('lcp', entry.metrics.lcp, prev.metrics.lcp) : false;
+  const regTbt = prev ? isRegression('tbt', entry.metrics.tbt, prev.metrics.tbt) : false;
 
   const rows = [
     { label: 'LCP',   val: entry.metrics.lcp,           prevVal: prev?.metrics.lcp,           color: 'var(--ld-accent)', fmt: fmtMs },
@@ -93,8 +93,8 @@ export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
   const hasRegression = useMemo(() => {
     for (let i = 1; i < entries.length; i++) {
       if (
-        isRegression(entries[i]!.metrics.lcp, entries[i - 1]!.metrics.lcp) ||
-        isRegression(entries[i]!.metrics.tbt, entries[i - 1]!.metrics.tbt)
+        isRegression('lcp', entries[i]!.metrics.lcp, entries[i - 1]!.metrics.lcp) ||
+        isRegression('tbt', entries[i]!.metrics.tbt, entries[i - 1]!.metrics.tbt)
       ) return true;
     }
     return false;

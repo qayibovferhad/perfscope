@@ -103,7 +103,7 @@ export function EvolutionChart({
       lcp:     entry.metrics.lcp,
       tbt:     entry.metrics.tbt,
       regression: prev
-        ? isRegression(entry.metrics.lcp, prev.metrics.lcp) || isRegression(entry.metrics.tbt, prev.metrics.tbt)
+        ? isRegression('lcp', entry.metrics.lcp, prev.metrics.lcp) || isRegression('tbt', entry.metrics.tbt, prev.metrics.tbt)
         : false,
     };
   });

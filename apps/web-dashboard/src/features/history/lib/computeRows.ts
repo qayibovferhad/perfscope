@@ -1,19 +1,29 @@
 import type { HistoryEntry } from '@/entities/history';
 import type { RowData, RowStatus, SortKey, SortOrder } from '../model/types';
-import { isReg } from './format';
+import { isReg, scoreVerdict } from './format';
 
 /**
  * Convert a chronologically-sorted entry list into RowData, classifying each
  * row against its predecessor (regression / improved / stable / baseline).
+ *
+ * Both verdicts are deliberately hard to earn. Every threshold here lives in
+ * `@perfscope/shared` next to the one the alerting backend uses: a run labelled a
+ * regression in this table is one the user may also have been emailed about, and a table
+ * that called a five-point wobble "Improved" taught them to stop reading the column.
  */
 export function computeRows(entries: HistoryEntry[]): RowData[] {
   return entries.map((entry, i) => {
     const prev = i > 0 ? entries[i - 1] : null;
     let status: RowStatus = 'baseline';
     if (prev) {
-      if (isReg(entry.metrics.lcp, prev.metrics.lcp) || isReg(entry.metrics.tbt, prev.metrics.tbt))
+      const verdict = scoreVerdict(entry.scores.performance, prev.scores.performance);
+      if (
+        verdict === 'regressed' ||
+        isReg('lcp', entry.metrics.lcp, prev.metrics.lcp) ||
+        isReg('tbt', entry.metrics.tbt, prev.metrics.tbt)
+      )
         status = 'regression';
-      else if (entry.scores.performance > prev.scores.performance + 2)
+      else if (verdict === 'improved')
         status = 'improved';
       else
         status = 'stable';
