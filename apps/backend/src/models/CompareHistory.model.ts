@@ -11,6 +11,8 @@ const ScoresSchema = new Schema(
 const SideSchema = new Schema({ scores: ScoresSchema, metrics: MetricsSchema }, { _id: false });
 
 export interface ICompareHistory extends Document {
+  /** Owner. Stored as a string of the user's ObjectId, like History does. */
+  userId:         string;
   pairId:         string;
   sourceUrl:      string;
   targetUrl:      string;
@@ -24,6 +26,9 @@ export interface ICompareHistory extends Document {
 
 const CompareHistorySchema = new Schema<ICompareHistory>(
   {
+    // Every query in the service filters on this. It was missing entirely, so one
+    // account's comparisons were listed for every other account.
+    userId:         { type: String, required: true, index: true },
     pairId:         { type: String, required: true, index: true },
     sourceUrl:      { type: String, required: true },
     targetUrl:      { type: String, required: true },
@@ -35,5 +40,8 @@ const CompareHistorySchema = new Schema<ICompareHistory>(
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
+
+// The shape every read uses: this user's runs for this pair, newest first.
+CompareHistorySchema.index({ userId: 1, pairId: 1, createdAt: -1 });
 
 export const CompareHistoryModel = mongoose.model<ICompareHistory>('CompareHistory', CompareHistorySchema);

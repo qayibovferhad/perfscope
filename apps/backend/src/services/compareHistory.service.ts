@@ -63,33 +63,36 @@ function toEntry(d: RawDoc): CompareEntry {
 
 export const CompareHistoryService = {
   async save(
+    userId: string,
     sourceUrl: string, targetUrl: string,
     source: CompareEntry['source'], competitor: CompareEntry['competitor'],
   ): Promise<void> {
     const pairId = makePairId(sourceUrl, targetUrl);
     await CompareHistoryModel.create({
-      pairId, sourceUrl, targetUrl,
+      userId, pairId, sourceUrl, targetUrl,
       sourceHostname: hostname(sourceUrl),
       targetHostname: hostname(targetUrl),
       source, competitor,
       winner: determineWinner(source, competitor),
     });
-    const count = await CompareHistoryModel.countDocuments({ pairId });
+    // Scoped to the owner as well: pruning by pairId alone would delete another account's
+    // runs of the same two sites.
+    const count = await CompareHistoryModel.countDocuments({ userId, pairId });
     if (count > MAX_PER_PAIR) {
       const oldest = await CompareHistoryModel
-        .find({ pairId }).sort({ createdAt: 1 }).limit(count - MAX_PER_PAIR).select('_id');
+        .find({ userId, pairId }).sort({ createdAt: 1 }).limit(count - MAX_PER_PAIR).select('_id');
       await CompareHistoryModel.deleteMany({ _id: { $in: oldest.map(d => d._id) } });
     }
   },
 
-  async getPair(pairId: string): Promise<CompareEntry[]> {
+  async getPair(userId: string, pairId: string): Promise<CompareEntry[]> {
     const docs = await CompareHistoryModel
-      .find({ pairId }).sort({ createdAt: 1 }).lean() as unknown as RawDoc[];
+      .find({ userId, pairId }).sort({ createdAt: 1 }).lean() as unknown as RawDoc[];
     return docs.map(toEntry);
   },
 
-  async listPairs(search?: string): Promise<CompareEntry[]> {
-    const match: Record<string, unknown> = {};
+  async listPairs(userId: string, search?: string): Promise<CompareEntry[]> {
+    const match: Record<string, unknown> = { userId };
     if (search) {
       const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       match['$or'] = [{ sourceHostname: re }, { targetHostname: re }];
