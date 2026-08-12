@@ -18,13 +18,28 @@ export interface AuthedRequest extends Request {
   userId: string;
 }
 
+/**
+ * The user behind a token, or undefined if there isn't one.
+ *
+ * Exported because the Socket.io handshake needs the same check without an Express
+ * request — it had its own third copy of `jwt.verify(token, config.jwtSecret)`.
+ */
+export function userIdFromToken(token: string | undefined): string | undefined {
+  if (!token) return undefined;
+  try {
+    return (jwt.verify(token, config.jwtSecret) as { sub: string }).sub;
+  } catch {
+    return undefined;
+  }
+}
+
 export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) {
-    try {
-      const payload = jwt.verify(header.slice(7), config.jwtSecret) as { sub: string };
-      req.userId = payload.sub;
-    } catch { /* invalid token — continue unauthenticated */ }
+    // Assigned only when there is one: `exactOptionalPropertyTypes` treats an explicit
+    // `undefined` as different from an absent property.
+    const userId = userIdFromToken(header.slice(7));
+    if (userId) req.userId = userId;
   }
   next();
 }

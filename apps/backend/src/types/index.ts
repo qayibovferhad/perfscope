@@ -45,6 +45,9 @@ export type {
 // Import a few for use in local socket-event contracts below
 import type { AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor } from '@perfscope/shared';
 
+/** How thoroughly an audit measures: one shot, or the median of three runs. */
+export type AuditPrecision = 'single' | 'median';
+
 // ─── Backend-specific: REST contracts ───────────────────────────────────────
 
 export interface ApiResponse<T> {
@@ -64,10 +67,28 @@ export interface ServerToClientEvents {
   'analysis:error':    (data: { analysisId: string; message: string; code?: string }) => void;
 }
 
+/**
+ * What the client may send. The handlers used to re-declare these payloads inline, so
+ * TypeScript never checked one against the other and the contract drifted into fiction:
+ * `precision` and `context` were both read by the server and declared nowhere.
+ */
 export interface ClientToServerEvents {
-  'analysis:start':    (data: { url: string; projectId?: string; formFactor?: AuditFormFactor }) => void;
-  'analysis:cancel':   (data: { analysisId: string }) => void;
-  'auth-audit:start':  (data: { sessionId: string; url: string; projectId?: string; formFactor?: AuditFormFactor }) => void;
+  'analysis:start': (data: {
+    url: string;
+    projectId?: string;
+    formFactor?: AuditFormFactor;
+    /** 'median' measures three times and reports the middle run — slower, far less noisy. */
+    precision?: AuditPrecision;
+  }) => void;
+  'analysis:cancel': (data: { analysisId: string }) => void;
+  'auth-audit:start': (data: {
+    sessionId: string;
+    url: string;
+    projectId?: string;
+    formFactor?: AuditFormFactor;
+    /** A rival's session is stored separately from the user's own sites. */
+    context?: 'competitor';
+  }) => void;
 }
 
 export interface InterServerEvents {

@@ -1,8 +1,7 @@
 import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding } from '@perfscope/shared';
-import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { dispatchAlert } from './alerts.service.js';
-import { hostOf, hostPrefixRegex } from '../lib/url.js';
+import { findWebsiteByHost } from './websiteLookup.js';
 import type { AnalysisResult } from '../types/index.js';
 
 /**
@@ -49,13 +48,7 @@ export async function checkRegressions(result: AnalysisResult, userId: string | 
   // An all-zero failed run carries no signal — it would read as a total collapse.
   if (!hasResult(result)) return;
 
-  const host = hostOf(result.url);
-  if (!host) return;
-
-  const site = await Website.findOne({
-    userId,
-    url: { $regex: hostPrefixRegex(host).source, $options: 'i' },
-  });
+  const site = await findWebsiteByHost(userId, result.url);
   // Channels live on `budgets`; with nowhere to send, there is nothing to compute.
   if (!site?.budgets?.webhookUrl && !site?.budgets?.alertEmail) return;
 

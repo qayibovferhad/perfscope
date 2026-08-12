@@ -1,47 +1,31 @@
 import type { Server, Socket } from 'socket.io';
-import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
   InterServerEvents,
   SocketData,
   AnalysisProgress,
+  AnalysisResult,
   CategoryPartial,
 } from '../types/index.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { enrichWithAi, persistAudit } from '../services/auditPipeline.js';
 import { hasSession, extractSessionData } from '../services/authAuditSession.js';
-import { Website } from '../models/Website.model.js';
-import { CompetitorSession } from '../models/CompetitorSession.model.js';
-import { config } from '../config/index.js';
-import { sameOrigin, isValidUrl, hostOf, hostPrefixRegex } from '../lib/url.js';
+import { findWebsiteByHost } from '../services/websiteLookup.js';
+import { recordLoginWall, dropStaleSession } from '../services/loginWall.service.js';
+import { findSessionFor, persistCapturedSession } from '../services/sessionStore.js';
+import { userIdFromToken } from '../middleware/auth.middleware.js';
+import { isValidUrl } from '../lib/url.js';
 import { SessionExpiredError } from '../lib/errors.js';
-import { v4 as uuidv4 } from 'uuid';
-
-function extractUserId(socket: TypedSocket): string | undefined {
-  try {
-    const token = (socket.handshake.auth as { token?: string }).token;
-    if (!token) return undefined;
-    const payload = jwt.verify(token, config.jwtSecret) as { sub: string };
-    return payload.sub;
-  } catch {
-    return undefined;
-  }
-}
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-/** The user's website that owns this URL, matched on hostname since audits run per route. */
-async function findWebsiteByHost(userId: string, url: string) {
-  const host = hostOf(url);
-  if (!host) return null;
+/** Median precision measures three times and reports the middle run whole. */
+const MEDIAN_RUNS = 3;
 
-  return Website.findOne({
-    userId,
-    url: { $regex: hostPrefixRegex(host).source, $options: 'i' },
-  });
-}
+type PartialCallback = (data: CategoryPartial) => void;
 
 /**
  * The client sends projectId from the page's query string, which goes stale as soon as
@@ -66,56 +50,85 @@ async function resolveProjectId(
   }
 }
 
-/**
- * Remembers on the Website document whether an audit hit a login screen, so the
- * dashboard can flag the site instead of the warning living only in the one analysis
- * result the user happened to be looking at.
- *
- * Self-correcting: the flag records which URL was walled off, and a later clean audit of
- * that same URL clears it. Auditing some other route never clears another route's wall.
- */
-async function recordLoginWall(
-  userId: string | undefined,
-  url: string,
-  detected: { finalUrl: string } | undefined,
-): Promise<void> {
-  if (!userId) return;
-
-  const site = await findWebsiteByHost(userId, url);
-  if (!site) return;
-
-  if (detected) {
-    site.set('requiresLogin', { url, loginUrl: detected.finalUrl, detectedAt: new Date() });
-    await site.save();
-    return;
-  }
-
-  const current = site.get('requiresLogin') as { url?: string } | null;
-  if (current && current.url === url) {
-    site.set('requiresLogin', null);
-    await site.save();
-  }
+interface RunAuditParams {
+  socket:    TypedSocket;
+  url:       string;
+  userId:    string | undefined;
+  projectId: string | undefined;
+  /** Performs the measurement. Gets the id-scoped partial callback and the analysisId. */
+  measure:   (onPartial: PartialCallback, analysisId: string) => Promise<AnalysisResult>;
+  /** What an expired session should say on this entry path. */
+  expiredMessage: (err: SessionExpiredError) => string;
 }
 
 /**
- * A stored session that no longer authenticates is worse than no session: every
- * later audit silently measures a login page. Drop it and flag the site so the
- * dashboard asks for a fresh capture.
+ * Everything both entry paths do around the measurement itself: own the analysis id,
+ * forward only this audit's events, enrich, persist, flag the login wall, and report.
+ *
+ * The two handlers were ~70% identical and had already drifted — only `analysis:start`
+ * dropped a stale session when one expired, so an `auth-audit` run that failed to
+ * authenticate left the session it had just stored in place, ready to be injected into
+ * every later audit of that origin.
  */
-async function dropStaleSession(userId: string | undefined, url: string, loginUrl: string): Promise<void> {
-  if (!userId) return;
-  const site = await findWebsiteByHost(userId, url);
-  if (!site) return;
-  site.set('session', null);
-  site.set('requiresLogin', { url, loginUrl, detectedAt: new Date() });
-  await site.save();
+async function runAudit({
+  socket, url, userId, projectId, measure, expiredMessage,
+}: RunAuditParams): Promise<void> {
+  // Own the id up front so this socket only forwards its own audit's progress —
+  // concurrent audits share the service's event emitter.
+  const analysisId = uuidv4();
+
+  const onProgress = (data: AnalysisProgress) => {
+    if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
+  };
+  const onPartial: PartialCallback = (data) => {
+    if (data.analysisId === analysisId) socket.emit('analysis:partial', data);
+  };
+
+  lighthouseService.on('progress', onProgress);
+
+  try {
+    const result = await measure(onPartial, analysisId);
+
+    await enrichWithAi(result);
+
+    // Derived from the audited URL — see resolveProjectId for why the client's value
+    // cannot be trusted on its own.
+    const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
+
+    persistAudit(result, userId, ownerProjectId)
+      .catch(err => console.warn('[History] Save failed:', err));
+
+    recordLoginWall(userId, result.url, result.authRedirectDetected)
+      .catch(err => console.warn('[Website] Login-wall flag failed:', err));
+
+    socket.emit('analysis:complete', result);
+  } catch (err) {
+    if (err instanceof SessionExpiredError) {
+      await dropStaleSession(userId, url, err.loginUrl)
+        .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
+    }
+
+    const message = err instanceof SessionExpiredError
+      ? expiredMessage(err)
+      : err instanceof Error ? err.message : 'Analysis failed';
+
+    socket.emit('analysis:error', {
+      analysisId,
+      message,
+      ...(err instanceof SessionExpiredError ? { code: err.code } : {}),
+    });
+  } finally {
+    lighthouseService.off('progress', onProgress);
+  }
 }
 
 export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
-    socket.on('analysis:start', async (payload: { url: string; projectId?: string; formFactor?: 'mobile' | 'desktop'; precision?: 'single' | 'median' }) => {
+    const userId = userIdFromToken((socket.handshake.auth as { token?: string }).token);
+
+    socket.on('analysis:start', async (payload) => {
       const { url, projectId } = payload;
       const formFactor = payload.formFactor === 'mobile' ? 'mobile' as const : undefined;
 
@@ -126,88 +139,31 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       console.log(`[Socket] Analysis started: ${url}`);
 
-      // Own the id up front so this socket only forwards its own audit's progress —
-      // concurrent audits share the service's event emitter.
-      const analysisId = uuidv4();
-      const runs = payload.precision === 'median' ? 3 : 1;
+      const runs = payload.precision === 'median' ? MEDIAN_RUNS : 1;
 
-      const onProgress = (data: AnalysisProgress) => {
-        if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
-      };
-      const onPartial  = (data: CategoryPartial) => {
-        if (data.analysisId === analysisId) socket.emit('analysis:partial', data);
-      };
-
-      lighthouseService.on('progress', onProgress);
-
-      // Auto-inject saved session — check Website first, then CompetitorSession
-      const userId = extractUserId(socket);
-      let savedSession: { cookies: unknown[]; localStorage: Record<string, string> } | null = null;
+      // A session captured earlier for this exact origin is injected automatically, so a
+      // login-walled page does not have to be re-captured before every run.
+      let savedSession = null;
       if (userId) {
-        try {
-          const [websites, competitorSessions] = await Promise.all([
-            Website.find({ userId }).lean(),
-            CompetitorSession.find({ userId }).lean(),
-          ]);
-          const allSources = [
-            ...websites.map(w => ({ url: w.url, session: w.session })),
-            ...competitorSessions.map(c => ({ url: c.url, session: c.session })),
-          ];
-          const match = allSources.find(s => s.session && sameOrigin(url, s.url));
-          if (match?.session) {
-            // Mongo drops an empty localStorage map, and a cookies-only capture is
-            // perfectly normal — neither may crash the audit that wants to use it.
-            const cookies = match.session.cookies ?? [];
-            const ls      = (match.session.localStorage ?? {}) as Record<string, string>;
-            if (cookies.length > 0 || Object.keys(ls).length > 0) {
-              savedSession = { cookies, localStorage: ls };
-              console.log(`[Socket] Using saved session for ${url}`);
-            }
-          }
-        } catch (err) {
-          console.warn('[Socket] Failed to load saved session:', err);
-        }
+        savedSession = await findSessionFor(userId, url)
+          .catch(err => { console.warn('[Socket] Failed to load saved session:', err); return null; });
+        if (savedSession) console.log(`[Socket] Using saved session for ${url}`);
       }
 
-      try {
-        const result = savedSession
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? await lighthouseService.analyzeWithInjectedSession(url, savedSession as any, onPartial, { formFactor, analysisId })
-          : await lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId });
-
-        await enrichWithAi(result);
-
-        // Derived from the audited URL — see resolveProjectId for why the client's value
-        // cannot be trusted on its own.
-        const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
-
-        persistAudit(result, userId, ownerProjectId).catch(err => console.warn('[History] Save failed:', err));
-
-        recordLoginWall(userId, result.url, result.authRedirectDetected)
-          .catch(err => console.warn('[Website] Login-wall flag failed:', err));
-
-        socket.emit('analysis:complete', result);
-      } catch (err) {
-        if (err instanceof SessionExpiredError) {
-          await dropStaleSession(userId, url, err.loginUrl)
-            .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
-        }
-        const message = err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', {
-          analysisId,
-          message,
-          ...(err instanceof SessionExpiredError ? { code: err.code } : {}),
-        });
-      } finally {
-        lighthouseService.off('progress', onProgress);
-      }
+      await runAudit({
+        socket, url, userId, projectId,
+        measure: (onPartial, analysisId) => savedSession
+          ? lighthouseService.analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, analysisId })
+          : lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId }),
+        expiredMessage: err => err.message,
+      });
     });
 
-    socket.on('analysis:cancel', (payload: { analysisId: string }) => {
+    socket.on('analysis:cancel', (payload) => {
       lighthouseService.cancelAnalysis(payload.analysisId);
     });
 
-    socket.on('auth-audit:start', async (payload: { sessionId: string; url: string; projectId?: string; context?: 'competitor'; formFactor?: 'mobile' | 'desktop' }) => {
+    socket.on('auth-audit:start', async (payload) => {
       const { sessionId, url, projectId, context } = payload;
       const formFactor = payload.formFactor === 'mobile' ? 'mobile' as const : undefined;
 
@@ -217,81 +173,28 @@ export function registerAnalysisSocket(io: TypedServer): void {
       }
 
       if (!hasSession(sessionId)) {
-        socket.emit('analysis:error', { analysisId: '', message: 'Auth session not found or expired. Please start over.' });
+        socket.emit('analysis:error', {
+          analysisId: '',
+          message: 'Auth session not found or expired. Please start over.',
+        });
         return;
       }
 
-      // Extract session data (visible browser stays open for re-use).
+      // The visible browser stays open for re-use after the harvest.
       const sessionData = await extractSessionData(sessionId);
 
-      // Auto-persist session — competitor sessions go to CompetitorSession, others to Website.
-      const userId = extractUserId(socket);
       if (userId) {
-        const sessionPayload = { ...sessionData, capturedAt: new Date() };
-        const origin   = new URL(url).origin;
-        const hostname = new URL(url).hostname;
-
-        if (context === 'competitor') {
-          CompetitorSession.findOneAndUpdate(
-            { userId, url: origin },
-            { $set: { session: sessionPayload, name: hostname } },
-            { upsert: true, new: true },
-          ).catch(() => {});
-        } else {
-          Website.find({ userId }).lean().then(async (sites) => {
-            const match = sites.find(w => sameOrigin(url, w.url as string));
-            // Same rule as PATCH /websites/:id/session — a captured session answers the
-            // login-wall warning, so it is cleared here too.
-            if (match) {
-              await Website.findByIdAndUpdate(match._id, { session: sessionPayload, requiresLogin: null });
-            } else {
-              await Website.findOneAndUpdate(
-                { userId, url: origin },
-                { $set: { session: sessionPayload, name: hostname, requiresLogin: null } },
-                { upsert: true, new: true },
-              );
-            }
-          }).catch(() => {});
-        }
+        persistCapturedSession(userId, url, sessionData, context === 'competitor' ? 'competitor' : 'own')
+          .catch(err => console.warn('[Socket] Failed to persist captured session:', err));
       }
 
-      const analysisId = uuidv4();
-      const onProgress = (data: AnalysisProgress) => {
-        if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
-      };
-      const onPartial  = (data: CategoryPartial) => {
-        if (data.analysisId === analysisId) socket.emit('analysis:partial', data);
-      };
-
-      lighthouseService.on('progress', onProgress);
-
-      try {
-        const result = await lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial, { formFactor, analysisId });
-
-        await enrichWithAi(result);
-
-        // Derived from the audited URL — see resolveProjectId for why the client's value
-        // cannot be trusted on its own.
-        const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
-
-        persistAudit(result, userId, ownerProjectId).catch(err => console.warn('[History] Save failed:', err));
-
-        recordLoginWall(userId, result.url, result.authRedirectDetected)
-          .catch(err => console.warn('[Website] Login-wall flag failed:', err));
-
-        socket.emit('analysis:complete', result);
-      } catch (err) {
-        const message = err instanceof SessionExpiredError
-          ? 'The captured session did not authenticate — log in inside the opened browser, then run the audit again.'
-          : err instanceof Error ? err.message : 'Analysis failed';
-        socket.emit('analysis:error', {
-          analysisId,
-          message,
-          ...(err instanceof SessionExpiredError ? { code: err.code } : {}),
-        });
-      } finally {
-        lighthouseService.off('progress', onProgress);
-      }
+      await runAudit({
+        socket, url, userId, projectId,
+        measure: (onPartial, analysisId) =>
+          lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial, { formFactor, analysisId }),
+        expiredMessage: () =>
+          'The captured session did not authenticate — log in inside the opened browser, then run the audit again.',
+      });
     });
 
     socket.on('disconnect', (reason: string) => {

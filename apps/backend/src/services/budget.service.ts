@@ -1,7 +1,7 @@
 import { fmtMs, fmtCls, hasResult } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
-import { hostOf, hostPrefixRegex } from '../lib/url.js';
+import { findWebsiteByHost } from './websiteLookup.js';
 import type { AnalysisResult } from '../types/index.js';
 
 interface BudgetFailure {
@@ -42,13 +42,7 @@ function describeFailure(f: BudgetFailure): string {
 export async function checkBudgets(result: AnalysisResult, userId: string | undefined): Promise<void> {
   if (!userId) return;
 
-  const host = hostOf(result.url);
-  if (!host) return;
-
-  const site = await Website.findOne({
-    userId,
-    url: { $regex: hostPrefixRegex(host).source, $options: 'i' },
-  });
+  const site = await findWebsiteByHost(userId, result.url);
   if (!site?.budgets) return;
 
   // An all-zero failed run must not trip (or clear) budgets.
@@ -58,7 +52,7 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
 
   if (failures.length === 0) {
     if (site.lastBudgetBreach && site.lastBudgetBreach.url === result.url) {
-      site.set('lastBudgetBreach', null);
+      site.lastBudgetBreach = null;
       await site.save();
     }
     // Close the incident even when no breach was recorded on this document — the log,
@@ -85,7 +79,7 @@ export async function checkBudgets(result: AnalysisResult, userId: string | unde
     at:         new Date(),
   };
 
-  site.set('lastBudgetBreach', breach);
+  site.lastBudgetBreach = breach;
   await site.save();
   console.warn(`[Budgets] ${result.url} broke ${failures.map(f => f.metric).join(', ')}`);
 
