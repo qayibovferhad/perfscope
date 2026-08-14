@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button';
 import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer/model/useAnalysis';
-import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfall';
+import { TimelineWaterfallSkeleton } from '@/features/analyzer/ui/TimelineWaterfallSkeleton';
 import { AnalyzerHeader } from '@/widgets/analyzer-header';
 import { AnalyzerSearchForm } from '@/features/analyzer/ui/AnalyzerSearchForm';
 import { StreamingScores } from '@/features/analyzer/ui/StreamingScores';
