@@ -1,12 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  WEB_URL,
-  waitForServers,
-  registerUser,
-  launchAuthedBrowser,
-  cleanupUser,
-} from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep, bodyText } from './helpers.mjs';
 
 // Every route the SPA serves, with a marker that must appear in the rendered body.
 // Markers are deliberately loose (most live in the persistent sidebar) so cosmetic
@@ -52,8 +46,8 @@ test('all routes render without console or page errors', { timeout: 180_000 }, a
         marker.source,
       );
     } catch { /* fall through — the assertions below carry the real message */ }
-    await new Promise((r) => setTimeout(r, 400));
-    const body = await page.evaluate(() => document.body.innerText);
+    await sleep(400);
+    const body = await bodyText(page);
     return { body, newErrors: errors.slice(before), before };
   };
 

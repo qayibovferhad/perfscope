@@ -5,7 +5,7 @@
  * in another, a third alpha in a third — so this reads the rendered pixels rather than
  * trusting that the tables agreed. Needs both dev servers.
  */
-import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser } from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep } from './helpers.mjs';
 
 const TARGET = process.env.PROBE_URL ?? 'https://example.com';
 
@@ -29,7 +29,7 @@ try {
         .some((e) => ['JS', 'CSS', 'IMG', 'FONT', 'DOC', 'MEDIA', 'XHR'].includes(e.textContent?.trim() ?? '')),
     { timeout: 240_000 },
   );
-  await new Promise((r) => setTimeout(r, 800));
+  await sleep(800);
 
   const diag = await page.evaluate(() => ({
     hasResourceHeading: /resource/i.test(document.body.innerText),

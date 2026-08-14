@@ -7,7 +7,7 @@
  *
  * Needs both dev servers. Runs two audits, so give it a few minutes.
  */
-import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser } from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep, bodyText } from './helpers.mjs';
 
 const A = process.env.PROBE_URL_A ?? 'example.com';
 const B = process.env.PROBE_URL_B ?? 'example.org';
@@ -41,7 +41,7 @@ try {
     () => document.querySelector('input[type="range"]') !== null,
     { timeout: 300_000 },
   );
-  await new Promise((r) => setTimeout(r, 1500));
+  await sleep(1500);
 
   const report = await page.evaluate(() => {
     const ranges = [...document.querySelectorAll('input[type="range"]')];
@@ -66,7 +66,7 @@ try {
   }
 
   // Seek to the middle and confirm the readout follows.
-  const before = await page.evaluate(() => document.body.innerText);
+  const before = await bodyText(page);
   await page.evaluate(() => {
     const el = document.querySelector('input[type="range"]');
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
@@ -74,8 +74,8 @@ try {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await new Promise((r) => setTimeout(r, 600));
-  const after = await page.evaluate(() => document.body.innerText);
+  await sleep(600);
+  const after = await bodyText(page);
 
   const allHidden = report.length > 0 && report.every((r) => r.nativeThumbHidden);
   console.log(`\nseeking changed the rendered readout: ${before !== after}`);

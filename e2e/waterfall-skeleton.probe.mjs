@@ -5,7 +5,7 @@
  *
  * Needs both dev servers running. Run: node e2e/waterfall-skeleton.probe.mjs
  */
-import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser } from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep } from './helpers.mjs';
 
 const TARGET = process.env.PROBE_URL ?? 'https://example.com';
 
@@ -57,7 +57,7 @@ try {
       && /resource/i.test(document.body.innerText),
     { timeout: 180_000 },
   );
-  await new Promise((r) => setTimeout(r, 800));
+  await sleep(800);
   const live = await geometry();
   console.log('live panel  :', JSON.stringify(live));
 

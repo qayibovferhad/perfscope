@@ -6,7 +6,7 @@
  * so this checks the surface a user actually touches rather than that the file compiles.
  * Needs both dev servers.
  */
-import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser } from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep } from './helpers.mjs';
 
 const TARGET = process.env.PROBE_URL ?? 'https://www.wikipedia.org';
 const STATS = ['Start', 'End', 'Duration', 'TTFB', 'Download', 'Transfer', 'Resource', 'MIME', 'Status', '3rd-party'];
@@ -29,7 +29,7 @@ try {
         .some((e) => ['JS', 'CSS', 'IMG', 'FONT', 'DOC', 'MEDIA', 'XHR'].includes(e.textContent?.trim() ?? '')),
     { timeout: 240_000 },
   );
-  await new Promise((r) => setTimeout(r, 800));
+  await sleep(800);
 
   // Click the row that owns the first type badge.
   const clicked = await page.evaluate(() => {
@@ -44,7 +44,7 @@ try {
   });
   if (!clicked) throw new Error('no resource row to click');
 
-  await new Promise((r) => setTimeout(r, 600));
+  await sleep(600);
 
   const panel = await page.evaluate((stats) => {
     const text = document.body.innerText;

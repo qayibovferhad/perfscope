@@ -9,33 +9,20 @@
  *   cd apps/web-dashboard && npx vite --config vite.probe.config.ts
  * then:  node e2e/empty-account.probe.mjs
  */
-import puppeteer from 'puppeteer';
-import { createHmac } from 'node:crypto';
+import { launchAuthedBrowser, signToken, sleep, bodyText } from './helpers.mjs';
 
+// Its own web URL: this probe drives the vite instance that proxies to the no-database
+// backend, not the ordinary dev server.
 const WEB_URL = process.env.E2E_WEB_URL ?? 'http://localhost:5199';
 const SECRET  = process.env.JWT_SECRET ?? 'probe-secret';
 const ROUTES  = ['/dashboard', '/websites', '/history', '/automation'];
 
-const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
-
-/** HS256 by hand: registering is impossible here (no database), and this file is not
- *  worth a dependency the rest of the suite does not have. */
-function signToken(payload) {
-  const body = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`;
-  return `${body}.${createHmac('sha256', SECRET).update(body).digest('base64url')}`;
-}
-
+// Registering is impossible here — there is no database to register into.
 const userId = '6a7c493cf7d8daef1a06d52f';
-const token  = signToken({ sub: userId, id: userId, exp: Math.floor(Date.now() / 1000) + 3600 });
+const token  = signToken({ sub: userId, id: userId, exp: Math.floor(Date.now() / 1000) + 3600 }, SECRET);
 const user   = { id: userId, name: 'Storage Probe', email: 'probe@perfscope.dev' };
 
-const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-const page = await browser.newPage();
-await page.setViewport({ width: 1440, height: 900 });
-await page.evaluateOnNewDocument(
-  (state) => localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 })),
-  { user, token },
-);
+const { browser, page } = await launchAuthedBrowser({ user, token });
 
 const statuses = [];
 page.on('response', (res) => {
@@ -46,8 +33,8 @@ for (const route of ROUTES) {
   statuses.length = 0;
   const t0 = Date.now();
   await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle0' });
-  await new Promise((r) => setTimeout(r, 1200));
-  const text = await page.evaluate(() => document.body.innerText);
+  await sleep(1200);
+  const text = await bodyText(page);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   console.log(`\n=== ${route} (${Date.now() - t0}ms) ===`);
   console.log('api      :', [...new Set(statuses)].sort());

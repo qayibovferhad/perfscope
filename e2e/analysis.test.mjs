@@ -1,12 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  WEB_URL,
-  waitForServers,
-  registerUser,
-  launchAuthedBrowser,
-  cleanupUser,
-} from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep, bodyText } from './helpers.mjs';
 
 // A full Lighthouse run (two parallel Chrome workers on the backend) takes a
 // while, so the whole test gets a generous budget.
@@ -19,7 +13,7 @@ test('live analysis of https://example.com streams scores', { timeout: 180_000 }
     await browser.close();
     // The backend persists history asynchronously after analysis:complete —
     // give it a moment to land so cleanup catches the row too.
-    await new Promise((r) => setTimeout(r, 3000));
+    await sleep(3000);
     await cleanupUser(auth.email);
   });
 
@@ -34,8 +28,8 @@ test('live analysis of https://example.com streams scores', { timeout: 180_000 }
   let scored = false;
   let failed = false;
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 3000));
-    body = await page.evaluate(() => document.body.innerText);
+    await sleep(3000);
+    body = await bodyText(page);
     if (/analysis failed|something went wrong|cannot find module/i.test(body)) {
       failed = true;
       break;

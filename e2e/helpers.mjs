@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { createHmac } from 'node:crypto';
 import { MongoClient } from 'mongodb';
 
 export const BACKEND_URL = process.env.E2E_BACKEND_URL ?? 'http://localhost:3101';
@@ -122,4 +123,41 @@ export async function cleanupUser(email) {
   } finally {
     await client.close();
   }
+}
+
+// ─── Small things every probe kept rewriting ─────────────────────────────────
+
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** The page as a reader sees it. Note innerText renders CSS, so anything under a
+ *  `uppercase` class comes back uppercased — match case-insensitively. */
+export const bodyText = (page) => page.evaluate(() => document.body.innerText);
+
+/**
+ * Poll `fn` until it returns something truthy, or give up.
+ *
+ * Prefer `page.waitForFunction` for anything inside the page; this is for conditions
+ * outside it — a server coming back, a document appearing in Mongo.
+ */
+export async function pollUntil(fn, { timeoutMs = 30_000, everyMs = 500, label = 'condition' } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = await fn();
+    if (value) return value;
+    await sleep(everyMs);
+  }
+  throw new Error(`${label} not met within ${timeoutMs}ms`);
+}
+
+/**
+ * Sign a JWT by hand, for the probes that cannot register.
+ *
+ * `empty-account.probe.mjs` runs against a backend with no database, so there is nobody
+ * to register as. The payload field the middleware reads is `sub`. With no JWT_SECRET in
+ * .env the backend falls back to 'perfscope-dev-secret-change-in-prod'.
+ */
+export function signToken(payload, secret = process.env.JWT_SECRET ?? 'perfscope-dev-secret-change-in-prod') {
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const body = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`;
+  return `${body}.${createHmac('sha256', secret).update(body).digest('base64url')}`;
 }

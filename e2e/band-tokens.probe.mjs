@@ -6,7 +6,7 @@
  * background and border. So in light theme the tint disagreed with the text sitting on
  * it. This reads the resolved tokens in both themes and checks the tint tracks the hue.
  */
-import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser } from './helpers.mjs';
+import { WEB_URL, waitForServers, registerUser, launchAuthedBrowser, cleanupUser, sleep } from './helpers.mjs';
 
 await waitForServers();
 const { token, user, email } = await registerUser();
@@ -36,7 +36,7 @@ try {
   const seen = [];
   for (const theme of ['dark', 'light']) {
     await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
-    await new Promise((r) => setTimeout(r, 250));
+    await sleep(250);
     seen.push(await read());
   }
 
