@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useMotionValue, motion } from 'framer-motion';
-import { Activity, Zap, Play, Pause, Clock } from 'lucide-react';
+import { Activity, Zap } from 'lucide-react';
 import type { AnalysisResult } from '@/entities/analysis';
 import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { fmtMs } from '@/shared/lib/format';
+import { TransportBar } from './TransportBar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -217,7 +218,6 @@ export function WaterfallComparison({
   // ── Guard — after all hooks ────────────────────────────────────────────────
   if (tReqs.length === 0 && cReqs.length === 0) return null;
 
-  const pct = (ms: number) => `${((ms / totalMs) * 100).toFixed(2)}%`;
 
   return (
     <motion.div
@@ -265,38 +265,14 @@ export function WaterfallComparison({
 
       {/* ── Scrubber ── */}
       <div className="border-t border-ld-border mt-5 pt-4 space-y-2">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={togglePlay}
-            className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all border
-              ${isPlaying
-                ? 'bg-ld-accent border-ld-accent shadow-[0_0_12px_var(--ld-accent-soft)]'
-                : 'bg-ld-surface-2 border-ld-border'}`}
-          >
-            {isPlaying
-              ? <Pause className="w-3 h-3 text-white" />
-              : <Play  className="w-3 h-3 text-ld-text-3" />}
-          </button>
-
-          <div className="relative flex-1">
-            <input
-              type="range" min={0} max={totalMs} step={16} value={currentMs}
-              onChange={e => seek(Number(e.target.value))}
-              className="w-full appearance-none h-[6px] rounded-full outline-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, var(--ld-accent) ${pct(currentMs)}, var(--ld-border) ${pct(currentMs)})` }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[14px] h-[14px] rounded-full pointer-events-none border-2 border-ld-accent bg-white shadow-[0_0_8px_var(--ld-accent-soft)]"
-              style={{ left: pct(currentMs) }}
-            />
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <Clock className="w-3 h-3 text-ld-text-3" />
-            <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmtMs(currentMs)}</span>
-            <span className="text-[10px] text-ld-text-3">/ {fmtMs(totalMs)}</span>
-          </div>
-        </div>
+        <TransportBar
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          currentMs={currentMs}
+          totalMs={totalMs}
+          onSeek={seek}
+          format={fmtMs}
+        />
 
         <div className="flex justify-between pl-10 pr-20">
           {Array.from({ length: 5 }).map((_, i) => (

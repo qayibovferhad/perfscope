@@ -8,11 +8,13 @@ import { cn } from '@/shared/lib/utils';
  * positioned div so the control looks identical across engines.
  */
 export function Scrubber({
-  value, max, onChange, color = 'var(--ld-accent)', className,
+  value, max, onChange, step = 1, color = 'var(--ld-accent)', className,
 }: {
   value: number;
   max: number;
   onChange: (v: number) => void;
+  /** Granularity. The playback scrubbers use 16 — roughly one frame at 60fps. */
+  step?: number;
   /** CSS color of the filled track and thumb ring — e.g. `var(--ld-rose)` for the CLS view. */
   color?: string;
   className?: string;
@@ -24,7 +26,7 @@ export function Scrubber({
         type="range"
         min={0}
         max={max}
-        step={1}
+        step={step}
         value={value}
         onChange={e => onChange(Number(e.target.value))}
         className={cn(

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Film, Play, Pause, Clock } from 'lucide-react';
+import { Film } from 'lucide-react';
 import { findFrameAt } from '@/entities/analysis';
 import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
+import { TransportBar } from './TransportBar';
 
 // ─── Metric defs (timeline marker colors — not you/rival) ─────────────────────
 
@@ -331,38 +332,15 @@ function TimeAxis({
       </div>
 
       {/* Scrubber */}
-      <div className="flex items-center gap-3 py-[10px] px-1">
-        <button
-          onClick={onTogglePlay}
-          className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all border
-            ${isPlaying
-              ? 'bg-ld-accent border-ld-accent shadow-[0_0_12px_var(--ld-accent-soft)]'
-              : 'bg-ld-surface-2 border-ld-border'}`}
-        >
-          {isPlaying
-            ? <Pause className="w-3 h-3 text-white" />
-            : <Play  className="w-3 h-3 text-ld-text-3" />}
-        </button>
-
-        <div className="relative flex-1">
-          <input
-            type="range" min={0} max={totalMs} step={16} value={currentMs}
-            onChange={e => onSeek(Number(e.target.value))}
-            className="w-full appearance-none h-[6px] rounded-full outline-none cursor-pointer"
-            style={{ background: `linear-gradient(to right, var(--ld-accent) ${pct(currentMs)}, var(--ld-border) ${pct(currentMs)})` }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[14px] h-[14px] rounded-full pointer-events-none border-2 border-ld-accent bg-white shadow-[0_0_8px_var(--ld-accent-soft)]"
-            style={{ left: pct(currentMs) }}
-          />
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <Clock className="w-3 h-3 text-ld-text-3" />
-          <span className="font-mono text-[11px] tabular-nums text-ld-text-2">{fmtSec2(currentMs)}</span>
-          <span className="text-[10px] text-ld-text-3">/ {fmtSec2(totalMs)}</span>
-        </div>
-      </div>
+      <TransportBar
+        isPlaying={isPlaying}
+        onTogglePlay={onTogglePlay}
+        currentMs={currentMs}
+        totalMs={totalMs}
+        onSeek={onSeek}
+        format={fmtSec2}
+        className="py-[10px] px-1"
+      />
 
       {/* Competitor track — markers point DOWN */}
       <div
