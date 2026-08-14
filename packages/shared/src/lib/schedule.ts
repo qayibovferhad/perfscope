@@ -52,10 +52,20 @@ function mergeByTime(entries: AutomationSlot[]): AutomationSlot[] {
 }
 
 /**
+ * What a timetable is computed from: an automation config without `lastRunAt`.
+ *
+ * That one field is excluded because the schedule never reads it and the two sides of the
+ * wire disagree about its type — the backend model holds a Date, this package a string.
+ * Demanding the whole document would make every server-side caller launder a field the
+ * timetable does not use.
+ */
+export type ScheduleSpec = Partial<Omit<WebsiteAutomation, 'lastRunAt'>>
+
+/**
  * Every (time, routes) pair this automation fires in a day, sorted, same-minute entries
  * merged. An empty result means nothing will ever run — which is what the UI warns about.
  */
-export function expandSchedule(automation: Partial<WebsiteAutomation> | null | undefined): AutomationSlot[] {
+export function expandSchedule(automation: ScheduleSpec | null | undefined): AutomationSlot[] {
   if (!automation) return []
 
   const routes = (automation.routes ?? []).filter(r => typeof r === 'string' && r.length > 0)
@@ -97,7 +107,7 @@ export function expandSchedule(automation: Partial<WebsiteAutomation> | null | u
 
 /** The routes due at exactly this 'HH:MM'. Empty when nothing is scheduled then. */
 export function routesDueAt(
-  automation: Partial<WebsiteAutomation> | null | undefined,
+  automation: ScheduleSpec | null | undefined,
   hhmm: string,
 ): string[] {
   return expandSchedule(automation).find(slot => slot.time === hhmm)?.routes ?? []
@@ -115,7 +125,7 @@ export function clampSpreadMinutes(value: number | undefined | null): number {
  * `from` is injected rather than read from the clock so the UI and tests stay pure.
  */
 export function nextRunDate(
-  automation: Partial<WebsiteAutomation> | null | undefined,
+  automation: ScheduleSpec | null | undefined,
   from: Date = new Date(),
 ): Date | null {
   const slots = expandSchedule(automation)

@@ -1,3 +1,4 @@
+import type { Types } from 'mongoose';
 import { routesDueAt } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { lighthouseService } from './lighthouse.service.js';
@@ -18,6 +19,12 @@ const SCHEDULED_RUNS = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** The captured-session fields an audit needs, as they come off a lean Website document. */
+interface SessionSource {
+  cookies: unknown[];
+  localStorage: Record<string, string>;
 }
 
 async function runSingleAudit(
@@ -47,6 +54,48 @@ async function runSingleAudit(
 }
 
 /**
+ * Audit `routes` of one site in order, pausing between them, then stamp the run time.
+ *
+ * Shared by the timetable and the manual "Run now" button so the two cannot disagree
+ * about what auditing a site means — they had drifted once already, the manual copy
+ * pausing on `routes.indexOf(route)` rather than the loop index, which skips the pause
+ * whenever a route is listed twice.
+ */
+async function auditRoutes(
+  website: { _id: Types.ObjectId; url: string; session?: SessionSource | null },
+  routes: string[],
+  userId: string,
+): Promise<void> {
+  const projectId = website._id.toString();
+  const baseUrl   = website.url.replace(/\/$/, '');
+  const session   = website.session
+    ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
+    : null;
+
+  for (let i = 0; i < routes.length; i++) {
+    const route   = routes[i]!;
+    const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
+    await runSingleAudit(fullUrl, userId, projectId, session);
+    if (i < routes.length - 1) await sleep(AUDIT_DELAY_MS);
+  }
+
+  await Website.updateOne(
+    { _id: website._id },
+    { 'automation.lastRunAt': new Date() },
+  ).catch(() => {});
+}
+
+/** Sites whose timetable is on. Returns empty on a query failure — same outcome as none due. */
+async function enabledWebsites() {
+  try {
+    return await Website.find({ 'automation.enabled': true }).lean();
+  } catch (err) {
+    console.error('[NightlyAudit] Failed to query websites:', (err as Error).message);
+    return [];
+  }
+}
+
+/**
  * Slots in flight, keyed by `${websiteId}:${hhmm}`.
  *
  * The cron ticks every minute while a slot's routes take minutes to audit (each is a
@@ -62,17 +111,8 @@ export const NightlyAuditService = {
    *   which only the manual path uses.
    */
   async runAllEnabled(scheduleTime?: string): Promise<void> {
-    const label = scheduleTime ?? 'manual';
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let websites: any[];
-    try {
-      websites = await Website.find({ 'automation.enabled': true }).lean();
-    } catch (err) {
-      console.error('[NightlyAudit] Failed to query websites:', (err as Error).message);
-      return;
-    }
-
+    const label    = scheduleTime ?? 'manual';
+    const websites = await enabledWebsites();
     if (websites.length === 0) return;
 
     // Which routes each site owes this minute. Computed with the same helper the setup
@@ -91,14 +131,9 @@ export const NightlyAuditService = {
     console.log(`[NightlyAudit] Starting run (${label}) — ${due.length} website(s) due.`);
 
     for (const { website, routes } of due) {
-      const userId    = website.userId.toString();
-      const projectId = website._id.toString();
-      const baseUrl   = website.url.replace(/\/$/, '');
-      const session   = website.session
-        ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
-        : null;
+      const baseUrl = website.url.replace(/\/$/, '');
+      const key     = `${website._id.toString()}:${label}`;
 
-      const key = `${projectId}:${label}`;
       if (inFlight.has(key)) {
         console.log(`[NightlyAudit] ${website.name || baseUrl} — ${label} still running, skipping this tick.`);
         continue;
@@ -107,18 +142,7 @@ export const NightlyAuditService = {
 
       try {
         console.log(`[NightlyAudit] ${website.name || baseUrl} @ ${label} — ${routes.length} route(s): ${routes.join(', ')}`);
-
-        for (let i = 0; i < routes.length; i++) {
-          const route   = routes[i]!;
-          const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
-          await runSingleAudit(fullUrl, userId, projectId, session);
-          if (i < routes.length - 1) await sleep(AUDIT_DELAY_MS);
-        }
-
-        await Website.updateOne(
-          { _id: website._id },
-          { 'automation.lastRunAt': new Date() },
-        ).catch(() => {});
+        await auditRoutes(website, routes, website.userId.toString());
       } finally {
         inFlight.delete(key);
       }
@@ -136,22 +160,9 @@ export const NightlyAuditService = {
     const website = await Website.findOne({ _id: websiteId, userId }).lean();
     if (!website) throw new Error('Website not found');
 
-    const baseUrl = website.url.replace(/\/$/, '');
-    const session = website.session
-      ? { cookies: website.session.cookies, localStorage: website.session.localStorage }
-      : null;
     const routes: string[] = website.automation?.routes ?? [];
     if (routes.length === 0) throw new Error('No routes configured for this website');
 
-    for (const route of routes) {
-      const fullUrl = route === '/' ? baseUrl : `${baseUrl}${route}`;
-      await runSingleAudit(fullUrl, userId, website._id.toString(), session);
-      if (routes.indexOf(route) < routes.length - 1) await sleep(AUDIT_DELAY_MS);
-    }
-
-    await Website.updateOne(
-      { _id: website._id },
-      { 'automation.lastRunAt': new Date() },
-    ).catch(() => {});
+    await auditRoutes(website, routes, userId);
   },
 };

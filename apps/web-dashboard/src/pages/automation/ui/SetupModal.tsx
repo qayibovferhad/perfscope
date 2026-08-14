@@ -65,8 +65,8 @@ export function SetupModal({ site, open, onClose }: Props) {
     .filter(slot => slot.routes.length > 0);
 
   const timetable = expandSchedule({
-    enabled, routes, scheduleTime, scheduleMode: mode,
-    slots: cleanedSlots, spreadMinutes, lastRunAt: null,
+    routes, scheduleTime, scheduleMode: mode,
+    slots: cleanedSlots, spreadMinutes,
   });
 
   async function handleSave() {

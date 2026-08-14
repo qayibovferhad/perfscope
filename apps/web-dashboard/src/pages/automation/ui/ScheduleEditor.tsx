@@ -51,7 +51,7 @@ export function ScheduleEditor({
   slots, onSlots, spreadMinutes, onSpreadMinutes,
 }: Props) {
   const preview = expandSchedule({
-    enabled: true, routes, scheduleTime, scheduleMode: mode, slots, spreadMinutes, lastRunAt: null,
+    routes, scheduleTime, scheduleMode: mode, slots, spreadMinutes,
   });
 
   const scheduled = new Set(preview.flatMap(s => s.routes));
