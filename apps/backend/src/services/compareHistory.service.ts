@@ -1,6 +1,6 @@
 import type { CompareEntry } from '@perfscope/shared';
 import { CompareHistoryModel } from '../models/CompareHistory.model.js';
-import { hostOf } from '../lib/url.js';
+import { escapeRegex, hostOf } from '../lib/url.js';
 import { pruneToLimit } from '../lib/mongo.js';
 
 const MAX_PER_PAIR = 10;
@@ -83,7 +83,7 @@ export const CompareHistoryService = {
   async listPairs(userId: string, search?: string): Promise<CompareEntry[]> {
     const match: Record<string, unknown> = { userId };
     if (search) {
-      const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const re = new RegExp(escapeRegex(search), 'i');
       match['$or'] = [{ sourceHostname: re }, { targetHostname: re }];
     }
     const docs = await CompareHistoryModel.aggregate([
