@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config/index.js';
-import type { AnalysisResult, NetworkRequest } from '../types/index.js';
+import type { AnalysisResult, NetworkRequest } from '@perfscope/shared';
 
 export class AiService {
   static isAvailable(): boolean {

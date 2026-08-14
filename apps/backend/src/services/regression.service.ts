@@ -1,8 +1,7 @@
-import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding } from '@perfscope/shared';
+import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding, type AnalysisResult } from '@perfscope/shared';
 import { HistoryModel } from '../models/History.model.js';
 import { dispatchAlert } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
-import type { AnalysisResult } from '../types/index.js';
 
 /**
  * Alerts on a run that got materially worse than the one before it.

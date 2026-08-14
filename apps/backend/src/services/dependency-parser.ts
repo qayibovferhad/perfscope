@@ -5,7 +5,7 @@
  *   - Parser-initiated (HTML/CSS inline): initiator.url → request.url
  *   - Script-initiated (JS fetch/import): first non-empty stack frame URL → request.url
  */
-import type { NetworkRequest, DependencyNode, DependencyLink, DependencyGraph, ResourceType } from '../types/index.js';
+import type { NetworkRequest, DependencyNode, DependencyLink, DependencyGraph, ResourceType } from '@perfscope/shared';
 
 // ─── Compact event shape passed from the worker ───────────────────────────────
 

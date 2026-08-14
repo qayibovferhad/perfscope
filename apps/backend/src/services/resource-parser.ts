@@ -1,12 +1,5 @@
 import type { Result as LhrResult } from 'lighthouse';
-import type {
-  NetworkRequest,
-  ResourceType,
-  ResourceTypeSummary,
-  ResourceSummary,
-  DetectedLibrary,
-  ParsedResources,
-} from '../types/index.js';
+import type { NetworkRequest, ResourceType, ResourceTypeSummary, ResourceSummary, DetectedLibrary, ParsedResources } from '@perfscope/shared';
 
 // ─── Library Detection Patterns ──────────────────────────────────────────────
 // Each entry: [libraryName, regex tested against the full URL]

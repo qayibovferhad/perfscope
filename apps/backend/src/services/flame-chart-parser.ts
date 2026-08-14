@@ -9,7 +9,7 @@
  *  5. Compute call-stack depth via a time-ordered stack
  *  6. Trim to MAX_EVENTS, preferring long tasks and high-duration events
  */
-import type { FlameChartData, FlameChartEvent } from '../types/index.js';
+import type { FlameChartData, FlameChartEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
   type RawTraceEvent,

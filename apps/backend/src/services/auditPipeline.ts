@@ -4,8 +4,7 @@ import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
-import type { AnalysisResult } from '../types/index.js';
-import type { AuditSource } from '@perfscope/shared';
+import type { AuditSource, AnalysisResult } from '@perfscope/shared';
 
 /** Cap on critical resources sent for per-resource AI advice. */
 const AI_CRITICAL_LIMIT = 6;

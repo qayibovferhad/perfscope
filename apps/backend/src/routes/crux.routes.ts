@@ -1,8 +1,9 @@
 import { Router } from 'express';
+import { parseFormFactor } from '../lib/params.js';
 import { CruxService } from '../services/crux.service.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
-import type { AuditFormFactor } from '../types/index.js';
+import type { AuditFormFactor } from '@perfscope/shared';
 
 export const cruxRouter: Router = Router();
 
@@ -17,8 +18,8 @@ cruxRouter.get(
     const url = req.query['url'];
     if (!url || typeof url !== 'string') throw new AppError(400, 'url query param required');
 
-    const raw = req.query['formFactor'];
-    const formFactor: AuditFormFactor = raw === 'desktop' ? 'desktop' : 'mobile';
+    // Mobile unless desktop was asked for — CrUX grades mobile-first.
+    const formFactor: AuditFormFactor = parseFormFactor(req.query['formFactor']) ?? 'mobile';
 
     res.json({ success: true, data: await CruxService.get(url, formFactor) });
   }, 'Failed to load field data'),

@@ -1,5 +1,5 @@
 import type { RunnerResult } from 'lighthouse';
-import type { TimelineData, TimelineFrame } from '../types/index.js';
+import type { TimelineData, TimelineFrame } from '@perfscope/shared';
 
 /** Filmstrip frames + key metric timings from a performance LHR. */
 export function parseTimeline(lhr: RunnerResult['lhr']): TimelineData | null {

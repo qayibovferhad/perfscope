@@ -4,16 +4,7 @@ import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkE
 import { parseTimeline } from './timeline-parser.js';
 import { parseCLSData } from './cls-parser.js';
 import { parseThirdParties } from './third-party-parser.js';
-import type {
-  AnalysisResult,
-  AuditItem,
-  AuditImpact,
-  AnalysisCategory,
-  CategoryPartial,
-  FlameChartData,
-  HeapMemoryData,
-  InteractionData,
-} from '../types/index.js';
+import type { AnalysisResult, AuditItem, AuditImpact, AnalysisCategory, CategoryPartial, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
 
 export function toScore(raw: number | null | undefined): number {
   return Math.round((raw ?? 0) * 100);

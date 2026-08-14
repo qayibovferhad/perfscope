@@ -1,5 +1,5 @@
 import type { RunnerResult } from 'lighthouse';
-import type { CLSData, CLSShiftElement } from '../types/index.js';
+import type { CLSData, CLSShiftElement } from '@perfscope/shared';
 
 /** Layout-shift elements with viewport-relative rects from a performance LHR. */
 export function parseCLSData(lhr: RunnerResult['lhr']): CLSData | null {

@@ -10,7 +10,7 @@
  *  6. Return { points, averageMb, peakMb }
  */
 
-import type { HeapMemoryData, HeapMemoryPoint } from '../types/index.js';
+import type { HeapMemoryData, HeapMemoryPoint } from '@perfscope/shared';
 import { resolveTraceEvents, type RawTraceEvent } from '../lib/trace.js';
 
 const GC_DROP_MB  = 2;    // absolute drop threshold in MB

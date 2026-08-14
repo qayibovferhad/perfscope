@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { parseFormFactor, intParam } from '../lib/params.js';
 import { meanRounded } from '../lib/stats.js';
 import { Router } from 'express';
 import { SCORE_BANDS, RUM_METRIC_KEYS, type Paginated, type WebsiteSummary } from '@perfscope/shared';
@@ -61,10 +62,6 @@ function found<T>(doc: T | null): T {
   return doc;
 }
 
-function parseDevice(raw: unknown): 'mobile' | 'desktop' | undefined {
-  return raw === 'mobile' || raw === 'desktop' ? raw : undefined;
-}
-
 // GET /api/websites?q=&page=&limit=
 // Without any of those params this returns the plain array it always has, so the
 // sidebar, compare picker and automation page keep working untouched.
@@ -73,10 +70,7 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
   const filter = ownedFilter(req.userId, q);
 
   const paginated = rawPage !== undefined || rawLimit !== undefined || q !== undefined;
-  const limit = Math.min(
-    Math.max(parseInt(rawLimit ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 1),
-    MAX_LIMIT,
-  );
+  const limit = intParam(rawLimit, { def: DEFAULT_LIMIT, max: MAX_LIMIT });
 
   // No database is not a failed request: there is provably nothing stored. Answering with
   // the empty shape leaves the page on "no websites yet" — the storage header set in
@@ -92,7 +86,7 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
     return;
   }
 
-  const requested = Math.max(parseInt(rawPage ?? '1', 10) || 1, 1);
+  const requested = intParam(rawPage, { def: 1 });
 
   // Count first so an out-of-range page is clamped before the skip is computed —
   // otherwise the response reports the last page but returns an empty list.
@@ -181,9 +175,9 @@ websiteRouter.patch('/websites/:id/automation', asyncHandler<AuthedRequest>(asyn
 websiteRouter.get('/websites/:id/rum', asyncHandler<AuthedRequest>(async (req, res) => {
   const site = found(await Website.findOne(ownedSite(req)).select('_id rumKey').lean());
 
-  const days   = parseInt(String(req.query['days'] ?? RUM_DAYS.summary), 10) || RUM_DAYS.summary;
+  const days   = intParam(req.query['days'], { def: RUM_DAYS.summary });
   const path   = typeof req.query['path'] === 'string' && req.query['path'] ? String(req.query['path']) : undefined;
-  const device = parseDevice(req.query['device']);
+  const device = parseFormFactor(req.query['device']);
 
   const [summary, paths] = await Promise.all([
     getRumSummary({ websiteId: site._id, days, path, device }),
@@ -202,8 +196,8 @@ websiteRouter.get('/websites/:id/rum/trend', asyncHandler<AuthedRequest>(async (
     ? raw as (typeof RUM_METRIC_KEYS)[number]
     : 'lcp';
 
-  const days   = parseInt(String(req.query['days'] ?? RUM_DAYS.trend), 10) || RUM_DAYS.trend;
-  const device = parseDevice(req.query['device']);
+  const days   = intParam(req.query['days'], { def: RUM_DAYS.trend });
+  const device = parseFormFactor(req.query['device']);
 
   res.json({ success: true, data: await getRumTrend({ websiteId: site._id, days, device, metric }) });
 }));
@@ -225,10 +219,7 @@ websiteRouter.post('/websites/:id/rum-key', asyncHandler<AuthedRequest>(async (r
 websiteRouter.get('/websites/:id/alerts', asyncHandler<AuthedRequest>(async (req, res) => {
   const site = found(await Website.findOne(ownedSite(req)).select('_id').lean());
 
-  const limit = Math.min(
-    Math.max(parseInt(String(req.query['limit'] ?? ALERTS_LIMIT.default), 10) || ALERTS_LIMIT.default, 1),
-    ALERTS_LIMIT.max,
-  );
+  const limit = intParam(req.query['limit'], { def: ALERTS_LIMIT.default, max: ALERTS_LIMIT.max });
   const alerts = await AlertLog.find({ websiteId: site._id })
     .sort({ createdAt: -1 })
     .limit(limit)

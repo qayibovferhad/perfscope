@@ -19,17 +19,7 @@ import type { AuthSessionData } from './authAuditSession.js';
 import { SessionExpiredError } from '../lib/errors.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { config } from '../config/index.js';
-import type {
-  AnalysisResult,
-  AnalysisProgress,
-  AnalysisCategory,
-  AuditFormFactor,
-  CategoryPartial,
-  MeasurementQuality,
-  FlameChartData,
-  HeapMemoryData,
-  InteractionData,
-} from '../types/index.js';
+import type { AnalysisResult, AnalysisProgress, AnalysisCategory, AuditFormFactor, CategoryPartial, MeasurementQuality, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
 
 /** What one worker thread hands back for a single Lighthouse pass. */
 interface WorkerRunResult {
@@ -88,6 +78,37 @@ const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance'];
 
 /** More than this and the wait stops being worth the extra precision. */
 const MAX_RUNS = 5;
+
+/**
+ * The one progress scale, shared by all three audit paths.
+ *
+ * These used to be literals at seventeen call sites, and the two paths that interpolate
+ * "run i of n" used different formulas (30 + 55·i/runs against 35 + 50·i/runs), so the
+ * same stage of the same kind of audit reported different percentages depending on how it
+ * was started. Everything the timed band does — runs, the REST ticker, the parallel
+ * advance — now lives in [auditing, auditCeil]; processing sits above the ceiling so no
+ * amount of in-band activity can overtake it.
+ *
+ * Unifying moved two numbers slightly: the streaming path's run interpolation now starts
+ * at 35 (was 30), and the parallel path's cap is 85 (was 88).
+ */
+const PCT = {
+  error:        0,
+  queued:       2,
+  launching:    10,
+  /** Session transfer, or the static categories — everything before the timed band. */
+  preparing:    20,
+  browserReady: 25,
+  auditing:     35,
+  auditCeil:    85,
+  processing:   90,
+  complete:     100,
+} as const;
+
+/** Where run i of n sits inside the auditing band. */
+function runProgress(i: number, runs: number): number {
+  return PCT.auditing + Math.round(((PCT.auditCeil - PCT.auditing) * i) / runs);
+}
 
 /** A single Lighthouse pass that outlives this is wedged, not slow. */
 const RUN_TIMEOUT_MS = 4 * 60_000;
@@ -169,7 +190,7 @@ export class LighthouseService extends EventEmitter {
       return buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, heapMemoryData, interactionData, undefined, artifacts);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
-      this.emitProgress(analysisId, 'error', 0, `Error: ${message}`);
+      this.emitProgress(analysisId, 'error', PCT.error, `Error: ${message}`);
       throw err;
     } finally {
       if (browser) await browser.close().catch(() => void 0);
@@ -198,7 +219,7 @@ export class LighthouseService extends EventEmitter {
   private queueReporter(analysisId: string) {
     return (position: number) =>
       this.emitProgress(
-        analysisId, 'launching', 2,
+        analysisId, 'launching', PCT.queued,
         position === 1 ? 'Queued — next in line…' : `Queued — ${position - 1} audit(s) ahead…`,
       );
   }
@@ -217,7 +238,7 @@ export class LighthouseService extends EventEmitter {
     this.activeAnalyses.set(analysisId, { type: 'workers', workers });
 
     try {
-      this.emitProgress(analysisId, 'launching', 10, 'Launching Chrome instances...');
+      this.emitProgress(analysisId, 'launching', PCT.launching, 'Launching Chrome instances...');
 
       const emitFor = (cats: AnalysisCategory[], lhr: RunnerResult['lhr']) => {
         for (const cat of cats) onPartial(buildPartial(analysisId, cat, lhr));
@@ -228,10 +249,10 @@ export class LighthouseService extends EventEmitter {
 
       if (runs === 1) {
         // Fast path: both workers in parallel, whichever finishes first streams.
-        this.emitProgress(analysisId, 'auditing', 35, 'Running parallel audits...');
-        let progress = 35;
+        this.emitProgress(analysisId, 'auditing', PCT.auditing, 'Running parallel audits...');
+        let progress: number = PCT.auditing;
         const advance = (by: number, msg: string) => {
-          progress = Math.min(progress + by, 88); // cap before processing stage
+          progress = Math.min(progress + by, PCT.auditCeil);
           this.emitProgress(analysisId, 'auditing', progress, msg);
         };
 
@@ -255,7 +276,7 @@ export class LighthouseService extends EventEmitter {
         // flight, otherwise the extra iterations measure contention instead of the
         // page. Static categories go first (they cannot be perturbed), then each
         // timed iteration runs alone.
-        this.emitProgress(analysisId, 'auditing', 20, 'Auditing SEO, Best Practices & Accessibility...');
+        this.emitProgress(analysisId, 'auditing', PCT.preparing, 'Auditing SEO, Best Practices & Accessibility...');
         staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate');
         emitFor(STATIC_CATEGORIES, staticRes.lhr);
 
@@ -263,7 +284,7 @@ export class LighthouseService extends EventEmitter {
         for (let i = 0; i < runs; i++) {
           this.emitProgress(
             analysisId, 'auditing',
-            Math.round(30 + (55 * i) / runs),
+            runProgress(i, runs),
             `Measuring performance — run ${i + 1} of ${runs}...`,
           );
           const res = await this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor);
@@ -274,7 +295,7 @@ export class LighthouseService extends EventEmitter {
         }
       }
 
-      this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
+      this.emitProgress(analysisId, 'processing', PCT.processing, 'Finalizing results...');
 
       const { run: medianRun, measurement } = pickMedianRun(timedRuns);
       if (runs > 1) emitFor(TIMED_CATEGORIES, medianRun.lhr);
@@ -291,7 +312,7 @@ export class LighthouseService extends EventEmitter {
       full.formFactor  = formFactor ?? 'desktop';
       full.measurement = measurement;
 
-      this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
+      this.emitProgress(analysisId, 'complete', PCT.complete, 'Analysis completed successfully!');
       return full;
     } finally {
       this.activeAnalyses.delete(analysisId);
@@ -328,7 +349,7 @@ export class LighthouseService extends EventEmitter {
     let browser: Browser | null = null;
 
     try {
-      this.emitProgress(analysisId, 'launching', 10, 'Launching audit browser...');
+      this.emitProgress(analysisId, 'launching', PCT.launching, 'Launching audit browser...');
 
       browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
       trackChrome(browser.process()?.pid);
@@ -338,7 +359,7 @@ export class LighthouseService extends EventEmitter {
       const hasCookies = cookies.length > 0;
       const hasLs      = Object.keys(ls).length > 0;
 
-      this.emitProgress(analysisId, 'navigating', 20, 'Transferring session...');
+      this.emitProgress(analysisId, 'navigating', PCT.preparing, 'Transferring session...');
 
       // ── Step 1: Set cookies browser-wide via a setup page ────────────────
       // Navigate to the target origin so cookies are scoped correctly and
@@ -375,11 +396,11 @@ export class LighthouseService extends EventEmitter {
         });
       }
 
-      this.emitProgress(analysisId, 'auditing', 35, 'Running Lighthouse audit...');
+      this.emitProgress(analysisId, 'auditing', PCT.auditing, 'Running Lighthouse audit...');
 
-      let fakeProg = 35;
+      let fakeProg: number = PCT.auditing;
       const ticker = setInterval(() => {
-        fakeProg = Math.min(fakeProg + 3, 85);
+        fakeProg = Math.min(fakeProg + 3, PCT.auditCeil);
         this.emitProgress(analysisId, 'auditing', fakeProg, 'Running Lighthouse audit...');
       }, 3000);
 
@@ -394,7 +415,7 @@ export class LighthouseService extends EventEmitter {
           if (runs > 1) {
             this.emitProgress(
               analysisId, 'auditing',
-              Math.round(35 + (50 * i) / runs),
+              runProgress(i, runs),
               `Running Lighthouse audit — run ${i + 1} of ${runs}...`,
             );
           }
@@ -412,7 +433,7 @@ export class LighthouseService extends EventEmitter {
 
       const { run: runnerResult, measurement } = pickMedianRun(passes);
 
-      this.emitProgress(analysisId, 'processing', 90, 'Finalizing results...');
+      this.emitProgress(analysisId, 'processing', PCT.processing, 'Finalizing results...');
 
       for (const cat of CATEGORIES) {
         onPartial(buildPartial(analysisId, cat, runnerResult.lhr));
@@ -435,7 +456,7 @@ export class LighthouseService extends EventEmitter {
         throw new SessionExpiredError(result.authRedirectDetected.finalUrl);
       }
 
-      this.emitProgress(analysisId, 'complete', 100, 'Analysis completed successfully!');
+      this.emitProgress(analysisId, 'complete', PCT.complete, 'Analysis completed successfully!');
       return result;
     } finally {
       if (browser) await browser.close().catch(() => {});
@@ -565,11 +586,11 @@ export class LighthouseService extends EventEmitter {
   // ─── Private: Browser ────────────────────────────────────────────────────
 
   private async launchBrowser(analysisId: string): Promise<Browser> {
-    this.emitProgress(analysisId, 'launching', 10, 'Launching Chrome browser...');
+    this.emitProgress(analysisId, 'launching', PCT.launching, 'Launching Chrome browser...');
     const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
     trackChrome(browser.process()?.pid);
     this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
-    this.emitProgress(analysisId, 'navigating', 25, 'Browser ready...');
+    this.emitProgress(analysisId, 'navigating', PCT.browserReady, 'Browser ready...');
     return browser;
   }
 

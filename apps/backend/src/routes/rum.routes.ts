@@ -1,4 +1,6 @@
 import express, { Router, type Request, type Response } from 'express';
+import { createRateLimiter } from '../lib/rateLimit.js';
+import { parseFormFactor } from '../lib/params.js';
 import cors from 'cors';
 import { RUM_COLLECTOR_JS } from '../services/rumCollector.js';
 import { Website } from '../models/Website.model.js';
@@ -27,26 +29,7 @@ const LIMITS = {
 } as const;
 
 /** Beacons per key per window. Generous for a real site, useless for a flood. */
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX       = 600;
-const rate = new Map<string, { count: number; resetAt: number }>();
-
-function overRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = rate.get(key);
-  if (!entry || now > entry.resetAt) {
-    rate.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > RATE_MAX;
-}
-
-// Keeps the map from growing once a key goes quiet.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rate) if (now > entry.resetAt) rate.delete(key);
-}, RATE_WINDOW_MS).unref();
+const overRateLimit = createRateLimiter({ windowMs: 60_000, max: 600 });
 
 /** Site keys are looked up on every beacon; the mapping changes rarely. */
 const KEY_TTL_MS = 5 * 60_000;
@@ -120,7 +103,7 @@ rumRouter.post('/api/rum', publicCors, beaconBody, async (req: Request, res: Res
     const websiteId = await websiteIdForKey(key);
     if (!websiteId) return res.end();
 
-    const device = body['device'] === 'mobile' ? 'mobile' : 'desktop';
+    const device = parseFormFactor(body['device']) ?? 'desktop';
     const sample = {
       lcp:  metric(body['lcp'],  LIMITS.lcp),
       inp:  metric(body['inp'],  LIMITS.inp),

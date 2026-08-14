@@ -18,12 +18,8 @@ import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
 import { errorMiddleware } from './lib/errors.js';
-import type {
-  ServerToClientEvents,
-  ClientToServerEvents,
-  InterServerEvents,
-  SocketData,
-} from './types/index.js';
+import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
+import type { InterServerEvents, SocketData } from './types/socket.js';
 
 /**
  * How long a request may block before the server hangs up.

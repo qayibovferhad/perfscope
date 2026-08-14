@@ -1,5 +1,5 @@
 import type { RunnerResult } from 'lighthouse';
-import type { NetworkRequest, ThirdPartyEntity } from '../types/index.js';
+import type { NetworkRequest, ThirdPartyEntity } from '@perfscope/shared';
 
 /** Vendors below this are noise in the UI; the table stays readable. */
 const MIN_TRANSFER_BYTES = 1024;

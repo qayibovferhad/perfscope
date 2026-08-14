@@ -13,7 +13,7 @@
  *     set Processing Time = EventDispatch duration, find deepest blocking function
  *  4. Mark the highest-latency interaction as INP
  */
-import type { InteractionData, InteractionEvent } from '../types/index.js';
+import type { InteractionData, InteractionEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
   type RawTraceEvent,
