@@ -14,7 +14,11 @@ import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { fmtMs } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
-import type { InteractionData, InteractionEvent, LongTaskSegment } from '@/entities/analysis';
+import {
+  vitalBand, BAND_TEXT, BAND_TILE, BAND_BORDER, BAND_LABEL,
+  type ScoreBand,
+  type InteractionData, type InteractionEvent, type LongTaskSegment,
+} from '@/entities/analysis';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -24,31 +28,6 @@ const PIN_LINE = 54;
 const CIRCLE_R = 9;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function inpSeverity(ms: number): 'ok' | 'warn' | 'poor' {
-  if (ms < 100) return 'ok';
-  if (ms < 300) return 'warn';
-  return 'poor';
-}
-
-function tbtSeverity(ms: number): 'ok' | 'warn' | 'poor' {
-  if (ms <= 200) return 'ok';
-  if (ms <= 600) return 'warn';
-  return 'poor';
-}
-
-function severityClass(s: 'ok' | 'warn' | 'poor'): string {
-  if (s === 'poor') return 'text-ld-rose';
-  if (s === 'warn') return 'text-ld-amber';
-  return 'text-[var(--ld-accent-2)]';
-}
-
-function ratingLabel(ms: number): string {
-  if (ms < 100) return 'Fast';
-  if (ms < 300) return 'Needs work';
-  return 'Slow';
-}
-
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -60,12 +39,12 @@ function truncate(s: string, max = 14): string {
 
 // ─── INP stat card ────────────────────────────────────────────────────────────
 
-function InpStatCard({ icon, label, value, sub, severity }: {
+function InpStatCard({ icon, label, value, sub, band }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
-  severity: 'ok' | 'warn' | 'poor';
+  band: ScoreBand;
 }) {
   return (
     <div className="rounded-[14px] border border-ld-border bg-ld-surface-2 px-[18px] py-[16px]">
@@ -75,7 +54,7 @@ function InpStatCard({ icon, label, value, sub, severity }: {
       </div>
       <p className={cn(
         'font-mono font-semibold text-[26px] leading-none tabular-nums mt-[8px] tracking-[-0.02em]',
-        severityClass(severity),
+        BAND_TEXT[band],
       )}>
         {value}
       </p>
@@ -155,7 +134,8 @@ export const InteractionTimeline = memo(function InteractionTimeline({
       borderStrong: cs.getPropertyValue('--ld-border-strong').trim() || 'rgba(180,230,205,0.16)',
     };
 
-    const intColor = (ms: number) => ms < 100 ? C.accent : ms < 300 ? C.amber : C.rose;
+    const BAND_C: Record<ScoreBand, string> = { good: C.accent, warn: C.amber, poor: C.rose };
+    const intColor = (ms: number) => BAND_C[vitalBand('inp', ms)];
 
     const totalW = wrap.clientWidth;
     const innerW = totalW - MARGIN.left - MARGIN.right;
@@ -330,7 +310,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
               ${capitalize(ev.type)} · ${fmtMs(ev.startMs)}
             </div>
             <div style="font-size:13px;font-weight:700;color:${col};margin-bottom:6px">
-              ${fmtMs(ev.totalDurationMs)} <span style="font-size:10px;font-weight:400">${ratingLabel(ev.totalDurationMs)}</span>
+              ${fmtMs(ev.totalDurationMs)} <span style="font-size:10px;font-weight:400">${BAND_LABEL[vitalBand('inp', ev.totalDurationMs)]}</span>
             </div>
             <div style="font-size:10px;color:${C.text3};line-height:1.7">
               <span style="color:${C.amber}">■</span> Input Delay&nbsp;&nbsp;&nbsp;${fmtMs(ev.inputDelayMs)}<br/>
@@ -380,21 +360,14 @@ export const InteractionTimeline = memo(function InteractionTimeline({
     );
   }
 
-  const inpSev = inpSeverity(data.inpMs);
-  const avgSev = inpSeverity(data.avgInputDelayMs);
-  const tbtSev = tbtSeverity(data.totalBlockingTimeMs);
+  const inpBand = vitalBand('inp', data.inpMs);
+  const avgBand = vitalBand('inp', data.avgInputDelayMs);
+  const tbtBand = vitalBand('tbt', data.totalBlockingTimeMs);
 
   const showWarnBanner = data.totalBlockingTimeMs > 500;
   const showCritBanner = data.inpMs > 200;
 
-  const selSevCls = selected ? severityClass(inpSeverity(selected.totalDurationMs)) : '';
-  const selBadgeCls = selected
-    ? (selected.totalDurationMs < 100
-        ? 'text-[var(--ld-accent-2)] bg-ld-accent-soft border-ld-accent-line'
-        : selected.totalDurationMs < 300
-        ? 'text-ld-amber bg-[rgba(230,162,60,.1)] border-[rgba(230,162,60,.25)]'
-        : 'text-ld-rose bg-[rgba(242,100,122,.1)] border-[rgba(242,100,122,.25)]')
-    : '';
+  const selBand = selected ? vitalBand('inp', selected.totalDurationMs) : 'good';
 
   return (
     <>
@@ -425,22 +398,22 @@ export const InteractionTimeline = memo(function InteractionTimeline({
             icon={<Zap />}
             label="Max Interaction Delay (INP)"
             value={fmtMs(data.inpMs)}
-            sub={ratingLabel(data.inpMs)}
-            severity={inpSev}
+            sub={BAND_LABEL[inpBand]}
+            band={inpBand}
           />
           <InpStatCard
             icon={<Clock />}
             label="Average Input Delay"
             value={fmtMs(data.avgInputDelayMs)}
             sub={`across ${data.events.length} event${data.events.length !== 1 ? 's' : ''}`}
-            severity={avgSev}
+            band={avgBand}
           />
           <InpStatCard
             icon={<BarChart3 />}
             label="Total Blocking Time"
             value={fmtMs(data.totalBlockingTimeMs)}
             sub={data.totalBlockingTimeMs > 300 ? 'long tasks block main thread' : 'main thread health'}
-            severity={tbtSev}
+            band={tbtBand}
           />
         </div>
 
@@ -474,22 +447,16 @@ export const InteractionTimeline = memo(function InteractionTimeline({
 
         {/* ── Selected detail panel ───────────────────────────────────────── */}
         {selected && (
-          <div
-            className="mx-[18px] mb-[18px] rounded-[14px] border px-[18px] py-[16px]"
-            style={{
-              borderColor: selected.totalDurationMs < 100
-                ? 'var(--ld-accent-line)'
-                : selected.totalDurationMs < 300
-                ? 'rgba(230,162,60,.3)'
-                : 'rgba(242,100,122,.3)',
-            }}
-          >
+          <div className={cn(
+            'mx-[18px] mb-[18px] rounded-[14px] border px-[18px] py-[16px]',
+            BAND_BORDER[selBand],
+          )}>
             <div className="flex items-start justify-between gap-[16px]">
               <div className="space-y-[14px] flex-1 min-w-0">
 
                 {/* Badges */}
                 <div className="flex items-center flex-wrap gap-[6px]">
-                  <span className={cn('text-[11px] font-semibold px-[8px] py-[2px] rounded-full border', selBadgeCls)}>
+                  <span className={cn('text-[11px] font-semibold px-[8px] py-[2px] rounded-full border', BAND_TILE[selBand])}>
                     {capitalize(selected.type)}
                   </span>
                   {selected.isUserInput && (
@@ -513,7 +480,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
                     { label: 'Input Delay',  ms: selected.inputDelayMs,        cls: 'text-ld-amber'  },
                     { label: 'Processing',   ms: selected.processingTimeMs,    cls: 'text-[#a855f7]' },
                     { label: 'Presentation', ms: selected.presentationDelayMs, cls: 'text-[#3b82f6]' },
-                    { label: 'Total',        ms: selected.totalDurationMs,     cls: selSevCls        },
+                    { label: 'Total',        ms: selected.totalDurationMs,     cls: BAND_TEXT[selBand] },
                   ].map(({ label, ms, cls }) => (
                     <div key={label} className="rounded-[10px] bg-ld-surface-2 border border-ld-border px-[8px] py-[8px]">
                       <p className="text-[10px] text-ld-text-3">{label}</p>

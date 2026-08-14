@@ -65,6 +65,13 @@ export const BAND_TILE: Record<ScoreBand, string> = {
   poor: 'text-[var(--ld-rose)] border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]',
 };
 
+/** Border-only tint, for surfaces that bring their own background. Same values as BAND_TILE. */
+export const BAND_BORDER: Record<ScoreBand, string> = {
+  good: 'border-[var(--ld-accent-line)]',
+  warn: 'border-[rgba(230,162,60,.3)]',
+  poor: 'border-[rgba(242,100,122,.3)]',
+};
+
 /** Solid fills — progress bars, dots. */
 export const BAND_BAR: Record<ScoreBand, string> = {
   good: 'bg-ld-accent',
