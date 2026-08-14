@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CompareSection, SectionHead } from './CompareSection';
 import { SIDE_TEXT, SIDE_LABEL, sideOf } from './sides';
 import { motion } from 'framer-motion';
 import { Zap, Trophy, AlertTriangle, TrendingUp } from 'lucide-react';
@@ -45,21 +46,6 @@ function metricRatio(tVal: number, cVal: number): { ratio: number; winner: 'targ
 
 // ─── Section head helper ──────────────────────────────────────────────────────
 
-function SectionHead({ icon, title, badge }: { icon: React.ReactNode; title: string; badge?: string }) {
-  return (
-    <div className="flex items-center gap-[11px] mb-[22px]">
-      <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-        {icon}
-      </div>
-      <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">{title}</h2>
-      {badge && (
-        <span className="font-mono text-[10.5px] font-semibold px-[9px] py-[4px] rounded-[6px] border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
-          {badge}
-        </span>
-      )}
-    </div>
-  );
-}
 
 // ─── Efficiency section (spec-exact) ─────────────────────────────────────────
 
@@ -379,21 +365,10 @@ export function ComparisonEngine({
   target: AnalysisResult; competitor: AnalysisResult;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-    >
-      <SectionHead
-        icon={<Zap className="w-[16px] h-[16px]" />}
-        title="Comparison Engine"
-        badge="Efficiency score"
-      />
-
+    <CompareSection icon={<Zap />} title="Comparison Engine" badge="Efficiency score">
       <EfficiencySection target={target} competitor={competitor} />
       <NormalisedMetrics target={target} competitor={competitor} />
       <GapsCallout       target={target} competitor={competitor} />
-    </motion.div>
+    </CompareSection>
   );
 }

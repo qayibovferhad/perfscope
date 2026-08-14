@@ -1,4 +1,5 @@
 import { Trophy } from 'lucide-react';
+import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, sideOf } from './sides';
 import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
@@ -161,15 +162,7 @@ export function ComparisonScoreboard({
   const youWin = tScore > cScore;
 
   return (
-    <div className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]">
-
-      {/* ── Section head ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-[11px] mb-[22px]">
-        <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-          <Trophy className="w-[16px] h-[16px]" />
-        </div>
-        <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">Performance Scoreboard</h2>
-      </div>
+    <CompareSection icon={<Trophy />} title="Performance Scoreboard" animate={false}>
 
       {/* ── Scoreboard 3-col ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-[1fr_auto_1fr] gap-5 items-center max-[760px]:grid-cols-1 mb-[28px]">
@@ -230,6 +223,6 @@ export function ComparisonScoreboard({
           />
         ))}
       </div>
-    </div>
+    </CompareSection>
   );
 }

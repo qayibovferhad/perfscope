@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { useMotionValue, motion } from 'framer-motion';
+import { CompareSection } from './CompareSection';
+import { useMotionValue } from 'framer-motion';
 import { Activity, Zap } from 'lucide-react';
 import type { AnalysisResult } from '@/entities/analysis';
 import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
@@ -219,22 +220,7 @@ export function WaterfallComparison({
 
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-    >
-      {/* ── Section head ── */}
-      <div className="flex items-center gap-[11px] mb-[22px]">
-        <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-          <Activity className="w-[16px] h-[16px]" />
-        </div>
-        <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">Waterfall Timeline</h2>
-        <span className="font-mono text-[10.5px] font-semibold px-[9px] py-[4px] rounded-[6px] border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
-          Network
-        </span>
-      </div>
+    <CompareSection icon={<Activity />} title="Waterfall Timeline" badge="Network">
 
       {/* ── Insight note ── */}
       <InsightNote tConc={tConc} cConc={cConc} tCrit={tCrit} cCrit={cCrit} />
@@ -281,6 +267,6 @@ export function WaterfallComparison({
           ))}
         </div>
       </div>
-    </motion.div>
+    </CompareSection>
   );
 }

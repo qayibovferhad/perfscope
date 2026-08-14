@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { CompareSection } from './CompareSection';
 import { sideOf } from './sides';
 import { SideBadge } from './SideBadge';
 import { Clock, Shield, Gauge, Eye, Code2, Search } from 'lucide-react';
@@ -103,19 +104,6 @@ function VitalsCell({ abbr, metricKey, value }: { abbr: string; metricKey: Vital
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SectionHead({ icon, title, right }: {
-  icon: React.ReactNode; title: string; right?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-[11px] mb-[22px]">
-      <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-        {icon}
-      </div>
-      <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">{title}</h2>
-      {right && <div className="ml-auto">{right}</div>}
-    </div>
-  );
-}
 
 function ColHead({ isYou }: { isYou: boolean }) {
   return (
@@ -149,17 +137,7 @@ export function ComparisonSide({
     <div className="space-y-[18px]">
 
       {/* ── Category Scores ──────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-      >
-        <SectionHead
-          icon={<Clock className="w-[16px] h-[16px]" />}
-          title="Category Scores"
-          right={<Legend />}
-        />
+      <CompareSection icon={<Clock />} title="Category Scores" right={<Legend />}>
 
         <div className="grid grid-cols-2 gap-[24px] max-[760px]:grid-cols-1">
           {/* You column */}
@@ -192,19 +170,10 @@ export function ComparisonSide({
             </div>
           </div>
         </div>
-      </motion.div>
+      </CompareSection>
 
       {/* ── Core Web Vitals ──────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut', delay: 0.08 }}
-        className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-      >
-        <SectionHead
-          icon={<Shield className="w-[16px] h-[16px]" />}
-          title="Core Web Vitals"
-        />
+      <CompareSection icon={<Shield />} title="Core Web Vitals" delay={0.08}>
 
         <div className="grid grid-cols-2 gap-[24px] max-[760px]:grid-cols-1">
           {/* You column */}
@@ -227,7 +196,7 @@ export function ComparisonSide({
             </div>
           </div>
         </div>
-      </motion.div>
+      </CompareSection>
 
     </div>
   );

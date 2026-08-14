@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
-import { SIDE_DOT, sideOf } from './sides';
+import { cn } from '@/shared/lib/utils';
+import { CompareSection } from './CompareSection';
+import { SIDE_DOT, SIDE_LABEL, sideOf } from './sides';
 import { motion } from 'framer-motion';
 import { Layers, Cpu, AlertTriangle, ExternalLink } from 'lucide-react';
 import type { AnalysisResult, FlameChartData } from '@/entities/analysis';
@@ -331,6 +333,20 @@ function OversizedResources({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
+/** Key for the two colours used throughout the section. */
+function SideLegend() {
+  return (
+    <div className="flex items-center gap-4">
+      {(['you', 'rival'] as const).map(side => (
+        <span key={side} className="flex items-center gap-[7px] text-[11px] text-ld-text-3">
+          <span className={cn('w-2 h-2 rounded-full shrink-0', SIDE_DOT[side])} />
+          {SIDE_LABEL[side]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function DeepComparison({
   target, competitor,
 }: {
@@ -346,35 +362,11 @@ export function DeepComparison({
   if (!hasResources && !hasCpu && !hasOversized) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-    >
-      {/* Head with legend */}
-      <div className="flex items-center justify-between mb-[22px]">
-        <div className="flex items-center gap-[11px]">
-          <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-            <Layers className="w-[16px] h-[16px]" />
-          </div>
-          <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">Deep Comparison</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-[7px] text-[11px] text-ld-text-3">
-            <span className="w-2 h-2 rounded-full bg-ld-accent shrink-0" />
-            Your Site
-          </span>
-          <span className="flex items-center gap-[7px] text-[11px] text-ld-text-3">
-            <span className="w-2 h-2 rounded-full bg-ld-amber shrink-0" />
-            Competitor
-          </span>
-        </div>
-      </div>
+    <CompareSection icon={<Layers />} title="Deep Comparison" right={<SideLegend />}>
 
       <ResourceDistribution tRes={target.resources}          cRes={competitor.resources} />
       <CpuExecution         tData={target.flameChartData}    cData={competitor.flameChartData} />
       <OversizedResources   tRes={target.resources}          cRes={competitor.resources} />
-    </motion.div>
+    </CompareSection>
   );
 }

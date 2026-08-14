@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
+import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, SIDE_DOT, SIDE_VAR, sideOf } from './sides';
-import { motion } from 'framer-motion';
 import { Film } from 'lucide-react';
 import { findFrameAt } from '@/entities/analysis';
 import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
@@ -446,23 +446,11 @@ export function FilmstripComparison({
   if (!tData && !cData) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="rounded-[20px] border border-ld-border bg-ld-surface shadow-ld-shadow-card p-[26px]"
-    >
-      {/* Head */}
-      <div className="flex items-center justify-between mb-[22px]">
-        <div className="flex items-center gap-[11px]">
-          <div className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent shrink-0">
-            <Film className="w-[16px] h-[16px]" />
-          </div>
-          <h2 className="text-[16px] font-bold tracking-[-0.01em] text-ld-text">Filmstrip Comparison</h2>
-          <span className="font-mono text-[10.5px] font-semibold px-[9px] py-[4px] rounded-[6px] border border-ld-accent-line bg-ld-accent-soft text-ld-accent-2">
-            Synchronized Playback
-          </span>
-        </div>
+    <CompareSection
+      icon={<Film />}
+      title="Filmstrip Comparison"
+      badge="Synchronized Playback"
+      right={
         <div className="flex items-center gap-4">
           {METRIC_DEFS.map(m => (
             <span key={m.key} className="flex items-center gap-1 text-[10px] text-ld-text-3">
@@ -471,8 +459,8 @@ export function FilmstripComparison({
             </span>
           ))}
         </div>
-      </div>
-
+      }
+    >
       {/* Content */}
       <div className="space-y-5">
         {tData && (
@@ -505,6 +493,6 @@ export function FilmstripComparison({
         <span>Colored badges on frames indicate FCP / LCP / TTI moments</span>
         <span>Click any marker or thumbnail to seek</span>
       </div>
-    </motion.div>
+    </CompareSection>
   );
 }
