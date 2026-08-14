@@ -60,8 +60,16 @@ export interface WebsiteBudgets {
   alertEmail?: string | null
 }
 
+/**
+ * One lab budget that a stored audit broke.
+ *
+ * Only these four: `Website.budgets` also accepts `inp`, but no lab run can measure it, so
+ * it is checked against RUM p75 in rumBudget.service — which raises an alert and never
+ * writes `lastBudgetBreach`. The union used to claim inp/fcp/ttfb as well, which nothing
+ * could ever produce here.
+ */
 export interface BudgetFailure {
-  metric: 'performance' | 'lcp' | 'tbt' | 'cls' | 'inp' | 'fcp' | 'ttfb'
+  metric: 'performance' | 'lcp' | 'tbt' | 'cls'
   value:  number
   budget: number
 }
@@ -93,4 +101,40 @@ export interface WebsiteDoc {
   budgets?:       WebsiteBudgets | null
   lastBudgetBreach?: BudgetBreach | null
   createdAt:      string
+}
+
+/**
+ * A page of results and where it sits in the whole.
+ *
+ * Generic in the item because the two ends hold different things: the server has mongoose
+ * documents with ObjectIds and Dates, the client has what JSON made of them. The envelope
+ * is the part both must agree on, and the part that had drifted — so the server annotates
+ * `Paginated<IWebsite>` and the client `WebsitePage`, and a renamed field breaks both.
+ *
+ * `page` is the page actually served, which is not always the one asked for: the route
+ * counts first and clamps, so requesting page 99 of 3 answers page 3 rather than an empty
+ * list that claims to be page 99.
+ */
+export interface Paginated<T> {
+  items:      T[]
+  total:      number
+  page:       number
+  limit:      number
+  totalPages: number
+}
+
+export type WebsitePage = Paginated<WebsiteDoc>
+
+/**
+ * The headline strip above the website list, from `GET /api/websites/summary`.
+ *
+ * Deliberately ignores the list's search term so the numbers stay put while the user
+ * types. `avgScore` is 0 for an account with no successful audits, not null — the tile
+ * always shows a number.
+ */
+export interface WebsiteSummary {
+  total:          number
+  audited:        number
+  avgScore:       number
+  needsAttention: number
 }

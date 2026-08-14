@@ -4,7 +4,10 @@ import type { AuditFormFactor } from './analysis.js'
  * Chrome UX Report (field data) — what real Chrome users experienced, as opposed
  * to the lab numbers a Lighthouse run produces.
  */
-export type CruxMetricKey = 'lcp' | 'inp' | 'cls' | 'fcp' | 'ttfb'
+import type { FieldMetricKey } from '../lib/rating.js'
+
+/** CrUX reports the field metrics and nothing else. */
+export type CruxMetricKey = FieldMetricKey
 
 export interface CruxMetric {
   /** 75th percentile — the value Google grades the metric on. */

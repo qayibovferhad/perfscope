@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
 import { meanRounded } from '../lib/stats.js';
 import { Router } from 'express';
-import { SCORE_BANDS, RUM_METRIC_KEYS } from '@perfscope/shared';
+import { SCORE_BANDS, RUM_METRIC_KEYS, type Paginated, type WebsiteSummary } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
-import { Website } from '../models/Website.model.js';
+import { Website, type IWebsite } from '../models/Website.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { getRumSummary, getRumPaths, getRumTrend } from '../services/rum.service.js';
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
@@ -82,7 +82,8 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
   // the empty shape leaves the page on "no websites yet" — the storage header set in
   // app.ts is what tells the user why — instead of "the server did not respond".
   if (!isDbReady()) {
-    res.json(paginated ? { items: [], total: 0, page: 1, limit, totalPages: 1 } : []);
+    const emptyPage: Paginated<IWebsite> = { items: [], total: 0, page: 1, limit, totalPages: 1 };
+    res.json(paginated ? emptyPage : []);
     return;
   }
 
@@ -104,14 +105,15 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
     .skip((page - 1) * limit)
     .limit(limit);
 
-  res.json({ items, total, page, limit, totalPages });
+  const body: Paginated<IWebsite> = { items, total, page, limit, totalPages };
+  res.json(body);
 }));
 
 // GET /api/websites/summary — account-wide headline numbers.
 // Deliberately ignores the list's search term so the strip stays put while the
 // user types and does not vanish when a filter matches nothing.
 websiteRouter.get('/websites/summary', asyncHandler<AuthedRequest>(async (req, res) => {
-  const empty = { total: 0, audited: 0, avgScore: 0, needsAttention: 0 };
+  const empty: WebsiteSummary = { total: 0, audited: 0, avgScore: 0, needsAttention: 0 };
   if (!isDbReady()) { res.json(empty); return; }
 
   const sites = await Website.find(ownedFilter(req.userId)).select('url').lean();
@@ -122,12 +124,13 @@ websiteRouter.get('/websites/summary', asyncHandler<AuthedRequest>(async (req, r
   // definition is how the strip and the detail page came to disagree before.
   const scores = [...(await computeSiteScores(req.userId, sites)).values()].map(s => s.avg);
 
-  res.json({
+  const summary: WebsiteSummary = {
     total:          sites.length,
     audited:        scores.length,
     avgScore:       meanRounded(scores) ?? 0,
     needsAttention: scores.filter(s => s < SCORE_BANDS.needsImprovement).length,
-  });
+  };
+  res.json(summary);
 }));
 
 // POST /api/websites

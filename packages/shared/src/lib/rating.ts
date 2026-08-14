@@ -21,6 +21,22 @@ export function rateScore(score: number): ScoreRating {
  */
 export type VitalKey = 'fcp' | 'lcp' | 'tbt' | 'cls' | 'si' | 'tti' | 'inp' | 'ttfb'
 
+/**
+ * The metrics real users produce, as opposed to the ones a lab run measures.
+ *
+ * CrUX and our own RUM collector report exactly these five, and both had declared the
+ * union separately — as did the dashboard, a third time. Derived from VitalKey so a
+ * metric cannot be a field metric without being a vital with thresholds.
+ *
+ * Note what is absent: tbt, si and tti are lab-only (no browser reports them from a real
+ * visit), and inp is the mirror image — field-only, which is why a lab budget on it can
+ * never fire.
+ */
+export type FieldMetricKey = Extract<VitalKey, 'lcp' | 'inp' | 'cls' | 'fcp' | 'ttfb'>
+
+/** Display order: the three Core Web Vitals first, then the two supporting timings. */
+export const FIELD_METRIC_KEYS: readonly FieldMetricKey[] = ['lcp', 'inp', 'cls', 'fcp', 'ttfb']
+
 export const VITAL_THRESHOLDS: Record<VitalKey, { good: number; poor: number }> = {
   fcp:  { good: 1800, poor: 3000 },
   lcp:  { good: 2500, poor: 4000 },

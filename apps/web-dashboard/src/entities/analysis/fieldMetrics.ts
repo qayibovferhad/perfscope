@@ -1,4 +1,4 @@
-import { rateVital, type ScoreRating } from '@perfscope/shared';
+import { rateVital, FIELD_METRIC_KEYS, type ScoreRating, type FieldMetricKey } from '@perfscope/shared';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
 
 /**
@@ -9,7 +9,7 @@ import { fmtMs, fmtCls } from '@/shared/lib/format';
  * their own copy or a panel could call the same number "good" and "poor".
  */
 
-export type FieldMetricKey = 'lcp' | 'inp' | 'cls' | 'fcp' | 'ttfb';
+export type { FieldMetricKey };
 
 interface FieldMetricMeta {
   label:  string;
@@ -26,8 +26,8 @@ export const FIELD_METRICS: Record<FieldMetricKey, FieldMetricMeta> = {
   ttfb: { label: 'TTFB', title: 'Time to First Byte',        format: fmtMs,  rate: (v) => rateVital('ttfb', v) },
 };
 
-/** Core Web Vitals first, then the supporting diagnostics. */
-export const FIELD_METRIC_ORDER: FieldMetricKey[] = ['lcp', 'inp', 'cls', 'fcp', 'ttfb'];
+/** Core Web Vitals first, then the supporting diagnostics — the shared order. */
+export const FIELD_METRIC_ORDER: readonly FieldMetricKey[] = FIELD_METRIC_KEYS;
 
 export const RATING_TEXT: Record<ScoreRating, string> = {
   good:                'text-ld-accent',

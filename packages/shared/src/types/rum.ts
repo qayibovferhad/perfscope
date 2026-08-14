@@ -1,4 +1,7 @@
 import type { AuditFormFactor } from './analysis.js'
+import type { FieldMetricKey } from '../lib/rating.js'
+import { FIELD_METRIC_KEYS } from '../lib/rating.js'
+import type { CruxMetric } from './crux.js'
 
 /**
  * Real User Monitoring — what your own visitors actually experienced.
@@ -12,9 +15,10 @@ import type { AuditFormFactor } from './analysis.js'
  */
 
 /** Metrics a browser can report from a real page view. */
-export type RumMetricKey = 'lcp' | 'inp' | 'cls' | 'fcp' | 'ttfb'
+/** Our collector reports the same five metrics CrUX does — deliberately, see above. */
+export type RumMetricKey = FieldMetricKey
 
-export const RUM_METRIC_KEYS: readonly RumMetricKey[] = ['lcp', 'inp', 'cls', 'fcp', 'ttfb']
+export const RUM_METRIC_KEYS: readonly RumMetricKey[] = FIELD_METRIC_KEYS
 
 /** One page view's measurements. Every metric is optional — a visitor may leave early. */
 export interface RumSample {
@@ -37,13 +41,14 @@ export interface RumBeacon extends RumSample {
   v: number
 }
 
-export interface RumMetricSummary {
-  /** 75th percentile — the value Core Web Vitals are graded on. */
-  p75: number
-  /** Share of samples in each bucket, 0–1. */
-  good:             number
-  needsImprovement: number
-  poor:             number
+/**
+ * Field data for one metric, from our own collector.
+ *
+ * Structurally CrUX's shape plus a sample count — deliberately, so the Field data tab can
+ * render either source through the same components. Extending says so rather than leaving
+ * two identical blocks to drift.
+ */
+export interface RumMetricSummary extends CruxMetric {
   /** How many page views contributed this metric. */
   samples: number
 }

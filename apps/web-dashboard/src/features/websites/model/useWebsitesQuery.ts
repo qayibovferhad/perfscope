@@ -1,21 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
-import type { Website } from '@/entities/website';
-
-export interface WebsitePage {
-  items:      Website[];
-  total:      number;
-  page:       number;
-  limit:      number;
-  totalPages: number;
-}
-
-export interface WebsiteSummary {
-  total:          number;
-  audited:        number;
-  avgScore:       number;
-  needsAttention: number;
-}
+// The wire shapes live in @perfscope/shared so the routes that build them are checked
+// against the same declarations the client reads.
+export type { WebsitePage, WebsiteSummary } from '@perfscope/shared';
+import type { WebsitePage, WebsiteSummary } from '@perfscope/shared';
 
 interface PageParams { q: string; page: number; limit: number }
 

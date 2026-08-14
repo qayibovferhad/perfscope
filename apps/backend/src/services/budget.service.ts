@@ -1,14 +1,8 @@
-import { fmtMs, fmtCls, hasResult } from '@perfscope/shared';
+import { fmtMs, fmtCls, hasResult, type BudgetFailure } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
 import type { AnalysisResult } from '../types/index.js';
-
-interface BudgetFailure {
-  metric: 'performance' | 'lcp' | 'tbt' | 'cls';
-  value:  number;
-  budget: number;
-}
 
 function collectFailures(result: AnalysisResult, budgets: NonNullable<IWebsite['budgets']>): BudgetFailure[] {
   const failures: BudgetFailure[] = [];
