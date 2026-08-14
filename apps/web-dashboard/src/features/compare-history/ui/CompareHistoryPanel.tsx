@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Spinner } from '@/shared/ui/spinner';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -371,7 +372,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-5 h-5 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
+          <Spinner size="sm" />
         </div>
       ) : (
         <div ref={reportRef} className="px-[24px] py-[22px]">
@@ -556,7 +557,7 @@ export function CompareHistoryPanel() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-28">
-          <div className="w-6 h-6 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
+          <Spinner />
         </div>
       ) : pairs.length === 0 && !apiSearch ? (
         <EmptyState />

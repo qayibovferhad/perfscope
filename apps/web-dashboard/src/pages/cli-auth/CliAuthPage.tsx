@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Spinner } from '@/shared/ui/spinner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Terminal, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/model/authStore';
@@ -59,7 +60,7 @@ export function CliAuthPage() {
                   : 'Sending credentials to your terminal.'}
               </p>
             </div>
-            <div className="w-[28px] h-[28px] rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
+            <Spinner size="lg" />
           </>
         )}
 

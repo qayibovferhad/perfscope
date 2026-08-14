@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { Spinner } from '@/shared/ui/spinner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitCompareArrows } from 'lucide-react';
@@ -130,7 +131,7 @@ export function HistoryPage() {
               <>
                 {urlLoading && (
                   <div className="flex items-center justify-center py-28">
-                    <div className="w-6 h-6 rounded-full border-2 border-ld-border-strong border-t-ld-accent animate-spin" />
+                    <Spinner />
                   </div>
                 )}
 
