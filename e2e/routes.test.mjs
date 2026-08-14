@@ -19,7 +19,9 @@ const ROUTES = [
   { path: '/history', marker: /History/i },
   { path: '/compare', marker: /Compare/i },
   { path: '/compare-history', marker: /Compare History/i },
-  { path: '/automation', marker: /Automation/i },
+  // The route is still /automation; the page has been called "Audit schedule" since it
+  // was renamed, which is why this marker had been failing.
+  { path: '/automation', marker: /Audit schedule/i },
   { path: '/extension', marker: /Extension|Companion/i },
   { path: '/settings', marker: /Settings/i },
 ];
