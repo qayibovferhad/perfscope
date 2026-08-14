@@ -26,7 +26,11 @@ export default {
         'ld-accent-line':   'var(--ld-accent-line)',
         'ld-teal':          'var(--ld-teal)',
         'ld-amber':         'var(--ld-amber)',
+        'ld-amber-soft':    'var(--ld-amber-soft)',
+        'ld-amber-line':    'var(--ld-amber-line)',
         'ld-rose':          'var(--ld-rose)',
+        'ld-rose-soft':     'var(--ld-rose-soft)',
+        'ld-rose-line':     'var(--ld-rose-line)',
         'ld-grad-text':     'var(--ld-grad-text)',
         'ld-score-good':    'var(--ld-score-good)',
 

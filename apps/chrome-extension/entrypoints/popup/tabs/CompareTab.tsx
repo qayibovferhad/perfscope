@@ -79,7 +79,7 @@ export function CompareTab({ backendUrl, token }: Props) {
       {/* Target URL */}
       <div className="flex flex-col gap-1">
         <span className="text-[10px] text-ld-text-3 uppercase tracking-widest font-semibold">Competitor (current page)</span>
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-ld-surface border border-[rgba(230,162,60,.3)]">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-ld-surface border border-[var(--ld-amber-line)]">
           <span className="w-2 h-2 rounded-full bg-ld-amber shrink-0 [box-shadow:0_0_6px_var(--ld-amber)]" />
           <span className="text-xs text-ld-text-2 truncate font-mono">{competitorHostname || '—'}</span>
         </div>
@@ -132,7 +132,7 @@ export function CompareTab({ backendUrl, token }: Props) {
       )}
 
       {error && (
-        <div className="px-3 py-2 rounded-lg bg-[rgba(242,100,122,.08)] border border-[rgba(242,100,122,.3)] text-xs text-ld-rose">
+        <div className="px-3 py-2 rounded-lg bg-[var(--ld-rose-soft)] border border-[var(--ld-rose-line)] text-xs text-ld-rose">
           {error}
         </div>
       )}

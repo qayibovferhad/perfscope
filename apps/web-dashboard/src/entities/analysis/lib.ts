@@ -61,15 +61,15 @@ export const BAND_STROKE: Record<ScoreBand, string> = {
 /** Tinted icon tile (text + border + soft background). */
 export const BAND_TILE: Record<ScoreBand, string> = {
   good: 'text-[var(--ld-accent)] border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
-  warn: 'text-[var(--ld-amber)] border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.1)]',
-  poor: 'text-[var(--ld-rose)] border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]',
+  warn: 'text-[var(--ld-amber)] border-[var(--ld-amber-line)] bg-[var(--ld-amber-soft)]',
+  poor: 'text-[var(--ld-rose)] border-[var(--ld-rose-line)] bg-[var(--ld-rose-soft)]',
 };
 
-/** Border-only tint, for surfaces that bring their own background. Same values as BAND_TILE. */
+/** Border-only tint, for surfaces that bring their own background. Same tokens as BAND_TILE. */
 export const BAND_BORDER: Record<ScoreBand, string> = {
   good: 'border-[var(--ld-accent-line)]',
-  warn: 'border-[rgba(230,162,60,.3)]',
-  poor: 'border-[rgba(242,100,122,.3)]',
+  warn: 'border-[var(--ld-amber-line)]',
+  poor: 'border-[var(--ld-rose-line)]',
 };
 
 /** Solid fills — progress bars, dots. */

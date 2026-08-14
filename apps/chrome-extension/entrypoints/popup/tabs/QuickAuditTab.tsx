@@ -91,7 +91,7 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
       )}
 
       {error && (
-        <div className="px-3 py-2 rounded-lg bg-[rgba(242,100,122,.08)] border border-[rgba(242,100,122,.3)] text-xs text-ld-rose">
+        <div className="px-3 py-2 rounded-lg bg-[var(--ld-rose-soft)] border border-[var(--ld-rose-line)] text-xs text-ld-rose">
           {error}
         </div>
       )}
