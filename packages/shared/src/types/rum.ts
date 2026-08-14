@@ -86,3 +86,11 @@ export interface RumPathRow {
   /** p75 LCP for that path, or null when no sample carried one. */
   lcp:       number | null
 }
+
+/** `GET /api/websites/:id/rum` — everything the Field data tab needs in one request. */
+export interface RumResponse {
+  summary: RumSummary
+  paths:   RumPathRow[]
+  /** null until the user has generated a snippet for this site. */
+  rumKey:  string | null
+}

@@ -1,14 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, fetchJson } from '@/shared/api/client';
 import type { AuditFormFactor } from '@/entities/analysis';
-import type { RumSummary, RumPathRow, RumTrend, RumMetricKey } from '@perfscope/shared';
+import type { RumTrend, RumMetricKey, RumResponse } from '@perfscope/shared';
 
-export interface RumResponse {
-  summary: RumSummary;
-  paths:   RumPathRow[];
-  /** null until the user has generated a snippet for this site. */
-  rumKey:  string | null;
-}
+export type { RumResponse };
 
 interface Params {
   websiteId: string;

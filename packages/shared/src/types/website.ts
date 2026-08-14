@@ -143,3 +143,16 @@ export interface WebsiteSummary {
 export interface AuthAuditSessionResponse {
   sessionId: string
 }
+
+/**
+ * A rival's captured session, from `GET /api/competitor-sessions`.
+ *
+ * Same redaction as a Website's: `session` says only that cookies were captured and when.
+ */
+export interface CompetitorSessionEntry {
+  _id:       string
+  url:       string
+  name:      string
+  createdAt: string
+  session:   WebsiteSession | null
+}
