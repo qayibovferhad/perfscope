@@ -18,3 +18,10 @@ export async function findWebsiteByHost(userId: string, url: string) {
     url: { $regex: hostPrefixRegex(host).source, $options: 'i' },
   });
 }
+
+/**
+ * What findWebsiteByHost returns: the owning site, or null when the audited URL belongs
+ * to no tracked site (or there is no user). Named so the checks downstream of an audit can
+ * take an already-resolved handle instead of each running the lookup again.
+ */
+export type OwningSite = Awaited<ReturnType<typeof findWebsiteByHost>>;

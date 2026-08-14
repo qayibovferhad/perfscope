@@ -32,9 +32,19 @@ export function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Matches URLs that live under the given host (used to group audits per site). */
+/**
+ * Matches URLs that live under the given host, with or without an explicit port.
+ *
+ * The `(:\d+)?` matters: `hostOf()` returns a hostname with no port, so without it this
+ * misses every `http://localhost:3000` — and auditing a local dev server is a first-class
+ * use of this tool. The trailing `(/|$)` is the part that must never go: it is what stops
+ * `example.com` from matching `example.com.evil.test`.
+ *
+ * This narrows a query to candidates. It is not an origin test — it deliberately matches
+ * either scheme and any port, so `sameOrigin()` still decides anywhere that matters.
+ */
 export function hostPrefixRegex(host: string): RegExp {
-  return new RegExp(`^https?://${escapeRegex(host)}(/|$)`);
+  return new RegExp(`^https?://${escapeRegex(host)}(:\\d+)?(/|$)`);
 }
 
 /**

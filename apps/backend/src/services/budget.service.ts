@@ -1,7 +1,7 @@
 import { fmtMs, fmtCls, hasResult } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
-import { findWebsiteByHost } from './websiteLookup.js';
+import type { OwningSite } from './websiteLookup.js';
 import type { AnalysisResult } from '../types/index.js';
 
 interface BudgetFailure {
@@ -39,10 +39,7 @@ function describeFailure(f: BudgetFailure): string {
  * A clean audit of the previously breaching URL clears the recorded breach.
  * Failed-run results (all zeros) never count as breaches — they carry no signal.
  */
-export async function checkBudgets(result: AnalysisResult, userId: string | undefined): Promise<void> {
-  if (!userId) return;
-
-  const site = await findWebsiteByHost(userId, result.url);
+export async function checkBudgets(result: AnalysisResult, site: OwningSite): Promise<void> {
   if (!site?.budgets) return;
 
   // An all-zero failed run must not trip (or clear) budgets.

@@ -1,6 +1,6 @@
 import { Website } from '../models/Website.model.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
-import { sameOrigin } from '../lib/url.js';
+import { hostOf, hostPrefixRegex, sameOrigin } from '../lib/url.js';
 import type { AuthSessionData } from './authAuditSession.js';
 
 /**
@@ -10,6 +10,23 @@ import type { AuthSessionData } from './authAuditSession.js';
  * rival they only audit (`CompetitorSession.session`) — so both halves of "do we have a
  * session for this URL?" belong together rather than inline in the socket handler.
  */
+
+/**
+ * Narrows a lookup to documents that could plausibly be the same origin.
+ *
+ * Both functions below used to load *every* website and competitor session for the user —
+ * unprojected, so every stored session blob — and filter in JS. This is the same question
+ * asked of Mongo, on the indexed `userId` plus an anchored host match. `sameOrigin` still
+ * makes the actual decision on the survivors: the regex matches either scheme and any
+ * port, so it narrows but never authorises.
+ *
+ * Null when the URL has no parseable host — nothing can match, so do not query at all.
+ */
+function sameHostFilter(userId: string, url: string) {
+  const host = hostOf(url);
+  if (!host) return null;
+  return { userId, url: { $regex: hostPrefixRegex(host).source, $options: 'i' } };
+}
 
 /**
  * A saved session for this exact origin, or null.
@@ -23,9 +40,12 @@ export async function findSessionFor(
   userId: string,
   url: string,
 ): Promise<AuthSessionData | null> {
+  const onHost = sameHostFilter(userId, url);
+  if (!onHost) return null;
+
   const [websites, competitorSessions] = await Promise.all([
-    Website.find({ userId }).lean(),
-    CompetitorSession.find({ userId }).lean(),
+    Website.find(onHost).select('url session').lean(),
+    CompetitorSession.find(onHost).select('url session').lean(),
   ]);
 
   const sources = [
@@ -70,8 +90,9 @@ export async function persistCapturedSession(
 
   // Match an existing site by origin first: upserting on `url` alone would create a
   // second document for a site already tracked under a different path.
-  const sites = await Website.find({ userId }).lean();
-  const match = sites.find(w => sameOrigin(url, w.url as string));
+  const onHost = sameHostFilter(userId, url);
+  const sites  = onHost ? await Website.find(onHost).select('url').lean() : [];
+  const match  = sites.find(w => sameOrigin(url, w.url as string));
 
   if (match) {
     await Website.findByIdAndUpdate(match._id, { session: payload, requiresLogin: null });

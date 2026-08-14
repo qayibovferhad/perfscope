@@ -1,7 +1,7 @@
 import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding } from '@perfscope/shared';
 import { HistoryModel } from '../models/History.model.js';
 import { dispatchAlert } from './alerts.service.js';
-import { findWebsiteByHost } from './websiteLookup.js';
+import type { OwningSite } from './websiteLookup.js';
 import type { AnalysisResult } from '../types/index.js';
 
 /**
@@ -42,13 +42,16 @@ async function findPreviousRun(result: AnalysisResult, userId: string) {
   return docs[0] ?? null;
 }
 
-export async function checkRegressions(result: AnalysisResult, userId: string | undefined): Promise<void> {
+export async function checkRegressions(
+  result: AnalysisResult,
+  userId: string | undefined,
+  site: OwningSite,
+): Promise<void> {
   if (!userId) return;
 
   // An all-zero failed run carries no signal — it would read as a total collapse.
   if (!hasResult(result)) return;
 
-  const site = await findWebsiteByHost(userId, result.url);
   // Channels live on `budgets`; with nowhere to send, there is nothing to compute.
   if (!site?.budgets?.webhookUrl && !site?.budgets?.alertEmail) return;
 

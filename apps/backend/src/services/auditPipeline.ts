@@ -91,10 +91,17 @@ export async function persistAudit(
   // Budget and regression checks ride on the same choke point every entry path funnels
   // through; a failure in either must never fail the audit itself. They run after the
   // save so the regression check can read this run's predecessor from history.
+  //
+  // Both need the owning site and were fetching it separately with the same regex query.
+  // Resolved once — but here rather than at the start of the audit: checkBudgets mutates
+  // and saves this document, and a run takes tens of seconds, so a handle taken any
+  // earlier could overwrite a budget the user edited while it was measuring.
+  const site = userId ? await findWebsiteByHost(userId, result.url) : null;
+
   await Promise.all([
-    checkBudgets(result, userId).catch((err: unknown) =>
+    checkBudgets(result, site).catch((err: unknown) =>
       console.warn('[Budgets] Check failed:', err)),
-    checkRegressions(result, userId).catch((err: unknown) =>
+    checkRegressions(result, userId, site).catch((err: unknown) =>
       console.warn('[Regressions] Check failed:', err)),
   ]);
 }
