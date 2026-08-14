@@ -1,4 +1,5 @@
 import { HistoryModel } from '../models/History.model.js';
+import { meanRounded } from '../lib/stats.js';
 import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
 import { pruneToLimit } from '../lib/mongo.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
@@ -123,9 +124,7 @@ function toSiteReport(
   groups.sort((a, b) => a.routePath.localeCompare(b.routePath));
 
   const allScores      = entries.filter(hasResult).map((e) => e.scores.performance);
-  const avgPerformance = allScores.length
-    ? Math.round(allScores.reduce((sum, score) => sum + score, 0) / allScores.length)
-    : 0;
+  const avgPerformance = meanRounded(allScores) ?? 0;
 
   const lastEntry = entries.length
     ? entries.reduce((a, b) => (new Date(a.timestamp) > new Date(b.timestamp) ? a : b))

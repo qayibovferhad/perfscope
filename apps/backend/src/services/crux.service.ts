@@ -1,4 +1,5 @@
 import { config } from '../config/index.js';
+import { postJson } from '../lib/http.js';
 import type { AuditFormFactor, CruxData, CruxMetric, CruxMetricKey } from '@perfscope/shared';
 
 /**
@@ -118,16 +119,10 @@ async function queryRecord(
   body: Record<string, string>,
   apiKey: string,
 ): Promise<QueryOutcome> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
   try {
-    const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-      signal:  controller.signal,
-    });
+    const res = await postJson(
+      `${ENDPOINT}?key=${encodeURIComponent(apiKey)}`, body, { timeoutMs: REQUEST_TIMEOUT_MS },
+    );
 
     if (res.status === 404) return { status: 'no-data' };
     if (!res.ok) {
@@ -141,8 +136,6 @@ async function queryRecord(
   } catch (err) {
     console.error('[CrUX] request failed', err);
     return { status: 'error' };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

@@ -1,4 +1,5 @@
 import { hasResult, fmtMs } from '@perfscope/shared';
+import { meanRounded } from '../lib/stats.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import { User } from '../models/User.model.js';
 import { Website } from '../models/Website.model.js';
@@ -35,11 +36,6 @@ export interface DigestData {
   regressions:  number;
   breaches:     number;
   slowest:      RouteRow[];
-}
-
-function mean(values: number[]): number | null {
-  if (!values.length) return null;
-  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
 }
 
 export async function buildDigest(userId: string, now = new Date()): Promise<DigestData | null> {
@@ -79,8 +75,8 @@ export async function buildDigest(userId: string, now = new Date()): Promise<Dig
     from, to,
     sites:        siteCount,
     audits:       thisWeek.length,
-    avgScore:     mean(thisWeek.map(d => d.scores.performance)),
-    prevAvgScore: mean(lastWeek.map(d => d.scores.performance)),
+    avgScore:     meanRounded(thisWeek.map(d => d.scores.performance)),
+    prevAvgScore: meanRounded(lastWeek.map(d => d.scores.performance)),
     regressions,
     breaches,
     slowest,

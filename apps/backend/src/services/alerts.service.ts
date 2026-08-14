@@ -1,4 +1,5 @@
 import { Mailer } from './mailer.service.js';
+import { postJson } from '../lib/http.js';
 import { AlertLog, type IAlertDelivery } from '../models/AlertLog.model.js';
 import type { IWebsite } from '../models/Website.model.js';
 
@@ -65,20 +66,9 @@ function webhookBody(webhookUrl: string, alert: Alert, site: { url: string; name
 }
 
 async function postWebhook(webhookUrl: string, payload: unknown): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
-  try {
-    const res = await fetch(webhookUrl, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-      signal:  controller.signal,
-    });
-    // A 200 from Slack can still carry "invalid_payload"; surface the status either way.
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  } finally {
-    clearTimeout(timer);
-  }
+  const res = await postJson(webhookUrl, payload, { timeoutMs: WEBHOOK_TIMEOUT_MS });
+  // A 200 from Slack can still carry "invalid_payload"; surface the status either way.
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 /** Newest log entry for this page + event, whatever its status. */

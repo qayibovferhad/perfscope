@@ -15,6 +15,7 @@ import { parseInteractions } from './interaction-parser.js';
 import type { CompactNetworkEvent } from './dependency-parser.js';
 import { buildPartial, buildFullResult, toScore, detectAuthRedirect } from './lhr-transform.js';
 import { AuditQueue, type AuditPriority } from './auditQueue.js';
+import type { AuthSessionData } from './authAuditSession.js';
 import { SessionExpiredError } from '../lib/errors.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { config } from '../config/index.js';
@@ -110,6 +111,32 @@ export interface AnalyzeOptions {
 /** Global admission control — see AuditQueue for why this is a correctness feature. */
 const auditQueue = new AuditQueue(config.maxConcurrentAudits);
 
+/**
+ * Everything the trace parsers can get out of one main-thread Lighthouse run.
+ *
+ * Lighthouse's own types do not describe `artifacts`, hence the single cast — kept here
+ * so the two entry paths that need it (single-shot and injected-session) share one
+ * instead of carrying an `any` escape each. The worker path does not use this: it ships a
+ * compact trace across the thread boundary and parses on the other side.
+ *
+ * The artifact moved between versions — `Trace` in v12, `traces` in v10/v11 — and
+ * `defaultPass` is the older container. That is a different question from
+ * `lib/trace.ts`'s `resolveTraceEvents`, which unwraps whichever of those we land on.
+ */
+function extractTraceData(runnerResult: { lhr: { audits?: Record<string, { numericValue?: number } | undefined> } }) {
+  const maxMs = runnerResult.lhr.audits?.['interactive']?.numericValue ?? 15000;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const artifacts = (runnerResult as any)?.artifacts;
+  const traces = artifacts?.Trace ?? artifacts?.traces ?? artifacts?.defaultPass;
+
+  return {
+    artifacts,
+    flameChartData:  traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined,
+    heapMemoryData:  traces ? (parseHeapMemory(traces)        ?? undefined) : undefined,
+    interactionData: traces ? (parseInteractions(traces)      ?? undefined) : undefined,
+  };
+}
+
 
 export class LighthouseService extends EventEmitter {
   private readonly activeAnalyses = new Map<string, ActiveAnalysis>();
@@ -138,16 +165,8 @@ export class LighthouseService extends EventEmitter {
     try {
       browser = await this.launchBrowser(analysisId);
       const runnerResult = await this.runLighthouse(url, analysisId, browser, CATEGORIES);
-      const maxMs    = runnerResult.lhr.audits?.['interactive']?.numericValue ?? 15000;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyResult = runnerResult as any;
-      const traces = anyResult?.artifacts?.Trace    // Lighthouse v12
-        ?? anyResult?.artifacts?.traces             // Lighthouse v10/v11
-        ?? anyResult?.artifacts?.defaultPass;
-      const flameChartData  = traces ? (parseFlameChart(traces, maxMs)    ?? undefined) : undefined;
-      const heapMemoryData  = traces ? (parseHeapMemory(traces)           ?? undefined) : undefined;
-      const interactionData = traces ? (parseInteractions(traces)         ?? undefined) : undefined;
-      return buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, heapMemoryData, interactionData, undefined, anyResult?.artifacts);
+      const { artifacts, flameChartData, heapMemoryData, interactionData } = extractTraceData(runnerResult);
+      return buildFullResult(analysisId, url, [runnerResult.lhr], flameChartData, heapMemoryData, interactionData, undefined, artifacts);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error occurred';
       this.emitProgress(analysisId, 'error', 0, `Error: ${message}`);
@@ -286,10 +305,7 @@ export class LighthouseService extends EventEmitter {
 
   async analyzeWithInjectedSession(
     url: string,
-    sessionData: {
-      cookies:      Array<{ name: string; value: string; domain: string | undefined; path: string | undefined; expires: number | undefined; httpOnly: boolean | undefined; secure: boolean | undefined; sameSite: string | undefined }>;
-      localStorage: Record<string, string>;
-    },
+    sessionData: AuthSessionData,
     onPartial: (partial: CategoryPartial) => void,
     opts: AnalyzeOptions = {},
   ): Promise<AnalysisResult> {
@@ -304,10 +320,7 @@ export class LighthouseService extends EventEmitter {
   private async injectedSessionAudit(
     analysisId: string,
     url: string,
-    sessionData: {
-      cookies:      Array<{ name: string; value: string; domain: string | undefined; path: string | undefined; expires: number | undefined; httpOnly: boolean | undefined; secure: boolean | undefined; sameSite: string | undefined }>;
-      localStorage: Record<string, string>;
-    },
+    sessionData: AuthSessionData,
     onPartial: (partial: CategoryPartial) => void,
     formFactor?: AuditFormFactor,
     runs = 1,
@@ -405,22 +418,12 @@ export class LighthouseService extends EventEmitter {
         onPartial(buildPartial(analysisId, cat, runnerResult.lhr));
       }
 
-      const maxMs    = runnerResult.lhr.audits?.['interactive']?.numericValue ?? 15000;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyResult = runnerResult as any;
-      const traces =
-        anyResult?.artifacts?.Trace    ??
-        anyResult?.artifacts?.traces   ??
-        anyResult?.artifacts?.defaultPass;
-
-      const flameChartData  = traces ? (parseFlameChart(traces, maxMs) ?? undefined) : undefined;
-      const heapMemoryData  = traces ? (parseHeapMemory(traces)        ?? undefined) : undefined;
-      const interactionData = traces ? (parseInteractions(traces)      ?? undefined) : undefined;
+      const { artifacts, flameChartData, heapMemoryData, interactionData } = extractTraceData(runnerResult);
 
       const result = buildFullResult(
         analysisId, url, [runnerResult.lhr],
         flameChartData, heapMemoryData, interactionData,
-        undefined, anyResult?.artifacts,
+        undefined, artifacts,
       );
       result.formFactor = formFactor ?? 'desktop';
       if (passes.length > 1) result.measurement = measurement;

@@ -1,4 +1,5 @@
 import { SCORE_BANDS, type OverviewData, type OverviewAttention, type OverviewIncident } from '@perfscope/shared';
+import { meanRounded } from '../lib/stats.js';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
@@ -61,7 +62,7 @@ export async function computeSiteScores(userId: string, sites: { url: string }[]
 
   for (const [host, runs] of runsByHost) {
     byHost.set(host, {
-      avg:  Math.round(runs.reduce((sum, s) => sum + s, 0) / runs.length),
+      avg:  meanRounded(runs) ?? 0,
       runs: runs.length,
     });
   }
@@ -222,7 +223,7 @@ export async function getOverview(userId: string): Promise<OverviewData> {
     totals: {
       sites:    sites.length,
       audited:  scoreList.length,
-      avgScore: scoreList.length ? Math.round(scoreList.reduce((sum, s) => sum + s, 0) / scoreList.length) : 0,
+      avgScore: meanRounded(scoreList) ?? 0,
       needsAttention,
       audits7d,
     },

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { meanRounded } from '../lib/stats.js';
 import { Router } from 'express';
 import { SCORE_BANDS, RUM_METRIC_KEYS } from '@perfscope/shared';
 import type { QueryFilter } from 'mongoose';
@@ -124,7 +125,7 @@ websiteRouter.get('/websites/summary', asyncHandler<AuthedRequest>(async (req, r
   res.json({
     total:          sites.length,
     audited:        scores.length,
-    avgScore:       scores.length ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length) : 0,
+    avgScore:       meanRounded(scores) ?? 0,
     needsAttention: scores.filter(s => s < SCORE_BANDS.needsImprovement).length,
   });
 }));

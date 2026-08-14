@@ -1,6 +1,5 @@
-import cron from 'node-cron';
 import { checkAllFieldBudgets } from '../services/rumBudget.service.js';
-import { isDbReady } from '../config/database.js';
+import { registerCron } from '../lib/cron.js';
 
 /**
  * Hourly. Field p75 moves slowly, but a bad deploy should not wait until tomorrow to be
@@ -8,11 +7,10 @@ import { isDbReady } from '../config/database.js';
  * fifty times still sends exactly one message.
  */
 export function registerRumBudgetCron(): void {
-  cron.schedule('0 * * * *', () => {
-    if (!isDbReady()) return;
-    checkAllFieldBudgets().catch((err: unknown) =>
-      console.error('[RUM budgets] Unhandled error in cron:', (err as Error).message));
+  registerCron({
+    expression: '0 * * * *',
+    tag:        '[RUM budgets]',
+    announce:   'Field budget check running hourly.',
+    run:        checkAllFieldBudgets,
   });
-
-  console.log('[Cron] Field budget check running hourly.');
 }
