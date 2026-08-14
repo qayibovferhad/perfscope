@@ -1,36 +1,17 @@
 import {
   useRef, useEffect, useMemo, memo, useState, useLayoutEffect, useCallback,
 } from 'react';
-import { FileCode2, Palette, ImageIcon, Type, Globe, Network, X, ExternalLink } from 'lucide-react';
+import { Network, X, ExternalLink } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes } from '@/shared/lib/format';
 import { PanelHeader, Chip } from '@/shared/ui/panel';
 import { useTimelineContext } from '../model/TimelineContext';
+import { RESOURCE_TYPES, resourceBadgeStyle } from '@/entities/analysis';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
 
 const LEFT_W     = 320;
 const MAX_ROWS   = 120;
 const TICK_COUNT = 6;
-
-interface TypeCfg {
-  label:       string;
-  icon:        React.ElementType;
-  barTtfb:     string;
-  barDl:       string;
-  badgeBg:     string;
-  badgeText:   string;
-  badgeBorder: string;
-}
-
-const TYPE_CFG: Record<ResourceType, TypeCfg> = {
-  script:     { label: 'JS',    icon: FileCode2, barTtfb: 'rgba(99,102,241,0.5)',   barDl: 'rgba(99,102,241,1)',   badgeBg: 'rgba(99,102,241,.12)', badgeText: '#818cf8', badgeBorder: 'rgba(99,102,241,.3)'  },
-  stylesheet: { label: 'CSS',   icon: Palette,   barTtfb: 'rgba(167,139,250,0.5)',  barDl: 'rgba(167,139,250,1)', badgeBg: 'rgba(167,139,250,.12)', badgeText: '#a78bfa', badgeBorder: 'rgba(167,139,250,.3)'  },
-  image:      { label: 'IMG',   icon: ImageIcon, barTtfb: 'var(--ld-accent-soft)',  barDl: 'var(--ld-accent)',    badgeBg: 'var(--ld-accent-soft)', badgeText: 'var(--ld-accent)', badgeBorder: 'var(--ld-accent-line)'  },
-  font:       { label: 'FONT',  icon: Type,      barTtfb: 'rgba(230,162,60,0.4)',   barDl: 'var(--ld-amber)',     badgeBg: 'rgba(230,162,60,.1)', badgeText: 'var(--ld-amber)', badgeBorder: 'rgba(230,162,60,.3)'  },
-  document:   { label: 'DOC',   icon: FileCode2, barTtfb: 'rgba(56,189,248,0.4)',   barDl: 'rgba(56,189,248,1)',  badgeBg: 'rgba(56,189,248,.1)', badgeText: '#38bdf8', badgeBorder: 'rgba(56,189,248,.3)'  },
-  media:      { label: 'MEDIA', icon: ImageIcon, barTtfb: 'rgba(244,114,182,0.4)',  barDl: 'rgba(244,114,182,1)', badgeBg: 'rgba(244,114,182,.1)', badgeText: '#f472b6', badgeBorder: 'rgba(244,114,182,.3)'  },
-  other:      { label: 'XHR',   icon: Globe,     barTtfb: 'var(--ld-border-strong)', barDl: 'var(--ld-text-3)',  badgeBg: 'transparent',  badgeText: 'var(--ld-text-3)', badgeBorder: 'var(--ld-border-strong)'  },
-};
 
 const FILTER_CHIPS: { key: ResourceType | 'all'; label: string }[] = [
   { key: 'all',        label: 'All'   },
@@ -62,7 +43,7 @@ function resourceFilename(url: string): string {
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
 function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => void }) {
-  const cfg      = TYPE_CFG[req.resourceType];
+  const cfg      = RESOURCE_TYPES[req.resourceType];
   const duration = req.endTime - req.startTime;
   const name     = resourceFilename(req.url);
 
@@ -84,7 +65,7 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
       <div className="flex items-start gap-2 px-3 py-2.5 border-b border-ld-border">
         <span
           className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border mt-0.5"
-          style={{ background: cfg.badgeBg, color: cfg.badgeText, borderColor: cfg.badgeBorder }}
+          style={resourceBadgeStyle(req.resourceType)}
         >
           {cfg.label}
         </span>
@@ -124,9 +105,9 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
           <div className="flex h-1.5 rounded-full overflow-hidden gap-px bg-ld-border">
             <div
               className="rounded-l-full"
-              style={{ width: `${Math.min((req.ttfb / duration) * 100, 100)}%`, backgroundColor: cfg.barTtfb }}
+              style={{ width: `${Math.min((req.ttfb / duration) * 100, 100)}%`, backgroundColor: cfg.wait }}
             />
-            <div className="rounded-r-full flex-1" style={{ backgroundColor: cfg.barDl }} />
+            <div className="rounded-r-full flex-1" style={{ backgroundColor: cfg.bar }} />
           </div>
         </div>
       )}
@@ -153,7 +134,7 @@ const WaterfallRow = memo(function WaterfallRow({
   req, index, axisMs, isSelected, onSelect, onDeselect,
   rowRef, ttfbRef, dlRef, shimRef,
 }: RowProps) {
-  const cfg  = TYPE_CFG[req.resourceType];
+  const cfg  = RESOURCE_TYPES[req.resourceType];
   const Icon = cfg.icon;
   const name = resourceFilename(req.url);
 
@@ -185,7 +166,7 @@ const WaterfallRow = memo(function WaterfallRow({
           </span>
           <span
             className="text-[9px] font-bold px-1 py-0.5 rounded border font-mono shrink-0"
-            style={{ background: cfg.badgeBg, color: cfg.badgeText, borderColor: cfg.badgeBorder }}
+            style={resourceBadgeStyle(req.resourceType)}
           >
             {cfg.label}
           </span>
@@ -204,12 +185,12 @@ const WaterfallRow = memo(function WaterfallRow({
               <div
                 ref={ttfbRef}
                 className="h-full transition-opacity duration-150"
-                style={{ width: `${ttfbPct}%`, backgroundColor: cfg.barTtfb }}
+                style={{ width: `${ttfbPct}%`, backgroundColor: cfg.wait }}
               />
               <div
                 ref={dlRef}
                 className="h-full flex-1 transition-opacity duration-150"
-                style={{ backgroundColor: cfg.barDl }}
+                style={{ backgroundColor: cfg.bar }}
               />
               <div ref={shimRef} className="wf-shim absolute inset-0 rounded-sm pointer-events-none" />
             </div>

@@ -1,38 +1,33 @@
 import {
   useRef, useEffect, useMemo, memo, useState, useLayoutEffect, useCallback,
 } from 'react';
-import {
-  FileCode2, Palette, ImageIcon, Type, Globe,
-  Network, X, ExternalLink, Play, Pause,
-} from 'lucide-react';
+import { Network, X, ExternalLink, Play, Pause } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes, fmtSec2 } from '@/shared/lib/format';
 import { useTimelineContext } from '../model/TimelineContext';
 import { LEFT_W, MAX_ROWS, TICK_COUNT, TICK_MS, METRICS_CFG } from '../lib/timelineWaterfall';
 import { FlameChart } from './FlameChart';
+import { RESOURCE_TYPES, resourceBadgeStyle } from '@/entities/analysis';
 import type {
   ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
   FlameChartData,
 } from '@/entities/analysis';
 
-interface TypeCfg {
-  label:     string;
-  icon:      React.ElementType;
-  barWaitCls: string;
-  badgeCls:  string;
-}
-
-// Badge colors follow the shared resource palette (see ResourceWaterfall):
-// script indigo, stylesheet violet, image accent, font amber, document sky, media pink.
-const TYPE_CFG: Record<ResourceType, TypeCfg> = {
-  script:     { label: 'JS',    icon: FileCode2, barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#818cf8] bg-[rgba(99,102,241,.12)]  border border-[rgba(99,102,241,.3)]'  },
-  stylesheet: { label: 'CSS',   icon: Palette,   barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#a78bfa] bg-[rgba(167,139,250,.12)] border border-[rgba(167,139,250,.3)]' },
-  image:      { label: 'IMG',   icon: ImageIcon, barWaitCls: 'bg-ld-accent-soft',    badgeCls: 'text-[var(--ld-accent-2)] bg-ld-accent-soft border border-ld-accent-line'        },
-  font:       { label: 'FONT',  icon: Type,      barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-ld-amber  bg-[rgba(230,162,60,.1)]   border border-[rgba(230,162,60,.3)]'  },
-  document:   { label: 'DOC',   icon: FileCode2, barWaitCls: 'bg-ld-accent-line',    badgeCls: 'text-[#38bdf8] bg-[rgba(56,189,248,.1)]   border border-[rgba(56,189,248,.3)]'  },
-  media:      { label: 'MEDIA', icon: ImageIcon, barWaitCls: 'bg-ld-border-strong',  badgeCls: 'text-[#f472b6] bg-[rgba(244,114,182,.10)] border border-[rgba(244,114,182,.30)]' },
-  other:      { label: 'XHR',   icon: Globe,     barWaitCls: 'bg-ld-border',         badgeCls: 'text-ld-text-3 bg-transparent              border border-ld-border-strong'        },
+/**
+ * The waiting (TTFB) segment stays type-agnostic here on purpose: this waterfall is read
+ * against the filmstrip, where a second tinted hue per row competes with the metric
+ * markers. Colour that carries meaning — the badge, the download bar — comes from
+ * RESOURCE_TYPES.
+ */
+const BAR_WAIT_CLS: Record<ResourceType, string> = {
+  script:     'bg-ld-border-strong',
+  stylesheet: 'bg-ld-border-strong',
+  image:      'bg-ld-accent-soft',
+  font:       'bg-ld-border-strong',
+  document:   'bg-ld-accent-line',
+  media:      'bg-ld-border-strong',
+  other:      'bg-ld-border',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -63,7 +58,7 @@ function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): numbe
 // ─── DetailPanel ──────────────────────────────────────────────────────────────
 
 function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => void }) {
-  const cfg      = TYPE_CFG[req.resourceType];
+  const cfg      = RESOURCE_TYPES[req.resourceType];
   const duration = req.endTime - req.startTime;
   const name     = resourceFilename(req.url);
 
@@ -83,7 +78,10 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
   return (
     <div className="absolute left-2 right-2 z-30 mt-0.5 rounded-[12px] border border-ld-border-strong bg-ld-surface-2 shadow-ld-shadow-card text-xs">
       <div className="flex items-start gap-2 px-3 py-2.5 border-b border-ld-border">
-        <span className={cn('shrink-0 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded mt-0.5', cfg.badgeCls)}>
+        <span
+          className="shrink-0 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border mt-0.5"
+          style={resourceBadgeStyle(req.resourceType)}
+        >
           {cfg.label}
         </span>
         <div className="flex-1 min-w-0">
@@ -121,7 +119,7 @@ function DetailPanel({ req, onClose }: { req: NetworkRequest; onClose: () => voi
           </div>
           <div className="flex h-1.5 rounded-full overflow-hidden gap-px bg-ld-border">
             <div
-              className={cn('rounded-l-full', cfg.barWaitCls)}
+              className={cn('rounded-l-full', BAR_WAIT_CLS[req.resourceType])}
               style={{ width: `${Math.min((req.ttfb / duration) * 100, 100)}%` }}
             />
             <div className="rounded-r-full flex-1 bg-ld-accent" />
@@ -152,7 +150,7 @@ const WaterfallRow = memo(function WaterfallRow({
   rowRef, ttfbRef, dlRef, shimRef,
 }: RowProps) {
   const ctx  = useTimelineContext();
-  const cfg  = TYPE_CFG[req.resourceType];
+  const cfg  = RESOURCE_TYPES[req.resourceType];
   const Icon = cfg.icon;
   const name = resourceFilename(req.url);
 
@@ -183,7 +181,10 @@ const WaterfallRow = memo(function WaterfallRow({
           <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
             {name}
           </span>
-          <span className={cn('text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] shrink-0', cfg.badgeCls)}>
+          <span
+            className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] border shrink-0"
+            style={resourceBadgeStyle(req.resourceType)}
+          >
             {cfg.label}
           </span>
           <span className="text-[10px] text-ld-text-3 tabular-nums shrink-0 w-11 text-right font-mono">
@@ -201,7 +202,7 @@ const WaterfallRow = memo(function WaterfallRow({
             >
               <div
                 ref={ttfbRef}
-                className={cn('h-full transition-opacity duration-150', cfg.barWaitCls)}
+                className={cn('h-full transition-opacity duration-150', BAR_WAIT_CLS[req.resourceType])}
                 style={{ width: `${ttfbPct}%` }}
               />
               <div ref={dlRef} className="h-full flex-1 transition-opacity duration-150 bg-ld-accent" />

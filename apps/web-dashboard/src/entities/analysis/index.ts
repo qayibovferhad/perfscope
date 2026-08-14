@@ -45,6 +45,8 @@ export {
   BAND_TEXT, BAND_STROKE, BAND_TILE, BAND_BORDER, BAND_BAR, BAND_LABEL,
 } from './lib'
 export { FIELD_METRICS, FIELD_METRIC_ORDER, RATING_TEXT, RATING_LABEL } from './fieldMetrics'
+export { RESOURCE_TYPES, resourceBadgeStyle } from './resourceTypes'
+export type { ResourceTypeMeta } from './resourceTypes'
 export { GLOSSARY, thresholdLine, goodThreshold, CATEGORY_BAND_LINE, isVitalKey } from './glossary'
 export type { GlossaryKey, CategoryKey } from './glossary'
 export { GlossaryTip } from './ui/GlossaryTip'
