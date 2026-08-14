@@ -3,6 +3,7 @@ import { GitBranch, AlertTriangle } from 'lucide-react'
 import { Panel, PanelHeader } from '@/shared/ui/panel'
 import { cn } from '@/shared/lib/utils'
 import { fmtMs, fmtBytes } from '@/shared/lib/format'
+import { RESOURCE_TYPES } from '@/entities/analysis'
 import type { DependencyGraph, DependencyNode, ResourceType, NetworkRequest } from '@/entities/analysis'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -11,29 +12,14 @@ const MAX_DEPTH = 5
 const MAX_ROWS  = 40
 const INDENT_PX = 22
 
-// ─── Type config ──────────────────────────────────────────────────────────────
+// ─── Legend ───────────────────────────────────────────────────────────────────
 
-interface TypeCfg { tag: string; dotCls: string; tagCls: string }
+/** The types worth naming in the legend; colours come from RESOURCE_TYPES. */
+const LEGEND_TYPES: ResourceType[] = ['document', 'script', 'stylesheet', 'font', 'image']
 
-// Colors follow the shared resource palette (see ResourceWaterfall):
-// script indigo, stylesheet violet, image accent, font amber, document sky, media pink.
-const TYPE_CFG: Record<ResourceType, TypeCfg> = {
-  document:   { tag: 'DOC',   dotCls: 'bg-[#38bdf8]',        tagCls: 'text-[#38bdf8] bg-[rgba(56,189,248,.12)]'  },
-  script:     { tag: 'JS',    dotCls: 'bg-[#818cf8]',        tagCls: 'text-[#818cf8] bg-[rgba(99,102,241,.14)]'  },
-  stylesheet: { tag: 'CSS',   dotCls: 'bg-[#a78bfa]',        tagCls: 'text-[#a78bfa] bg-[rgba(167,139,250,.14)]' },
-  font:       { tag: 'FONT',  dotCls: 'bg-ld-amber',         tagCls: 'text-ld-amber bg-[rgba(230,162,60,.14)]'   },
-  image:      { tag: 'IMG',   dotCls: 'bg-ld-accent',        tagCls: 'text-ld-accent-2 bg-ld-accent-soft'        },
-  media:      { tag: 'MEDIA', dotCls: 'bg-[#f472b6]',        tagCls: 'text-[#f472b6] bg-[rgba(244,114,182,.14)]' },
-  other:      { tag: 'XHR',   dotCls: 'bg-ld-border-strong', tagCls: 'text-ld-text-3 bg-transparent'             },
+const LEGEND_LABELS: Partial<Record<ResourceType, string>> = {
+  document: 'Document', script: 'Script', stylesheet: 'Stylesheet', font: 'Font', image: 'Image',
 }
-
-const LEGEND: { label: string; cls: string }[] = [
-  { label: 'Document',   cls: 'bg-[#38bdf8]' },
-  { label: 'Script',     cls: 'bg-[#818cf8]' },
-  { label: 'Stylesheet', cls: 'bg-[#a78bfa]' },
-  { label: 'Font',       cls: 'bg-ld-amber'  },
-  { label: 'Image',      cls: 'bg-ld-accent' },
-]
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -199,7 +185,7 @@ function StatCard({ value, label, rose }: { value: string; label: string; rose?:
 
 function DepRow({ row, maxTransfer, isFirst }: { row: FlatRow; maxTransfer: number; isFirst: boolean }) {
   const { node, depth, isLast, lineFlags, isCritical, isRoot } = row
-  const cfg    = TYPE_CFG[node.resourceType]
+  const cfg    = RESOURCE_TYPES[node.resourceType]
   const barPct = maxTransfer > 0 ? Math.round((node.transferSize / maxTransfer) * 100) : 0
 
   // Bar fill: gradient strings can't be arbitrary Tailwind bg values cleanly → inline
@@ -245,16 +231,19 @@ function DepRow({ row, maxTransfer, isFirst }: { row: FlatRow; maxTransfer: numb
 
         {/* Type tag (skip on root) */}
         {!isRoot && (
-          <span className={cn(
-            'font-mono text-[9px] font-semibold px-[5px] py-[2px] rounded-[5px] shrink-0 tracking-[.04em] mr-[6px] leading-none',
-            cfg.tagCls,
-          )}>
-            {cfg.tag}
+          <span
+            className="font-mono text-[9px] font-semibold px-[5px] py-[2px] rounded-[5px] shrink-0 tracking-[.04em] mr-[6px] leading-none"
+            style={{ color: cfg.text, background: cfg.tint }}
+          >
+            {cfg.label}
           </span>
         )}
 
         {/* Color dot */}
-        <span className={cn('w-[9px] h-[9px] rounded-[3px] shrink-0 mr-[9px]', cfg.dotCls)} />
+        <span
+          className="w-[9px] h-[9px] rounded-[3px] shrink-0 mr-[9px]"
+          style={{ background: cfg.text }}
+        />
 
         {/* Label */}
         <span
@@ -354,10 +343,13 @@ export const ResourceDependencyChain = memo(function ResourceDependencyChain({ g
 
         {/* Legend */}
         <div className="flex flex-wrap gap-x-[14px] gap-y-[6px]">
-          {LEGEND.map(({ label, cls }) => (
-            <span key={label} className="inline-flex items-center gap-[7px] font-mono text-[11px] text-ld-text-3">
-              <i className={cn('w-[9px] h-[9px] rounded-[3px] block shrink-0', cls)} />
-              {label}
+          {LEGEND_TYPES.map((type) => (
+            <span key={type} className="inline-flex items-center gap-[7px] font-mono text-[11px] text-ld-text-3">
+              <i
+                className="w-[9px] h-[9px] rounded-[3px] block shrink-0"
+                style={{ background: RESOURCE_TYPES[type].text }}
+              />
+              {LEGEND_LABELS[type]}
             </span>
           ))}
         </div>
