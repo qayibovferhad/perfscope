@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { PrimaryButton } from '../components/PrimaryButton'
+import { useActiveTabUrl, hostnameOf, pathnameOf } from '../useActiveTab'
 import { createApiClient, rateVital, RATING_COLOR, fmtSec, fmtMs, fmtCls, type ScoreRating } from '@perfscope/shared'
 import type { AnalysisResult } from '@perfscope/shared'
 import { ScoreCard }      from '../components/ScoreCard'
@@ -12,17 +14,11 @@ interface Props {
 
 
 export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
-  const [currentUrl, setCurrentUrl] = useState('')
+  const currentUrl = useActiveTabUrl()
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<AnalysisResult | null>(null)
   const [saved,      setSaved]      = useState(false)
   const [error,      setError]      = useState<string | null>(null)
-
-  useEffect(() => {
-    browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (tab?.url?.startsWith('http')) setCurrentUrl(tab.url)
-    })
-  }, [])
 
   async function handleAnalyze() {
     if (!currentUrl) return
@@ -43,12 +39,8 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
     }
   }
 
-  const parsed = (() => {
-    try { return new URL(currentUrl) } catch { return null }
-  })()
-
-  const hostname = parsed?.hostname ?? ''
-  const route    = parsed?.pathname ?? '/'
+  const hostname = hostnameOf(currentUrl)
+  const route    = pathnameOf(currentUrl)
 
   return (
     <div className="flex flex-col gap-3">
@@ -75,16 +67,16 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
       </div>
 
       {/* Analyze button */}
-      <button
+      <PrimaryButton
         onClick={handleAnalyze}
         disabled={!currentUrl || loading}
-        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-[var(--ld-grad-text)] bg-[image:var(--ld-grad)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${loading ? '' : '[box-shadow:0_0_18px_var(--ld-accent-line)]'}`}
+        loading={loading}
       >
         {loading
           ? <><LoadingSpinner size={16} /><span>Analyzing…</span></>
           : <><ChevronIcon /><span>Analyze Page</span></>
         }
-      </button>
+      </PrimaryButton>
 
       {loading && (
         <p className="text-center text-[11px] text-ld-text-3">Running Lighthouse — up to 60 s.</p>

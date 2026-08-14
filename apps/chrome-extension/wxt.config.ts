@@ -7,7 +7,8 @@ export default defineConfig({
   manifest: {
     name: 'PerfScope Companion',
     description: "Analyze any page with PerfScope's Lighthouse engine and compare against your own sites.",
-    version: '1.0.0',
+    // No `version` here on purpose: WXT fills it from package.json, so the manifest and
+    // the popup footer cannot claim different numbers the way they did (0.0.1 / 1.0.0).
     permissions: ['tabs', 'activeTab', 'storage'],
     host_permissions: [
       'http://localhost:3101/*',

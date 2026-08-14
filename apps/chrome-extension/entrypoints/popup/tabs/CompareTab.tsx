@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { PrimaryButton } from '../components/PrimaryButton'
+import { useActiveTabUrl, useApiClient } from '../useActiveTab'
 import { createApiClient, fmtSec, fmtMs, fmtCls } from '@perfscope/shared'
 import type { AnalysisResult, WebsiteDoc, HistoryEntry } from '@perfscope/shared'
 import { MetricBar } from '../components/MetricBar'
@@ -16,7 +18,7 @@ interface CompareState {
 }
 
 export function CompareTab({ backendUrl, token }: Props) {
-  const [currentUrl,   setCurrentUrl]   = useState('')
+  const currentUrl = useActiveTabUrl()
   const [websites,     setWebsites]     = useState<WebsiteDoc[]>([])
   const [selectedId,   setSelectedId]   = useState('')
   const [websitesErr,  setWebsitesErr]  = useState<string | null>(null)
@@ -24,14 +26,7 @@ export function CompareTab({ backendUrl, token }: Props) {
   const [compareResult, setCompareResult] = useState<CompareState | null>(null)
   const [error,        setError]        = useState<string | null>(null)
 
-  const api = createApiClient({ baseUrl: backendUrl, getToken: () => token })
-
-  // Get active tab URL
-  useEffect(() => {
-    browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (tab?.url?.startsWith('http')) setCurrentUrl(tab.url)
-    })
-  }, [])
+  const api = useApiClient(backendUrl, token)
 
   // Fetch user's websites (requires auth)
   useEffect(() => {
@@ -39,7 +34,7 @@ export function CompareTab({ backendUrl, token }: Props) {
     api.getWebsites()
       .then((sites) => { setWebsites(sites); if (sites[0]) setSelectedId(sites[0]._id) })
       .catch((err: Error) => setWebsitesErr(err.message))
-  }, [token, backendUrl])
+  }, [token, api])
 
   async function handleCompare() {
     const yourSite = websites.find(w => w._id === selectedId)
@@ -113,17 +108,17 @@ export function CompareTab({ backendUrl, token }: Props) {
       </div>
 
       {/* Compare button */}
-      <button
+      <PrimaryButton
         onClick={handleCompare}
         disabled={!currentUrl || !selectedId || loading || noAuth}
-        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-[var(--ld-grad-text)] bg-[image:var(--ld-grad)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${loading ? '' : '[box-shadow:0_0_16px_var(--ld-accent-line)]'}`}
+        loading={loading}
       >
         {loading ? (
           <><LoadingSpinner size={16} /><span>Running analysis…</span></>
         ) : (
           <><ScalesIcon /><span>Compare</span></>
         )}
-      </button>
+      </PrimaryButton>
 
       {loading && (
         <p className="text-center text-[11px] text-ld-text-3">

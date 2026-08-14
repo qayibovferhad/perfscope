@@ -182,7 +182,7 @@ export function App() {
       {/* ── Footer ───────────────────────────────────────────────────── */}
       <div className="px-4 py-2 border-t border-ld-border shrink-0">
         <p className="text-[9px] text-ld-text-3 opacity-70 text-center font-mono">
-          PerfScope Companion · v1.0.0
+          PerfScope Companion · v{browser.runtime.getManifest().version}
         </p>
       </div>
     </div>
