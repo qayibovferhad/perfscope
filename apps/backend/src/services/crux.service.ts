@@ -158,10 +158,6 @@ let warnedDisabled = false;
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export const CruxService = {
-  isAvailable(): boolean {
-    return Boolean(config.cruxApiKey);
-  },
-
   /**
    * Field data for a page: URL-level when CrUX has enough samples for that exact
    * page, otherwise the whole origin. Returns null when the key is missing, the

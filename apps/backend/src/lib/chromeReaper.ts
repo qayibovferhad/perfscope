@@ -113,4 +113,3 @@ export function installChromeReaper(): void {
   });
 }
 
-export const liveChromeCount = (): number => live.size;

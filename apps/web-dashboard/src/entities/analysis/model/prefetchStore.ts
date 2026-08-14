@@ -15,7 +15,6 @@ interface PrefetchStore {
   progress: AnalysisProgress | null;
 
   start:  (url: string) => void;
-  cancel: () => void;
   clear:  () => void;
 
   _cleanup: (() => void) | null;
@@ -48,11 +47,6 @@ export const usePrefetchStore = create<PrefetchStore>((set, get) => ({
     }, { formFactor, precision });
 
     set({ _cleanup: cleanup });
-  },
-
-  cancel() {
-    get()._cleanup?.();
-    set({ url: null, status: 'idle', result: null, partials: {}, progress: null, _cleanup: null });
   },
 
   clear() {

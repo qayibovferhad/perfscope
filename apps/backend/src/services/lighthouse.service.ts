@@ -110,7 +110,6 @@ export interface AnalyzeOptions {
 /** Global admission control — see AuditQueue for why this is a correctness feature. */
 const auditQueue = new AuditQueue(config.maxConcurrentAudits);
 
-export const auditQueueStats = () => auditQueue.stats;
 
 export class LighthouseService extends EventEmitter {
   private readonly activeAnalyses = new Map<string, ActiveAnalysis>();

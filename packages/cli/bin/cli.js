@@ -4,7 +4,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import http from 'node:http';
 import net  from 'node:net';
 import readline from 'node:readline';
 import { execSync } from 'node:child_process';
