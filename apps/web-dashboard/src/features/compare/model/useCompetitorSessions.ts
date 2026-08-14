@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { WebsiteSession } from '@perfscope/shared';
 import { apiClient } from '@/shared/api/client';
 
 export interface CompetitorSessionEntry {
@@ -6,7 +7,7 @@ export interface CompetitorSessionEntry {
   url:       string;
   name:      string;
   createdAt: string;
-  session:   { capturedAt: string } | null;
+  session:   WebsiteSession | null;
 }
 
 export function useCompetitorSessions() {

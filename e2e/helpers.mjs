@@ -20,6 +20,16 @@ async function respondsBelow500(url) {
   }
 }
 
+/** Wait for the API alone — for suites that never open a browser. */
+export async function waitForBackend(timeoutMs = 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await respondsBelow500(`${BACKEND_URL}/api`)) return;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error(`Backend not reachable within ${timeoutMs}ms (${BACKEND_URL}). Start it: pnpm dev:backend`);
+}
+
 /**
  * Wait until both dev servers answer HTTP. The suite never starts servers itself —
  * `pnpm dev:backend` and `pnpm dev:web` must already be running.
@@ -102,8 +112,11 @@ export async function cleanupUser(email) {
       .toArray();
     const ids = users.map((u) => u._id);
     if (ids.length > 0) {
-      // History.userId is stored as a string of the ObjectId.
+      // History.userId is stored as a string of the ObjectId; websites and competitor
+      // sessions hold the ObjectId itself.
       await db.collection('histories').deleteMany({ userId: { $in: ids.map(String) } });
+      await db.collection('websites').deleteMany({ userId: { $in: ids } });
+      await db.collection('competitorsessions').deleteMany({ userId: { $in: ids } });
       await db.collection('users').deleteMany({ _id: { $in: ids } });
     }
   } finally {

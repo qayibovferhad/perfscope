@@ -1,5 +1,5 @@
 import { Schema, model, type Types } from 'mongoose';
-import { sessionSchema, type ISessionData } from './session.schema.js';
+import { sessionSchema, redactSession, type ISessionData } from './session.schema.js';
 import type { AutomationScheduleMode } from '@perfscope/shared';
 
 /** One group of routes and the time of day they run. */
@@ -81,7 +81,7 @@ const websiteSchema = new Schema(
     rumKey:           { type: String, default: null, index: true, sparse: true },
     lastBudgetBreach: { type: budgetBreachSchema, default: null },
   },
-  { timestamps: true },
+  { timestamps: true, toJSON: { transform: (_doc, ret) => { redactSession(ret); } } },
 );
 
 websiteSchema.index({ userId: 1, url: 1 }, { unique: true });

@@ -1,18 +1,16 @@
 import type { AuditFormFactor } from './analysis.js'
 
+/**
+ * A captured session, as the client is allowed to see it: that one exists, and when it
+ * was taken. The cookies and localStorage behind it are live credentials for the audited
+ * site and never leave the backend — they live in `models/session.schema.ts`, and the
+ * `toJSON` transform there strips them from every response.
+ *
+ * Whether a session still *works* is a separate question, answered by `requiresLogin`;
+ * see `sessionState()` on the dashboard, which needs both.
+ */
 export interface WebsiteSession {
-  cookies:      Array<{
-    name?:     string
-    value?:    string
-    domain?:   string
-    path?:     string
-    expires?:  number
-    httpOnly?: boolean
-    secure?:   boolean
-    sameSite?: string
-  }>
-  localStorage: Record<string, string>
-  capturedAt:   string
+  capturedAt: string
 }
 
 /** A group of routes and the time of day they are audited. */

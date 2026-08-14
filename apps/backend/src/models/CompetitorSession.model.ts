@@ -1,5 +1,5 @@
 import { Schema, model, type Types } from 'mongoose';
-import { sessionSchema, type ISessionData } from './session.schema.js';
+import { sessionSchema, redactSession, type ISessionData } from './session.schema.js';
 
 const competitorSessionSchema = new Schema(
   {
@@ -8,7 +8,7 @@ const competitorSessionSchema = new Schema(
     name:    { type: String, trim: true, default: '' },
     session: { type: sessionSchema, required: true },
   },
-  { timestamps: true },
+  { timestamps: true, toJSON: { transform: (_doc, ret) => { redactSession(ret); } } },
 );
 
 competitorSessionSchema.index({ userId: 1, url: 1 }, { unique: true });
