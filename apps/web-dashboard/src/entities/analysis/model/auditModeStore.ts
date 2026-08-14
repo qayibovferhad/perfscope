@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuditFormFactor } from '@perfscope/shared';
-import type { AuditPrecision } from '../api/analysisSocket';
+import type { AuditPrecision } from '@perfscope/shared';
 
 /**
  * The user's chosen device profile, persisted across sessions. Every entry point

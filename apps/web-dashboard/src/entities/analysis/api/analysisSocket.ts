@@ -1,9 +1,8 @@
-import type { Socket } from 'socket.io-client';
-import type { AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor } from '@perfscope/shared';
-
-/** How thoroughly an audit measures: one shot, or the median of three runs. */
-export type AuditPrecision = 'single' | 'median';
-import { getSocket } from '@/shared/api/socket';
+import type {
+  AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor,
+  AuditPrecision, AnalysisErrorPayload,
+} from '@perfscope/shared';
+import { getSocket, type AppSocket } from '@/shared/api/socket';
 
 export interface AnalysisCallbacks {
   onProgress: (data: AnalysisProgress) => void;
@@ -18,11 +17,11 @@ export interface AnalysisCallbacks {
  * compare feature's short-lived sockets share the exact wiring — the two copies had
  * already drifted on how the error payload was unpacked.
  */
-export function attachAnalysisListeners(s: Socket, callbacks: AnalysisCallbacks): () => void {
+export function attachAnalysisListeners(s: AppSocket, callbacks: AnalysisCallbacks): () => void {
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
   const onPartial  = (data: CategoryPartial)     => callbacks.onPartial(data);
   const onComplete = (result: AnalysisResult)    => callbacks.onComplete(result);
-  const onError    = (data: { message: string; code?: string }) => callbacks.onError(data.message, data.code);
+  const onError    = (data: AnalysisErrorPayload) => callbacks.onError(data.message, data.code);
 
   s.on('analysis:progress', onProgress);
   s.on('analysis:partial',  onPartial);

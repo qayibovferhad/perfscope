@@ -1,6 +1,6 @@
 import { Zap, Crosshair } from 'lucide-react';
 import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
-import type { AuditPrecision } from '../api/analysisSocket';
+import type { AuditPrecision } from '@perfscope/shared';
 
 /** One definition of the measurement choice, so the analyzer and compare offer the same
  *  audit — a comparison run at a different precision than the analyzer's is not comparable

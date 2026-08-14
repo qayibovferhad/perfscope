@@ -38,7 +38,7 @@ export type {
 } from '@perfscope/shared'
 
 export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS, SCORE_BANDS } from '@perfscope/shared'
-export type { ScoreRating, VitalKey, AuditFormFactor } from '@perfscope/shared'
+export type { ScoreRating, VitalKey, AuditFormFactor, AuditPrecision } from '@perfscope/shared'
 
 export {
   scoreColor, scoreBand, vitalBand, findFrameAt, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
@@ -60,7 +60,7 @@ export { FormFactorToggle, DEVICE_MODES } from './ui/FormFactorToggle'
 export { PrecisionToggle, PRECISION_MODES } from './ui/PrecisionToggle'
 
 export { startAnalysis, joinAnalysis, emitAuthAuditStart, attachAnalysisListeners } from './api/analysisSocket'
-export type { AnalysisCallbacks, AuditPrecision, StartAnalysisOptions } from './api/analysisSocket'
+export type { AnalysisCallbacks, StartAnalysisOptions } from './api/analysisSocket'
 
 export { usePrefetchStore } from './model/prefetchStore'
 export type { PrefetchPartialMap } from './model/prefetchStore'

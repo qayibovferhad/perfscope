@@ -379,6 +379,9 @@ async function audit(targetUrl, opts) {
 // stream in live, and the run is not subject to the HTTP server timeout.
 function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
   return new Promise((resolve, reject) => {
+    // These event names and payloads mirror packages/shared/src/types/socket.ts by hand.
+    // The CLI publishes to npm standalone, so it cannot take a workspace dependency and
+    // nothing checks the two against each other — change one, check the other.
     const socket = io(apiUrl, { auth: token ? { token } : {} });
 
     const finish = (fn, value) => {

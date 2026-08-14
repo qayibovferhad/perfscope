@@ -1,11 +1,10 @@
-import type { Socket } from 'socket.io-client';
-import type { AuditFormFactor } from '@perfscope/shared';
-import { attachAnalysisListeners, type AnalysisCallbacks, type AuditPrecision } from '@/entities/analysis';
-import { createSocket } from '@/shared/api/socket';
+import type { AuditFormFactor, AuditPrecision } from '@perfscope/shared';
+import { attachAnalysisListeners, type AnalysisCallbacks } from '@/entities/analysis';
+import { createSocket, type AppSocket } from '@/shared/api/socket';
 
 // The event wiring is the entity's; only the teardown differs — these sockets are
 // per-analysis and die with it, so the whole connection goes, not just the listeners.
-function attachCallbacks(socket: Socket, callbacks: AnalysisCallbacks) {
+function attachCallbacks(socket: AppSocket, callbacks: AnalysisCallbacks) {
   attachAnalysisListeners(socket, callbacks);
   return () => { socket.disconnect(); socket.removeAllListeners(); };
 }
