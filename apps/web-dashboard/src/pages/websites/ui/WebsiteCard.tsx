@@ -88,7 +88,7 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           )}
           {session === 'expired' && (
             <span
-              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)] text-ld-rose"
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash text-ld-rose"
               title={`The saved session no longer works — a run was redirected to ${site.requiresLogin?.loginUrl}`}
             >
               <ShieldAlert className="w-[13px] h-[13px]" /> Session expired
@@ -97,7 +97,7 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           {/* The latest audit broke this site's performance budgets. */}
           {site.lastBudgetBreach && (
             <span
-              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)] text-ld-rose"
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash text-ld-rose"
               title={`${site.lastBudgetBreach.url} broke: ${site.lastBudgetBreach.failures.map(f => f.metric).join(', ')}`}
             >
               <Gauge className="w-[13px] h-[13px]" /> Budget breach
@@ -107,7 +107,7 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           {/* Only when there is no session at all — with one, "expired" above says it. */}
           {site.requiresLogin && session === 'none' && (
             <span
-              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)] text-ld-amber"
+              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-amber-line bg-ld-amber-soft text-ld-amber"
               title={`Audit was redirected to ${site.requiresLogin.loginUrl}`}
             >
               <ShieldAlert className="w-[13px] h-[13px]" /> Login required

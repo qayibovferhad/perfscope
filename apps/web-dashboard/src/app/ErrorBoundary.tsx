@@ -42,7 +42,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
             </p>
           </div>
 
-          <pre className="text-xs font-mono p-3 rounded-lg overflow-x-auto bg-ld-bg-2 text-ld-rose border border-[rgba(242,100,122,.3)]">
+          <pre className="text-xs font-mono p-3 rounded-lg overflow-x-auto bg-ld-bg-2 text-ld-rose border border-ld-rose-line">
             {this.state.error.message}
           </pre>
 

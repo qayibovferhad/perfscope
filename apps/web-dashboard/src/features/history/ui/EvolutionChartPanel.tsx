@@ -43,7 +43,7 @@ function HoverTooltip({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry
 
       {/* Regression badge */}
       {(regLcp || regTbt) && (
-        <div className="flex items-center gap-[6px] px-[10px] py-[6px] rounded-[8px] bg-[rgba(242,100,122,0.10)] border border-[rgba(242,100,122,0.28)]">
+        <div className="flex items-center gap-[6px] px-[10px] py-[6px] rounded-[8px] bg-ld-rose-soft border border-ld-rose-line">
           <AlertTriangle className="w-[11px] h-[11px] text-ld-rose shrink-0" />
           <span className="text-ld-rose font-bold text-[10px]">Regression Detected</span>
         </div>
@@ -110,7 +110,7 @@ export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
           Performance Evolution
         </h3>
         {hasRegression && (
-          <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)]">
+          <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash">
             <AlertTriangle className="w-[13px] h-[13px]" />
             Regression Detected
           </span>
@@ -128,7 +128,7 @@ export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
           TBT
         </span>
         <span className="inline-flex items-center gap-[8px] font-mono text-[11.5px] text-ld-text-3">
-          <i className="w-[10px] h-[10px] rounded-full border-2 border-ld-rose bg-[rgba(242,100,122,0.25)] block not-italic" />
+          <i className="w-[10px] h-[10px] rounded-full border-2 border-ld-rose bg-ld-rose-fill block not-italic" />
           Regression
         </span>
         <span className="ml-auto inline-flex items-center gap-[5px] text-[10px] text-ld-text-3 opacity-60">

@@ -255,7 +255,7 @@ function LibraryRows({ resources }: { resources: ParsedResources }) {
                     </span>
                   )}
                   {lib.isCritical && (
-                    <span className="px-[6px] py-[1px] rounded-full text-[10px] font-semibold text-ld-rose border border-[rgba(242,100,122,.25)] bg-[rgba(242,100,122,.1)] shrink-0">
+                    <span className="px-[6px] py-[1px] rounded-full text-[10px] font-semibold text-ld-rose border border-ld-rose-fill bg-ld-rose-soft shrink-0">
                       Heavy
                     </span>
                   )}

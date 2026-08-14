@@ -110,7 +110,7 @@ function EfficiencySection({ target, competitor }: { target: AnalysisResult; com
             initial={{ width: 0 }}
             animate={{ width: `${cW}%` }}
             transition={{ duration: 0.9, ease: 'easeOut', delay: 0.05 }}
-            className="h-full rounded-[8px] bg-gradient-to-r from-[rgba(230,162,60,0.13)] to-ld-amber"
+            className="h-full rounded-[8px] bg-gradient-to-r from-[var(--ld-amber-soft)] to-ld-amber"
           />
         </div>
       </div>
@@ -120,7 +120,7 @@ function EfficiencySection({ target, competitor }: { target: AnalysisResult; com
         <div className={`flex items-center gap-[11px] mt-5 px-4 py-[14px] rounded-[12px] text-[13.5px] text-ld-text-2 leading-[1.5]
           ${tWins
             ? 'bg-ld-accent-soft border border-ld-accent-line'
-            : 'bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}
+            : 'bg-ld-amber-soft border border-ld-amber-line'}`}
         >
           <Trophy className={`w-[18px] h-[18px] shrink-0 ${SIDE_TEXT[sideOf(tWins)]}`} />
           <span>
@@ -194,7 +194,7 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
           transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.04 }}
           className={`absolute right-0 top-0 h-full rounded-r-full
             ${cWins
-              ? 'bg-gradient-to-l from-[rgba(230,162,60,0.3)] to-ld-amber'
+              ? 'bg-gradient-to-l from-[var(--ld-amber-line)] to-ld-amber'
               : 'bg-ld-amber/20'}`}
         />
         <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-px bg-ld-border-strong" />
@@ -217,7 +217,7 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
           <span className={`text-[9px] font-semibold px-[7px] py-[3px] rounded-[6px] whitespace-nowrap
             ${tWins
               ? 'text-ld-accent-2 bg-ld-accent-soft border border-ld-accent-line'
-              : 'text-ld-amber bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}>
+              : 'text-ld-amber bg-ld-amber-soft border border-ld-amber-line'}`}>
             {tWins ? 'You' : 'Rival'} +{Math.round(Math.abs(row.tNorm - row.cNorm))}pts
           </span>
         ) : (
@@ -305,7 +305,7 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
                   <span className={`text-[9px] font-bold px-[7px] py-[3px] rounded-[6px]
                     ${tWins
                       ? 'text-ld-accent-2 bg-ld-accent-soft border border-ld-accent-line'
-                      : 'text-ld-amber bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}>
+                      : 'text-ld-amber bg-ld-amber-soft border border-ld-amber-line'}`}>
                     {tWins ? 'You win' : 'Rival wins'}
                   </span>
                 </div>
@@ -339,7 +339,7 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
                       transition={{ duration: 0.8, ease: 'easeOut', delay: i * 0.06 }}
                       className={`h-full rounded-r-full
                         ${!tWins
-                          ? 'bg-gradient-to-r from-[rgba(230,162,60,0.3)] to-ld-amber'
+                          ? 'bg-gradient-to-r from-[var(--ld-amber-line)] to-ld-amber'
                           : 'bg-ld-amber/20'}`}
                     />
                   </div>

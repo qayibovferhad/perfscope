@@ -173,8 +173,8 @@ export const InteractionTimeline = memo(function InteractionTimeline({
       .attr('x',      lt => xScale(lt.startMs))
       .attr('width',  lt => Math.max(1, xScale(lt.startMs + lt.durationMs) - xScale(lt.startMs)))
       .attr('y', 0).attr('height', innerH)
-      .attr('fill',         'rgba(242,100,122,0.07)')
-      .attr('stroke',       'rgba(242,100,122,0.18)')
+      .attr('fill',         'var(--ld-rose-wash)')
+      .attr('stroke',       'var(--ld-rose-fill)')
       .attr('stroke-width', 0.5);
 
     zoneG.filter(lt => xScale(lt.startMs + lt.durationMs) - xScale(lt.startMs) > 46)
@@ -186,8 +186,8 @@ export const InteractionTimeline = memo(function InteractionTimeline({
     zoneG
       .on('mouseenter', function(event: MouseEvent, lt: LongTaskSegment) {
         d3.select(this).select<SVGRectElement>('.blocking-rect')
-          .attr('fill', 'rgba(242,100,122,0.20)')
-          .attr('stroke', 'rgba(242,100,122,0.45)');
+          .attr('fill', 'var(--ld-rose-fill)')
+          .attr('stroke', 'var(--ld-rose-strong)');
         tip.style.display = 'block';
         tip.style.left    = `${Math.min(event.clientX + 14, window.innerWidth - 220)}px`;
         tip.style.top     = `${Math.max(event.clientY - 70, 4)}px`;
@@ -209,8 +209,8 @@ export const InteractionTimeline = memo(function InteractionTimeline({
       })
       .on('mouseleave', function() {
         d3.select(this).select<SVGRectElement>('.blocking-rect')
-          .attr('fill',   'rgba(242,100,122,0.07)')
-          .attr('stroke', 'rgba(242,100,122,0.18)');
+          .attr('fill',   'var(--ld-rose-wash)')
+          .attr('stroke', 'var(--ld-rose-fill)');
         tip.style.display = 'none';
       })
       .on('click', (_: MouseEvent, lt: LongTaskSegment) => {
@@ -378,13 +378,13 @@ export const InteractionTimeline = memo(function InteractionTimeline({
         {(showWarnBanner || showCritBanner) && (
           <div className="px-[18px] pt-[14px] space-y-[8px]">
             {showWarnBanner && (
-              <div className="flex items-center gap-[11px] px-[15px] py-[13px] rounded-[12px] text-[13.5px] font-medium text-ld-amber bg-[rgba(230,162,60,.08)] border border-[rgba(230,162,60,.25)]">
+              <div className="flex items-center gap-[11px] px-[15px] py-[13px] rounded-[12px] text-[13.5px] font-medium text-ld-amber bg-ld-amber-wash border border-ld-amber-fill">
                 <AlertTriangle className="w-[18px] h-[18px] shrink-0" />
                 <span>High main-thread blocking detected — the UI may feel laggy during load.</span>
               </div>
             )}
             {showCritBanner && (
-              <div className="flex items-center gap-[11px] px-[15px] py-[13px] rounded-[12px] text-[13.5px] font-medium text-ld-rose bg-[rgba(242,100,122,.07)] border border-[rgba(242,100,122,.25)]">
+              <div className="flex items-center gap-[11px] px-[15px] py-[13px] rounded-[12px] text-[13.5px] font-medium text-ld-rose bg-ld-rose-wash border border-ld-rose-fill">
                 <CircleAlert className="w-[18px] h-[18px] shrink-0" />
                 <span>Critical interaction delay found — user clicks are being held up by long tasks.</span>
               </div>
@@ -426,7 +426,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
             {/* Legend */}
             <div className="flex items-center gap-[14px] px-[14px] pt-[14px] pb-[8px] flex-wrap">
               {[
-                { label: 'Long Task', cls: 'bg-[rgba(242,100,122,.4)] rounded-[2px]' },
+                { label: 'Long Task', cls: 'bg-ld-rose-strong rounded-[2px]' },
                 { label: '<100ms',    cls: 'bg-ld-accent rounded-full'               },
                 { label: '100–300ms', cls: 'bg-ld-amber rounded-full'                },
                 { label: '>300ms',    cls: 'bg-ld-rose rounded-full'                 },
@@ -465,7 +465,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
                     </span>
                   )}
                   {selected.isINP && (
-                    <span className="text-[11px] font-semibold px-[8px] py-[2px] rounded-full text-ld-rose bg-[rgba(242,100,122,.1)] border border-[rgba(242,100,122,.25)]">
+                    <span className="text-[11px] font-semibold px-[8px] py-[2px] rounded-full text-ld-rose bg-ld-rose-soft border border-ld-rose-fill">
                       INP
                     </span>
                   )}
@@ -506,7 +506,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
                     <Code2 className="w-[13px] h-[13px] text-ld-text-3 mt-[1px] shrink-0" />
                     <div>
                       <span className="text-ld-text-3">Blocking script: </span>
-                      <code className="font-mono text-[11px] text-ld-amber bg-[rgba(230,162,60,.1)] px-[4px] py-[1px] rounded-[4px] break-all">
+                      <code className="font-mono text-[11px] text-ld-amber bg-ld-amber-soft px-[4px] py-[1px] rounded-[4px] break-all">
                         {selected.blockingFunctionName}
                       </code>
                     </div>

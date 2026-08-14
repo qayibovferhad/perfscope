@@ -24,7 +24,7 @@ const buttonVariants = cva(
         // Tinted, not solid: "something is wrong here" as a state pill, where solid
         // `destructive` is the commit button of a delete dialog.
         "destructive-soft":
-          "border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)] text-[var(--ld-rose)] hover:bg-[rgba(242,100,122,.14)]",
+          "border border-ld-rose-line bg-ld-rose-wash text-[var(--ld-rose)] hover:bg-ld-rose-soft",
         // Flat accent fill for dense toolbars where the gradient default is too loud.
         "accent-flat":
           "bg-[var(--ld-accent)] text-[#04130d] font-bold hover:opacity-90",

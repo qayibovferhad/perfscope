@@ -610,7 +610,7 @@ export function TimelineWaterfall({
         {flameChartData && flameChartData.events.length > 0 && (
           <div className="border-t border-ld-border">
             <div className="flex items-center gap-[10px] px-[18px] py-[12px] border-b border-ld-border">
-              <span className="w-[28px] h-[28px] rounded-[7px] grid place-items-center border shrink-0 text-ld-amber bg-[rgba(230,162,60,.12)] border-[rgba(230,162,60,.3)]">
+              <span className="w-[28px] h-[28px] rounded-[7px] grid place-items-center border shrink-0 text-ld-amber bg-ld-amber-soft border-ld-amber-line">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>

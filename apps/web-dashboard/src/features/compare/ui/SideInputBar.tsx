@@ -59,7 +59,7 @@ export function SideInputBar({
         inherit. Kept a sibling of the themed card; Modal additionally portals to <body>. */}
     <div
       className={`relative rounded-[16px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card
-        ${rival ? '[--ld-accent:var(--ld-amber)] [--ld-accent-soft:rgba(230,162,60,0.13)] [--ld-accent-line:rgba(230,162,60,0.34)]' : ''}`}
+        ${rival ? '[--ld-accent:var(--ld-amber)] [--ld-accent-soft:var(--ld-amber-soft)] [--ld-accent-line:var(--ld-amber-line)]' : ''}`}
     >
       {/* ── 3px top accent bar ─────────────────────────────────────────────── */}
       <div

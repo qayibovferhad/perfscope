@@ -52,7 +52,7 @@ function StatCard({ label, value, valueClass }: {
 
 function WarnChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-amber border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.08)]">
+    <span className="inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-amber border-ld-amber-line bg-ld-amber-wash">
       <span className="w-[7px] h-[7px] rounded-full bg-[currentColor] shrink-0" />
       {icon}
       {label}

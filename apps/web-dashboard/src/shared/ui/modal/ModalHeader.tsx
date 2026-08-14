@@ -8,7 +8,7 @@ interface ModalHeaderProps {
 
 const TONE_CLS: Record<'accent' | 'danger', string> = {
   accent: 'bg-ld-grad shadow-ld-glow',
-  danger: 'bg-ld-rose shadow-[0_0_28px_rgba(242,100,122,0.38)]',
+  danger: 'bg-ld-rose shadow-[0_0_28px_var(--ld-rose-strong)]',
 };
 
 export function ModalHeader({ icon, title, subtitle, tone = 'accent' }: ModalHeaderProps) {

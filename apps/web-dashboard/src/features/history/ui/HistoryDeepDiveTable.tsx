@@ -159,7 +159,7 @@ function StatusBadge({ status }: { status: RowStatus }) {
   }
   if (status === 'regression') {
     return (
-      <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)] text-ld-rose">
+      <span className="inline-flex items-center gap-[6px] text-[11.5px] font-semibold px-[11px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash text-ld-rose">
         <AlertTriangle className="w-[12px] h-[12px]" /> Regression
       </span>
     );
@@ -362,7 +362,7 @@ export function HistoryDeepDiveTable({
                       key={entry.id}
                       className={`border-b border-ld-border transition-[background] duration-[150ms] ${
                         isRegRow
-                          ? 'bg-[rgba(242,100,122,.05)] hover:bg-[rgba(242,100,122,.09)]'
+                          ? 'bg-ld-rose-wash hover:bg-ld-rose-wash'
                           : 'hover:bg-ld-surface-2'
                       }`}
                     >

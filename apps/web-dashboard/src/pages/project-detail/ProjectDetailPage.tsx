@@ -230,8 +230,8 @@ export function ProjectDetailPage() {
               const cls = band === 'good'
                 ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft [data-theme=light]_:text-ld-accent'
                 : band === 'warn'
-                ? 'text-ld-amber border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)]'
-                : 'text-ld-rose border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.1)]';
+                ? 'text-ld-amber border-ld-amber-line bg-ld-amber-soft'
+                : 'text-ld-rose border-ld-rose-line bg-ld-rose-soft';
               return (
                 <span className={`inline-flex items-center gap-[8px] text-[13px] font-semibold px-[14px] py-[8px] rounded-full border ${cls}`}>
                   <b className="font-mono font-bold">{s}</b>
@@ -272,7 +272,7 @@ export function ProjectDetailPage() {
         {/* Last audit was redirected to a login screen — the scores below describe that
             screen, not the page that was asked for. */}
         {website?.requiresLogin && (
-          <div className="flex items-start gap-[12px] px-[16px] py-[13px] rounded-[13px] border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.08)]">
+          <div className="flex items-start gap-[12px] px-[16px] py-[13px] rounded-[13px] border border-ld-amber-line bg-ld-amber-wash">
             <ShieldAlert className="w-[17px] h-[17px] text-ld-amber shrink-0 mt-[1px]" />
             <div className="flex-1 min-w-0">
               <p className="text-[13.5px] font-semibold text-ld-text">This site requires login</p>

@@ -32,7 +32,7 @@ function Gauge({ score, side }: { score: number; side: 'you' | 'rival' }) {
             'transition-[stroke-dashoffset] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
             isYou
               ? 'stroke-ld-accent drop-shadow-[0_0_8px_var(--ld-accent-soft)]'
-              : 'stroke-ld-amber  drop-shadow-[0_0_8px_rgba(230,162,60,0.13)]',
+              : 'stroke-ld-amber  drop-shadow-[0_0_8px_var(--ld-amber-soft)]',
           ].join(' ')}
         />
       </svg>
@@ -67,7 +67,7 @@ function WinnerPill({ wins, tied, side }: { wins: boolean; tied: boolean; side: 
     <span className={`inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold tracking-[.08em] uppercase mt-[10px] px-[12px] py-[5px] rounded-full border
       ${isYou
         ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
-        : 'text-ld-amber border-[rgba(230,162,60,0.34)] bg-[rgba(230,162,60,0.13)]'}`}
+        : 'text-ld-amber border-ld-amber-line bg-ld-amber-soft'}`}
     >
       <Trophy className="w-[13px] h-[13px]" />
       Overall winner
@@ -116,7 +116,7 @@ function MetricBar({ abbr, label, tVal, cVal, fmt }: {
         />
         {/* Rival bar — grows rightward from center */}
         <div
-          className="absolute left-1/2 h-[10px] rounded-[5px] ml-[1.5px] bg-gradient-to-r from-ld-amber to-[rgba(230,162,60,0.13)]"
+          className="absolute left-1/2 h-[10px] rounded-[5px] ml-[1.5px] bg-gradient-to-r from-ld-amber to-[var(--ld-amber-soft)]"
           style={{ width: `${rivalW}%` }}
         />
       </div>
@@ -139,7 +139,7 @@ function MetricBar({ abbr, label, tVal, cVal, fmt }: {
             You lead
           </span>
         ) : cLeads ? (
-          <span className="font-mono text-[10.5px] font-semibold px-[9px] py-[4px] rounded-full border border-[rgba(230,162,60,0.34)] bg-[rgba(230,162,60,0.13)] text-ld-amber whitespace-nowrap">
+          <span className="font-mono text-[10.5px] font-semibold px-[9px] py-[4px] rounded-full border border-ld-amber-line bg-ld-amber-soft text-ld-amber whitespace-nowrap">
             Rival leads
           </span>
         ) : null}

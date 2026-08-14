@@ -40,7 +40,7 @@ export function RumPulseCard({ rum, className }: { rum: OverviewRum | null; clas
             </div>
 
             {rum.sitesReporting === 0 && (
-              <p className="flex items-start gap-[8px] text-[12px] text-ld-amber leading-[1.5] rounded-[10px] border border-[rgba(230,162,60,0.28)] bg-[rgba(230,162,60,0.08)] px-[12px] py-[10px]">
+              <p className="flex items-start gap-[8px] text-[12px] text-ld-amber leading-[1.5] rounded-[10px] border border-ld-amber-line bg-ld-amber-wash px-[12px] py-[10px]">
                 <AlertTriangle className="w-[13px] h-[13px] shrink-0 mt-[2px]" />
                 A key was issued but nothing has arrived — the snippet is probably not on
                 the page yet.

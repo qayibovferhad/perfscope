@@ -84,7 +84,7 @@ export function AnalyzerResultsPanel({ data }: Props) {
       {/* A wide spread means the page itself measures unreliably — say so instead of
           letting the reader treat one number as exact. */}
       {measurement && measurement.spread >= NOISY_SPREAD && (
-        <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm border border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.08)] text-ld-amber">
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm border border-ld-amber-line bg-ld-amber-wash text-ld-amber">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             This page measures unevenly — the {measurement.runs} runs scored{' '}

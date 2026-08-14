@@ -62,7 +62,7 @@ function LcpDot({ cx, cy, index, rows, hoveredIdx }: {
     const anchor = index === rows.length - 1 ? 'end' : index === 0 ? 'start' : 'middle';
     return (
       <g>
-        <circle cx={cx} cy={cy} r={13} fill="rgba(242,100,122,0.14)" />
+        <circle cx={cx} cy={cy} r={13} fill="var(--ld-rose-soft)" />
         <circle cx={cx} cy={cy} r={6.5} fill={CHART.rose} />
         <text
           x={cx} y={cy - 20} textAnchor={anchor} fill={CHART.rose}

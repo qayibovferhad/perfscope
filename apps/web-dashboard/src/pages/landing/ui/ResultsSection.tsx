@@ -109,8 +109,8 @@ export function ResultsSection() {
             gaugeStroke="var(--ld-rose)"
             gaugeDashoffset={120}
             metrics={[{ v: '0.45', l: 'CLS' }, { v: '4.8s', l: 'LCP' }, { v: '820ms', l: 'TBT' }]}
-            metricBorder="rgba(242,100,122,.35)"
-            metricBg="rgba(242,100,122,.1)"
+            metricBorder="var(--ld-rose-line)"
+            metricBg="var(--ld-rose-soft)"
             borderClass="border-[var(--ld-border)]"
           />
 

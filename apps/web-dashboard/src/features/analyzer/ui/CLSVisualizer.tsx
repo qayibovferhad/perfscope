@@ -11,12 +11,14 @@ import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/en
 import { fmtSec2, fmtCls } from '@/shared/lib/format';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-// ld-rose dark: #f2647a — used in SVG/rgba contexts where CSS vars can't reach.
+// Steps of the rose scale, named for what this chart uses them as. A previous comment
+// here claimed CSS vars "can't reach" SVG contexts — they do: an SVG presentation
+// attribute is parsed as a CSS value, so var() resolves and follows the theme. Verified.
 
-const ROSE_HEX = '#f2647a';
-const ROSE_A   = 'rgba(242,100,122,0.35)';
-const ROSE_G   = 'rgba(242,100,122,0.18)';
-const ROSE_B   = 'rgba(242,100,122,0.55)';
+const ROSE     = 'var(--ld-rose)';
+const ROSE_A   = 'var(--ld-rose-line)';
+const ROSE_G   = 'var(--ld-rose-fill)';
+const ROSE_B   = 'var(--ld-rose-strong)';
 
 const PREVIEW_W = 380;
 const PREVIEW_H = 264;
@@ -59,8 +61,8 @@ function CLSChip({ score }: { score: number }) {
   if (score < 0.1)
     return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-[var(--ld-accent-2)] border-ld-accent-line bg-ld-accent-soft">GOOD</span>;
   if (score < 0.25)
-    return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-amber border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.1)]">NEEDS WORK</span>;
-  return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-rose border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.1)]">POOR</span>;
+    return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-amber border-ld-amber-line bg-ld-amber-soft">NEEDS WORK</span>;
+  return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-rose border-ld-rose-line bg-ld-rose-soft">POOR</span>;
 }
 
 // ─── Culprit issue card ───────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ const CulpritItem = memo(function CulpritItem({
       onMouseLeave={() => onHover(null)}
       className={cn(
         'p-[14px] rounded-[12px] border bg-ld-surface-2 transition-all duration-150',
-        isHovered ? 'border-[rgba(242,100,122,.4)]' : 'border-ld-border',
+        isHovered ? 'border-ld-rose-strong' : 'border-ld-border',
         isLow && 'opacity-70',
       )}
       style={{ boxShadow: isHovered ? `0 0 16px ${ROSE_G}, inset 0 0 8px ${ROSE_G}` : 'none' }}
@@ -110,7 +112,7 @@ const CulpritItem = memo(function CulpritItem({
         </span>
         <div className="flex-1 h-[4px] rounded-full overflow-hidden bg-ld-border">
           <motion.div
-            className="h-full rounded-full [background:linear-gradient(90deg,rgba(242,100,122,0.35),#f2647a)]"
+            className="h-full rounded-full [background:linear-gradient(90deg,var(--ld-rose-line),var(--ld-rose))]"
             initial={{ width: 0 }}
             animate={{ width: `${Math.min(element.score / 0.1, 1) * 100}%` }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -123,7 +125,7 @@ const CulpritItem = memo(function CulpritItem({
         'flex gap-[6px] rounded-[8px] p-[8px]',
         isLow
           ? 'bg-[rgba(111,130,120,.08)] border border-[rgba(111,130,120,.18)]'
-          : 'bg-[rgba(242,100,122,.06)] border border-[rgba(242,100,122,.12)]',
+          : 'bg-ld-rose-wash border border-ld-rose-soft',
       )}>
         <Zap className={cn('w-[12px] h-[12px] shrink-0 mt-[1px]', isLow ? 'text-ld-text-3' : 'text-ld-rose')} />
         <p className={cn('text-[12px] leading-snug', isLow ? 'text-ld-text-3' : 'text-ld-text-2')}>
@@ -170,7 +172,7 @@ function FramePreview({
       <div
         className="relative overflow-hidden rounded-[10px] border bg-ld-surface aspect-[380/264] transition-[box-shadow,border-color] duration-[250ms]"
         style={{
-          borderColor: hoveredElement ? ROSE_HEX : 'var(--ld-border)',
+          borderColor: hoveredElement ? ROSE : 'var(--ld-border)',
           boxShadow:   hoveredElement ? `0 0 24px ${ROSE_B}` : 'none',
         }}
       >
@@ -204,7 +206,7 @@ function FramePreview({
         {/* SVG heatmap overlay */}
         {hasRect && hoveredElement?.rect && (
           <svg
-            className="absolute inset-0 w-full h-full pointer-events-none [filter:drop-shadow(0_0_8px_rgba(242,100,122,0.55))]"
+            className="absolute inset-0 w-full h-full pointer-events-none [filter:drop-shadow(0_0_8px_var(--ld-rose-strong))]"
             viewBox={`0 0 ${PREVIEW_W} ${PREVIEW_H}`}
             preserveAspectRatio="xMidYMid meet"
           >
@@ -214,7 +216,7 @@ function FramePreview({
               y={hoveredElement.rect.topPct    * PREVIEW_H}
               width={hoveredElement.rect.widthPct  * PREVIEW_W}
               height={hoveredElement.rect.heightPct * PREVIEW_H}
-              fill={ROSE_A} stroke={ROSE_HEX} strokeWidth={2.5} rx={3}
+              fill={ROSE_A} stroke={ROSE} strokeWidth={2.5} rx={3}
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
@@ -225,7 +227,7 @@ function FramePreview({
               y={hoveredElement.rect.topPct    * PREVIEW_H - 4}
               width={hoveredElement.rect.widthPct  * PREVIEW_W + 8}
               height={hoveredElement.rect.heightPct * PREVIEW_H + 8}
-              fill="none" stroke={ROSE_HEX} strokeWidth={1} rx={6}
+              fill="none" stroke={ROSE} strokeWidth={1} rx={6}
               strokeDasharray="6 4"
               animate={{ opacity: [0.8, 0.2, 0.8], strokeDashoffset: [0, -20] }}
               transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
@@ -240,7 +242,7 @@ function FramePreview({
             animate={{ opacity: 1 }}
             className="absolute inset-0 flex items-center justify-center p-[24px] pointer-events-none"
           >
-            <div className="px-[16px] py-[10px] rounded-[12px] text-center bg-ld-surface border border-[rgba(242,100,122,.2)] shadow-ld-shadow-card">
+            <div className="px-[16px] py-[10px] rounded-[12px] text-center bg-ld-surface border border-ld-rose-fill shadow-ld-shadow-card">
               <p className="text-[10px] font-medium text-ld-text-3">
                 Visual coordinates unavailable for this element
               </p>
@@ -268,7 +270,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
   const fillPct = totalCls > 0 ? Math.min((currentCls / totalCls) * 100, 100) : 0;
 
   return (
-    <div className="rounded-[12px] border border-[rgba(242,100,122,.18)] bg-[rgba(242,100,122,.05)] px-[12px] py-[10px] space-y-[8px]">
+    <div className="rounded-[12px] border border-ld-rose-fill bg-ld-rose-wash px-[12px] py-[10px] space-y-[8px]">
       <div className="flex items-center justify-between flex-wrap gap-[8px]">
         <span className="font-mono text-[11px] font-semibold uppercase tracking-[.1em] text-ld-text-3">
           Cumulative CLS
@@ -282,7 +284,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
       </div>
       <div className="h-[6px] rounded-full overflow-hidden bg-ld-border">
         <motion.div
-          className="h-full rounded-full [background:linear-gradient(90deg,rgba(242,100,122,0.35),#f2647a)] [box-shadow:0_0_8px_rgba(242,100,122,0.55)]"
+          className="h-full rounded-full [background:linear-gradient(90deg,var(--ld-rose-line),var(--ld-rose))] [box-shadow:0_0_8px_var(--ld-rose-strong)]"
           animate={{ width: `${fillPct}%` }}
           transition={{ duration: 0.10, ease: 'linear' }}
         />
@@ -330,7 +332,7 @@ function ShiftScrubber({
               className={cn(
                 'relative rounded-[6px] border shrink-0 overflow-hidden bg-ld-surface transition-all duration-100 w-[58px] h-[42px]',
                 isActive     ? 'border-ld-accent-line [box-shadow:0_0_0_1px_var(--ld-accent-soft)]' :
-                isShiftFrame ? 'border-[rgba(242,100,122,.4)]' :
+                isShiftFrame ? 'border-ld-rose-strong' :
                                'border-ld-border',
               )}
             >
@@ -345,7 +347,7 @@ function ShiftScrubber({
               )}
               <div
                 className="absolute bottom-0 inset-x-0 text-center font-mono text-[7px] bg-[rgba(0,0,0,.72)] py-[1px]"
-                style={{ color: isActive ? ROSE_HEX : 'rgba(255,255,255,.35)' }}
+                style={{ color: isActive ? ROSE : 'rgba(255,255,255,.35)' }}
               >
                 {(frame.timing / 1000).toFixed(1)}s
               </div>
@@ -425,9 +427,9 @@ export function CLSVisualizer({
         shakeControls.start({
           x: [0, -9, 9, -6, 6, -3, 3, 0],
           filter: [
-            `drop-shadow(0 0 0px rgba(242,100,122,0))`,
+            `drop-shadow(0 0 0px transparent)`,
             `drop-shadow(0 0 28px ${ROSE_B})`,
-            `drop-shadow(0 0 0px rgba(242,100,122,0))`,
+            `drop-shadow(0 0 0px transparent)`,
           ],
           transition: { duration: 0.50, ease: 'easeOut' },
         });

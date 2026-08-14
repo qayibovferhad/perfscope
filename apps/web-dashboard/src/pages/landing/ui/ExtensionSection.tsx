@@ -106,7 +106,7 @@ export function ExtensionSection() {
                           className={`font-mono text-[10.5px] px-2 py-1 rounded-[7px] font-semibold ${
                             good
                               ? 'text-[var(--ld-accent-2)] border border-[rgba(20,192,138,.25)] bg-[var(--ld-accent-soft)]'
-                              : 'text-[var(--ld-amber)] border border-[rgba(230,162,60,.3)] bg-[rgba(230,162,60,.1)]'
+                              : 'text-[var(--ld-amber)] border border-ld-amber-line bg-ld-amber-soft'
                           }`}
                         >
                           {t}

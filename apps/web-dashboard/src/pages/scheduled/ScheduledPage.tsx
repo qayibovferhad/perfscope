@@ -20,8 +20,8 @@ function AvgBadge({ score }: { score: number }) {
   const cls = band === 'good'
     ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
     : band === 'warn'
-    ? 'text-ld-amber border-[rgba(230,162,60,0.3)] bg-[rgba(230,162,60,0.1)]'
-    : 'text-ld-rose border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.1)]';
+    ? 'text-ld-amber border-ld-amber-line bg-ld-amber-soft'
+    : 'text-ld-rose border-ld-rose-line bg-ld-rose-soft';
 
   return (
     <span className={`inline-flex items-center gap-[8px] text-[13px] font-semibold px-[14px] py-[8px] rounded-full border ${cls}`}>

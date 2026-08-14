@@ -35,8 +35,8 @@ export const METRICS_CFG = [
   },
   {
     key: 'tti' as const, label: 'TTI',
-    chipCls:  'text-ld-amber border border-[rgba(230,162,60,.30)] bg-[rgba(230,162,60,.08)]',
-    labelCls: 'text-ld-amber border border-[rgba(230,162,60,.40)] bg-ld-surface',
+    chipCls:  'text-ld-amber border border-ld-amber-line bg-ld-amber-wash',
+    labelCls: 'text-ld-amber border border-ld-amber-strong bg-ld-surface',
     lineCls:  'bg-ld-amber',
   },
 ] as const;

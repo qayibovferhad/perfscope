@@ -49,8 +49,8 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeMeta> = {
   },
   font: {
     label: 'FONT', icon: Type,
-    bar: 'var(--ld-amber)', wait: 'rgba(230,162,60,0.4)',
-    text: 'var(--ld-amber)', tint: 'rgba(230,162,60,.1)', line: 'rgba(230,162,60,.3)',
+    bar: 'var(--ld-amber)', wait: 'var(--ld-amber-strong)',
+    text: 'var(--ld-amber)', tint: 'var(--ld-amber-soft)', line: 'var(--ld-amber-line)',
   },
   document: {
     label: 'DOC', icon: FileCode2,

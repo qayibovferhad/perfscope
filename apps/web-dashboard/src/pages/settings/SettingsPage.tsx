@@ -124,7 +124,7 @@ function DigestSection() {
           </div>
         )}
 
-        {serverErr && <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>}
+        {serverErr && <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>}
         {saved && !serverErr && (
           <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
             <CheckCircle2 className="w-4 h-4" /> Saved
@@ -194,7 +194,7 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
         </div>
 
         {serverErr && (
-          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>
+          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>
         )}
 
         <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ function PasswordSection() {
         </div>
 
         {serverErr && (
-          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">{serverErr}</p>
+          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>
         )}
 
         <div className="flex items-center gap-3">

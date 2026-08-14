@@ -201,7 +201,7 @@ function DepRow({ row, maxTransfer, isFirst }: { row: FlatRow; maxTransfer: numb
         'dep-chain-grid items-center px-[12px] py-[9px] rounded-[10px] transition-colors',
         !isFirst && 'border-t border-ld-border',
         isRoot     && 'bg-[rgba(20,192,138,.05)]',
-        isCritical && 'bg-[rgba(242,100,122,.04)]',
+        isCritical && 'bg-ld-rose-wash',
         !isRoot && !isCritical && 'hover:bg-ld-surface-hover',
       )}
       style={{ display: 'grid', gridTemplateColumns: '1fr 130px 76px 70px', gap: 12 }}
@@ -326,7 +326,7 @@ export const ResourceDependencyChain = memo(function ResourceDependencyChain({ g
     <Panel>
       <PanelHeader icon={<GitBranch />} title="Resource Dependency Chain" meta="Critical request chains">
         {critMs > 0 && (
-          <span className="inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border shrink-0 text-ld-rose border-[rgba(242,100,122,.3)]">
+          <span className="inline-flex items-center gap-[6px] font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border shrink-0 text-ld-rose border-ld-rose-line">
             <span className="w-[7px] h-[7px] rounded-full bg-current shrink-0" />
             Longest chain {fmtMs(critMs)}
           </span>
@@ -384,7 +384,7 @@ export const ResourceDependencyChain = memo(function ResourceDependencyChain({ g
 
         {/* Insight footer */}
         {critLastNode && (
-          <div className="flex items-center gap-[9px] px-[15px] py-[12px] rounded-[12px] border bg-[rgba(242,100,122,.06)] border-[rgba(242,100,122,.22)]">
+          <div className="flex items-center gap-[9px] px-[15px] py-[12px] rounded-[12px] border bg-ld-rose-wash border-ld-rose-fill">
             <AlertTriangle className="w-[17px] h-[17px] shrink-0 text-ld-rose" />
             <p className="text-[13px] text-ld-text-2">
               <b className="text-ld-text font-semibold">{critLastNode.label}</b>

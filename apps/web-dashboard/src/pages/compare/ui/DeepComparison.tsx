@@ -115,8 +115,8 @@ function MirrorRow({
             transition={{ duration: 0.8, ease: 'easeOut', delay: delay + 0.1 }}
             className={`h-full rounded-r-full
               ${cWins
-                ? 'bg-gradient-to-r from-ld-amber to-[rgba(230,162,60,0.13)]'
-                : 'bg-[rgba(230,162,60,0.13)]'}`}
+                ? 'bg-gradient-to-r from-ld-amber to-[var(--ld-amber-soft)]'
+                : 'bg-ld-amber-soft'}`}
           />
         </div>
       </div>
@@ -133,7 +133,7 @@ function MirrorRow({
           <span className={`text-[9px] font-bold px-[7px] py-[3px] rounded-[6px] whitespace-nowrap
             ${tWins
               ? 'text-ld-accent-2 bg-ld-accent-soft border border-ld-accent-line'
-              : 'text-ld-amber bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}>
+              : 'text-ld-amber bg-ld-amber-soft border border-ld-amber-line'}`}>
             {tWins ? 'You' : 'Rival'} · {badge}
           </span>
         ) : (
@@ -317,7 +317,7 @@ function OversizedResources({
               <span className={`text-[9px] font-bold px-[7px] py-[3px] rounded-[6px] whitespace-nowrap justify-self-end
                 ${isTarget
                   ? 'text-ld-accent-2 bg-ld-accent-soft border border-ld-accent-line'
-                  : 'text-ld-amber bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}>
+                  : 'text-ld-amber bg-ld-amber-soft border border-ld-amber-line'}`}>
                 {isTarget ? '← Your Site' : 'Competitor →'}
               </span>
             </motion.div>

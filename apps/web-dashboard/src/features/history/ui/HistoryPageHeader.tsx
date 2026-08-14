@@ -54,7 +54,7 @@ export function HistoryPageHeader({ url, entries }: Props) {
           <h2 className="text-[18px] font-bold tracking-[-0.01em] text-ld-text leading-none flex items-center gap-[10px] flex-wrap">
             {hostname}
             {regCount > 0 && (
-              <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-[rgba(242,100,122,0.3)] bg-[rgba(242,100,122,0.08)]">
+              <span className="inline-flex items-center gap-[6px] text-[12px] font-semibold text-ld-rose px-[11px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash">
                 <AlertTriangle className="w-[13px] h-[13px]" />
                 {regCount} regression{regCount > 1 ? 's' : ''}
               </span>

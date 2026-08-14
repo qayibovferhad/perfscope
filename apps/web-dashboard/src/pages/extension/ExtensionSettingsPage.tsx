@@ -86,7 +86,7 @@ export function ExtensionSettingsPage() {
         </div>
 
         {/* Amber tip */}
-        <div className="flex gap-3 items-start mt-[22px] px-4 py-[14px] rounded-[12px] bg-[rgba(230,162,60,0.08)] border border-[rgba(230,162,60,0.3)]">
+        <div className="flex gap-3 items-start mt-[22px] px-4 py-[14px] rounded-[12px] bg-ld-amber-wash border border-ld-amber-line">
           <Lightbulb className="w-[18px] h-[18px] text-ld-amber shrink-0 mt-[1px]" />
           <p className="text-[13px] text-ld-text-2 leading-[1.55]">
             After a PerfScope update, download again and reload the extension in{' '}

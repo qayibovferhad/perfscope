@@ -19,7 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           'group flex items-center gap-[10px] px-[14px] rounded-[12px] border bg-ld-bg-2 transition-all duration-200',
           wrapperClassName,
           error
-            ? 'border-ld-rose shadow-[0_0_0_4px_rgba(242,100,122,0.13)]'
+            ? 'border-ld-rose shadow-[0_0_0_4px_var(--ld-rose-soft)]'
             : 'border-ld-border-strong focus-within:border-ld-accent focus-within:shadow-[0_0_0_4px_var(--ld-accent-soft)]',
         )}>
           {icon && (
@@ -50,7 +50,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         className={cn(
           'flex h-10 w-full rounded-[12px] border border-ld-border-strong bg-ld-bg-2 px-[14px] py-3 text-[14.5px] text-ld-text placeholder:text-ld-text-3 outline-none transition-all duration-200',
           'focus:border-ld-accent focus:shadow-[0_0_0_4px_var(--ld-accent-soft)]',
-          error && 'border-ld-rose shadow-[0_0_0_4px_rgba(242,100,122,0.13)]',
+          error && 'border-ld-rose shadow-[0_0_0_4px_var(--ld-rose-soft)]',
           mono && 'font-mono',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className,

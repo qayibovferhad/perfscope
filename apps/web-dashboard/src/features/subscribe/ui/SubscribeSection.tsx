@@ -44,7 +44,7 @@ export function SubscribeSection() {
                     className={[
                       'flex-1 flex items-center gap-[9px] px-[14px] rounded-xl bg-white/[.92] min-w-[200px] transition-[box-shadow,border-color] duration-200',
                       invalid
-                        ? 'border border-[var(--ld-rose)] shadow-[0_0_0_4px_rgba(242,100,122,.14)]'
+                        ? 'border border-[var(--ld-rose)] shadow-[0_0_0_4px_var(--ld-rose-soft)]'
                         : 'border border-transparent',
                     ].join(' ')}
                   >

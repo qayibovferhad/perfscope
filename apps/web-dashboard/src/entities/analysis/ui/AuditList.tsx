@@ -64,9 +64,9 @@ function IssueRow({
         <span className={cn(
           'w-[30px] h-[30px] rounded-[8px] grid place-items-center shrink-0',
           tier === 'high'
-            ? 'text-ld-rose   bg-[rgba(242,100,122,.1)] border border-[rgba(242,100,122,.25)]'
+            ? 'text-ld-rose   bg-ld-rose-soft border border-ld-rose-fill'
             : tier === 'warn'
-            ? 'text-ld-amber  bg-[rgba(230,162,60,.1)]  border border-[rgba(230,162,60,.25)]'
+            ? 'text-ld-amber  bg-ld-amber-soft  border border-ld-amber-fill'
             : 'text-ld-text-3 bg-ld-surface-2            border border-ld-border',
         )}>
           {tier === 'high'
@@ -154,7 +154,7 @@ export function AuditList({ audits }: { audits: AuditItem[] }) {
 
         {/* Critical count pill */}
         {critCount > 0 ? (
-          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-ld-rose border border-[rgba(242,100,122,.3)] bg-[rgba(242,100,122,.08)]">
+          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-ld-rose border border-ld-rose-line bg-ld-rose-wash">
             <TriangleAlert className="w-[13px] h-[13px]" />
             {critCount} critical
           </span>

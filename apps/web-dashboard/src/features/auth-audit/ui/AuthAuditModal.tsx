@@ -148,7 +148,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
                 </div>
 
                 {error && (
-                  <p className="text-xs text-ld-rose bg-[rgba(242,100,122,.1)] px-3 py-2 rounded-[10px]">
+                  <p className="text-xs text-ld-rose bg-ld-rose-soft px-3 py-2 rounded-[10px]">
                     {error}
                   </p>
                 )}
@@ -187,7 +187,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
                   size="icon-sm"
                   onClick={handleEndSession}
                   title="End session"
-                  className="hover:text-ld-rose hover:bg-[rgba(242,100,122,.1)]"
+                  className="hover:text-ld-rose hover:bg-ld-rose-soft"
                 >
                   <LogOut />
                 </Button>

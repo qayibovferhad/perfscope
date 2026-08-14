@@ -136,7 +136,7 @@ function CompareRow({
       <div className="flex items-center gap-[10px] min-w-0">
         <span
           className="w-[9px] h-[9px] rounded-full shrink-0"
-          style={{ background: 'var(--ld-amber)', boxShadow: '0 0 0 3px rgba(230,162,60,.14)' }}
+          style={{ background: 'var(--ld-amber)', boxShadow: '0 0 0 3px var(--ld-amber-soft)' }}
         />
         <div className="min-w-0">
           <b className="block text-[14px] font-semibold text-ld-text truncate">{entry.targetHostname}</b>
@@ -144,7 +144,7 @@ function CompareRow({
         </div>
         <span
           className="font-mono text-[9px] font-semibold tracking-[.08em] px-[7px] py-[2px] rounded-[5px] shrink-0"
-          style={{ color: 'var(--ld-amber)', background: 'rgba(230,162,60,.12)' }}
+          style={{ color: 'var(--ld-amber)', background: 'var(--ld-amber-soft)' }}
         >
           RIVAL
         </span>
@@ -185,7 +185,7 @@ function CompareRow({
       ) : (
         <div
           className="inline-flex items-center gap-[7px] font-mono text-[11px] font-semibold tracking-[.04em] px-[12px] py-[6px] rounded-full justify-self-end whitespace-nowrap max-[820px]:[grid-column:1/-1] max-[820px]:justify-self-start"
-          style={{ color: 'var(--ld-amber)', border: '1px solid rgba(230,162,60,.34)', background: 'rgba(230,162,60,.10)' }}
+          style={{ color: 'var(--ld-amber)', border: '1px solid var(--ld-amber-line)', background: 'var(--ld-amber-soft)' }}
         >
           <Trophy className="w-[13px] h-[13px]" /> Rival wins
         </div>
@@ -304,11 +304,11 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
           {/* Verdict banner */}
           <div
             className="flex items-center gap-[11px] mt-[18px] px-[16px] py-[13px] rounded-[12px] border flex-wrap"
-            style={{ background: 'rgba(230,162,60,.08)', borderColor: 'rgba(230,162,60,.25)' }}
+            style={{ background: 'var(--ld-amber-wash)', borderColor: 'var(--ld-amber-fill)' }}
           >
             <span
               className="w-[26px] h-[26px] rounded-[7px] grid place-items-center shrink-0"
-              style={{ background: 'rgba(230,162,60,.16)', color: 'var(--ld-amber)' }}
+              style={{ background: 'var(--ld-amber-soft)', color: 'var(--ld-amber)' }}
             >
               <Zap className="w-[15px] h-[15px]" />
             </span>
@@ -351,7 +351,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
             <div
               className="rounded-[16px] bg-ld-surface-2 px-[20px] py-[20px] relative border"
               style={youWin
-                ? { borderColor: 'var(--ld-amber)', boxShadow: '0 0 0 1px rgba(230,162,60,.18)' }
+                ? { borderColor: 'var(--ld-amber)', boxShadow: '0 0 0 1px var(--ld-amber-fill)' }
                 : { borderColor: 'var(--ld-border)' }}
             >
               {youWin && (
@@ -378,7 +378,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
             <div
               className="rounded-[16px] bg-ld-surface-2 px-[20px] py-[20px] relative border"
               style={!youWin
-                ? { borderColor: 'var(--ld-amber)', boxShadow: '0 0 0 1px rgba(230,162,60,.18)' }
+                ? { borderColor: 'var(--ld-amber)', boxShadow: '0 0 0 1px var(--ld-amber-fill)' }
                 : { borderColor: 'var(--ld-border)' }}
             >
               {!youWin && (

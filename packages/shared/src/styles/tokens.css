@@ -24,11 +24,33 @@
 
   --ld-teal:          #16c8c8;
   --ld-amber:         #e6a23c;
-  --ld-amber-soft:    rgba(230, 162, 60, 0.12);
-  --ld-amber-line:    rgba(230, 162, 60, 0.30);
+  /*
+   * Five steps, because components need more than "tinted" and "bordered" and were
+   * spelling the difference out as raw rgba at 22 different alphas. The channels exist so
+   * the steps can be declared once per theme; nothing outside this file should use them.
+   *
+   *   wash    a faint field over a large area (a chart lane, a card behind text)
+   *   soft    a tinted tile, badge or banner
+   *   fill    the emphasised state of a wash — hover, selection, a legend swatch
+   *   line    a 1px border
+   *   strong  a halo, a drop-shadow, or a bar segment that has to read as solid
+   *
+   * wash/fill and line/strong are deliberately far apart: they are rest-and-active pairs
+   * in the CLS and interaction charts, and collapsing them would delete the feedback.
+   */
+  --ld-amber-rgb:     230, 162, 60;
+  --ld-amber-wash:    rgba(var(--ld-amber-rgb), 0.06);
+  --ld-amber-soft:    rgba(var(--ld-amber-rgb), 0.12);
+  --ld-amber-fill:    rgba(var(--ld-amber-rgb), 0.22);
+  --ld-amber-line:    rgba(var(--ld-amber-rgb), 0.30);
+  --ld-amber-strong:  rgba(var(--ld-amber-rgb), 0.45);
   --ld-rose:          #f2647a;
-  --ld-rose-soft:     rgba(242, 100, 122, 0.12);
-  --ld-rose-line:     rgba(242, 100, 122, 0.30);
+  --ld-rose-rgb:      242, 100, 122;
+  --ld-rose-wash:     rgba(var(--ld-rose-rgb), 0.06);
+  --ld-rose-soft:     rgba(var(--ld-rose-rgb), 0.12);
+  --ld-rose-fill:     rgba(var(--ld-rose-rgb), 0.22);
+  --ld-rose-line:     rgba(var(--ld-rose-rgb), 0.30);
+  --ld-rose-strong:   rgba(var(--ld-rose-rgb), 0.45);
 
   --ld-score-good:  var(--ld-accent-2);
   --ld-grad:        linear-gradient(100deg, #0c8f66 0%, #14c08a 45%, #2fd3bb 100%);
@@ -64,11 +86,19 @@
 
   --ld-teal:          #0e9c9c;
   --ld-amber:         #b9791a;
-  --ld-amber-soft:    rgba(185, 121, 26, 0.12);
-  --ld-amber-line:    rgba(185, 121, 26, 0.28);
+  --ld-amber-rgb:     185, 121, 26;
+  --ld-amber-wash:    rgba(var(--ld-amber-rgb), 0.06);
+  --ld-amber-soft:    rgba(var(--ld-amber-rgb), 0.12);
+  --ld-amber-fill:    rgba(var(--ld-amber-rgb), 0.20);
+  --ld-amber-line:    rgba(var(--ld-amber-rgb), 0.28);
+  --ld-amber-strong:  rgba(var(--ld-amber-rgb), 0.42);
   --ld-rose:          #d63a57;
-  --ld-rose-soft:     rgba(214, 58, 87, 0.12);
-  --ld-rose-line:     rgba(214, 58, 87, 0.28);
+  --ld-rose-rgb:      214, 58, 87;
+  --ld-rose-wash:     rgba(var(--ld-rose-rgb), 0.06);
+  --ld-rose-soft:     rgba(var(--ld-rose-rgb), 0.12);
+  --ld-rose-fill:     rgba(var(--ld-rose-rgb), 0.20);
+  --ld-rose-line:     rgba(var(--ld-rose-rgb), 0.28);
+  --ld-rose-strong:   rgba(var(--ld-rose-rgb), 0.42);
 
   --ld-score-good:  var(--ld-accent);
   --ld-grad:        linear-gradient(100deg, #07875e 0%, #0a9e6f 50%, #14b89a 100%);

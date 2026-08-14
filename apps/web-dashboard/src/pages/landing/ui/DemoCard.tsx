@@ -100,7 +100,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
         <span className={[
           'inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[.08em] font-semibold px-[9px] py-[3px] rounded-md border',
           state === 'running'
-            ? 'text-[var(--ld-amber)] border-[rgba(230,162,60,.35)] bg-[rgba(230,162,60,.1)]'
+            ? 'text-[var(--ld-amber)] border-ld-amber-line bg-ld-amber-soft'
             : 'text-[var(--ld-accent-2)] border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
         ].join(' ')}>
           <span className={`w-1.5 h-1.5 rounded-full bg-current inline-block${state === 'running' ? ' ld-pulse' : ''}`} />
@@ -161,7 +161,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
               <div
                 key={key}
                 className={`px-3 py-[10px] rounded-[11px] bg-[var(--ld-surface-2)] border ${
-                  status === 'good' ? 'border-[rgba(20,192,138,.22)]' : 'border-[rgba(230,162,60,.25)]'
+                  status === 'good' ? 'border-[rgba(20,192,138,.22)]' : 'border-ld-amber-fill'
                 }`}
               >
                 <div className="font-mono text-[10px] tracking-[.1em] text-[var(--ld-text-3)] uppercase">{label}</div>

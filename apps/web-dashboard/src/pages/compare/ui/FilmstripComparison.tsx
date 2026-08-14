@@ -95,7 +95,7 @@ const Thumb = memo(function Thumb({
   const activeBorderClass = !overrideColor && isActive
     ? isYou
       ? 'border-ld-accent shadow-[0_0_12px_var(--ld-accent-soft)]'
-      : 'border-[rgba(230,162,60,0.34)] shadow-[0_0_12px_rgba(230,162,60,0.13)]'
+      : 'border-ld-amber-line shadow-[0_0_12px_var(--ld-amber-soft)]'
     : 'border-ld-border';
 
   return (
@@ -142,7 +142,7 @@ const Thumb = memo(function Thumb({
             ${isActive
               ? isYou
                 ? 'bg-gradient-to-r from-ld-accent-soft to-ld-accent'
-                : 'bg-gradient-to-r from-[rgba(230,162,60,0.13)] to-ld-amber'
+                : 'bg-gradient-to-r from-[var(--ld-amber-soft)] to-ld-amber'
               : 'bg-ld-border-strong'}`}
           style={{ width: `${loadPct}%` }}
         />
@@ -172,7 +172,7 @@ function FilmstripRow({
   const activeFrameClass = !nearbyMetricColor
     ? isYou
       ? 'border-ld-accent shadow-[0_0_20px_var(--ld-accent-soft)]'
-      : 'border-[rgba(230,162,60,0.34)] shadow-[0_0_20px_rgba(230,162,60,0.13)]'
+      : 'border-ld-amber-line shadow-[0_0_20px_var(--ld-amber-soft)]'
     : '';
 
   return (
@@ -345,8 +345,8 @@ function TimeAxis({
 
       {/* Competitor track — markers point DOWN */}
       <div
-        className="relative rounded-b-[8px] overflow-visible border-t border-[rgba(230,162,60,0.30)]"
-        style={{ height: 44, background: 'rgba(230,162,60,0.06)' }}
+        className="relative rounded-b-[8px] overflow-visible border-t border-ld-amber-line"
+        style={{ height: 44, background: 'var(--ld-amber-wash)' }}
       >
         <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 pl-2">
           <span className="w-[6px] h-[6px] rounded-full bg-ld-amber" />
