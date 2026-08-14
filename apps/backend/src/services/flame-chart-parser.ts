@@ -10,6 +10,10 @@
  *  6. Trim to MAX_EVENTS, preferring long tasks and high-duration events
  */
 import type { FlameChartData, FlameChartEvent } from '../types/index.js';
+import {
+  resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
+  type RawTraceEvent,
+} from '../lib/trace.js';
 
 // ─── Category sets ────────────────────────────────────────────────────────────
 
@@ -37,17 +41,6 @@ function categorise(name: string): FlameChartEvent['category'] {
 
 // ─── Raw trace types (loose, Lighthouse doesn't export these) ─────────────────
 
-type RawEvent = {
-  cat?:  string;
-  name:  string;
-  ph:    string;
-  ts:    number;          // microseconds
-  dur?:  number;          // microseconds (only on ph='X')
-  pid:   number;
-  tid:   number;
-  args?: Record<string, unknown>;
-};
-
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 const MAX_EVENTS = 3000;
@@ -60,42 +53,18 @@ const MIN_DUR_MS = 0.1;   // ignore sub-0.1 ms events
 /** Resolve traceEvents array regardless of shape.
  *  v12 : artifact IS the trace  { traceEvents: [...] }
  *  v10/11: artifacts.traces = { defaultPass: { traceEvents: [...] } } */
-function resolveEvents(traces: unknown): RawEvent[] | undefined {
-  if (!traces || typeof traces !== 'object') return undefined;
-  const obj = traces as Record<string, unknown>;
-
-  // Case 1 — direct trace object (Lighthouse v12 artifacts.Trace)
-  if (Array.isArray(obj['traceEvents']) && (obj['traceEvents'] as unknown[]).length > 0) {
-    return obj['traceEvents'] as RawEvent[];
-  }
-
-  // Case 2 — nested container (v10/v11 artifacts.traces.defaultPass etc.)
-  for (const key of Object.keys(obj)) {
-    const candidate = obj[key] as Record<string, unknown> | undefined;
-    if (candidate && typeof candidate === 'object' &&
-        Array.isArray(candidate['traceEvents']) &&
-        (candidate['traceEvents'] as unknown[]).length > 0) {
-      return candidate['traceEvents'] as RawEvent[];
-    }
-  }
-  return undefined;
-}
-
 export function parseFlameChart(
   traces: unknown,
   maxMs: number,
 ): FlameChartData | null {
   try {
-    const traceEvents = resolveEvents(traces);
+    const traceEvents = resolveTraceEvents(traces);
 
     if (!Array.isArray(traceEvents) || traceEvents.length === 0) return null;
 
     // ── 1. Find renderer PID ──────────────────────────────────────────────────
 
-    const navStartEvent = traceEvents.find(
-      e => e.name === 'navigationStart' &&
-           (e.cat?.includes('blink') || e.cat?.includes('devtools.timeline')),
-    );
+    const navStartEvent = findNavigationStart(traceEvents);
 
     // Fallback: most RunTask events → renderer main thread
     let rendererPid: number;
@@ -116,21 +85,12 @@ export function parseFlameChart(
 
     // ── 2. Find main thread TID ───────────────────────────────────────────────
 
-    const threadNameEvt = traceEvents.find(
-      e => e.pid === rendererPid &&
-           e.name === 'thread_name' &&
-           (e.args as Record<string, unknown>)?.name === 'CrRendererMain',
-    );
-    const mainTid = threadNameEvt?.tid;
+    const mainTid = findMainThreadTid(traceEvents, rendererPid);
 
     // ── 3. Navigation-start timestamp (µs) ───────────────────────────────────
 
     const navStartTs: number = navStartEvent?.ts ?? (() => {
-      const mainEvents = traceEvents.filter(
-        e => e.pid === rendererPid &&
-             (mainTid == null || e.tid === mainTid) &&
-             e.ph === 'X' && e.dur && e.dur > 0,
-      );
+      const mainEvents = mainThreadEvents(traceEvents, rendererPid, mainTid);
       if (mainEvents.length === 0) return 0;
       return Math.min(...mainEvents.map(e => e.ts));
     })();

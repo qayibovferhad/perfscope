@@ -14,6 +14,10 @@
  *  4. Mark the highest-latency interaction as INP
  */
 import type { InteractionData, InteractionEvent } from '../types/index.js';
+import {
+  resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
+  type RawTraceEvent,
+} from '../lib/trace.js';
 
 const USER_INPUT_TYPES = new Set([
   'click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup',
@@ -23,65 +27,25 @@ const USER_INPUT_TYPES = new Set([
 // Minimum EventDispatch duration to consider (µs). Filters out trivial no-op handlers.
 const MIN_DISPATCH_US = 500;
 
-type RawEvent = {
-  name:  string;
-  ph:    string;
-  ts:    number;
-  dur?:  number;
-  pid:   number;
-  tid:   number;
-  cat?:  string;
-  args?: Record<string, unknown>;
-};
-
-function resolveEvents(traces: unknown): RawEvent[] | undefined {
-  if (!traces || typeof traces !== 'object') return undefined;
-  const obj = traces as Record<string, unknown>;
-  if (Array.isArray(obj['traceEvents']) && (obj['traceEvents'] as unknown[]).length > 0) {
-    return obj['traceEvents'] as RawEvent[];
-  }
-  for (const key of Object.keys(obj)) {
-    const candidate = obj[key] as Record<string, unknown> | undefined;
-    if (candidate && typeof candidate === 'object' &&
-        Array.isArray(candidate['traceEvents']) &&
-        (candidate['traceEvents'] as unknown[]).length > 0) {
-      return candidate['traceEvents'] as RawEvent[];
-    }
-  }
-  return undefined;
-}
-
 export function parseInteractions(traces: unknown): InteractionData | null {
   try {
-    const traceEvents = resolveEvents(traces);
+    const traceEvents = resolveTraceEvents(traces);
     if (!Array.isArray(traceEvents) || traceEvents.length === 0) return null;
 
     // ── 1. Find renderer PID + navigationStart ────────────────────────────────
 
-    const navStartEvent = traceEvents.find(
-      e => e.name === 'navigationStart' &&
-           (e.cat?.includes('blink') || e.cat?.includes('devtools.timeline')),
-    );
+    // No navigationStart, no zero point — and an interaction timeline measured from an
+    // arbitrary origin says nothing. Unlike the flame chart, this parser gives up.
+    const navStartEvent = findNavigationStart(traceEvents);
     if (!navStartEvent) return null;
 
     const rendererPid = navStartEvent.pid;
     const navStartTs  = navStartEvent.ts;
-
-    // Find main thread TID
-    const threadNameEvt = traceEvents.find(
-      e => e.pid === rendererPid &&
-           e.name === 'thread_name' &&
-           (e.args as Record<string, unknown>)?.name === 'CrRendererMain',
-    );
-    const mainTid = threadNameEvt?.tid;
+    const mainTid     = findMainThreadTid(traceEvents, rendererPid);
 
     // ── 2. Collect main-thread complete events ─────────────────────────────────
 
-    const mainEvents = traceEvents.filter(e =>
-      e.ph === 'X' && e.dur && e.dur > 0 &&
-      e.pid === rendererPid &&
-      (mainTid == null || e.tid === mainTid),
-    );
+    const mainEvents = mainThreadEvents(traceEvents, rendererPid, mainTid);
 
     // Long tasks: > 50ms duration on main thread
     const longTasks = mainEvents
