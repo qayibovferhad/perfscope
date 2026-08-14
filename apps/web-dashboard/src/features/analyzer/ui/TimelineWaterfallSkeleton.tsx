@@ -1,6 +1,7 @@
 import { Network } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { LEFT_W, AXIS_ROW_H, TICK_COUNT, METRICS_CFG } from '../lib/timelineWaterfall';
+import { LEFT_W, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { TICK_COUNT } from '../lib/waterfall';
 
 /** One shimmering block — same emerald sweep the live bars use while pending. */
 function WfShim({ className, delay = 0, style }: { className?: string; delay?: number; style?: React.CSSProperties }) {

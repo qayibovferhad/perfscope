@@ -14,12 +14,6 @@ export const LEFT_W = 280;
  *  top-pad(8) + thumb(45) + tick-line(6) + label(16) + bottom-pad(8). */
 export const AXIS_ROW_H = 83;
 
-/** Rows drawn at most — past this the chart is unreadable and the DOM is the bottleneck. */
-export const MAX_ROWS = 120;
-
-/** Vertical gridlines; the axis draws TICK_COUNT + 1 labels. */
-export const TICK_COUNT = 6;
-
 /** Scrubber granularity. */
 export const TICK_MS = 50;
 
