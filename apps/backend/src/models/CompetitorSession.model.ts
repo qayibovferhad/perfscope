@@ -1,21 +1,5 @@
 import { Schema, model, type Types } from 'mongoose';
-
-const cookieSchema = new Schema({
-  name:     { type: String },
-  value:    { type: String },
-  domain:   { type: String },
-  path:     { type: String },
-  expires:  { type: Number },
-  httpOnly: { type: Boolean },
-  secure:   { type: Boolean },
-  sameSite: { type: String },
-}, { _id: false });
-
-const sessionSchema = new Schema({
-  cookies:      { type: [cookieSchema], default: [] },
-  localStorage: { type: Schema.Types.Mixed, default: {} },
-  capturedAt:   { type: Date, default: Date.now },
-}, { _id: false });
+import { sessionSchema, type ISessionData } from './session.schema.js';
 
 const competitorSessionSchema = new Schema(
   {
@@ -34,14 +18,7 @@ export interface ICompetitorSession {
   userId: Types.ObjectId;
   url:    string;
   name:   string;
-  session: {
-    cookies: Array<{
-      name?: string; value?: string; domain?: string; path?: string;
-      expires?: number; httpOnly?: boolean; secure?: boolean; sameSite?: string;
-    }>;
-    localStorage: Record<string, string>;
-    capturedAt: Date;
-  };
+  session: ISessionData;
 }
 
 export const CompetitorSession = model<ICompetitorSession>('CompetitorSession', competitorSessionSchema);

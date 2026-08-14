@@ -1,22 +1,6 @@
 import { Schema, model, type Types } from 'mongoose';
+import { sessionSchema, type ISessionData } from './session.schema.js';
 import type { AutomationScheduleMode } from '@perfscope/shared';
-
-const cookieSchema = new Schema({
-  name:     { type: String },
-  value:    { type: String },
-  domain:   { type: String },
-  path:     { type: String },
-  expires:  { type: Number },
-  httpOnly: { type: Boolean },
-  secure:   { type: Boolean },
-  sameSite: { type: String },
-}, { _id: false });
-
-const sessionSchema = new Schema({
-  cookies:      { type: [cookieSchema], default: [] },
-  localStorage: { type: Schema.Types.Mixed, default: {} },
-  capturedAt:   { type: Date, default: Date.now },
-}, { _id: false });
 
 /** One group of routes and the time of day they run. */
 const automationSlotSchema = new Schema(
@@ -102,14 +86,8 @@ const websiteSchema = new Schema(
 
 websiteSchema.index({ userId: 1, url: 1 }, { unique: true });
 
-export interface IWebsiteSession {
-  cookies: Array<{
-    name?: string; value?: string; domain?: string; path?: string;
-    expires?: number; httpOnly?: boolean; secure?: boolean; sameSite?: string;
-  }>;
-  localStorage: Record<string, string>;
-  capturedAt: Date;
-}
+/** @deprecated name kept for existing importers — the definition lives in session.schema.ts. */
+export type IWebsiteSession = ISessionData;
 
 export interface IWebsiteAutomationSlot {
   time:   string;
