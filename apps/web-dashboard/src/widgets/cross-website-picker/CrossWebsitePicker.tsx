@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Globe, ChevronDown, Loader2 } from 'lucide-react';
 import { useWebsites } from '@/entities/website';
 import { scoreColor } from '@/entities/analysis';
-import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
+import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects';
 import { Modal } from '@/shared/ui/modal';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { fmtDateTime } from '@/shared/lib/time';

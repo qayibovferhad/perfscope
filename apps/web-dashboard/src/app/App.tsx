@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Compass, Loader2 } from 'lucide-react';
-import { ProtectedRoute }  from '@/features/auth/ui/ProtectedRoute';
-import { useAuthStore }    from '@/features/auth/model/authStore';
+import { ProtectedRoute }  from '@/features/auth';
+import { useAuthStore }    from '@/features/auth';
 import { DashboardLayout } from '@/widgets/dashboard-layout';
 import { StatePanel }      from '@/shared/ui/state-panel';
 

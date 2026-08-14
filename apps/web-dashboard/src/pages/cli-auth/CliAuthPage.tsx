@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Spinner } from '@/shared/ui/spinner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Terminal, CheckCircle2, XCircle } from 'lucide-react';
-import { useAuthStore } from '@/features/auth/model/authStore';
+import { useAuthStore } from '@/features/auth';
 import { apiClient } from '@/shared/api/client';
 
 type State = 'sending' | 'done' | 'error';

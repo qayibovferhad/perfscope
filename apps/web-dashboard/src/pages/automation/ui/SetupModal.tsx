@@ -6,7 +6,7 @@ import { Input }              from '@/shared/ui/input';
 import { Button }             from '@/shared/ui/button';
 import { Toggle }             from '@/shared/ui/toggle';
 import { ScheduleEditor }     from './ScheduleEditor';
-import { useAutomation }      from '@/features/automation/model/useAutomation';
+import { useAutomation }      from '@/features/automation';
 import { getHostname, useWebsites } from '@/entities/website';
 import type { Website }       from '@/entities/website';
 

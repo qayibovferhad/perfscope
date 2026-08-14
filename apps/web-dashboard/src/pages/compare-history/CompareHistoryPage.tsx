@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { History } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
-import { CompareHistoryPanel } from '@/features/compare-history/ui/CompareHistoryPanel';
+import { CompareHistoryPanel } from '@/features/compare-history';
 
 function Breadcrumb() {
   return (

@@ -58,13 +58,32 @@ export default defineConfig([
     }]),
   },
   { files: ['src/widgets/**/*.{ts,tsx}'],  ...banned(['pages', 'app'], [{
+      // Consumed through the public barrel only — before this pattern existed, 80 deep
+      // imports had accumulated because the layer rules said nothing about slice internals.
+      group: ['@/features/*/**'],
+      message: "FSD: import from the feature's barrel ('@/features/<name>'), not its internals.",
+    }, {
       group: ['@/widgets/*', '@/widgets'],
       message: 'FSD: widgets must not import other widgets.',
     }]),
   },
   { files: ['src/pages/**/*.{ts,tsx}'],    ...banned(['app'], [{
+      // Consumed through the public barrel only — before this pattern existed, 80 deep
+      // imports had accumulated because the layer rules said nothing about slice internals.
+      group: ['@/features/*/**'],
+      message: "FSD: import from the feature's barrel ('@/features/<name>'), not its internals.",
+    }, {
       group: ['@/pages/*', '@/pages'],
       message: 'FSD: pages must not import other pages.',
     }]),
+  },
+  // app is the top layer, free to import everything — but still through public barrels.
+  { files: ['src/app/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [{
+      // Consumed through the public barrel only — before this pattern existed, 80 deep
+      // imports had accumulated because the layer rules said nothing about slice internals.
+      group: ['@/features/*/**'],
+      message: "FSD: import from the feature's barrel ('@/features/<name>'), not its internals.",
+    }, ] }] },
   },
 ])

@@ -9,7 +9,7 @@ import { QueryErrorPanel, StatePanel } from '@/shared/ui/state-panel';
 import { getHostname } from '@/entities/website';
 import { useWebsites } from '@/entities/website';
 import { hasResult } from '@/entities/history';
-import { HistoryEvolutionCard } from '@/features/history/ui/HistoryEvolutionCard';
+import { HistoryEvolutionCard } from '@/features/history';
 
 interface Props {
   allEntries: HistoryEntry[];

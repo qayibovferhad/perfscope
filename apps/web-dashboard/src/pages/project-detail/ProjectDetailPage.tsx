@@ -5,25 +5,25 @@ import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
   Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert,
 } from 'lucide-react';
-import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects/model/useProjectAudits';
+import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
 import { getHostname, sessionState } from '@/entities/website';
-import { setComparePreload }    from '@/features/compare/model/comparePreloadStore';
+import { setComparePreload }    from '@/features/compare';
 import { fetchHistoryResult }   from '@/entities/history';
-import { useAnalysisStore }     from '@/features/analyzer/model/analysisStore';
+import { useAnalysisStore }     from '@/features/analyzer';
 import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
 import { StatCard }             from '@/shared/ui/stat-card';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { TabBar }               from '@/shared/ui/tab-bar';
-import { RouteGroupCard }       from '@/features/projects/ui/RouteGroupCard';
-import { NewAuditModal }        from '@/features/projects/ui/NewAuditModal';
+import { RouteGroupCard }       from '@/features/projects';
+import { NewAuditModal }        from '@/features/projects';
 import { SessionCaptureModal }  from '@/features/auth-audit';
 import { RumPanel }             from '@/features/rum';
 import { hasResult }            from '@perfscope/shared';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
-import { timeAgo }              from '@/features/projects/lib/formatters';
+import { timeAgo }              from '@/features/projects';
 import { scoreBand, type AnalysisResult } from '@/entities/analysis';
 
 type ProjectTab = 'audits' | 'field';

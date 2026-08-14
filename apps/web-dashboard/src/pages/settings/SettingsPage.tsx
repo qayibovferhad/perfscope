@@ -10,7 +10,7 @@ import { Button } from '@/shared/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/shared/ui/select';
-import { useAuthStore } from '@/features/auth/model/authStore';
+import { useAuthStore } from '@/features/auth';
 import type { AuthUser } from '@/entities/user';
 import { apiClient, fetchJson } from '@/shared/api/client';
 

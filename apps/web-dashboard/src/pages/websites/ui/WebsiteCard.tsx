@@ -3,7 +3,7 @@ import { motion }          from 'framer-motion';
 import { Link }            from 'react-router-dom';
 import { getHostname, sessionState } from '@/entities/website';
 import type { Website }    from '@/entities/website';
-import type { SiteScoreInfo } from '@/features/websites/model/useWebsiteScores';
+import type { SiteScoreInfo } from '@/features/websites';
 import { Button }          from '@/shared/ui/button';
 import { ScoreRing }       from '@/entities/analysis';
 import { SparkBars }       from './SparkBars';

@@ -5,9 +5,9 @@ import {
 } from 'lucide-react';
 import { useScheduledRuns, fetchHistoryResult } from '@/entities/history';
 import type { ProjectAuditEntry } from '@/entities/history';
-import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
-import { RouteGroupCard } from '@/features/projects/ui/RouteGroupCard';
-import { timeAgo } from '@/features/projects/lib/formatters';
+import { useAnalysisStore } from '@/features/analyzer';
+import { RouteGroupCard } from '@/features/projects';
+import { timeAgo } from '@/features/projects';
 import { scoreBand } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';
 import { Button } from '@/shared/ui/button';

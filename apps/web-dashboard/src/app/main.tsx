@@ -9,11 +9,11 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
 import { configureApiToken, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
-import { useAuthStore } from '@/features/auth/model/authStore';
-import { useAnalysisStore } from '@/features/analyzer/model/analysisStore';
+import { useAuthStore } from '@/features/auth';
+import { useAnalysisStore } from '@/features/analyzer';
 import { useAuthAuditStore } from '@/features/auth-audit';
 import { usePrefetchStore } from '@/entities/analysis';
-import { clearComparePreload } from '@/features/compare/model/comparePreloadStore';
+import { clearComparePreload } from '@/features/compare';
 
 const getToken = () => useAuthStore.getState().token;
 configureApiToken(getToken);

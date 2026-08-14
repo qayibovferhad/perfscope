@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { AddWebsiteModal } from '@/features/websites/ui/AddWebsiteModal';
+import { AddWebsiteModal } from '@/features/websites';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
 

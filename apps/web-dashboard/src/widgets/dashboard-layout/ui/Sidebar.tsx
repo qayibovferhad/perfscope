@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight, Globe, LogOut, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
-import { useAuthStore } from '@/features/auth/model/authStore';
+import { useAuthStore } from '@/features/auth';
 import { useWebsites, getHostname } from '@/entities/website';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '../model/navItems';
