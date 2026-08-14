@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MonitorSmartphone, RotateCcw } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
 import { apiClient, BROWSER_LAUNCH_TIMEOUT_MS } from '@/shared/api/client';
 import { useWebsites } from '@/entities/website';
+import { cn } from '@/shared/lib/utils';
 
 type Step = 'launching' | 'browser-open' | 'capturing' | 'done';
 
@@ -22,6 +23,42 @@ interface Props {
  * opens a visible Chrome window, waits for the user to sign in, then harvests
  * cookies + localStorage and stores them on the website document.
  */
+/** Tile tone per state — busy is the gradient, done the accent wash, error a plain surface. */
+const STEP_TONE = {
+  busy:  'bg-ld-grad shadow-ld-glow',
+  done:  'bg-ld-accent-soft shadow-ld-ring-accent',
+  error: 'border border-ld-border bg-ld-surface-2',
+} as const;
+
+/**
+ * One centred "here is what is happening" panel: icon tile, headline, explanation, and
+ * optionally something to press. The modal showed four of these and they were identical
+ * apart from the tone and the words — launching and capturing differed by two strings.
+ */
+function StatusStep({ tone, icon, title, children, actions }: {
+  tone: keyof typeof STEP_TONE;
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-5 py-8 text-center">
+      <span className={cn(
+        'w-[46px] h-[46px] rounded-[13px] grid place-items-center [&_svg]:w-[23px] [&_svg]:h-[23px]',
+        STEP_TONE[tone],
+      )}>
+        {icon}
+      </span>
+      <div>
+        <p className="text-[16px] font-bold text-ld-text">{title}</p>
+        <p className="text-[13px] text-ld-text-2 mt-1.5">{children}</p>
+      </div>
+      {actions}
+    </div>
+  );
+}
+
 export function SessionCaptureModal({ open, websiteId, url, onClose, doneLabel, onDone }: Props) {
   const { saveSession } = useWebsites();
 
@@ -104,34 +141,28 @@ export function SessionCaptureModal({ open, websiteId, url, onClose, doneLabel, 
 
       {/* ── Step: launching ────────────────────────────────────────── */}
       {step === 'launching' && !error && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-grad shadow-ld-glow">
-            <Loader2 className="w-[23px] h-[23px] text-[#04130d] animate-spin" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Opening browser…</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">A Chrome window will open at your website.</p>
-          </div>
-        </div>
+        <StatusStep tone="busy" icon={<Loader2 className="text-[#04130d] animate-spin" />} title="Opening browser…">
+          A Chrome window will open at your website.
+        </StatusStep>
       )}
 
       {/* ── Step: launching failed ─────────────────────────────────── */}
       {step === 'launching' && error && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center border border-ld-border bg-ld-surface-2">
-            <AlertCircle className="w-[23px] h-[23px] text-ld-rose" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Could not open the browser</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">{error}</p>
-          </div>
-          <div className="flex gap-[10px]">
-            <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-            <Button type="button" onClick={handleRetry}>
-              <RotateCcw /> Try again
-            </Button>
-          </div>
-        </div>
+        <StatusStep
+          tone="error"
+          icon={<AlertCircle className="text-ld-rose" />}
+          title="Could not open the browser"
+          actions={
+            <div className="flex gap-[10px]">
+              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="button" onClick={handleRetry}>
+                <RotateCcw /> Try again
+              </Button>
+            </div>
+          }
+        >
+          {error}
+        </StatusStep>
       )}
 
       {/* ── Step: browser-open ─────────────────────────────────────── */}
@@ -170,34 +201,26 @@ export function SessionCaptureModal({ open, websiteId, url, onClose, doneLabel, 
 
       {/* ── Step: capturing ────────────────────────────────────────── */}
       {step === 'capturing' && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-grad shadow-ld-glow">
-            <Loader2 className="w-[23px] h-[23px] text-[#04130d] animate-spin" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Saving session…</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">Capturing cookies and localStorage from the browser.</p>
-          </div>
-        </div>
+        <StatusStep tone="busy" icon={<Loader2 className="text-[#04130d] animate-spin" />} title="Saving session…">
+          Capturing cookies and localStorage from the browser.
+        </StatusStep>
       )}
 
       {/* ── Step: done ─────────────────────────────────────────────── */}
       {step === 'done' && (
-        <div className="flex flex-col items-center gap-5 py-8 text-center">
-          <span className="w-[46px] h-[46px] rounded-[13px] grid place-items-center bg-ld-accent-soft shadow-ld-ring-accent">
-            <CheckCircle2 className="w-[23px] h-[23px] text-ld-accent" />
-          </span>
-          <div>
-            <p className="text-[16px] font-bold text-ld-text">Session saved!</p>
-            <p className="text-[13px] text-ld-text-2 mt-1.5">
-              Cookies and localStorage have been saved with this website.
-            </p>
-          </div>
-          <Button onClick={handleDone}>
-            {doneLabel ?? 'Done'}
-            {onDone && <ArrowRight />}
-          </Button>
-        </div>
+        <StatusStep
+          tone="done"
+          icon={<CheckCircle2 className="text-ld-accent" />}
+          title="Session saved!"
+          actions={
+            <Button onClick={handleDone}>
+              {doneLabel ?? 'Done'}
+              {onDone && <ArrowRight />}
+            </Button>
+          }
+        >
+          Cookies and localStorage have been saved with this website.
+        </StatusStep>
       )}
 
     </Modal>
