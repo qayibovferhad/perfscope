@@ -138,3 +138,8 @@ export interface WebsiteSummary {
   avgScore:       number
   needsAttention: number
 }
+
+/** `POST /api/auth-audit/session` — the handle for the visible browser it just opened. */
+export interface AuthAuditSessionResponse {
+  sessionId: string
+}

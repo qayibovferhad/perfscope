@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import type { AuthAuditSessionResponse } from '@perfscope/shared';
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MonitorSmartphone, RotateCcw } from 'lucide-react';
 import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Button } from '@/shared/ui/button';
@@ -78,7 +79,7 @@ export function SessionCaptureModal({ open, websiteId, url, onClose, doneLabel, 
     setSessionId('');
     sessionRef.current = '';
     try {
-      const { data } = await apiClient.post<{ sessionId: string }>(
+      const { data } = await apiClient.post<AuthAuditSessionResponse>(
         '/auth-audit/session', { url }, { timeout: BROWSER_LAUNCH_TIMEOUT_MS },
       );
       sessionRef.current = data.sessionId;

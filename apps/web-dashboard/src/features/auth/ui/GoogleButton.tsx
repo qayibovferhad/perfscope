@@ -1,4 +1,5 @@
 import { useGoogleLogin } from '@react-oauth/google';
+import type { AuthResponse } from '@perfscope/shared';
 import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
@@ -25,7 +26,7 @@ export function GoogleButton({ onSuccess, onError }: Props) {
         // profile in the browser produced a signed-in user with no PerfScope token — every
         // request after it came back 401 — and no account, so the same address could be
         // registered again afterwards. The backend verifies the token and owns the account.
-        const res = await apiClient.post<{ token: string; user: AuthUser }>(
+        const res = await apiClient.post<AuthResponse>(
           '/auth/google',
           { accessToken: tokenRes.access_token },
         );

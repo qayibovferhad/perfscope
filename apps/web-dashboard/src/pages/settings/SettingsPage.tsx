@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { DigestPreference } from '@perfscope/shared';
 import { useForm } from 'react-hook-form';
 import { CheckCircle2, KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
@@ -53,7 +54,7 @@ function DigestSection() {
 
   // The digest preference lives on the user document, which the auth store does not carry.
   useEffect(() => {
-    fetchJson<{ enabled: boolean; day: number; time: string }>('/auth/digest')
+    fetchJson<DigestPreference>('/auth/digest')
       .then(d => {
         setEnabled(d.enabled); setDay(d.day); setTime(d.time);
       })

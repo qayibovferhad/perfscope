@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { AuthResponse } from '@perfscope/shared';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { GoogleButton, googleAuthEnabled } from '@/features/auth/ui/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/model/authStore';
-import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
@@ -47,7 +47,7 @@ export function LoginPage() {
   async function onSubmit(data: FormValues) {
     setServerErr('');
     try {
-      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/login', data);
+      const res = await apiClient.post<AuthResponse>('/auth/login', data);
       setAuth(res.data.user, res.data.token);
       navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
@@ -57,7 +57,7 @@ export function LoginPage() {
     }
   }
 
-  function onGoogleSuccess({ user, token }: { user: AuthUser; token: string }) {
+  function onGoogleSuccess({ user, token }: AuthResponse) {
     setAuth(user, token);
     navigate(redirectTo, { replace: true });
   }

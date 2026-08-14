@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import type { AuthAuditSessionResponse } from '@perfscope/shared';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Globe, Loader2, MonitorSmartphone, PlayCircle, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 import { apiClient, BROWSER_LAUNCH_TIMEOUT_MS } from '@/shared/api/client';
@@ -68,7 +69,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
     }
 
     try {
-      const { data } = await apiClient.post<{ sessionId: string }>(
+      const { data } = await apiClient.post<AuthAuditSessionResponse>(
         '/auth-audit/session', { url: normalized }, { timeout: BROWSER_LAUNCH_TIMEOUT_MS },
       );
       setSessionId(data.sessionId);

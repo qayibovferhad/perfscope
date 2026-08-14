@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { AuthAuditSessionResponse } from '@perfscope/shared';
 import {
   createAuthAuditSession, hasSession, destroySession, extractSessionData,
 } from '../services/authAuditSession.js';
@@ -24,7 +25,8 @@ authAuditRouter.post('/auth-audit/session', asyncHandler(async (req, res) => {
   const { url } = req.body as { url?: string };
   if (!url) throw new AppError(400, 'url is required');
 
-  res.json({ sessionId: await createAuthAuditSession(url) });
+  const body: AuthAuditSessionResponse = { sessionId: await createAuthAuditSession(url) };
+  res.json(body);
 }, 'Failed to launch browser'));
 
 // GET /api/auth-audit/session/:sessionId — check if the session is still alive

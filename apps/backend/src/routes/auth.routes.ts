@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { isValidTime } from '@perfscope/shared';
+import { isValidTime, type AuthResponse, type DigestPreference } from '@perfscope/shared';
 import { User, type IUser, type IUserDigest } from '../models/User.model.js';
 import { config } from '../config/index.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
@@ -34,10 +34,13 @@ function sign(payload: object) {
  * the client reads `sub` out of both.
  */
 function issueSession(res: Response, user: HydratedDocument<IUser>, status = 200): void {
-  res.status(status).json({
+  // String() rather than leaving res.json to serialise the ObjectId: `sub` is a string on
+  // the wire, and saying so here is what lets AuthResponse check this.
+  const body: AuthResponse = {
     token: sign({ sub: user._id, email: user.email, name: user.name }),
-    user:  { sub: user._id, name: user.name, email: user.email, picture: user.picture },
-  });
+    user:  { sub: String(user._id), name: user.name, email: user.email, picture: user.picture },
+  };
+  res.status(status).json(body);
 }
 
 // POST /api/auth/register
@@ -150,7 +153,11 @@ authRouter.get('/auth/digest', requireAuth, asyncHandler<AuthedRequest>(async (r
   if (!user) throw new AppError(404, 'User not found');
 
   // Documents created before the field existed read as undefined; answer with defaults.
-  res.json({ success: true, data: user.digest ?? DEFAULT_DIGEST });
+  // Projected to the three fields the client knows about — `lastSentAt` is bookkeeping for
+  // the cron and was being handed out with them.
+  const { enabled, day, time } = user.digest ?? DEFAULT_DIGEST;
+  const data: DigestPreference = { enabled, day, time };
+  res.json({ success: true, data });
 }));
 
 // PATCH /api/auth/digest — opt in/out of the weekly summary

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { AuthResponse } from '@perfscope/shared';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { GoogleButton, googleAuthEnabled } from '@/features/auth/ui/GoogleButton';
 import { motion } from 'framer-motion';
 import { Activity, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/model/authStore';
-import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
@@ -37,7 +37,7 @@ export function RegisterPage() {
   async function onSubmit(data: FormValues) {
     setServerErr('');
     try {
-      const res = await apiClient.post<{ token: string; user: AuthUser }>('/auth/register', data);
+      const res = await apiClient.post<AuthResponse>('/auth/register', data);
       setAuth(res.data.user, res.data.token);
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
@@ -47,7 +47,7 @@ export function RegisterPage() {
     }
   }
 
-  function onGoogleSuccess({ user, token }: { user: AuthUser; token: string }) {
+  function onGoogleSuccess({ user, token }: AuthResponse) {
     setAuth(user, token);
     navigate('/dashboard', { replace: true });
   }
