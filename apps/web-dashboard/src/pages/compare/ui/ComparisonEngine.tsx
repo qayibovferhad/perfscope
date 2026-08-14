@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { SIDE_TEXT, SIDE_LABEL, sideOf } from './sides';
 import { motion } from 'framer-motion';
 import { Zap, Trophy, AlertTriangle, TrendingUp } from 'lucide-react';
 import { VITAL_THRESHOLDS } from '@/entities/analysis';
@@ -135,10 +136,10 @@ function EfficiencySection({ target, competitor }: { target: AnalysisResult; com
             ? 'bg-ld-accent-soft border border-ld-accent-line'
             : 'bg-[rgba(230,162,60,0.13)] border border-[rgba(230,162,60,0.34)]'}`}
         >
-          <Trophy className={`w-[18px] h-[18px] shrink-0 ${tWins ? 'text-ld-accent-2' : 'text-ld-amber'}`} />
+          <Trophy className={`w-[18px] h-[18px] shrink-0 ${SIDE_TEXT[sideOf(tWins)]}`} />
           <span>
-            <b className={`font-bold ${tWins ? 'text-ld-accent-2' : 'text-ld-amber'}`}>
-              {tWins ? 'Your Site' : 'Competitor'} is {ratio}× more efficient
+            <b className={`font-bold ${SIDE_TEXT[sideOf(tWins)]}`}>
+              {SIDE_LABEL[sideOf(tWins)]} is {ratio}× more efficient
             </b>
             {' '}per MB of resources delivered —{' '}
             {tWins

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { SIDE_DOT, sideOf } from './sides';
 import { motion } from 'framer-motion';
 import { Layers, Cpu, AlertTriangle, ExternalLink } from 'lucide-react';
 import type { AnalysisResult, FlameChartData } from '@/entities/analysis';
@@ -283,7 +284,7 @@ function OversizedResources({
             >
               {/* File name */}
               <div className="flex items-center gap-2 min-w-0">
-                <span className={`w-[6px] h-[6px] rounded-full shrink-0 ${isTarget ? 'bg-ld-accent' : 'bg-ld-amber'}`} />
+                <span className={`w-[6px] h-[6px] rounded-full shrink-0 ${SIDE_DOT[sideOf(isTarget)]}`} />
                 <a
                   href={req.url}
                   target="_blank"

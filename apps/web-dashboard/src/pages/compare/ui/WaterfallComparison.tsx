@@ -6,6 +6,8 @@ import { TimelineProvider } from '@/features/analyzer/model/TimelineContext';
 import { ResourceWaterfall } from '@/features/analyzer/ui/ResourceWaterfall';
 import { fmtMs } from '@/shared/lib/format';
 import { TransportBar } from './TransportBar';
+import { sideOf } from './sides';
+import { SideBadge } from './SideBadge';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -112,10 +114,7 @@ function SideHead({
 
   return (
     <div className="flex items-center justify-between mb-[10px]">
-      <span className={`inline-flex items-center gap-[8px] font-mono text-[12px] font-semibold tracking-[.08em] uppercase ${isYou ? 'text-ld-accent-2' : 'text-ld-amber'}`}>
-        <span className={`w-[9px] h-[9px] rounded-full shrink-0 ${isYou ? 'bg-ld-accent' : 'bg-ld-amber'}`} />
-        {isYou ? 'Your Site' : 'Competitor'}
-      </span>
+      <SideBadge side={sideOf(isYou)} />
       <span className="font-mono text-[11px] text-ld-text-3">
         {reqCount} req · <span className={critCount > 0 ? 'text-ld-rose' : ''}>{meta}</span>
       </span>

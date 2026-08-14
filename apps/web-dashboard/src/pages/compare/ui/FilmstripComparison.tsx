@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
+import { SIDE_TEXT, SIDE_DOT, SIDE_VAR, sideOf } from './sides';
 import { motion } from 'framer-motion';
 import { Film } from 'lucide-react';
 import { findFrameAt } from '@/entities/analysis';
@@ -128,7 +129,7 @@ const Thumb = memo(function Thumb({
 
         {/* Timing label */}
         <div className="absolute bottom-0 inset-x-0 text-center text-[8px] font-bold tabular-nums py-0.5 z-10 bg-black/70">
-          <span style={{ color: isActive ? (isYou ? 'var(--ld-accent-2)' : 'var(--ld-amber)') : 'rgba(255,255,255,0.45)' }}>
+          <span style={{ color: isActive ? SIDE_VAR[sideOf(isYou)] : 'rgba(255,255,255,0.45)' }}>
             {fmtSec2(frame.timing)}
           </span>
         </div>
@@ -179,8 +180,8 @@ function FilmstripRow({
       {/* Label + metric seek pills */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-[7px]">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${isYou ? 'bg-ld-accent' : 'bg-ld-amber'}`} />
-          <span className={`text-[11px] font-bold uppercase tracking-[.08em] ${isYou ? 'text-ld-accent-2' : 'text-ld-amber'}`}>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${SIDE_DOT[sideOf(isYou)]}`} />
+          <span className={`text-[11px] font-bold uppercase tracking-[.08em] ${SIDE_TEXT[sideOf(isYou)]}`}>
             {label}
           </span>
         </div>
@@ -234,7 +235,7 @@ function FilmstripRow({
             eager
           />
           <div className="text-center text-[10px] font-bold tabular-nums py-1 bg-black/80">
-            <span style={{ color: nearbyMetricColor ?? (isYou ? 'var(--ld-accent-2)' : 'var(--ld-amber)') }}>
+            <span style={{ color: nearbyMetricColor ?? SIDE_VAR[sideOf(isYou)] }}>
               {fmtSec2(active.timing)}
             </span>
           </div>

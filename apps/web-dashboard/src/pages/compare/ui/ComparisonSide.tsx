@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion';
+import { sideOf } from './sides';
+import { SideBadge } from './SideBadge';
 import { Clock, Shield, Gauge, Eye, Code2, Search } from 'lucide-react';
 import {
   scoreBand, vitalBand, GlossaryTip,
@@ -117,10 +119,7 @@ function SectionHead({ icon, title, right }: {
 
 function ColHead({ isYou }: { isYou: boolean }) {
   return (
-    <div className={`flex items-center gap-[9px] font-mono text-[12px] font-semibold tracking-[.1em] uppercase mb-[14px] ${isYou ? 'text-ld-accent-2' : 'text-ld-amber'}`}>
-      <span className={`w-[9px] h-[9px] rounded-full shrink-0 ${isYou ? 'bg-ld-accent' : 'bg-ld-amber'}`} />
-      {isYou ? 'Your Site' : 'Competitor'}
-    </div>
+    <SideBadge side={sideOf(isYou)} className="mb-[14px]" />
   );
 }
 

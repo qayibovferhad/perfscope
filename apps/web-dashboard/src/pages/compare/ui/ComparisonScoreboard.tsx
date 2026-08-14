@@ -1,4 +1,5 @@
 import { Trophy } from 'lucide-react';
+import { SIDE_TEXT, sideOf } from './sides';
 import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
 
@@ -35,7 +36,7 @@ function Gauge({ score, side }: { score: number; side: 'you' | 'rival' }) {
         />
       </svg>
       <div className={`absolute inset-0 grid place-items-center font-mono text-[50px] font-semibold tracking-[-0.03em]
-        ${isYou ? 'text-ld-accent-2' : 'text-ld-amber'}`}>
+        ${SIDE_TEXT[sideOf(isYou)]}`}>
         {score}
       </div>
     </div>
@@ -187,7 +188,7 @@ export function ComparisonScoreboard({
           </div>
           <div className="font-mono text-[42px] font-semibold tracking-[-0.03em] text-ld-text leading-none mb-[14px]">
             {diff > 0 && (
-              <span className={youWin ? 'text-ld-accent-2' : 'text-ld-amber'}>+</span>
+              <span className={SIDE_TEXT[sideOf(youWin)]}>+</span>
             )}
             {diff}
           </div>
