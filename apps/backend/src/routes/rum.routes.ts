@@ -4,7 +4,7 @@ import { RUM_COLLECTOR_JS } from '../services/rumCollector.js';
 import { Website } from '../models/Website.model.js';
 import { RumEvent } from '../models/RumEvent.model.js';
 
-export const rumRouter = Router();
+export const rumRouter: Router = Router();
 
 /**
  * The public half of RUM: the collector any site can embed, and the endpoint it beacons

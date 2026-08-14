@@ -6,7 +6,7 @@ import type { OnboardingStatus, OnboardingStepId } from '@perfscope/shared';
 import { emptyOnNoStorage } from '../middleware/storage.middleware.js';
 import { asyncHandler } from '../lib/errors.js';
 
-export const onboardingRouter = Router();
+export const onboardingRouter: Router = Router();
 
 /** Ceiling on the evidence counts — past this the exact number tells the user nothing. */
 const COUNT_CAP = 1000;
