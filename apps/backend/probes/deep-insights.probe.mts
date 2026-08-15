@@ -40,9 +40,21 @@ const done = new Promise<void>((resolve, reject) => {
     process.stdout.write(`\r  ${at()} ${p.stage} ${p.progress}%          `);
   });
 
-  socket.on('analysis:complete', (r: { scores: { performance: number }; audits: unknown[] }) => {
+  socket.on('analysis:complete', (r: {
+    scores: { performance: number }; audits: unknown[];
+    resources?: { requests: { isCritical: boolean; resourceType: string; transferSize: number }[] };
+  }) => {
     console.log(`\n\n[${at()}] analysis:complete — perf ${r.scores.performance}, ${r.audits.length} audits`);
     console.log('       (no AI in this frame; that is the point — scores are not held back)');
+
+    // Oversized resources come straight from the parser, so this is also where a change to
+    // CRITICAL_THRESHOLDS shows up on a real page rather than in a spreadsheet.
+    const reqs = r.resources?.requests ?? [];
+    const crit = reqs.filter((x) => x.isCritical);
+    console.log(`       ${crit.length} of ${reqs.length} requests flagged oversized`);
+    for (const c of crit.slice(0, 5)) {
+      console.log(`         ${c.resourceType.padEnd(11)} ${(c.transferSize / 1024).toFixed(0)} KB`);
+    }
   });
 
   socket.on('analysis:insights', (p: Record<string, unknown>) => {

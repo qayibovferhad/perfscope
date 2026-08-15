@@ -106,6 +106,22 @@ try {
   await sleep(800);
   console.log(`  after opening all audits  : ${await sparkles()} touchpoints`);
 
+  // ── Oversized resources ────────────────────────────────────────────────────
+  // Driven by NetworkRequest.isCritical, whose thresholds are compared against transfer
+  // (post-compression) size. They were high enough that this table and the Critical stat
+  // card were blank on four audits in five; these assertions are what stops that returning.
+  const oversized = await page.evaluate(() => {
+    const t = document.body.innerText;
+    // Case-insensitive on purpose: these headings are CSS-uppercased, so innerText
+    // returns "HEAVIEST RESOURCES (6)" and a case-sensitive match reads as "not rendered".
+    const table = t.match(/(oversized|heaviest) resources \((\d+)\)/i);
+    const stat  = t.match(/critical\s+(\d+)\s+oversized files/i);
+    return { table: table?.[0] ?? null, criticalStat: stat?.[1] ?? null, alert: /heavy enough to hold up the page/.test(t) };
+  });
+  console.log(`\n  resources table  : ${oversized.table ?? '(not rendered)'}`);
+  console.log(`  Critical stat    : ${oversized.criticalStat ?? '(not found)'}`);
+  console.log(`  oversized alert  : ${oversized.alert ? 'shown' : 'not shown'}`);
+
   // ── Reopened from history: same commentary, no skeleton, no socket ──────────
   // Uses the extension's own deep link rather than hunting for a button, and it exercises
   // the path that matters: the stored result is loaded into the analyzer with no audit

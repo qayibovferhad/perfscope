@@ -83,11 +83,27 @@ const LIBRARY_PATTERNS: Array<[string, RegExp]> = [
 
 // ─── Critical Thresholds ──────────────────────────────────────────────────────
 
+/**
+ * What counts as an oversized resource, in bytes **over the wire**.
+ *
+ * These are transfer sizes, so they are compared against post-compression weight — which
+ * is why the previous set (script 500 KB, image 1 MB, font 200 KB) almost never matched.
+ * Measured across 51 stored audits: scripts sit at 1 KB median and 59 KB at p99, images
+ * top out at 41 KB, fonts run 77 KB median and 112 KB at p90. Only nine audits had a
+ * single resource reach the old numbers, and every one of them was a dev build serving
+ * unminified bundles — so "critical" had quietly become a dev-build detector rather than
+ * a performance signal, and the stat card that reports it read 0 on four audits in five.
+ *
+ * The values below sit above the p99 of a healthy page and below what a genuinely heavy
+ * one ships, so the count means something on an ordinary site. Stylesheets had no entry at
+ * all and now do — a 162 KB stylesheet blocks rendering as surely as a script does.
+ */
 const CRITICAL_THRESHOLDS: Partial<Record<ResourceType, number>> = {
-  script:     500  * 1024,   // 500 KB
-  image:      1024 * 1024,   // 1 MB
-  media:      5    * 1024 * 1024, // 5 MB
-  font:       200  * 1024,   // 200 KB
+  script:     100 * 1024,        // 100 KB
+  stylesheet:  75 * 1024,        //  75 KB — render-blocking, so a tighter bar than script
+  image:      150 * 1024,        // 150 KB
+  font:       120 * 1024,        // 120 KB
+  media:        2 * 1024 * 1024, //   2 MB
 };
 
 function checkCritical(resourceType: ResourceType, transferSize: number): boolean {

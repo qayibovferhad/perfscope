@@ -148,7 +148,11 @@ export function AnalyzerResultsPanel({ data, aiPending }: Props) {
                 resources={data.resources}
                 flameChartData={data.flameChartData}
               />
-              <div className="mt-3">
+              {/* This branch is the one almost every audit takes — a run with a timeline
+                  and resources — and it was the only one without the oversized-resource
+                  warning, so in practice that warning never appeared. */}
+              <div className="mt-3 space-y-3">
+                <ResourcesAlert resources={data.resources} />
                 <ResourceBreakdown resources={data.resources} />
               </div>
             </section>
