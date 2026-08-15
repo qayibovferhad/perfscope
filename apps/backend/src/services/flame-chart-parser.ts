@@ -12,7 +12,6 @@
 import type { FlameChartData, FlameChartEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
-  type RawTraceEvent,
 } from '../lib/trace.js';
 
 // ─── Category sets ────────────────────────────────────────────────────────────

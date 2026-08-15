@@ -57,6 +57,9 @@ function fmtMetric(key, value) {
 // ── Layout helpers ───────────────────────────────────────
 
 function pad(str, width) {
+  // The control character is the point: chalk's colour codes take no space on screen, so
+  // they have to come out before the visible width can be measured.
+  // eslint-disable-next-line no-control-regex
   const visible = str.replace(/\x1b\[[0-9;]*m/g, '');
   return str + ' '.repeat(Math.max(0, width - visible.length));
 }

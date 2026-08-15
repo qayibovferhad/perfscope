@@ -143,11 +143,12 @@ function toSiteReport(
 }
 
 export const HistoryService = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async save(
     entry: HistoryEntry,
     userId?: string,
     projectId?: string,
+    /** The whole AnalysisResult, stored verbatim — deliberately untyped at this boundary. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fullResult?: Record<string, any>,
     source: AuditSource = 'manual',
   ): Promise<void> {
@@ -280,6 +281,7 @@ export const HistoryService = {
       .findOne({ analysisId, userId })
       .select('fullResult')
       .lean();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (doc?.fullResult as Record<string, any> | undefined) ?? null;
   },
 

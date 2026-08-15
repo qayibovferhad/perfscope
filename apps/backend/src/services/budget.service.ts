@@ -1,5 +1,5 @@
 import { fmtMs, fmtCls, hasResult, type BudgetFailure, type AnalysisResult } from '@perfscope/shared';
-import { Website, type IWebsite } from '../models/Website.model.js';
+import type { IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
 

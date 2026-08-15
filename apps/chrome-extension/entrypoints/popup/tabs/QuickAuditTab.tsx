@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { runAnalysis } from '../analysisSocket'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { useActiveTabUrl, hostnameOf, pathnameOf } from '../useActiveTab'

@@ -47,7 +47,7 @@ try {
   // run, the progress, the scores) is the real code path.
   await page.evaluateOnNewDocument(() => {
     const answer = [{ url: 'https://example.com', active: true }];
-    // @ts-ignore — test double
+    // @ts-expect-error — test double
     chrome.tabs.query = (_q, cb) => (cb ? cb(answer) : Promise.resolve(answer));
   });
   await page.reload({ waitUntil: 'networkidle0' });

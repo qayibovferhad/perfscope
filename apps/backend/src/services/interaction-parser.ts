@@ -16,7 +16,6 @@
 import type { InteractionData, InteractionEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
-  type RawTraceEvent,
 } from '../lib/trace.js';
 
 const USER_INPUT_TYPES = new Set([

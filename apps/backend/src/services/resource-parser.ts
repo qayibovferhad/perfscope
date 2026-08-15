@@ -45,11 +45,11 @@ const LIBRARY_PATTERNS: Array<[string, RegExp]> = [
   ['jquery',         /\bjquery(?:-\d[\d.]*)?(?:\.min)?\.js/i],
   ['bootstrap',      /\bbootstrap(?:\.bundle)?(?:\.min)?\.(?:js|css)/i],
   ['tailwind',       /\btailwind(?:css)?(?:\.min)?\.css/i],
-  ['material-ui',    /\@material-ui|mui\/material/i],
+  ['material-ui',    /@material-ui|mui\/material/i],
   ['ant-design',     /antd(?:\.min)?\.(?:js|css)/i],
-  ['chakra-ui',      /\@chakra-ui/i],
+  ['chakra-ui',      /@chakra-ui/i],
   ['shadcn',         /\bshadcn/i],
-  ['radix',          /\@radix-ui/i],
+  ['radix',          /@radix-ui/i],
 
   // Animation
   ['framer-motion',  /\bframer-motion/i],
@@ -75,7 +75,7 @@ const LIBRARY_PATTERNS: Array<[string, RegExp]> = [
   ['segment',        /cdn\.segment\.com/i],
   ['mixpanel',       /mixpanel(?:\.min)?\.js/i],
   ['amplitude',      /amplitude(?:\.min)?\.js/i],
-  ['sentry',         /\@sentry|sentry(?:\.min)?\.js/i],
+  ['sentry',         /@sentry|sentry(?:\.min)?\.js/i],
 
   // CDN-based detection (cloudflare cdnjs path pattern)
   ['cdnjs',          /cdnjs\.cloudflare\.com\/ajax\/libs\/([^/]+)\//i],
