@@ -13,10 +13,13 @@ const AI_ADVICE_LIMIT = 6;
  * Floor for advising a resource at all (bytes, over the wire).
  *
  * Advice used to be gated on `NetworkRequest.isCritical`, which means "over 500 KB for a
- * script, 1 MB for an image". Those are transfer sizes, i.e. post-compression — no audit
- * in this database has ever had a single resource reach them, on any site, so the feature
- * shipped dead. Weight is still the right signal; the threshold just has to be one real
- * pages cross. The heaviest handful above this floor is what a person would look at first.
+ * script, 1 MB for an image". Those are transfer sizes, i.e. post-compression, and only
+ * 9 of the 51 stored audits have ever had a resource reach one — all of them dev builds
+ * serving unminified bundles. So four in five audits got no advice at all, not because the
+ * page had nothing worth saying but because nothing on it was enormous.
+ *
+ * Weight is still the right signal; the threshold just has to be one ordinary pages cross.
+ * The heaviest handful above this floor is what a person would look at first.
  */
 const AI_ADVICE_MIN_BYTES = 30 * 1024;
 

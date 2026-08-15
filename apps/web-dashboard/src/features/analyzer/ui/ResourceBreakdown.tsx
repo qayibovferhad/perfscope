@@ -156,10 +156,11 @@ function ResourceTypeRows({ resources }: { resources: ParsedResources }) {
  * The resources worth naming, heaviest first.
  *
  * Preference goes to the ones Gemini wrote advice for, because those rows are the only
- * place that advice is readable. It used to list `isCritical` requests only — a threshold
- * (500 KB for a script, over the wire) that no real page crosses, so both the table and the
- * advice inside it were invisible. The old set is still the fallback when there is no AI,
- * which is what a deployment without a Gemini key sees.
+ * place that advice is readable. It used to list `isCritical` requests only — over 500 KB
+ * transferred for a script — which is a real signal but a rare one: only about one audit in
+ * five has any, and those are dev builds serving unminified bundles. On the other four the
+ * table simply did not appear, taking the advice with it. The old set is still the fallback
+ * when there is no AI, which is what a deployment without a Gemini key sees.
  */
 function CriticalTable({ resources }: { resources: ParsedResources }) {
   const advised = resources.requests.filter((r) => r.advice);
