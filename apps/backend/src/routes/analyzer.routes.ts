@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ok } from '../lib/respond.js';
-import { lighthouseService } from '../services/lighthouse.service.js';
+import { lighthouseService, RUN_TIMEOUT_MS } from '../services/lighthouse.service.js';
 import { enrichWithAi, persistAudit, resolveOrCreateProject } from '../services/auditPipeline.js';
 import { optionalAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { isValidUrl } from '../lib/url.js';
@@ -31,6 +31,14 @@ analyzerRouter.post('/analyze', optionalAuth, asyncHandler<AuthRequest>(async (r
 
   if (!url || typeof url !== 'string') throw new AppError(400, 'url field is required');
   if (!isValidUrl(url)) throw new AppError(400, 'Invalid URL. Must start with http:// or https://');
+
+  // The server hangs up at HTTP_TIMEOUT_MS (70s), and an audit is allowed four minutes.
+  // A slow site therefore reported failure to the caller while the audit carried on
+  // server-side — and a retry started a second one competing for the same CPU. Raised for
+  // this connection only, because the global limit is what protects every other route from
+  // a wedged request; the extra minute is for the AI enrichment and the history write that
+  // follow the run.
+  req.setTimeout(RUN_TIMEOUT_MS + 60_000);
 
   const result = await lighthouseService.analyze(url);
   await enrichWithAi(result);

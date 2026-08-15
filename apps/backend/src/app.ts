@@ -24,9 +24,10 @@ import type { InterServerEvents, SocketData } from './types/socket.js';
 /**
  * How long a request may block before the server hangs up.
  *
- * NOTE: this is shorter than `RUN_TIMEOUT_MS` (4 min) in lighthouse.service.ts, which the
- * REST audit path can legitimately take. Left at its existing value rather than changed
- * as a side effect of a refactor — raising it is a behaviour decision.
+ * Deliberately short, and deliberately *not* raised to match `RUN_TIMEOUT_MS` (4 min) in
+ * lighthouse.service.ts: this is server-wide, so a value big enough for an audit would let
+ * every wedged request hold a socket for four minutes. The one route that legitimately runs
+ * longer raises the limit for its own connection — see analyzer.routes.ts.
  */
 const HTTP_TIMEOUT_MS = 70_000;
 

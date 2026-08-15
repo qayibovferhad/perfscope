@@ -110,8 +110,14 @@ function runProgress(i: number, runs: number): number {
   return PCT.auditing + Math.round(((PCT.auditCeil - PCT.auditing) * i) / runs);
 }
 
-/** A single Lighthouse pass that outlives this is wedged, not slow. */
-const RUN_TIMEOUT_MS = 4 * 60_000;
+/**
+ * A single Lighthouse pass that outlives this is wedged, not slow.
+ *
+ * Exported because the REST audit route has to hold its connection open at least this long
+ * — the server's default is far shorter, and hanging up early there does not stop the audit,
+ * it just makes the caller think it failed.
+ */
+export const RUN_TIMEOUT_MS = 4 * 60_000;
 /** Grace period for a finished worker to close its browser before we do it for it. */
 const CLOSE_GRACE_MS = 15_000;
 
