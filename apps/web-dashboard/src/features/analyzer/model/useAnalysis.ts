@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory, AuditFormFactor } from '@/entities/analysis';
+import type { AnalysisInsightsPayload } from '@perfscope/shared';
 
 
 export type PartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
@@ -16,7 +17,24 @@ interface State {
   error:    string | null;
   /** Set when the failure has a repair the UI can offer — see SESSION_EXPIRED. */
   errorCode: string | null;
+  /**
+   * The scores are in and Gemini is still writing.
+   *
+   * The server emits `analysis:insights` for every live audit, even when it has nothing to
+   * say, so this is answered by an event rather than guessed at — which is what lets the AI
+   * surfaces show a skeleton instead of appearing from nowhere seconds after the report.
+   * Only a live run sets it: `bootstrap` renders a stored result whose AI is already in it.
+   */
+  aiPending: boolean;
 }
+
+/**
+ * How long to keep the skeletons up if `analysis:insights` never arrives.
+ *
+ * It always should — but a dropped socket between the two events would otherwise leave
+ * placeholders on screen for the rest of the session.
+ */
+const AI_WAIT_TIMEOUT_MS = 30_000;
 
 export function useAnalysis() {
   const { lastResult, lastUrl, setResult } = useAnalysisStore();
@@ -29,13 +47,77 @@ export function useAnalysis() {
     data:      lastResult,
     error:     null,
     errorCode: null,
+    aiPending: false,
   }));
 
   const cleanupRef = useRef<(() => void) | null>(null);
+  /**
+   * Latest state, for callbacks that fire from socket events rather than from React.
+   * Synced in an effect rather than during render — one commit behind is harmless here,
+   * because the only reader is an event that arrives seconds after the commit it needs.
+   */
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopAiWait = useCallback(() => {
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+    aiTimerRef.current = null;
+  }, []);
+
+  /** Arm the skeletons, with a deadline so they cannot outlive the audit that raised them. */
+  const startAiWait = useCallback(() => {
+    stopAiWait();
+    aiTimerRef.current = setTimeout(() => {
+      aiTimerRef.current = null;
+      setState((prev) => (prev.aiPending ? { ...prev, aiPending: false } : prev));
+    }, AI_WAIT_TIMEOUT_MS);
+  }, [stopAiWait]);
+
+  useEffect(() => stopAiWait, [stopAiWait]);
+
+  // Gemini's commentary arrives after the scores. Merge it into the result on screen rather
+  // than replacing it — and only if it is still the same analysis; a user who started a new
+  // audit in the meantime must not see the old page's advice land on the new numbers.
+  const applyInsights = useCallback((data: AnalysisInsightsPayload) => {
+    stopAiWait();
+
+    // Read through a ref rather than a setState updater. This runs from a socket event, so
+    // the ref is current — and writing to the Zustand store from inside an updater means
+    // touching another component's state *during render*, which React logs as an error and
+    // StrictMode runs twice.
+    const prev = stateRef.current;
+    if (!prev.data || prev.data.id !== data.analysisId) return;
+
+    const next: AnalysisResult = { ...prev.data, aiInsights: data.insights || prev.data.aiInsights };
+
+    const advice = data.advice;
+    if (advice && next.resources) {
+      next.resources = {
+        ...next.resources,
+        requests: next.resources.requests.map((r) =>
+          advice[r.url] ? { ...r, advice: advice[r.url] } : r),
+      };
+    }
+
+    const explanations = data.auditExplanations;
+    if (explanations) {
+      next.audits = next.audits.map((a) =>
+        explanations[a.id] ? { ...a, aiExplanation: explanations[a.id] } : a);
+    }
+
+    if (data.metricNotes) next.aiMetricNotes = data.metricNotes;
+    if (data.waterfall)   next.aiWaterfallNarrative = data.waterfall;
+
+    // aiPending drops here whether or not anything came back: an empty payload is the
+    // server saying it has nothing to add, which is an answer, not a reason to keep waiting.
+    setState((s) => ({ ...s, data: next, aiPending: false }));
+    setResult(next, next.url);
+  }, [setResult, stopAiWait]);
 
   const analyze = useCallback((url: string, projectId?: string, formFactor?: AuditFormFactor, precision?: AuditPrecision) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null });
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
 
     const cleanup = startAnalysis(url, {
       onProgress: (progress) =>
@@ -48,32 +130,36 @@ export function useAnalysis() {
         })),
 
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
         setResult(data, url);
+        startAiWait();
       },
+      onInsights: applyInsights,
 
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {} }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
     }, { projectId, formFactor, precision });
 
     cleanupRef.current = cleanup;
-  }, [setResult]);
+  }, [setResult, applyInsights, startAiWait]);
 
   const reset = useCallback(() => {
     cleanupRef.current?.();
-    setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null });
+    setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
+    stopAiWait();
     useAnalysisStore.getState().clear();
-  }, []);
+  }, [stopAiWait]);
 
   const bootstrap = useCallback((result: AnalysisResult, url: string) => {
     cleanupRef.current?.();
-    setState({ status: 'success', data: result, progress: null, partials: {}, error: null, errorCode: null });
+    stopAiWait();
+    setState({ status: 'success', data: result, progress: null, partials: {}, error: null, errorCode: null, aiPending: false });
     setResult(result, url);
-  }, [setResult]);
+  }, [setResult, stopAiWait]);
 
   const adoptRunning = useCallback(() => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null });
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
     const cleanup = joinAnalysis({
       onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
       onPartial:  (partial)  => setState((prev) => ({
@@ -81,18 +167,20 @@ export function useAnalysis() {
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
         setResult(data, data.url);
+        startAiWait();
       },
+      onInsights: applyInsights,
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {} }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
     });
     cleanupRef.current = cleanup;
-  }, [setResult]);
+  }, [setResult, applyInsights, startAiWait]);
 
   const startAuthAudit = useCallback((sessionId: string, url: string, formFactor?: AuditFormFactor) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null });
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
 
     const cleanup = emitAuthAuditStart(sessionId, url, {
       onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
@@ -101,18 +189,20 @@ export function useAnalysis() {
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
         setResult(data, url);
+        startAiWait();
         // The backend stores the freshly captured session on the website and clears its
         // login-wall flag, so the "Session expired" badge is stale the moment this lands.
         void queryClient.invalidateQueries({ queryKey: ['websites'] });
       },
+      onInsights: applyInsights,
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {} }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
     }, formFactor);
 
     cleanupRef.current = cleanup;
-  }, [setResult, queryClient]);
+  }, [setResult, queryClient, applyInsights, startAiWait]);
 
   return {
     analyze,
@@ -126,6 +216,7 @@ export function useAnalysis() {
     partials:  state.partials,
     isPending: state.status === 'loading',
     isError:   state.status === 'error',
+    aiPending: state.aiPending,
     isSuccess: state.status === 'success',
     error:     state.error,
     errorCode: state.errorCode,

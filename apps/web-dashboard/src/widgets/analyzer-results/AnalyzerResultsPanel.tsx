@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
-import { AiInsights } from '@/features/analyzer';
 import { ResourceBreakdown } from '@/features/analyzer';
 import { ResourceWaterfall } from '@/features/analyzer';
 import { PerformanceTimeline } from '@/features/analyzer';
@@ -16,6 +15,7 @@ import { ResourcesAlert } from '@/features/analyzer';
 import { ThirdPartyPanel } from '@/features/analyzer';
 import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer';
+import { AiCard } from '@/shared/ui/ai-card';
 import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────
@@ -38,12 +38,20 @@ const SCORE_ITEMS: { label: ScoreLabel; scoreKey: keyof AnalysisResult['scores']
 
 // ─── Main widget ─────────────────────────────────────────────────────────────
 
-interface Props { data: AnalysisResult }
+interface Props {
+  data: AnalysisResult;
+  /**
+   * A live audit has its scores but Gemini is still writing. Drives every AI skeleton on
+   * the page. Stored results (history, the public report) leave it false — their commentary
+   * was written when they were run and is already in `data`.
+   */
+  aiPending?: boolean;
+}
 
 /** Score gap across runs beyond which the page's own variance dominates the number. */
 const NOISY_SPREAD = 8;
 
-export function AnalyzerResultsPanel({ data }: Props) {
+export function AnalyzerResultsPanel({ data, aiPending }: Props) {
   const measurement = data.measurement;
   // Field data for the same URL/device — renders nothing when Chrome has no
   // real-user sample for this page (or the server has no CrUX key).
@@ -116,17 +124,25 @@ export function AnalyzerResultsPanel({ data }: Props) {
         </div>
       </section>
 
-      {data.aiInsights && <AiInsights insights={data.aiInsights} />}
+      <AiCard text={data.aiInsights} pending={aiPending} />
 
       <section>
         <SectionTitle>Core Web Vitals</SectionTitle>
-        <MetricsGrid metrics={data.metrics} />
+        <MetricsGrid metrics={data.metrics} notes={data.aiMetricNotes} aiPending={aiPending} />
       </section>
 
       {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData || data.interactionData) && (
         <TimelineProvider>
           {data.timelineData && data.resources ? (
             <section>
+              {/* Above the waterfall because it is the sentence a person would otherwise
+                  have to assemble by reading every bar in it. */}
+              <AiCard
+                title="How this page loaded"
+                text={data.aiWaterfallNarrative}
+                pending={aiPending}
+                className="mb-3"
+              />
               <TimelineWaterfall
                 timelineData={data.timelineData}
                 resources={data.resources}
@@ -148,6 +164,7 @@ export function AnalyzerResultsPanel({ data }: Props) {
                 <section className="space-y-3">
                   <SectionTitle>Resources</SectionTitle>
                   <ResourcesAlert resources={data.resources} />
+                  <AiCard title="How this page loaded" text={data.aiWaterfallNarrative} pending={aiPending} />
                   <ResourceWaterfall resources={data.resources} />
                   <ResourceBreakdown resources={data.resources} />
                 </section>
@@ -195,7 +212,7 @@ export function AnalyzerResultsPanel({ data }: Props) {
 
       {data.audits.length > 0 && (
         <section>
-          <AuditList audits={data.audits} />
+          <AuditList audits={data.audits} aiPending={aiPending} />
         </section>
       )}
 

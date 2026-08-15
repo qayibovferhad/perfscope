@@ -7,7 +7,6 @@
 export { TimelineProvider } from './model/TimelineContext';
 export { useAnalysisStore } from './model/analysisStore';
 export { useAnalysis } from './model/useAnalysis';
-export { AiInsights } from './ui/AiInsights';
 export { AnalyzerSearchForm } from './ui/AnalyzerSearchForm';
 export { CLSVisualizer } from './ui/CLSVisualizer';
 export { HeapMemoryChart } from './ui/HeapMemoryChart';

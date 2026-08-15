@@ -150,19 +150,30 @@ function ResourceTypeRows({ resources }: { resources: ParsedResources }) {
   );
 }
 
-// ─── Critical resources table ─────────────────────────────────────────────────
+// ─── Heaviest resources table ─────────────────────────────────────────────────
 
+/**
+ * The resources worth naming, heaviest first.
+ *
+ * Preference goes to the ones Gemini wrote advice for, because those rows are the only
+ * place that advice is readable. It used to list `isCritical` requests only — a threshold
+ * (500 KB for a script, over the wire) that no real page crosses, so both the table and the
+ * advice inside it were invisible. The old set is still the fallback when there is no AI,
+ * which is what a deployment without a Gemini key sees.
+ */
 function CriticalTable({ resources }: { resources: ParsedResources }) {
-  const criticals = resources.requests
-    .filter((r) => r.isCritical)
+  const advised = resources.requests.filter((r) => r.advice);
+  const criticals = (advised.length > 0 ? advised : resources.requests.filter((r) => r.isCritical))
+    .slice()
     .sort((a, b) => b.transferSize - a.transferSize);
 
   if (criticals.length === 0) return null;
+  const titled = advised.length > 0 ? 'Heaviest Resources' : 'Oversized Resources';
 
   return (
     <div className="px-[18px] py-[14px] border-t border-ld-border">
       <p className="text-[11px] font-semibold uppercase tracking-[.1em] text-ld-text-3 mb-[12px]">
-        Oversized Resources ({criticals.length})
+        {titled} ({criticals.length})
       </p>
       <div className="rounded-[10px] border border-ld-border overflow-hidden">
         <table className="w-full text-[12px]">
@@ -210,9 +221,9 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
                         content={req.advice}
                         className="text-ld-amber hover:text-ld-amber"
                       />
-                    ) : (
+                    ) : req.isCritical ? (
                       <AlertTriangle className="w-[13px] h-[13px] text-ld-rose" />
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               );

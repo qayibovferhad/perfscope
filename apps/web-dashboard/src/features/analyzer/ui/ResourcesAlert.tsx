@@ -4,7 +4,7 @@ import type { ParsedResources } from '@/entities/analysis';
 
 export function ResourcesAlert({ resources }: { resources: ParsedResources }) {
   const criticalCount = resources.requests.filter(r => r.isCritical).length;
-  const hasAdvice     = resources.requests.some(r => r.isCritical && r.advice);
+  const hasAdvice     = resources.requests.some(r => r.advice);
   if (criticalCount === 0) return null;
 
   return (

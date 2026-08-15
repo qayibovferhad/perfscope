@@ -29,7 +29,16 @@ const BAND_VAR = { good: 'var(--ld-accent-2)', warn: 'var(--ld-amber)', poor: 'v
 /** Thresholds come from the shared vitals table, never retyped here. */
 const clsScoreColor = (score: number) => BAND_VAR[vitalBand('cls', score)];
 
-function aiSuggestion(selector: string, snippet: string, score: number, rootCause?: string): string {
+/**
+ * The fix for a shift, from its root cause and selector.
+ *
+ * This was called `aiSuggestion` and rendered under an "AI suggestion" heading, and it is
+ * not AI — it is the rule table below, which is exactly why it is worth keeping: it is
+ * instant, free, and right about the handful of causes that produce nearly every shift.
+ * With real Gemini commentary now sitting a few sections up the same report, the label was
+ * the only dishonest part, so the label is what went.
+ */
+function shiftFix(selector: string, snippet: string, score: number, rootCause?: string): string {
   if (score < 0.005)
     return 'Low impact shift. Focus on higher priority stability issues first.';
   if (rootCause === 'unsized-media')
@@ -77,7 +86,7 @@ const CulpritItem = memo(function CulpritItem({
 }) {
   const isLow = element.score < 0.005;
   const suggestion = useMemo(
-    () => aiSuggestion(element.selector, element.snippet, element.score, element.rootCause),
+    () => shiftFix(element.selector, element.snippet, element.score, element.rootCause),
     [element.selector, element.snippet, element.score, element.rootCause],
   );
 
@@ -120,7 +129,7 @@ const CulpritItem = memo(function CulpritItem({
         </div>
       </div>
 
-      {/* AI suggestion */}
+      {/* Suggested fix */}
       <div className={cn(
         'flex gap-[6px] rounded-[8px] p-[8px]',
         isLow

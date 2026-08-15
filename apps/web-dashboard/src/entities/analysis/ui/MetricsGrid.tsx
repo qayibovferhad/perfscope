@@ -2,10 +2,11 @@ import { motion } from 'framer-motion';
 import { Clock, Maximize2, Layers, LayoutGrid, Zap, Timer } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { fmtMs, fmtSec, fmtCls } from '@/shared/lib/format';
-import { VITAL_THRESHOLDS, type CoreWebVitals } from '@perfscope/shared';
+import { VITAL_THRESHOLDS, type CoreWebVitals, type AiMetricNotes } from '@perfscope/shared';
 import { vitalBand, BAND_TEXT, BAND_TILE, BAND_BAR } from '../lib';
 import { goodThreshold } from '../glossary';
 import { GlossaryTip } from './GlossaryTip';
+import { AiNote } from '@/shared/ui/ai-card';
 
 function clamp(v: number) { return Math.min(100, Math.max(0, v)); }
 
@@ -18,13 +19,26 @@ const VITALS = [
   { key: 'tti' as const, abbr: 'TTI', label: 'Time to Interactive',      icon: Timer,      fmt: fmtSec },
 ] as const;
 
-export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
+interface Props {
+  metrics: CoreWebVitals;
+  /** Gemini's line on each vital that is not already good. Absent on stored results with no AI. */
+  notes?: AiMetricNotes;
+  /** A live audit is still waiting on the commentary. */
+  aiPending?: boolean;
+}
+
+export function MetricsGrid({ metrics, notes, aiPending }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
       {VITALS.map(({ key, abbr, label, icon: Icon, fmt }) => {
         const value  = metrics[key];
         const status = vitalBand(key, value);
         const barW   = clamp(value / VITAL_THRESHOLDS[key].poor * 100);
+        // Only the vitals the server chose to comment on hold a place while it writes:
+        // a good vital gets no note, so showing it a skeleton would promise one that
+        // never arrives. Every tile pulsing would also drown the numbers themselves.
+        const note = notes?.[key];
+        const notePending = Boolean(aiPending) && status !== 'good';
 
         return (
           <div
@@ -64,6 +78,8 @@ export function MetricsGrid({ metrics }: { metrics: CoreWebVitals }) {
                 transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
               />
             </div>
+
+            <AiNote text={note} pending={notePending && !note} className="mt-3" />
           </div>
         );
       })}

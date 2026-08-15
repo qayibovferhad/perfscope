@@ -1,6 +1,6 @@
 import type {
   AnalysisProgress, AnalysisResult, CategoryPartial, AuditFormFactor,
-  AuditPrecision, AnalysisErrorPayload,
+  AuditPrecision, AnalysisErrorPayload, AnalysisInsightsPayload,
 } from '@perfscope/shared';
 import { getSocket, type AppSocket } from '@/shared/api/socket';
 
@@ -8,6 +8,11 @@ export interface AnalysisCallbacks {
   onProgress: (data: AnalysisProgress) => void;
   onPartial:  (data: CategoryPartial)  => void;
   onComplete: (result: AnalysisResult) => void;
+  /**
+   * Gemini's commentary, arriving after onComplete. Optional: the compare page's
+   * short-lived sockets have no panel to put it in and simply do not subscribe.
+   */
+  onInsights?: (data: AnalysisInsightsPayload) => void;
   /** `code` is set for the failures the UI can act on — currently SESSION_EXPIRED. */
   onError:    (message: string, code?: string) => void;
 }
@@ -21,17 +26,20 @@ export function attachAnalysisListeners(s: AppSocket, callbacks: AnalysisCallbac
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
   const onPartial  = (data: CategoryPartial)     => callbacks.onPartial(data);
   const onComplete = (result: AnalysisResult)    => callbacks.onComplete(result);
+  const onInsights = (data: AnalysisInsightsPayload) => callbacks.onInsights?.(data);
   const onError    = (data: AnalysisErrorPayload) => callbacks.onError(data.message, data.code);
 
   s.on('analysis:progress', onProgress);
   s.on('analysis:partial',  onPartial);
   s.on('analysis:complete', onComplete);
+  s.on('analysis:insights', onInsights);
   s.on('analysis:error',    onError);
 
   return () => {
     s.off('analysis:progress', onProgress);
     s.off('analysis:partial',  onPartial);
     s.off('analysis:complete', onComplete);
+    s.off('analysis:insights', onInsights);
     s.off('analysis:error',    onError);
   };
 }

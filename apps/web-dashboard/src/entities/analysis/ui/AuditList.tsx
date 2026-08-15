@@ -1,7 +1,8 @@
-import { useState, useRef, useId } from 'react';
+import { useState, useRef, useId, useLayoutEffect } from 'react';
 import { TriangleAlert, Zap, ChevronDown } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Segmented } from '@/shared/ui/segmented';
+import { AiNote } from '@/shared/ui/ai-card';
 import type { AuditItem } from '@/entities/analysis';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,15 +39,25 @@ function sevTier(impact: AuditItem['impact']): 'high' | 'warn' | 'low' {
 // ─── Issue row ────────────────────────────────────────────────────────────────
 
 function IssueRow({
-  audit, isOpen, bodyId, onToggle,
+  audit, isOpen, bodyId, onToggle, aiPending,
 }: {
   audit: AuditItem;
   isOpen: boolean;
   bodyId: string;
   onToggle: () => void;
+  aiPending?: boolean;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const tier = sevTier(audit.impact);
+
+  // The body animates to a measured pixel height, so it has to be re-measured whenever its
+  // contents change — not only when it opens. Gemini's explanation lands seconds after the
+  // report renders, and a row already open when it arrives would otherwise stay sized for
+  // the description alone and clip the new line.
+  const [bodyHeight, setBodyHeight] = useState(0);
+  useLayoutEffect(() => {
+    setBodyHeight(bodyRef.current?.scrollHeight ?? 0);
+  }, [isOpen, audit.description, audit.aiExplanation, aiPending]);
 
   return (
     <div className={cn(
@@ -104,15 +115,22 @@ function IssueRow({
         id={bodyId}
         ref={bodyRef}
         className="overflow-hidden transition-[max-height] duration-[350ms] ease-out"
-        style={{ maxHeight: isOpen ? `${bodyRef.current?.scrollHeight ?? 9999}px` : '0px' }}
+        style={{ maxHeight: isOpen ? `${bodyHeight}px` : '0px' }}
       >
-        {audit.description && (
-          <div className="px-[18px] pb-[18px] pl-[61px] max-[760px]:pl-[18px]">
+        <div className="px-[18px] pb-[18px] pl-[61px] max-[760px]:pl-[18px]">
+          {audit.description && (
             <p className="text-[13.5px] text-ld-text-2 leading-[1.55] max-w-[70ch]">
               {audit.description}
             </p>
-          </div>
-        )}
+          )}
+          {/* Lighthouse's description above is the same sentence on every site; this is the
+              half that is about *this* page. */}
+          <AiNote
+            text={audit.aiExplanation}
+            pending={aiPending && !audit.aiExplanation}
+            className="mt-[10px] max-w-[70ch]"
+          />
+        </div>
       </div>
     </div>
   );
@@ -120,7 +138,7 @@ function IssueRow({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function AuditList({ audits }: { audits: AuditItem[] }) {
+export function AuditList({ audits, aiPending }: { audits: AuditItem[]; aiPending?: boolean }) {
   const uid                     = useId();
   const [openId, setOpenId]     = useState<string | null>(null);
   const [filter, setFilter]     = useState<FilterKey>('all');
@@ -184,6 +202,7 @@ export function AuditList({ audits }: { audits: AuditItem[] }) {
             isOpen={openId === audit.id}
             bodyId={`${uid}-body-${audit.id}`}
             onToggle={() => toggle(audit.id)}
+            aiPending={aiPending}
           />
         ))}
         {visible.length === 0 && (
