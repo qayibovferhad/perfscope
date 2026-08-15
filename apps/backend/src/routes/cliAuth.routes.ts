@@ -1,59 +1,49 @@
 import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
+import { CliAuthService } from '../services/cliAuth.service.js';
+import { AppError, asyncHandler } from '../lib/errors.js';
 
 const router: Router = Router();
 
-interface PendingEntry { token?: string; at: number }
-const pending = new Map<string, PendingEntry>();
+/** Codes are echoed back to the CLI, so cap what a caller can make the server hold. */
+const MAX_CODE_LEN = 128;
 
-/** Long enough to finish a browser login, short enough that an abandoned code dies. */
-const CODE_TTL_MS = 10 * 60_000;
-const SWEEP_MS    = 60_000;
-
-setInterval(() => {
-  const cutoff = Date.now() - CODE_TTL_MS;
-  for (const [code, entry] of pending) {
-    if (entry.at < cutoff) pending.delete(code);
+function requireCode(value: unknown): string {
+  if (!value || typeof value !== 'string' || value.length > MAX_CODE_LEN) {
+    throw new AppError(400, 'Invalid code');
   }
-}, SWEEP_MS).unref();
+  return value;
+}
 
 // CLI → register a new login code
-router.post('/cli/init', (req, res) => {
-  const { code } = req.body as { code?: string };
-  if (!code || typeof code !== 'string' || code.length > 128) {
-    res.status(400).json({ success: false, error: 'Invalid code' });
-    return;
-  }
-  pending.set(code, { at: Date.now() });
+router.post('/cli/init', asyncHandler(async (req, res) => {
+  const code = requireCode((req.body as { code?: unknown }).code);
+  await CliAuthService.register(code);
   res.json({ ok: true });
-});
+}, 'Could not start CLI login'));
 
 // Browser (CliAuthPage) → store token against the code.
 // The token handed to the CLI comes from the verified Authorization header, never the
 // body: a body token would let anyone who learned a pending code plant an arbitrary
 // token into the waiting CLI.
-router.post('/cli/complete', requireAuth, (req: AuthRequest, res) => {
-  const { code } = req.body as { code?: string };
-  if (!code)  { res.status(400).json({ success: false, error: 'Missing code' }); return; }
-  const entry = pending.get(code);
-  if (!entry) { res.status(404).json({ success: false, error: 'Unknown or expired code' }); return; }
-  entry.token = (req.headers.authorization as string).slice(7);
+router.post('/cli/complete', requireAuth, asyncHandler<AuthRequest>(async (req, res) => {
+  const code  = requireCode((req.body as { code?: unknown }).code);
+  const token = (req.headers.authorization as string).slice(7);
+
+  if (!await CliAuthService.complete(code, token)) {
+    throw new AppError(404, 'Unknown or expired code');
+  }
   res.json({ ok: true });
-});
+}, 'Could not complete CLI login'));
 
 // CLI → poll for token
-router.get('/cli/poll', (req, res) => {
-  const code = req.query['code'] as string | undefined;
-  if (!code)            { res.status(400).json({ success: false, error: 'Missing code' }); return; }
-  const entry = pending.get(code);
-  if (!entry)           { res.status(404).json({ success: false, error: 'Unknown or expired code — re-run login' }); return; }
-  if (entry.token) {
-    const token = entry.token;
-    pending.delete(code);
-    res.json({ token });
-    return;
-  }
-  res.json({ pending: true });
-});
+router.get('/cli/poll', asyncHandler(async (req, res) => {
+  const code = requireCode(req.query['code']);
+  const result = await CliAuthService.claim(code);
+
+  if (result.status === 'unknown') throw new AppError(404, 'Unknown or expired code — re-run login');
+  if (result.status === 'pending') { res.json({ pending: true }); return; }
+  res.json({ token: result.token });
+}, 'Could not check CLI login'));
 
 export { router as cliAuthRouter };
