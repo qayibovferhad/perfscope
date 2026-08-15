@@ -3,7 +3,6 @@ import { reconcileContentScript, syncContentScriptFor } from '../lib/tokenSync'
 type ExtMessage =
   | { type: 'PERFSCOPE_TOKEN'; token: string }
   | { type: 'PERFSCOPE_LOGOUT' }
-  | { type: 'PERFSCOPE_EXT_CONFIG'; config: Record<string, unknown> }
   /** Sent by the settings drawer after saving a custom dashboard origin. */
   | { type: 'PERFSCOPE_WEB_URL'; webUrl: string }
 
@@ -21,10 +20,6 @@ export default defineBackground(() => {
         break
       case 'PERFSCOPE_LOGOUT':
         browser.storage.local.remove('token').then(() => sendResponse({ ok: true }))
-        break
-      case 'PERFSCOPE_EXT_CONFIG':
-        // Merge web-configured settings into extension storage
-        browser.storage.local.set({ extConfig: msg.config }).then(() => sendResponse({ ok: true }))
         break
       case 'PERFSCOPE_WEB_URL':
         syncContentScriptFor(msg.webUrl).then(() => sendResponse({ ok: true }))
