@@ -232,6 +232,7 @@ export function SetupModal({ site, open, onClose }: Props) {
             </p>
           </div>
           <Toggle
+            label="Run this site on a schedule"
             enabled={enabled}
             onChange={setEnabled}
             disabled={timetable.length === 0}

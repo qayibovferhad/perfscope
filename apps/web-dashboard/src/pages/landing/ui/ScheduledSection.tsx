@@ -91,7 +91,7 @@ export function ScheduledSection() {
               {/* Header */}
               <div className="flex items-center justify-between mb-5">
                 <span className="font-mono text-[13px] text-[var(--ld-text-2)] tracking-[.04em]">Daily report</span>
-                <Toggle enabled={schedOn} onChange={setSchedOn} />
+                <Toggle enabled={schedOn} onChange={setSchedOn} label="Nightly audits (demo)" />
               </div>
 
               {/* Frequency */}

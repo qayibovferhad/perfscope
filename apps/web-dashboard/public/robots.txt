@@ -1,0 +1,12 @@
+# PerfScope
+#
+# The app itself is behind a login and has nothing to index; the landing page does.
+# Shared audit reports are deliberately excluded: the link is the only thing keeping
+# them private, so they must not turn up in a search result.
+
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Disallow: /report/
+Disallow: /cli-auth

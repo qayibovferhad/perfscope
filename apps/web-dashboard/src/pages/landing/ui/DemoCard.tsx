@@ -117,6 +117,9 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
             <path d="M3 12h18M12 3c2.5 2.4 2.5 15.6 0 18M12 3c-2.5 2.4-2.5 15.6 0 18" stroke="currentColor" strokeWidth="1.4"/>
           </svg>
           <input
+            // The icon beside it says "a URL" to a sighted reader and nothing to anyone
+            // else — this field had no label of any kind.
+            aria-label="URL to audit"
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') runAudit(); }}

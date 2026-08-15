@@ -5,15 +5,59 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PerfScope</title>
-    <!-- Fonts: Inter (UI) + JetBrains Mono (metrics/data) -->
+    <meta
+      name="description"
+      content="Run Lighthouse audits on any page, track Core Web Vitals over time, compare against competitors, and get alerted when a deploy makes things slower."
+    />
+    <!--
+      Fonts: Inter + JetBrains Mono (app), Geist + Geist Mono (landing).
+
+      Loaded without blocking the first paint. These two stylesheets sit on a third-party
+      origin at the head of the critical path, and Lighthouse measured them holding
+      rendering for ~610 ms — on a page whose own CSS and JS were already fast.
+
+      `media="print"` makes the browser fetch them at low priority without applying them,
+      and the onload flips them to `all` once they have arrived. Every family already asks
+      for `display=swap`, so text paints immediately in the fallback and swaps when the
+      webfont lands, rather than sitting invisible.
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-    <!-- Landing page fonts: Geist + Geist Mono -->
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <!-- Prevent FOUC: always start in light mode -->
+    <link
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    </noscript>
+    <!--
+      Paint the right theme on the very first frame.
+
+      This used to hardcode light, which meant a dark-theme user saw a white flash on every
+      page load and then a jump. It has to agree with ThemeProvider: same storage key, same
+      fallback to the OS, and "dark" is the *absence* of data-theme.
+    -->
     <script>
-      document.documentElement.setAttribute('data-theme', 'light');
+      (function () {
+        try {
+          var stored = localStorage.getItem('perfscope-theme');
+          var dark = stored
+            ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (!dark) document.documentElement.setAttribute('data-theme', 'light');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
     </script>
   </head>
   <body>

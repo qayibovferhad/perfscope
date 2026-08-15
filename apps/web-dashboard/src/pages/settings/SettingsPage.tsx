@@ -88,6 +88,7 @@ function DigestSection() {
             </p>
           </div>
           <Toggle
+            label="Email me a weekly summary"
             enabled={enabled}
             disabled={!loaded}
             onChange={(next) => { setEnabled(next); void save({ enabled: next }); }}

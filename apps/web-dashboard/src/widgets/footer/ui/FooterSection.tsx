@@ -79,9 +79,11 @@ export function FooterSection() {
           {/* Nav columns */}
           {NAV_COLS.map(({ heading, links }) => (
             <div key={heading}>
-              <h4 className="font-mono text-[13px] uppercase tracking-[.1em] text-[var(--ld-text-3)] mb-4 font-semibold">
+              {/* h3, not h4: these are the first subdivision after the page's h2 sections,
+                  and the jump was breaking heading order for anyone navigating by headings. */}
+              <h3 className="font-mono text-[13px] uppercase tracking-[.1em] text-[var(--ld-text-3)] mb-4 font-semibold">
                 {heading}
-              </h4>
+              </h3>
               {links.map(({ l, h }) => (
                 <a
                   key={l}

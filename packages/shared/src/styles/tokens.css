@@ -14,7 +14,9 @@
 
   --ld-text:          #e9f1ec;
   --ld-text-2:        #aebcb4;
-  --ld-text-3:        #6f8278;
+  /* Small print sits on --ld-surface more often than on --ld-bg, and against the surface
+     the old #6f8278 measured 4.24:1 — under WCAG AA's 4.5 for text this size. 4.65 now. */
+  --ld-text-3:        #75897e;
 
   --ld-accent-rgb:    20, 192, 138;
   --ld-accent:        #14c08a;
@@ -80,7 +82,8 @@
 
   --ld-text:          #08160f;
   --ld-text-2:        #41544b;
-  --ld-text-3:        #6c7d74;
+  /* 4.03:1 on the light background before; 4.62 now. See the dark theme's note. */
+  --ld-text-3:        #64736b;
 
   --ld-accent-rgb:    10, 158, 111;
   --ld-accent:        #0a9e6f;

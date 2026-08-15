@@ -78,6 +78,7 @@ export function WebsiteAutomationCard({ site, onConfigure }: { site: Website; on
         </Button>
 
         <Toggle
+          label={`Scheduled audits for ${site.name || site.url}`}
           enabled={auto.enabled}
           onChange={e => automation.toggle(e)}
           disabled={automation.isSaving}

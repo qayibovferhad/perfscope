@@ -2,14 +2,21 @@ interface ToggleProps {
   enabled:   boolean;
   onChange:  (enabled: boolean) => void;
   disabled?: boolean;
+  /**
+   * What this switch turns on. Required, not optional: the control has no text of its own,
+   * so without it a screen reader announces "switch, on" and nothing else — which is what
+   * every one of these did, and what Lighthouse's button-name audit was failing on.
+   */
+  label:     string;
 }
 
-export function Toggle({ enabled, onChange, disabled }: ToggleProps) {
+export function Toggle({ enabled, onChange, disabled, label }: ToggleProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={enabled}
+      aria-label={label}
       onClick={() => onChange(!enabled)}
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!enabled); } }}
       disabled={disabled}

@@ -121,10 +121,14 @@ export function HowItWorksSection() {
                 onClick={() => { goStep(idx); play(); }}
                 className={[
                   'reveal text-left p-[26px] rounded-2xl border font-[inherit] text-[inherit] cursor-pointer',
-                  'transition-[border-color,transform,background,box-shadow,opacity] duration-300',
+                  'transition-[border-color,transform,background,box-shadow] duration-300',
+                  // The inactive state is carried by the border and background, not by
+                  // fading the whole card: opacity 0.62 dragged the text tokens inside it
+                  // down to 2.62:1 and 4.2:1, well under WCAG AA, so the step you were not
+                  // reading was also the step you could not read.
                   isActive
-                    ? 'step-active border-[var(--ld-accent-line)] bg-[var(--ld-surface-2)] opacity-100 -translate-y-1'
-                    : 'border-[var(--ld-border)] bg-[var(--ld-surface)] opacity-[0.62] hover:opacity-[0.85]',
+                    ? 'step-active border-[var(--ld-accent-line)] bg-[var(--ld-surface-2)] -translate-y-1'
+                    : 'border-[var(--ld-border)] bg-[var(--ld-surface)] hover:border-[var(--ld-border-strong)]',
                 ].join(' ')}
                 style={isActive ? { boxShadow: '0 0 0 1px var(--ld-accent-soft), 0 24px 50px -28px rgba(20,192,138,.55)' } : undefined}
               >
