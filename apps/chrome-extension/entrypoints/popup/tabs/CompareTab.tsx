@@ -55,11 +55,15 @@ export function CompareTab({ backendUrl, token }: Props) {
         api.getUrlHistory(yourSite.url),
       ])
 
-      if (!history.length) {
+      // Guard the entry that gets used rather than the array's length: WXT's generated
+      // tsconfig turns on noUncheckedIndexedAccess, and a length check does not narrow an
+      // index access. Same runtime behaviour, but now the check proves the thing it protects.
+      const [latest] = history
+      if (!latest) {
         throw new Error(`No audit history found for ${yourSite.url}. Run an audit in PerfScope first.`)
       }
 
-      setCompareResult({ competitor, yours: history[0], yourSite })
+      setCompareResult({ competitor, yours: latest, yourSite })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Comparison failed')
     } finally {
