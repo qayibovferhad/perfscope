@@ -18,6 +18,7 @@ import { cn } from '@/shared/lib/utils';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Page, PageHeader } from '@/shared/ui/page';
+import { NextStepCard } from '@/features/advisor';
 
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
@@ -67,6 +68,8 @@ export function DashboardPage() {
           </Link>
         }
       />
+
+      <NextStepCard />
 
       {/* The strip is the page's anchor. While the request is in flight its skeleton holds
           the same space — rendering nothing at all made a slow response look like a page

@@ -46,6 +46,20 @@ export interface AuditItem {
   aiExplanation?: string
 }
 
+/**
+ * What the advisor says about whatever the user is currently looking at.
+ *
+ * Structured rather than prose because it drives a panel that is on screen continuously:
+ * a headline you can read at a glance and up to three steps in the order they should be
+ * done. Prose at that frequency turns into wallpaper.
+ */
+export interface AiAdvice {
+  /** At most a dozen words — the one useful thing to say right now. */
+  headline: string
+  /** Ordered by what to do first. Empty when there is nothing to act on. */
+  steps: { title: string; detail: string }[]
+}
+
 /** A short note per Core Web Vital, keyed by the vital. Only non-good vitals get one. */
 export type AiMetricNotes = Partial<Record<keyof CoreWebVitals, string>>
 

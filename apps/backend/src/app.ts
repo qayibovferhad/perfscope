@@ -8,6 +8,7 @@ import { websiteRouter } from './routes/website.routes.js';
 import { analyzerRouter } from './routes/analyzer.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
+import { adviceRouter }         from './routes/advice.routes.js';
 import { authAuditRouter } from './routes/authAudit.routes.js';
 import { competitorSessionRouter } from './routes/competitorSession.routes.js';
 import { onboardingRouter } from './routes/onboarding.routes.js';
@@ -66,6 +67,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', analyzerRouter);
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);
+  app.use('/api', adviceRouter);
   app.use('/api', authAuditRouter);
   app.use('/api', competitorSessionRouter);
   app.use('/api', cruxRouter);

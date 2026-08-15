@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { AddWebsiteModal } from '@/features/websites';
+import { AdvisorPanel } from '@/features/advisor';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
 
@@ -85,7 +86,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             scrolled away from — the pages below are all showing empty lists because of it. */}
         <StorageBanner />
 
-        <main ref={mainRef} className="flex-1 overflow-y-auto">{children}</main>
+        <div className="flex-1 flex min-h-0">
+          <main ref={mainRef} className="flex-1 overflow-y-auto">{children}</main>
+          {/* Its own column rather than an overlay: a panel that sits on top of the page
+              competes with it, and every page caps its width well short of the viewport. */}
+          <AdvisorPanel />
+        </div>
       </div>
     </div>
   );

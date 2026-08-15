@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'node:crypto';
 import { config } from '../config/index.js';
 import { rateVital, VITAL_THRESHOLDS } from '@perfscope/shared';
-import type { AnalysisResult, NetworkRequest, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
+import type { AnalysisResult, NetworkRequest, AiAdvice, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
@@ -264,6 +264,50 @@ ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`
 
     const text = (await this.generate(prompt)).trim();
     return text || null;
+  }
+
+
+  /**
+   * The advisor's answer to "what should I do next?".
+   *
+   * Structured rather than prose because this drives a panel that is on screen all the
+   * time: a headline short enough to read at a glance, and up to three concrete steps.
+   * Anything longer becomes wallpaper — the whole point is that it is worth reading.
+   */
+  static async getAdvice(input: {
+    /** What the user is looking at, so the advice is about that and not the whole account. */
+    scope: string;
+    /** Pre-formatted lines of context. The caller decides what is worth showing. */
+    lines: string[];
+  }): Promise<AiAdvice | null> {
+    if (input.lines.length === 0) return null;
+
+    const prompt = `You are a web performance advisor embedded in a monitoring tool. The user is looking at: ${input.scope}.
+
+Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail": string}]}
+
+- headline: at most 12 words, the single most useful thing to say right now.
+- steps: 1 to 3, ordered by what to do first. title at most 8 words, detail at most 25 words and concrete.
+- If everything looks healthy, say so plainly and suggest what to watch, rather than inventing problems.
+- Refer to specific sites and numbers from the context. Never repeat a number without interpreting it.
+
+Context:
+${input.lines.join('\n')}`;
+
+    const raw = await this.generate(prompt);
+    const parsed = this.parseJson<{ headline?: unknown; steps?: unknown }>(raw, 'advice');
+    if (!parsed || typeof parsed.headline !== 'string' || !parsed.headline.trim()) return null;
+
+    const steps = Array.isArray(parsed.steps) ? parsed.steps : [];
+    return {
+      headline: parsed.headline.trim().slice(0, 140),
+      steps: steps
+        .filter((s): s is { title: string; detail: string } =>
+          !!s && typeof (s as { title?: unknown }).title === 'string'
+              && typeof (s as { detail?: unknown }).detail === 'string')
+        .slice(0, 3)
+        .map(s => ({ title: s.title.trim().slice(0, 80), detail: s.detail.trim().slice(0, 220) })),
+    };
   }
 
   /** The verdict on a saved head-to-head comparison. */
