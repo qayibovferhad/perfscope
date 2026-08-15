@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
+import { Page } from '@/shared/ui/page';
 import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer';
@@ -123,7 +124,7 @@ export function AnalyzerPage() {
       onSetUrl={setUrl}
     />
 
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <Page className="space-y-8">
       <AnalyzerHeader
         hasData={!!data}
         onExport={handleExport}
@@ -204,7 +205,7 @@ export function AnalyzerPage() {
       <AnimatePresence>
         {data && <AnalyzerResultsPanel data={data} aiPending={aiPending} />}
       </AnimatePresence>
-    </div>
+    </Page>
     </>
   );
 }

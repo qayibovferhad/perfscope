@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Page } from '@/shared/ui/page';
 import { History } from 'lucide-react';
 import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { CompareHistoryPanel } from '@/features/compare-history';
@@ -27,12 +28,12 @@ function Breadcrumb() {
 
 export function CompareHistoryPage() {
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-8 space-y-6">
+    <Page width="wide" className="space-y-6">
       <div className="flex items-center justify-between">
         <Breadcrumb />
         <ThemeToggle />
       </div>
       <CompareHistoryPanel />
-    </div>
+    </Page>
   );
 }

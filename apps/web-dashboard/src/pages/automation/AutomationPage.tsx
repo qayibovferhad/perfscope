@@ -1,6 +1,7 @@
 import { useState }                    from 'react';
 import { Link }                        from 'react-router-dom';
-import { Moon, Globe, Loader2 }        from 'lucide-react';
+import { Page, PageHeader } from '@/shared/ui/page';
+import { Globe, Loader2 }              from 'lucide-react';
 import { useWebsites }                 from '@/entities/website';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { WebsiteAutomationCard }       from './ui/WebsiteAutomationCard';
@@ -26,45 +27,36 @@ export function AutomationPage() {
   const enabledCount = websites.filter(w => w.automation?.enabled).length;
 
   return (
-    <div className="max-w-[1020px] mx-auto px-6 py-[34px] pb-20">
-
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-4 mb-6">
-        <div className="w-[50px] h-[50px] rounded-[14px] grid place-items-center shrink-0 bg-ld-grad shadow-ld-glow text-ld-grad-text">
-          <Moon className="w-[25px] h-[25px]" />
-        </div>
-        <div>
-          {/* Named for what it is rather than when it runs: routes can be spread across
-              the day or given a timetable of their own, so "nightly" stopped being true. */}
-          <h1 className="text-[clamp(24px,3vw,30px)] font-extrabold tracking-[-0.03em] text-ld-text">
-            Audit schedule
-          </h1>
-          <p className="text-[14.5px] text-ld-text-2 mt-1">
-            Decide when each site is audited without anyone pressing anything. What the
-            timetable finds lands in{' '}
-            <Link to="/scheduled" className="font-semibold text-ld-accent hover:underline">
-              Scheduled reports
-            </Link>
-            .
-          </p>
-
-          {websites.length > 0 && (
-            <div className="flex gap-[9px] mt-[13px]">
-              <span className={`inline-flex items-center gap-[7px] font-mono text-[12px] font-semibold px-3 py-[5px] rounded-full border transition-colors ${
-                enabledCount > 0
-                  ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
-                  : 'text-ld-text-2 border-ld-border'
-              }`}>
-                <span className="w-[7px] h-[7px] rounded-full bg-current shrink-0" />
-                {enabledCount} / {websites.length} enabled
-              </span>
-              <span className="inline-flex items-center gap-[7px] font-mono text-[12px] font-semibold px-3 py-[5px] rounded-full border border-ld-border text-ld-text-2">
-                {configured.length} configured
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
+    <Page>
+      {/* Named for what it is rather than when it runs: routes can be spread across the
+          day or given a timetable of their own, so "nightly" stopped being true. */}
+      <PageHeader
+        eyebrow="Automation"
+        title="Audit schedule"
+        description={<>
+          Decide when each site is audited without anyone pressing anything. What the
+          timetable finds lands in{' '}
+          <Link to="/scheduled" className="font-semibold text-ld-accent hover:underline">
+            Scheduled reports
+          </Link>
+          .
+        </>}
+        meta={websites.length > 0 ? (
+          <>
+            <span className={`inline-flex items-center gap-[7px] font-mono text-[12px] font-semibold px-3 py-[5px] rounded-full border transition-colors ${
+              enabledCount > 0
+                ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
+                : 'text-ld-text-2 border-ld-border'
+            }`}>
+              <span className="w-[7px] h-[7px] rounded-full bg-current shrink-0" />
+              {enabledCount} / {websites.length} enabled
+            </span>
+            <span className="inline-flex items-center gap-[7px] font-mono text-[12px] font-semibold px-3 py-[5px] rounded-full border border-ld-border text-ld-text-2">
+              {configured.length} configured
+            </span>
+          </>
+        ) : undefined}
+      />
 
       {/* ── Loading ────────────────────────────────────────────────────────── */}
       {isLoading && (
@@ -122,6 +114,6 @@ export function AutomationPage() {
           onClose={() => setSetupSite(null)}
         />
       )}
-    </div>
+    </Page>
   );
 }

@@ -17,6 +17,7 @@ import { hasActivityData, hasTrendData, hasVitalsData } from '@/features/overvie
 import { cn } from '@/shared/lib/utils';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Page, PageHeader } from '@/shared/ui/page';
 
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
@@ -50,30 +51,22 @@ export function DashboardPage() {
   const chartsTall = !!data && (hasTrendData(data.charts.trend) || hasVitalsData(data.charts.vitals));
 
   return (
-    <div className="w-[min(1180px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[34px] pb-20">
-
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-5 flex-wrap mb-[28px]">
-        <div>
-          <p className="font-mono text-[12px] tracking-[.16em] uppercase text-ld-accent font-semibold">
-            Dashboard
-          </p>
-          <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
-            Overview
-          </h1>
-          <p className="text-[14.5px] text-ld-text-2 mt-[6px]">
-            What broke, what slipped, and what has been measured lately — across every site.
-          </p>
-        </div>
-        <Link
-          to="/app"
-          className="inline-flex items-center gap-[9px] font-bold text-[14.5px] px-5 py-3 rounded-[12px]
-                     bg-ld-grad text-ld-grad-text shadow-ld-glow border-0
-                     transition-transform duration-[150ms] hover:-translate-y-px"
-        >
-          <Plus className="w-[17px] h-[17px]" /> New Audit
-        </Link>
-      </div>
+    <Page>
+      <PageHeader
+        eyebrow="Dashboard"
+        title="Overview"
+        description="What broke, what slipped, and what has been measured lately — across every site."
+        actions={
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-[9px] font-bold text-[14.5px] px-5 py-3 rounded-[12px]
+                       bg-ld-grad text-ld-grad-text shadow-ld-glow border-0
+                       transition-transform duration-[150ms] hover:-translate-y-px"
+          >
+            <Plus className="w-[17px] h-[17px]" /> New Audit
+          </Link>
+        }
+      />
 
       {/* The strip is the page's anchor. While the request is in flight its skeleton holds
           the same space — rendering nothing at all made a slow response look like a page
@@ -163,6 +156,6 @@ export function DashboardPage() {
       )}
 
       <AddWebsiteModal open={modalOpen} onClose={() => setModalOpen(false)} />
-    </div>
+    </Page>
   );
 }

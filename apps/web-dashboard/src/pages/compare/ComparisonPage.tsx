@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { Page } from '@/shared/ui/page';
 import { Link, useSearchParams } from 'react-router-dom';
 import { consumeComparePreload } from '@/features/compare';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -110,7 +111,7 @@ export function ComparisonPage() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-[clamp(18px,3vw,40px)] py-8 space-y-6">
+    <Page width="wide" className="space-y-6">
 
       {/* ── Top bar — breadcrumb + actions ────────────────────────────────── */}
       <div className="flex items-center gap-4 flex-wrap">
@@ -287,6 +288,6 @@ export function ComparisonPage() {
           <WaterfallComparison target={target.data} competitor={competitor.data} />
         )}
       </AnimatePresence>
-    </div>
+    </Page>
   );
 }

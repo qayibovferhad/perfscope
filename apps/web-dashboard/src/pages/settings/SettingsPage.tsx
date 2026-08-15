@@ -3,6 +3,7 @@ import type { DigestPreference } from '@perfscope/shared';
 import { useForm } from 'react-hook-form';
 import { CheckCircle2, KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
+import { Page, PageHeader } from '@/shared/ui/page';
 import { Toggle } from '@/shared/ui/toggle';
 import { TimePicker } from '@/shared/ui/time-picker';
 import { Input } from '@/shared/ui/input';
@@ -25,18 +26,18 @@ export function SettingsPage() {
   const { user, setAuth } = useAuthStore();
 
   return (
-    <div className="max-w-[720px] mx-auto px-6 py-10 pb-20 flex flex-col gap-[18px]">
-      <div className="flex flex-col gap-1.5 mb-1">
-        <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-ld-text">Settings</h1>
-        <p className="text-[14px] text-ld-text-2">
-          Manage your display name, sign-in password and weekly summary.
-        </p>
+    <Page width="narrow">
+      <PageHeader
+        eyebrow="Account"
+        title="Settings"
+        description="Manage your display name, sign-in password and weekly summary."
+      />
+      <div className="flex flex-col gap-[18px]">
+        <ProfileSection user={user} setAuth={setAuth} />
+        <DigestSection />
+        <PasswordSection />
       </div>
-
-      <ProfileSection user={user} setAuth={setAuth} />
-      <DigestSection />
-      <PasswordSection />
-    </div>
+    </Page>
   );
 }
 

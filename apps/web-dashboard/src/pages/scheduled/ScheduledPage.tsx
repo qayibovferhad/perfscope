@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Page, PageHeader } from '@/shared/ui/page';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Clock, ExternalLink, Globe, Loader2, Moon, Route, Timer,
@@ -58,21 +59,14 @@ export function ScheduledPage() {
   }
 
   return (
-    <div className="px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] w-[min(1080px,100%)] mx-auto flex flex-col gap-[44px]">
+    <Page>
+      <PageHeader
+        eyebrow="Automation"
+        title="Scheduled reports"
+        description="Every run the timetable made, by site and route. Each is the median of three measurements, so a change here is the page and not the noise."
+      />
 
-      {/* ── Page header ──────────────────────────────────────────────── */}
-      <div>
-        <p className="font-mono text-[12px] tracking-[.16em] uppercase text-ld-accent font-semibold">
-          Automation
-        </p>
-        <h1 className="text-[clamp(24px,3.2vw,32px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
-          Scheduled reports
-        </h1>
-        <p className="text-[14.5px] text-ld-text-2 mt-[6px]">
-          Every run the timetable made, by site and route. Each is the median of three
-          measurements, so a change here is the page and not the noise.
-        </p>
-      </div>
+      <div className="flex flex-col gap-[44px]">
 
       {isLoading && (
         <div className="flex items-center justify-center py-28">
@@ -161,5 +155,6 @@ export function ScheduledPage() {
         </section>
       ))}
     </div>
+    </Page>
   );
 }

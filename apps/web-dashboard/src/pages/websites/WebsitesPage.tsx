@@ -7,6 +7,7 @@ import {
 import { Button }                    from '@/shared/ui/button';
 import { Input }                     from '@/shared/ui/input';
 import { Segmented }                 from '@/shared/ui/segmented';
+import { Page, PageHeader }          from '@/shared/ui/page';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { useWebsites }              from '@/entities/website';
 import { BAND_TILE, BAND_TEXT }     from '@/entities/analysis';
@@ -103,28 +104,19 @@ export function WebsitesPage() {
   }
 
   return (
-    <div className="px-[clamp(22px,4vw,48px)] py-[34px] pb-20 w-[min(1180px,100%)] mx-auto">
-
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-5 flex-wrap mb-[26px]">
-        <div>
-          <p className="font-mono text-[12px] tracking-[.16em] uppercase text-ld-accent font-semibold">
-            Welcome back
-          </p>
-          <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] mt-2 text-ld-text">
-            Your websites{' '}
-            <em className="not-italic font-bold text-ld-text-3">
-              · {summary?.total ?? total} tracked
-            </em>
-          </h1>
-          <p className="text-[14.5px] text-ld-text-2 mt-[6px]">
-            Audit, compare and keep an eye on every site in one place.
-          </p>
-        </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus /> Add Website
-        </Button>
-      </div>
+    <Page>
+      {/* No "Add website" action here: the sidebar carries it on every page, and having
+          both put two identical primary buttons on screen at once, competing. */}
+      <PageHeader
+        eyebrow="My websites"
+        title={<>
+          Your websites{' '}
+          <em className="not-italic font-bold text-ld-text-3">
+            · {summary?.total ?? total} tracked
+          </em>
+        </>}
+        description="Audit, compare and keep an eye on every site in one place."
+      />
 
       {/* ── Summary strip — account-wide counts from the server. Independent of
              the filter, so it stays put even when a search matches nothing ─ */}
@@ -235,6 +227,6 @@ export function WebsitesPage() {
         }}
         onClose={() => setPendingDelete(null)}
       />
-    </div>
+    </Page>
   );
 }

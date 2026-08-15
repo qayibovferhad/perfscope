@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Spinner } from '@/shared/ui/spinner';
+import { Page, PageHeader } from '@/shared/ui/page';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompareArrows } from 'lucide-react';
 import { useHistory, useAllHistory, fetchHistoryResult } from '@/entities/history';
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
@@ -12,7 +12,6 @@ import { TrendForecastPanel } from '@/features/history';
 import { CompareHistoryPanel } from '@/features/compare-history';
 import { useAnalysisStore } from '@/features/analyzer';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history';
-import { HistoryBreadcrumb } from '@/features/history';
 import { HistoryTabBar } from '@/features/history';
 import { HistoryDeepDiveTable } from '@/features/history';
 import { HistoryEmptyState } from '@/features/history';
@@ -88,23 +87,21 @@ export function HistoryPage() {
   }
 
   return (
-    <div className="w-[min(1120px,100%)] mx-auto px-[clamp(22px,4vw,48px)] pt-[30px] pb-[80px] flex flex-col gap-[22px]">
+    <Page>
+      {/* This page used to open with a breadcrumb and no title at all, which made it the
+          only page in the app whose first line was 14px grey text. The hostname keeps its
+          place as the subject when one site is selected. */}
+      <PageHeader
+        eyebrow="History"
+        title={tab === 'analysis' && hostname ? hostname : 'Performance history'}
+        description={tab === 'compare'
+          ? 'Every comparison you have saved, newest first.'
+          : hostname
+            ? 'Every audit recorded for this site, newest last.'
+            : 'Sites you have audited, and how their scores have moved.'}
+      />
 
-      {/* ── Top bar: breadcrumb ────────────────────────── */}
-      {tab === 'analysis'
-        ? <HistoryBreadcrumb hostname={hostname} />
-        : (
-          <nav className="flex items-center gap-[10px] text-[14px]">
-            <span className="font-semibold text-ld-text">History</span>
-            <span className="text-ld-text-3 opacity-50 text-[16px] leading-none">›</span>
-            <span className="inline-flex items-center gap-[7px] font-semibold text-ld-text">
-              <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
-              Compare
-            </span>
-          </nav>
-        )
-      }
-
+      <div className="flex flex-col gap-[22px]">
       {/* ── Tab bar ────────────────────────────────────── */}
       <HistoryTabBar active={tab} onChange={setTab} />
 
@@ -182,6 +179,7 @@ export function HistoryPage() {
         )}
 
       </AnimatePresence>
-    </div>
+      </div>
+    </Page>
   );
 }

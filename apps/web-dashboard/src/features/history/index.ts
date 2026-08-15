@@ -6,7 +6,6 @@
  */
 export { computeRows } from './lib/computeRows';
 export type { HistoryTab, SortKey, SortOrder, StatusFilter } from './model/types';
-export { HistoryBreadcrumb } from './ui/HistoryBreadcrumb';
 export { HistoryDeepDiveTable } from './ui/HistoryDeepDiveTable';
 export { HistoryEmptyState } from './ui/HistoryEmptyState';
 export { HistoryEvolutionCard } from './ui/HistoryEvolutionCard';

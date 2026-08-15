@@ -1,4 +1,5 @@
 import { Download, CheckCircle2, Circle, Lightbulb, ArrowRight } from 'lucide-react';
+import { Page } from '@/shared/ui/page';
 import { useExtensionConnected }      from '@/features/extension';
 import { CopySnippet }                from '@/shared/ui/copy-snippet';
 import { Button }                     from '@/shared/ui/button';
@@ -20,7 +21,8 @@ export function ExtensionSettingsPage() {
   const connected = useExtensionConnected();
 
   return (
-    <div className="max-w-[820px] mx-auto px-6 py-10 pb-20 flex flex-col gap-[18px]">
+    <Page width="narrow">
+      <div className="flex flex-col gap-[18px]">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center text-center mb-4">
@@ -131,6 +133,7 @@ export function ExtensionSettingsPage() {
         </a>
       </Panel>
 
-    </div>
+      </div>
+    </Page>
   );
 }
