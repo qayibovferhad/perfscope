@@ -171,7 +171,20 @@ export const HistoryService = {
     // Pruned per source, not per URL: a nightly timetable produces runs far faster than a
     // person does, so one shared cap of ten would quietly evict the audits the user ran by
     // hand — the very ones they go looking for.
-    const scope = { normalizedUrl, ...(source === 'scheduled' ? SCHEDULED_ONLY_FILTER : MANUAL_ONLY_FILTER) };
+    //
+    // And pruned per *owner*. Without that clause the cap was global: two accounts auditing
+    // the same public URL shared one allowance of ten, so each save deleted the other's
+    // oldest audits — silently, since the delete is by _id and nothing reports a count.
+    // An anonymous save has no userId, so it prunes among the other anonymous rows and can
+    // never reach an account's history. compareHistory.service already scopes its own
+    // prune this way, and `{ userId, normalizedUrl, createdAt }` is an existing index the
+    // unscoped filter could not use.
+    const owner = userId ? { userId } : { userId: { $exists: false } };
+    const scope = {
+      ...owner,
+      normalizedUrl,
+      ...(source === 'scheduled' ? SCHEDULED_ONLY_FILTER : MANUAL_ONLY_FILTER),
+    };
     await pruneToLimit(HistoryModel, scope, MAX_PER_URL);
   },
 
