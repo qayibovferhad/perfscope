@@ -61,7 +61,7 @@ export function PublicReportPage() {
           <div className="min-h-[50vh] grid place-items-center">
             <StatePanel
               variant="error"
-              icon={<FileQuestion className="w-7 h-7" />}
+              icon={<FileQuestion className="w-6 h-6" />}
               title="Report not found"
               description="This share link is invalid or has been revoked by its owner."
               action={

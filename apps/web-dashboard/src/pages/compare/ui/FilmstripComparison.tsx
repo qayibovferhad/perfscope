@@ -2,18 +2,16 @@ import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, SIDE_DOT, SIDE_VAR, sideOf } from './sides';
 import { Film } from 'lucide-react';
-import { findFrameAt } from '@/entities/analysis';
+import { findFrameAt, METRIC_MARKERS } from '@/entities/analysis';
 import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
 import { TransportBar } from './TransportBar';
 
 // ─── Metric defs (timeline marker colors — not you/rival) ─────────────────────
+// Shared with the analyzer's waterfall, which marks the same three vitals: they used to
+// disagree, and this copy was hardcoded hex that ignored the theme entirely.
 
-const METRIC_DEFS = [
-  { key: 'fcp' as const, label: 'FCP', color: '#3b82f6', glow: 'rgba(59,130,246,0.5)'  },
-  { key: 'lcp' as const, label: 'LCP', color: '#10b981', glow: 'rgba(16,185,129,0.5)'  },
-  { key: 'tti' as const, label: 'TTI', color: '#f97316', glow: 'rgba(249,115,22,0.5)'  },
-];
+const METRIC_DEFS = METRIC_MARKERS;
 
 const NEAR_MS = 400;
 
@@ -129,7 +127,7 @@ const Thumb = memo(function Thumb({
 
         {/* Timing label */}
         <div className="absolute bottom-0 inset-x-0 text-center text-[8px] font-bold tabular-nums py-0.5 z-10 bg-black/70">
-          <span style={{ color: isActive ? SIDE_VAR[sideOf(isYou)] : 'rgba(255,255,255,0.45)' }}>
+          <span style={{ color: isActive ? SIDE_VAR[sideOf(isYou)] : 'var(--ld-text-3)' }}>
             {fmtSec2(frame.timing)}
           </span>
         </div>
@@ -316,7 +314,7 @@ function TimeAxis({
       {/* Your Site track — markers point UP */}
       <div
         className="relative rounded-t-[8px] overflow-visible border-b border-ld-accent-line"
-        style={{ height: 44, background: 'rgba(20,192,138,0.06)' }}
+        style={{ height: 44, background: 'var(--ld-accent-soft)' }}
       >
         <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 pl-2">
           <span className="w-[6px] h-[6px] rounded-full bg-ld-accent" />

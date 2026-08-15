@@ -12,6 +12,9 @@ import { BACKEND_URL, WEB_URL, registerUser, cleanupUser, launchAuthedBrowser, w
 const OUT = process.argv[2] ?? '/tmp/perfscope-shots';
 mkdirSync(OUT, { recursive: true });
 
+/** Set THEME=dark to capture the other palette — the tint tokens differ per theme. */
+const THEME = process.env.THEME ?? 'light';
+
 const PAGES = [
   ['dashboard',       '/dashboard'],
   ['websites',        '/websites'],
@@ -38,6 +41,10 @@ for (const [url, name] of [['https://example.com', 'Example'], ['https://www.bbc
 }
 
 const { browser, page, errors } = await launchAuthedBrowser({ user, token });
+
+// Only the stored preference: ThemeProvider applies it on mount, and "dark" is the
+// *absence* of data-theme, so setting the attribute here would be wrong for one of them.
+await page.evaluateOnNewDocument((t) => localStorage.setItem('perfscope-theme', t), THEME);
 
 try {
   for (const [name, path] of PAGES) {

@@ -73,7 +73,7 @@ export function AutomationPage() {
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!isLoading && !isError && websites.length === 0 && (
         <StatePanel
-          icon={<Globe className="w-7 h-7" />}
+          icon={<Globe className="w-6 h-6" />}
           title="No websites yet"
           description="Add a website first to configure nightly audits."
         />

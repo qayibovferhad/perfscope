@@ -80,7 +80,7 @@ export function ScheduledPage() {
 
       {!isLoading && !isError && sites.length === 0 && (
         <StatePanel
-          icon={<Moon className="w-7 h-7" />}
+          icon={<Moon className="w-6 h-6" />}
           title="No scheduled runs yet"
           description="Turn automation on for a site and its routes are audited on the timetable you set. Results land here — the audit history stays what you ran yourself."
           action={<Button asChild><Link to="/automation">Set up automation</Link></Button>}

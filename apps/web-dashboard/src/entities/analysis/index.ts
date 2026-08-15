@@ -67,3 +67,6 @@ export type { AnalysisCallbacks, StartAnalysisOptions } from './api/analysisSock
 export { usePrefetchStore } from './model/prefetchStore'
 export type { PrefetchPartialMap } from './model/prefetchStore'
 export { useAuditModeStore } from './model/auditModeStore'
+
+export { METRIC_MARKERS } from './metricMarkers'
+export type { MarkerVital } from './metricMarkers'

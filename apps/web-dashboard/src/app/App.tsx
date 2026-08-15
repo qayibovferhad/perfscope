@@ -51,7 +51,7 @@ function NotFoundRoute() {
     <div className="p-6 max-w-3xl mx-auto pt-[60px]">
       <StatePanel
         variant="error"
-        icon={<Compass className="w-7 h-7" />}
+        icon={<Compass className="w-6 h-6" />}
         title="Page not found"
         description={
           <>

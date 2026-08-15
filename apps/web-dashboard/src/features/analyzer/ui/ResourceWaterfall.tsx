@@ -8,7 +8,7 @@ import { PanelHeader, Chip } from '@/shared/ui/panel';
 import { useTimelineContext } from '../model/TimelineContext';
 import { MAX_ROWS, TICK_COUNT, resourceFilename } from '../lib/waterfall';
 import { RequestDetailPanel } from './RequestDetailPanel';
-import { RESOURCE_TYPES, resourceBadgeStyle } from '@/entities/analysis';
+import { RESOURCE_TYPES, resourceBadgeStyle, METRIC_MARKERS } from '@/entities/analysis';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
 
 const LEFT_W = 320;
@@ -24,11 +24,6 @@ const FILTER_CHIPS: { key: ResourceType | 'all'; label: string }[] = [
   { key: 'other',      label: 'XHR'   },
 ];
 
-const METRIC_MARKERS: { key: keyof CoreWebVitals; label: string; color: string }[] = [
-  { key: 'fcp', label: 'FCP', color: 'var(--ld-teal)'  },
-  { key: 'lcp', label: 'LCP', color: 'var(--ld-accent)' },
-  { key: 'tti', label: 'TTI', color: 'var(--ld-amber)'  },
-];
 
 
 // ─── Detail panel ─────────────────────────────────────────────────────────────

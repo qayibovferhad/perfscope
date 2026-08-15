@@ -67,7 +67,7 @@ export function HistoryWebsitesOverview({ allEntries, isLoading, isError, onRetr
   if (sitesWithHistory.length === 0) {
     return (
       <StatePanel
-        icon={<Clock className="w-7 h-7" />}
+        icon={<Clock className="w-6 h-6" />}
         title="No history yet"
         description="Run an analysis to start tracking performance over time."
         action={

@@ -128,11 +128,11 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
 
       {/* ── Actions — z-10 keeps them clickable above the full-card link ─ */}
       <div className={`relative z-10 flex gap-2 ${isList ? 'shrink-0' : 'mt-[18px] pt-4 border-t border-ld-border'}`}>
-        <Button
-          size="md"
-          onClick={onAnalyze}
-          className={isList ? '' : 'flex-1'}
-        >
+        {/* Analyze used to be flex-1, which stretched it to more than twice the width of
+            Compare beside it — the row read as one enormous button with three offcuts
+            rather than a primary action among its alternatives. Natural widths, with the
+            two icon actions pushed to the far end. */}
+        <Button size="md" onClick={onAnalyze}>
           <Zap /> Analyze
         </Button>
 
@@ -140,7 +140,8 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           <GitCompareArrows /> Compare
         </Button>
 
-        <Button variant="outline" size="icon" asChild onClick={e => e.stopPropagation()}>
+        <Button variant="outline" size="icon" asChild onClick={e => e.stopPropagation()}
+                className={isList ? '' : 'ml-auto'}>
           <a href={site.url} target="_blank" rel="noopener noreferrer">
             <ExternalLink />
           </a>

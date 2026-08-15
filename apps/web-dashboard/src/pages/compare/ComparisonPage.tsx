@@ -3,7 +3,7 @@ import { Page } from '@/shared/ui/page';
 import { Link, useSearchParams } from 'react-router-dom';
 import { consumeComparePreload } from '@/features/compare';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, GitCompareArrows, Zap, RotateCcw, History } from 'lucide-react';
+import { Zap, RotateCcw, History } from 'lucide-react';
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
 import { normalizeUrl } from '@/shared/lib/utils';
@@ -15,6 +15,7 @@ import { SideInputBar } from '@/features/compare';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
 import { DeepComparison } from './ui/DeepComparison';
 import { AiCard } from '@/shared/ui/ai-card';
+import { PageHeader } from '@/shared/ui/page';
 import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
 import { WaterfallComparison } from './ui/WaterfallComparison';
@@ -113,48 +114,34 @@ export function ComparisonPage() {
   return (
     <Page width="wide" className="space-y-6">
 
-      {/* ── Top bar — breadcrumb + actions ────────────────────────────────── */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <nav className="flex items-center gap-[10px] text-[14px]">
-          <Link
-            to="/websites"
-            className="inline-flex items-center gap-[7px] text-ld-text-3 font-medium transition-colors hover:text-ld-accent"
-          >
-            <LayoutGrid className="w-[15px] h-[15px]" />
-            Websites
-          </Link>
-          <span className="text-ld-text-3 opacity-50">/</span>
-          <span className="inline-flex items-center gap-[7px] text-ld-text font-semibold">
-            <GitCompareArrows className="w-[16px] h-[16px] text-ld-accent" />
-            Competitive Analysis
-          </span>
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="gap-2 text-ld-text-2 border-ld-border-strong"
-          >
-            <Link to="/compare-history">
-              <History className="w-[15px] h-[15px]" />
-              Compare History
-            </Link>
-          </Button>
-          {bothLoaded && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetAll}
-              className="gap-2 text-ld-text-2 border-ld-border-strong"
-            >
-              <RotateCcw className="w-[15px] h-[15px]" />
-              Reset All
+      <PageHeader
+        eyebrow="Compare"
+        title="Competitive analysis"
+        description="Audit two pages side by side — scores, vitals, filmstrip and request waterfall."
+        className="mb-0"
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild
+                    className="gap-2 text-ld-text-2 border-ld-border-strong">
+              <Link to="/compare-history">
+                <History className="w-[15px] h-[15px]" />
+                Compare History
+              </Link>
             </Button>
-          )}
-        </div>
-      </div>
+            {bothLoaded && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetAll}
+                className="gap-2 text-ld-text-2 border-ld-border-strong"
+              >
+                <RotateCcw className="w-[15px] h-[15px]" />
+                Reset All
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* ── URL cards — 2-column grid ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 max-[760px]:grid-cols-1">

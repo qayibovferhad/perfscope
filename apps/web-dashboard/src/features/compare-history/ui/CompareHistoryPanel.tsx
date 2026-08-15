@@ -419,7 +419,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
 function EmptyState() {
   return (
     <StatePanel
-      icon={<GitCompareArrows className="w-7 h-7" />}
+      icon={<GitCompareArrows className="w-6 h-6" />}
       title="No comparisons yet"
       description="Run a competitive analysis to start tracking performance battles."
       action={

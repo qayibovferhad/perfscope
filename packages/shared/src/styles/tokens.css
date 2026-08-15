@@ -16,13 +16,17 @@
   --ld-text-2:        #aebcb4;
   --ld-text-3:        #6f8278;
 
+  --ld-accent-rgb:    20, 192, 138;
   --ld-accent:        #14c08a;
   --ld-accent-2:      #34e0a4;
   --ld-accent-deep:   #0c8f66;
-  --ld-accent-soft:   rgba(20, 192, 138, 0.12);
-  --ld-accent-line:   rgba(20, 192, 138, 0.30);
+  --ld-accent-soft:   rgba(var(--ld-accent-rgb), 0.12);
+  --ld-accent-line:   rgba(var(--ld-accent-rgb), 0.30);
+  --ld-accent-strong: rgba(var(--ld-accent-rgb), 0.45);
 
+  --ld-teal-rgb:      22, 200, 200;
   --ld-teal:          #16c8c8;
+  --ld-teal-strong:   rgba(var(--ld-teal-rgb), 0.45);
   --ld-amber:         #e6a23c;
   /*
    * Five steps, because components need more than "tinted" and "bordered" and were
@@ -78,13 +82,17 @@
   --ld-text-2:        #41544b;
   --ld-text-3:        #6c7d74;
 
+  --ld-accent-rgb:    10, 158, 111;
   --ld-accent:        #0a9e6f;
   --ld-accent-2:      #07875e;
   --ld-accent-deep:   #066b4a;
   --ld-accent-soft:   rgba(10, 158, 111, 0.12);
-  --ld-accent-line:   rgba(10, 158, 111, 0.28);
+  --ld-accent-line:   rgba(var(--ld-accent-rgb), 0.28);
+  --ld-accent-strong: rgba(var(--ld-accent-rgb), 0.42);
 
+  --ld-teal-rgb:      14, 156, 156;
   --ld-teal:          #0e9c9c;
+  --ld-teal-strong:   rgba(var(--ld-teal-rgb), 0.42);
   --ld-amber:         #b9791a;
   --ld-amber-rgb:     185, 121, 26;
   --ld-amber-wash:    rgba(var(--ld-amber-rgb), 0.06);

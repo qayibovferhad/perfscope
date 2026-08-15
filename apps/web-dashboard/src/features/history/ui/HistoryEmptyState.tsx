@@ -11,7 +11,7 @@ export function HistoryEmptyState({ url }: Props) {
 
   return (
     <StatePanel
-      icon={<Clock className="w-7 h-7" />}
+      icon={<Clock className="w-6 h-6" />}
       title="No history found for this URL yet"
       description={
         <>

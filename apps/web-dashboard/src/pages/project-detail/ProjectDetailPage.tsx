@@ -325,7 +325,7 @@ export function ProjectDetailPage() {
         {/* Empty state */}
         {groups.length === 0 && (
           <StatePanel
-            icon={<Activity className="w-7 h-7" />}
+            icon={<Activity className="w-6 h-6" />}
             title="No audits yet"
             description="Run your first audit to start tracking performance across routes"
             action={

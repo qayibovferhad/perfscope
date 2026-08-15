@@ -461,7 +461,7 @@ export function CLSVisualizer({
         <PanelHeader icon={<Layers />} title="Layout Shift Visualizer" meta="CLS" />
         <StatePanel
           className="border-0 bg-transparent"
-          icon={<Layers className="w-7 h-7" />}
+          icon={<Layers className="w-6 h-6" />}
           title="No layout shifts detected"
           description="Lighthouse found no elements contributing to CLS. Your layout is stable."
         />

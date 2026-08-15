@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/ui/button';
 
 export type StatePanelVariant = 'empty' | 'error';
 
@@ -29,7 +30,7 @@ export function StatePanel({
   icon, title, description, action, variant = 'empty', compact = false, className,
 }: Props) {
   const isError = variant === 'error';
-  const shownIcon = icon ?? (isError ? <AlertTriangle className={compact ? 'w-4 h-4' : 'w-7 h-7'} /> : null);
+  const shownIcon = icon ?? (isError ? <AlertTriangle className={compact ? 'w-4 h-4' : 'w-6 h-6'} /> : null);
 
   if (compact) {
     return (
@@ -50,7 +51,9 @@ export function StatePanel({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center text-center rounded-[16px] px-[22px] py-[52px]',
+        // 52px of padding around a 14px title read as a large empty box with something
+        // small in the middle of it. The panel and its contents are in proportion now.
+        'flex flex-col items-center justify-center text-center rounded-[16px] px-[22px] py-[38px]',
         'border border-ld-border bg-ld-surface',
         className,
       )}
@@ -58,7 +61,7 @@ export function StatePanel({
       {shownIcon && (
         <div
           className={cn(
-            'w-14 h-14 rounded-[16px] grid place-items-center mb-4 border',
+            'w-12 h-12 rounded-[14px] grid place-items-center mb-[14px] border',
             // --ld-rose is a different hue per theme, so the tint has to come from tokens
             // rather than a hardcoded rgba — hence a bordered tile instead of a wash.
             isError
@@ -70,15 +73,15 @@ export function StatePanel({
         </div>
       )}
 
-      <p className={cn('text-sm font-semibold mb-1', isError ? 'text-ld-rose' : 'text-ld-text')}>
+      <p className={cn('text-[15px] font-semibold mb-[5px]', isError ? 'text-ld-rose' : 'text-ld-text')}>
         {title}
       </p>
 
       {description && (
-        <p className="text-xs text-ld-text-3 max-w-[42ch] leading-relaxed">{description}</p>
+        <p className="text-[13px] text-ld-text-2 max-w-[46ch] leading-relaxed">{description}</p>
       )}
 
-      {action && <div className="mt-5">{action}</div>}
+      {action && <div className="mt-[18px]">{action}</div>}
     </div>
   );
 }
@@ -105,15 +108,9 @@ export function QueryErrorPanel({
       {...(onRetry
         ? {
             action: (
-              <button
-                onClick={onRetry}
-                disabled={isRetrying}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-[11px] text-sm font-semibold
-                           border border-ld-border-strong bg-ld-surface text-ld-text
-                           hover:border-ld-accent-line disabled:opacity-50"
-              >
+              <Button variant="outline" onClick={onRetry} disabled={isRetrying}>
                 {isRetrying ? 'Retrying…' : 'Try again'}
-              </button>
+              </Button>
             ),
           }
         : {})}

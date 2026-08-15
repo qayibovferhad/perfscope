@@ -161,7 +161,7 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
         'grid items-center gap-3 px-3 py-[10px] rounded-[10px] transition-colors cursor-default',
         'grid-cols-[100px_56px_1fr_56px_110px]',
         row.isGap
-          ? 'bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.28)] hover:bg-[rgba(239,68,68,0.12)]'
+          ? 'bg-ld-rose-wash border border-ld-rose-line hover:bg-ld-rose-soft'
           : 'bg-ld-surface-2/50 border border-transparent hover:bg-ld-surface-2',
       ].join(' ')}
     >
@@ -209,7 +209,7 @@ function NormRow({ row, index }: { row: NormRowData; index: number }) {
       {/* Delta badge */}
       <div className="flex justify-end">
         {row.isGap ? (
-          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-[4px] rounded-[7px] whitespace-nowrap text-ld-rose bg-[rgba(239,68,68,0.18)] border border-[rgba(239,68,68,0.50)]">
+          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-[4px] rounded-[7px] whitespace-nowrap text-ld-rose bg-ld-rose-fill border border-ld-rose-strong">
             <Zap className="w-[9px] h-[9px] shrink-0" />
             {row.ratio}× Gap
           </span>
@@ -296,7 +296,7 @@ function GapsCallout({ target, competitor }: { target: AnalysisResult; competito
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: i * 0.06 }}
-              className="rounded-[12px] px-4 py-[14px] space-y-[10px] bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.30)]"
+              className="rounded-[12px] px-4 py-[14px] space-y-[10px] bg-ld-rose-wash border border-ld-rose-line"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -169,7 +169,7 @@ export function WebsitesPage() {
       {/* ── Empty state (no websites at all) ───────────────────────────── */}
       {!isLoading && !failed && total === 0 && !isFiltering && (
         <StatePanel
-          icon={<Globe className="w-7 h-7" />}
+          icon={<Globe className="w-6 h-6" />}
           title="No websites yet"
           description="Add your first website to start tracking performance."
           action={
