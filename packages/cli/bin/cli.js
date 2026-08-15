@@ -4,9 +4,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import net  from 'node:net';
 import readline from 'node:readline';
-import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
@@ -20,6 +18,10 @@ import {
   formatValue, labelOf, BUDGET_KEYS, DEFAULT_BUDGET_FILES,
 } from '../src/budget.js';
 import { appendFileSync } from 'node:fs';
+import { isLocal, portOf } from '../src/url.js';
+import { openBrowser } from '../src/browser.js';
+import { openTunnel } from '../src/tunnel.js';
+import { resolveAppUrl } from '../src/appUrl.js';
 
 /**
  * Distinct codes so a pipeline can tell "the site is too slow" from "the audit never
@@ -32,94 +34,6 @@ const DEFAULT_API_URL = process.env.PERFSCOPE_API_URL || 'https://api.perfscope.
 
 const _require = createRequire(import.meta.url);
 const pkg = _require(join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'));
-
-// ── Local URL detection ──────────────────────────────────
-
-const LOCAL_HOSTS = [
-  /^localhost$/i,
-  /^127\.\d+\.\d+\.\d+$/,
-  /^::1$/,
-  /^0\.0\.0\.0$/,
-  /^10\.\d+\.\d+\.\d+$/,
-  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
-  /^192\.168\.\d+\.\d+$/,
-];
-
-function isLocal(urlStr) {
-  try {
-    const { hostname } = new URL(urlStr);
-    return LOCAL_HOSTS.some(r => r.test(hostname));
-  } catch {
-    return false;
-  }
-}
-
-function portOf(urlStr) {
-  try {
-    const u = new URL(urlStr);
-    if (u.port) return parseInt(u.port, 10);
-    return u.protocol === 'https:' ? 443 : 80;
-  } catch {
-    return 80;
-  }
-}
-
-// ── Browser open ─────────────────────────────────────────
-
-function openBrowser(url) {
-  try {
-    const p = process.platform;
-    if      (p === 'darwin')  execSync(`open "${url}"`,              { stdio: 'ignore' });
-    else if (p === 'win32')   execSync(`start "" "${url}"`,          { stdio: 'ignore', shell: true });
-    else                      execSync(`xdg-open "${url}"`,          { stdio: 'ignore' });
-  } catch {
-    // user will open manually
-  }
-}
-
-// ── Tunnel ───────────────────────────────────────────────
-
-async function openTunnel(port, spinner) {
-  const lt = _require('localtunnel');
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error('Tunnel timed out after 30 s — is your local server running?'));
-    }, 30_000);
-
-    lt({ port })
-      .then(tunnel => {
-        clearTimeout(timeout);
-        tunnel.on('error', err => {
-          spinner.warn(chalk.yellow(`Tunnel warning: ${err.message}`));
-        });
-        resolve(tunnel);
-      })
-      .catch(err => {
-        clearTimeout(timeout);
-        reject(new Error(`Could not open tunnel: ${err.message}`));
-      });
-  });
-}
-
-// ── App URL auto-detect ──────────────────────────────────
-
-const PROD_URL  = 'https://app.perfscope.com';
-const LOCAL_URL = 'http://127.0.0.1:5173';
-
-function probeLocal() {
-  return new Promise(resolve => {
-    const sock = net.createConnection({ host: '127.0.0.1', port: 5173 });
-    sock.setTimeout(1200);
-    sock.on('connect', () => { sock.destroy(); resolve(LOCAL_URL); });
-    sock.on('error',   () => resolve(PROD_URL));
-    sock.on('timeout', () => { sock.destroy(); resolve(PROD_URL); });
-  });
-}
-
-async function resolveAppUrl(explicit) {
-  if (explicit && explicit !== PROD_URL) return explicit.replace(/\/$/, '');
-  return probeLocal();
-}
 
 // ── Login ────────────────────────────────────────────────
 
@@ -379,6 +293,9 @@ async function audit(targetUrl, opts) {
 // stream in live, and the run is not subject to the HTTP server timeout.
 function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
   return new Promise((resolve, reject) => {
+    // How long to wait for AI commentary after the scores land, before printing anyway.
+    const INSIGHTS_GRACE_MS = 6000;
+
     // These event names and payloads mirror packages/shared/src/types/socket.ts by hand.
     // The CLI publishes to npm standalone, so it cannot take a workspace dependency and
     // nothing checks the two against each other — change one, check the other.
@@ -404,7 +321,22 @@ function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
     socket.on('analysis:partial', (partial) => {
       spinner.text = chalk.dim(`${partial.category}: ${partial.score} — waiting for remaining categories…`);
     });
-    socket.on('analysis:complete', (result) => finish(resolve, result));
+    // The scores arrive first and the AI commentary a couple of seconds later, so hold the
+    // result briefly rather than printing a report with an empty Insights section. A short
+    // grace period, not a dependency: if the key is unset or the model is down the event
+    // never comes, and the report prints without it exactly as before.
+    let done = null;
+    let graceTimer = null;
+    socket.on('analysis:complete', (result) => {
+      done = result;
+      graceTimer = setTimeout(() => finish(resolve, done), INSIGHTS_GRACE_MS);
+    });
+    socket.on('analysis:insights', (data) => {
+      if (!done) return;
+      if (data?.insights) done.aiInsights = data.insights;
+      clearTimeout(graceTimer);
+      finish(resolve, done);
+    });
     socket.on('analysis:error', (e) => finish(reject, new Error(e?.message ?? 'Analysis failed')));
   });
 }
