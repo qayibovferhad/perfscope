@@ -8,9 +8,21 @@ importers:
 
   .:
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.4
+        version: 9.39.4
+      eslint:
+        specifier: ^9.39.4
+        version: 9.39.4(jiti@2.7.0)
+      globals:
+        specifier: ^17.4.0
+        version: 17.6.0
       turbo:
         specifier: ^2.3.3
         version: 2.9.15
+      typescript-eslint:
+        specifier: ^8.58.0
+        version: 8.60.0(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
 
   apps/backend:
     dependencies:
@@ -49,7 +61,7 @@ importers:
         version: 9.0.5
       puppeteer:
         specifier: ^24.4.0
-        version: 24.43.1(typescript@5.9.3)
+        version: 24.43.1(typescript@6.0.3)
       socket.io:
         specifier: ^4.8.3
         version: 4.8.3
@@ -88,8 +100,8 @@ importers:
         specifier: ^4.19.3
         version: 4.22.3
       typescript:
-        specifier: ^5.8.2
-        version: 5.9.3
+        specifier: ~6.0.2
+        version: 6.0.3
 
   apps/chrome-extension:
     dependencies:
@@ -125,8 +137,8 @@ importers:
         specifier: ^3.4.0
         version: 3.4.19(tsx@4.22.3)
       typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
+        specifier: ~6.0.2
+        version: 6.0.3
       vite:
         specifier: ~6.4.0
         version: 6.4.2(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3)
@@ -289,10 +301,10 @@ importers:
     devDependencies:
       tsup:
         specifier: ^8.3.0
-        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.3)(typescript@5.9.3)
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.3)(typescript@6.0.3)
       typescript:
-        specifier: ^5.5.0
-        version: 5.9.3
+        specifier: ~6.0.2
+        version: 6.0.3
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.12.4)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.22.3))
@@ -5234,11 +5246,6 @@ packages:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
 
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
@@ -7908,15 +7915,6 @@ snapshots:
       object-assign: 4.1.1
       vary: 1.1.2
 
-  cosmiconfig@9.0.1(typescript@5.9.3):
-    dependencies:
-      env-paths: 2.2.1
-      import-fresh: 3.3.1
-      js-yaml: 4.1.1
-      parse-json: 5.2.0
-    optionalDependencies:
-      typescript: 5.9.3
-
   cosmiconfig@9.0.1(typescript@6.0.3):
     dependencies:
       env-paths: 2.2.1
@@ -9856,23 +9854,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  puppeteer@24.43.1(typescript@5.9.3):
-    dependencies:
-      '@puppeteer/browsers': 2.13.2
-      chromium-bidi: 14.0.0(devtools-protocol@0.0.1608973)
-      cosmiconfig: 9.0.1(typescript@5.9.3)
-      devtools-protocol: 0.0.1608973
-      puppeteer-core: 24.43.1
-      typed-query-selector: 2.12.2
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - bufferutil
-      - react-native-b4a
-      - supports-color
-      - typescript
-      - utf-8-validate
-
   puppeteer@24.43.1(typescript@6.0.3):
     dependencies:
       '@puppeteer/browsers': 2.13.2
@@ -10580,7 +10561,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.3)(typescript@5.9.3):
+  tsup@8.5.1(jiti@2.7.0)(postcss@8.5.15)(tsx@4.22.3)(typescript@6.0.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.27.7)
       cac: 6.7.14
@@ -10601,7 +10582,7 @@ snapshots:
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.5.15
-      typescript: 5.9.3
+      typescript: 6.0.3
     transitivePeerDependencies:
       - jiti
       - supports-color
@@ -10650,8 +10631,6 @@ snapshots:
       typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
-
-  typescript@5.9.3: {}
 
   typescript@6.0.3: {}
 

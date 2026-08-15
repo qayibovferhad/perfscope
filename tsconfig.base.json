@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  // Shared compiler settings for the TypeScript workspaces.
+  //
+  // Deliberately only the options that should never differ between them: strictness and
+  // module resolution. target/lib, outDir, types, jsx and paths stay in each workspace,
+  // because a Node service, a browser bundle and a published package genuinely do differ
+  // there — folding those in would mean overriding the base almost everywhere it applies.
+  //
+  // The Chrome extension is not on this: its tsconfig extends WXT's generated one.
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}
