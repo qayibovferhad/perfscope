@@ -4,6 +4,7 @@ import type { OverviewIncident } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
+import { AiNote } from '@/shared/ui/ai-card';
 
 /**
  * Alerts that fired and have not recovered.
@@ -103,6 +104,10 @@ export function IncidentsCard({ incidents, className }: { incidents: OverviewInc
                     ))}
                   </ul>
                 )}
+
+                {/* The bullets above say what tripped; this says what it means. Written when
+                    the alert fired, so it matches what the webhook and the email carried. */}
+                <AiNote text={incident.aiNote} className="mt-[10px] ml-[19px]" />
 
                 <div className="mt-[12px] ml-[19px]">
                   <DeliveryNote delivery={incident.delivery} />

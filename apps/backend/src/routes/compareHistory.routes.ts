@@ -52,7 +52,9 @@ compareHistoryRouter.post(
       throw new AppError(400, 'Missing required fields');
     }
 
-    await CompareHistoryService.save(req.userId, sourceUrl, targetUrl, source, competitor);
-    res.json({ success: true });
+    // Returned as well as stored, so the page that just triggered the save can show the
+    // verdict without a second round trip.
+    const aiVerdict = await CompareHistoryService.save(req.userId, sourceUrl, targetUrl, source, competitor);
+    res.json({ success: true, data: { aiVerdict } });
   }, 'Failed to save comparison'),
 );

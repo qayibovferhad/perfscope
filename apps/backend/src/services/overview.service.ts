@@ -78,7 +78,8 @@ async function openIncidents(userId: string, siteUrlById: Map<string, string>): 
     _id: { websiteId: unknown; url: string; event: string };
     doc: {
       _id: unknown; websiteId: unknown; url: string; event: string; status: string;
-      metrics: string[]; lines: string[]; delivery: { channel: string; ok: boolean }[]; createdAt: Date;
+      metrics: string[]; lines: string[]; aiNote?: string;
+      delivery: { channel: string; ok: boolean }[]; createdAt: Date;
     };
   }>([
     // AlertLog stores userId as an ObjectId; History stores it as a plain string.
@@ -98,6 +99,7 @@ async function openIncidents(userId: string, siteUrlById: Map<string, string>): 
     event:     doc.event,
     metrics:   doc.metrics ?? [],
     lines:     doc.lines ?? [],
+    ...(doc.aiNote ? { aiNote: doc.aiNote } : {}),
     delivery:  (doc.delivery ?? []).map((d) => ({ channel: d.channel as 'webhook' | 'email', ok: d.ok })),
     at:        doc.createdAt.toISOString(),
   }));

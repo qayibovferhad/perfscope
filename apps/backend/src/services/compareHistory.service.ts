@@ -2,6 +2,7 @@ import type { CompareEntry } from '@perfscope/shared';
 import { CompareHistoryModel } from '../models/CompareHistory.model.js';
 import { escapeRegex, hostOf } from '../lib/url.js';
 import { pruneToLimit } from '../lib/mongo.js';
+import { AiService } from './ai.service.js';
 
 const MAX_PER_PAIR = 10;
 
@@ -13,6 +14,7 @@ interface RawDoc {
   sourceHostname: string; targetHostname: string;
   source: CompareEntry['source']; competitor: CompareEntry['competitor'];
   winner: 'source' | 'competitor' | 'tie';
+  aiVerdict?: string;
   createdAt: unknown;
 }
 
@@ -51,6 +53,7 @@ function toEntry(d: RawDoc): CompareEntry {
     source:         d.source,
     competitor:     d.competitor,
     winner:         d.winner,
+    ...(d.aiVerdict ? { aiVerdict: d.aiVerdict } : {}),
     timestamp:      ts,
   };
 }
@@ -60,18 +63,30 @@ export const CompareHistoryService = {
     userId: string,
     sourceUrl: string, targetUrl: string,
     source: CompareEntry['source'], competitor: CompareEntry['competitor'],
-  ): Promise<void> {
+  ): Promise<string | null> {
     const pairId = makePairId(sourceUrl, targetUrl);
+
+    // Generated here rather than on the page, because this is the one moment both sides
+    // exist server-side. A failure costs the sentence, never the saved comparison.
+    const aiVerdict = await AiService
+      .getCompareVerdict({ sourceUrl, targetUrl, source, competitor })
+      .catch((err: unknown) => {
+        console.error('[AI] Compare verdict failed:', err);
+        return null;
+      });
+
     await CompareHistoryModel.create({
       userId, pairId, sourceUrl, targetUrl,
       sourceHostname: hostname(sourceUrl),
       targetHostname: hostname(targetUrl),
       source, competitor,
       winner: determineWinner(source, competitor),
+      ...(aiVerdict ? { aiVerdict } : {}),
     });
     // Scoped to the owner as well: pruning by pairId alone would delete another account's
     // runs of the same two sites.
     await pruneToLimit(CompareHistoryModel, { userId, pairId }, MAX_PER_PAIR);
+    return aiVerdict;
   },
 
   async getPair(userId: string, pairId: string): Promise<CompareEntry[]> {

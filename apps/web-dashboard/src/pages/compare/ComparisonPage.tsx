@@ -13,6 +13,7 @@ import { useCompetitorSessions } from '@/features/compare';
 import { SideInputBar } from '@/features/compare';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
 import { DeepComparison } from './ui/DeepComparison';
+import { AiCard } from '@/shared/ui/ai-card';
 import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
 import { WaterfallComparison } from './ui/WaterfallComparison';
@@ -44,6 +45,9 @@ export function ComparisonPage() {
   };
 
   const savedRef = useRef(false);
+  // Gemini's read on the matchup. `pending` runs from the moment both sides are in until
+  // the save responds — the same skeleton-then-content contract the analyzer uses.
+  const [verdict, setVerdict] = useState<{ text: string | null; pending: boolean }>({ text: null, pending: false });
 
   useLayoutEffect(() => {
     const preload = consumeComparePreload();
@@ -60,12 +64,17 @@ export function ComparisonPage() {
   useEffect(() => {
     if (bothLoaded && target.data && competitor.data && !savedRef.current) {
       savedRef.current = true;
-      apiClient.post('/compare-history', {
+      setVerdict({ text: null, pending: true });
+      apiClient.post<{ data?: { aiVerdict?: string | null } }>('/compare-history', {
         sourceUrl:  target.data.url,
         targetUrl:  competitor.data.url,
         source:     { scores: target.data.scores, metrics: target.data.metrics },
         competitor: { scores: competitor.data.scores, metrics: competitor.data.metrics },
-      }).catch(() => {});
+      })
+        .then((res) => setVerdict({ text: res.data?.data?.aiVerdict ?? null, pending: false }))
+        // Signed out, or no storage: there is no verdict and no way to get one. Drop the
+        // skeleton rather than leaving it pulsing over a comparison that is otherwise fine.
+        .catch(() => setVerdict({ text: null, pending: false }));
     }
   }, [bothLoaded, target.data, competitor.data]);
 
@@ -90,6 +99,7 @@ export function ComparisonPage() {
   };
 
   const handleResetAll = () => {
+    setVerdict({ text: null, pending: false });
     target.reset();
     competitor.reset();
     setTargetUrl('https://');
@@ -232,6 +242,13 @@ export function ComparisonPage() {
             transition={{ duration: 0.4, ease: 'easeOut' }}
           >
             <ComparisonScoreboard target={target.data} competitor={competitor.data} />
+            {/* Directly under the scoreboard: it is the sentence the numbers above imply. */}
+            <AiCard
+              title="The verdict"
+              text={verdict.text ?? undefined}
+              pending={verdict.pending}
+              className="mt-4"
+            />
           </motion.div>
         )}
       </AnimatePresence>

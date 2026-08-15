@@ -6,6 +6,7 @@ import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { Mailer } from './mailer.service.js';
+import { AiService } from './ai.service.js';
 
 /**
  * Weekly summary of what happened across a user's sites.
@@ -36,6 +37,13 @@ export interface DigestData {
   regressions:  number;
   breaches:     number;
   slowest:      RouteRow[];
+  /**
+   * Gemini's note on the week, written by `sendDigest`.
+   *
+   * `buildDigest` deliberately does not fill this: it is also what the settings page
+   * previews, and a preview should not cost an API call or wait on one.
+   */
+  aiSummary?:   string;
 }
 
 export async function buildDigest(userId: string, now = new Date()): Promise<DigestData | null> {
@@ -112,6 +120,7 @@ export function renderDigest(name: string, data: DigestData): { subject: string;
   const text = [
     `Hi ${name || 'there'},`,
     '',
+    ...(data.aiSummary ? [data.aiSummary, ''] : []),
     `Your week on PerfScope, ${window}:`,
     '',
     ...headline,
@@ -132,6 +141,7 @@ export function renderDigest(name: string, data: DigestData): { subject: string;
 
   const html = [
     `<p>Hi ${name || 'there'},</p>`,
+    ...(data.aiSummary ? [`<p>${data.aiSummary}</p>`] : []),
     `<p>Your week on PerfScope, <b>${window}</b>:</p>`,
     '<ul>',
     `<li>Sites tracked: <b>${data.sites}</b></li>`,
@@ -158,7 +168,22 @@ export async function sendDigest(userId: string, now = new Date()): Promise<bool
   const data = await buildDigest(userId, now);
   if (!data) return false;
 
-  const { subject, text, html } = renderDigest(user.name ?? '', data);
+  // Generated here, not in buildDigest, so the render stays pure and the settings preview
+  // costs nothing. A failure sends the digest exactly as it was before.
+  const aiSummary = await AiService.getDigestSummary({
+    sites: data.sites, audits: data.audits,
+    avgScore: data.avgScore, prevAvgScore: data.prevAvgScore,
+    regressions: data.regressions, breaches: data.breaches,
+    slowest: data.slowest.map(r => ({ url: r.url, score: r.score, lcp: r.lcp })),
+  }).catch((err: unknown) => {
+    console.warn('[Digest] AI summary failed:', err);
+    return null;
+  });
+
+  const { subject, text, html } = renderDigest(
+    user.name ?? '',
+    aiSummary ? { ...data, aiSummary } : data,
+  );
   await Mailer.send(user.email, subject, text, html);
   await User.updateOne({ _id: userId }, { 'digest.lastSentAt': now }).catch(() => {});
 

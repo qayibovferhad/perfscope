@@ -1,4 +1,5 @@
 import { Mailer } from './mailer.service.js';
+import { AiService } from './ai.service.js';
 import { postJson } from '../lib/http.js';
 import { AlertLog, type IAlertDelivery } from '../models/AlertLog.model.js';
 import type { IWebsite } from '../models/Website.model.js';
@@ -10,6 +11,14 @@ import type { IWebsite } from '../models/Website.model.js';
  */
 
 const WEBHOOK_TIMEOUT_MS = 5000;
+
+/**
+ * Hard ceiling on the AI note.
+ *
+ * An alert is time-sensitive, so the commentary is allowed to make it late by at most this
+ * much and can never stop it: the call is bounded and its failure resolves to `null`.
+ */
+const ALERT_NOTE_TIMEOUT_MS = 5000;
 
 /**
  * How long a point-in-time alert suppresses repeats of the same metric on the same page.
@@ -49,10 +58,13 @@ export interface Alert {
  * Slack and Discord incoming webhooks reject arbitrary JSON — they each need their own
  * envelope. Anything else receives the full structured payload.
  */
-function webhookBody(webhookUrl: string, alert: Alert, site: { url: string; name: string }): unknown {
+function webhookBody(
+  webhookUrl: string, alert: Alert, site: { url: string; name: string }, aiNote: string | null,
+): unknown {
   const icon  = alert.status === 'recovered' ? ':white_check_mark:' : ':warning:';
   const title = `${icon} PerfScope ${alert.kind} — ${site.name || site.url}`;
-  const text  = `${title}\n${alert.url} (${alert.formFactor ?? 'desktop'})\n${alert.lines.map(l => `• ${l}`).join('\n')}`;
+  const text  = `${title}\n${alert.url} (${alert.formFactor ?? 'desktop'})\n${alert.lines.map(l => `• ${l}`).join('\n')}`
+    + (aiNote ? `\n\n${aiNote}` : '');
 
   try {
     const host = new URL(webhookUrl).hostname;
@@ -125,15 +137,29 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
     return false;
   }
 
+  // After `shouldSend`, deliberately: suppressed alerts cost nothing, so the 6-hour
+  // cooldown and the incident dedup rate-limit Gemini for free.
+  const aiNote = await AiService
+    .getAlertNote(
+      { kind: alert.kind, url: alert.url, formFactor: alert.formFactor, lines: alert.lines },
+      { timeoutMs: ALERT_NOTE_TIMEOUT_MS },
+    )
+    .catch((err: unknown) => {
+      console.warn(`[Alerts] AI note failed (${alert.event}):`, err);
+      return null;
+    });
+
   const delivery: IAlertDelivery[] = [];
 
   if (channels.alertEmail && Mailer.isAvailable()) {
     const verb    = alert.status === 'recovered' ? 'recovered' : alert.kind;
     const subject = `PerfScope ${verb} — ${site.name || site.url}`;
     const text = `${alert.url} (${alert.formFactor ?? 'desktop'})\n\n` +
-      alert.lines.map(l => `  • ${l}`).join('\n');
+      alert.lines.map(l => `  • ${l}`).join('\n') +
+      (aiNote ? `\n\n${aiNote}` : '');
     const html = `<p><b>${alert.url}</b> (${alert.formFactor ?? 'desktop'})</p>` +
-      `<ul>${alert.lines.map(l => `<li>${l}</li>`).join('')}</ul>`;
+      `<ul>${alert.lines.map(l => `<li>${l}</li>`).join('')}</ul>` +
+      (aiNote ? `<p>${aiNote}</p>` : '');
 
     await Mailer.send(channels.alertEmail, subject, text, html)
       .then(() => delivery.push({ channel: 'email', ok: true, error: null }))
@@ -144,12 +170,13 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
   }
 
   if (channels.webhookUrl) {
-    const body = webhookBody(channels.webhookUrl, alert, site) ?? {
+    const body = webhookBody(channels.webhookUrl, alert, site, aiNote) ?? {
       event:      alert.event,
       website:    { id: String(site._id), url: site.url, name: site.name },
       url:        alert.url,
       formFactor: alert.formFactor,
       at:         new Date().toISOString(),
+      ...(aiNote ? { aiNote } : {}),
       ...alert.payload,
     };
     await postWebhook(channels.webhookUrl, body)
@@ -173,6 +200,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
     metrics:    alert.metrics,
     analysisId: alert.analysisId ?? null,
     lines:      alert.lines,
+    ...(aiNote ? { aiNote } : {}),
     delivery,
   }).catch((err: unknown) => console.warn('[Alerts] Could not record alert:', err));
 

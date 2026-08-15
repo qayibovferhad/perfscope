@@ -21,6 +21,8 @@ export interface ICompareHistory extends Document {
   source:         { scores: Record<string, number>; metrics: Record<string, number> };
   competitor:     { scores: Record<string, number>; metrics: Record<string, number> };
   winner:         'source' | 'competitor' | 'tie';
+  /** Gemini's read on the matchup, written once when the comparison is saved. */
+  aiVerdict?:     string;
   createdAt:      Date;
 }
 
@@ -37,6 +39,9 @@ const CompareHistorySchema = new Schema<ICompareHistory>(
     source:         { type: SideSchema, required: true },
     competitor:     { type: SideSchema, required: true },
     winner:         { type: String, enum: ['source', 'competitor', 'tie'], required: true },
+    // Stored rather than regenerated per view: the numbers it describes never change, so a
+    // second opinion on the same pair would only be a second bill.
+    aiVerdict:      { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

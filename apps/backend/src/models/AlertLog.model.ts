@@ -33,6 +33,9 @@ const alertLogSchema = new Schema(
     analysisId: { type: String, default: null },
     /** Human-readable bullets, exactly as sent. */
     lines:     { type: [String], default: [] },
+    // Written when the alert was sent, not when it is read: the feed shows what was said
+    // at the time, and re-explaining an old alert would cost a call per page view.
+    aiNote:    { type: String },
     delivery:  { type: [deliverySchema], default: [] },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
@@ -57,6 +60,8 @@ export interface IAlertLog {
   metrics:    string[];
   analysisId: string | null;
   lines:      string[];
+  /** One or two sentences from Gemini on what this means. Absent when AI is unavailable. */
+  aiNote?:    string;
   delivery:   IAlertDelivery[];
   createdAt:  Date;
 }
