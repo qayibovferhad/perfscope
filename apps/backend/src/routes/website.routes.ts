@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { ok } from '../lib/respond.js';
 import { parseFormFactor, intParam } from '../lib/params.js';
 import { meanRounded } from '../lib/stats.js';
 import { Router } from 'express';
@@ -77,12 +78,12 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
   // app.ts is what tells the user why — instead of "the server did not respond".
   if (!isDbReady()) {
     const emptyPage: Paginated<IWebsite> = { items: [], total: 0, page: 1, limit, totalPages: 1 };
-    res.json(paginated ? emptyPage : []);
+    ok(res, paginated ? emptyPage : []);
     return;
   }
 
   if (!paginated) {
-    res.json(await Website.find(filter).sort({ createdAt: -1 }));
+    ok(res, await Website.find(filter).sort({ createdAt: -1 }));
     return;
   }
 
@@ -100,7 +101,7 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
     .limit(limit);
 
   const body: Paginated<IWebsite> = { items, total, page, limit, totalPages };
-  res.json(body);
+  ok(res, body);
 }));
 
 // GET /api/websites/summary — account-wide headline numbers.
@@ -108,10 +109,10 @@ websiteRouter.get('/websites', asyncHandler<AuthedRequest>(async (req, res) => {
 // user types and does not vanish when a filter matches nothing.
 websiteRouter.get('/websites/summary', asyncHandler<AuthedRequest>(async (req, res) => {
   const empty: WebsiteSummary = { total: 0, audited: 0, avgScore: 0, needsAttention: 0 };
-  if (!isDbReady()) { res.json(empty); return; }
+  if (!isDbReady()) { ok(res, empty); return; }
 
   const sites = await Website.find(ownedFilter(req.userId)).select('url').lean();
-  if (!sites.length) { res.json(empty); return; }
+  if (!sites.length) { ok(res, empty); return; }
 
   // Shared with GET /api/overview: a site's score is the mean of all its successful
   // audits, matched by host because audits are recorded per route. Two copies of that
@@ -124,7 +125,7 @@ websiteRouter.get('/websites/summary', asyncHandler<AuthedRequest>(async (req, r
     avgScore:       meanRounded(scores) ?? 0,
     needsAttention: scores.filter(s => s < SCORE_BANDS.needsImprovement).length,
   };
-  res.json(summary);
+  ok(res, summary);
 }));
 
 // POST /api/websites
@@ -138,7 +139,7 @@ websiteRouter.post('/websites', asyncHandler<AuthedRequest>(async (req, res) => 
     { url: normalized, name: name ?? '' },
     { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   );
-  res.status(201).json(website);
+  ok(res, website, 201);
 }));
 
 // PATCH /api/websites/:id/session — save extracted session data to the website doc
@@ -159,14 +160,14 @@ websiteRouter.patch('/websites/:id/session', asyncHandler<AuthedRequest>(async (
     },
     { returnDocument: 'after' },
   );
-  res.json(found(website));
+  ok(res, found(website));
 }));
 
 // PATCH /api/websites/:id/automation — update automation settings
 websiteRouter.patch('/websites/:id/automation', asyncHandler<AuthedRequest>(async (req, res) => {
   const update  = parseAutomationUpdate(req.body);
   const website = await Website.findOneAndUpdate(ownedSite(req), update, { returnDocument: 'after' });
-  res.json(found(website));
+  ok(res, found(website));
 }));
 
 // GET /api/websites/:id/rum — field data from the site's own visitors.
@@ -184,7 +185,7 @@ websiteRouter.get('/websites/:id/rum', asyncHandler<AuthedRequest>(async (req, r
     getRumPaths({ websiteId: site._id, days, device }),
   ]);
 
-  res.json({ success: true, data: { summary, paths, rumKey: site.rumKey ?? null } });
+  ok(res, { summary, paths, rumKey: site.rumKey ?? null });
 }));
 
 // GET /api/websites/:id/rum/trend — daily p75 for one metric
@@ -199,7 +200,7 @@ websiteRouter.get('/websites/:id/rum/trend', asyncHandler<AuthedRequest>(async (
   const days   = intParam(req.query['days'], { def: RUM_DAYS.trend });
   const device = parseFormFactor(req.query['device']);
 
-  res.json({ success: true, data: await getRumTrend({ websiteId: site._id, days, device, metric }) });
+  ok(res, await getRumTrend({ websiteId: site._id, days, device, metric }));
 }));
 
 // POST /api/websites/:id/rum-key — issue (or rotate) the public key for the RUM snippet.
@@ -211,7 +212,7 @@ websiteRouter.post('/websites/:id/rum-key', asyncHandler<AuthedRequest>(async (r
   const website = await Website.findOneAndUpdate(ownedSite(req), { rumKey }, { returnDocument: 'after' });
   found(website);
 
-  res.json({ success: true, data: { rumKey } });
+  ok(res, { rumKey });
 }));
 
 // GET /api/websites/:id/alerts — what was sent, when, and whether it landed.
@@ -225,7 +226,7 @@ websiteRouter.get('/websites/:id/alerts', asyncHandler<AuthedRequest>(async (req
     .limit(limit)
     .lean();
 
-  res.json({ success: true, data: alerts });
+  ok(res, alerts);
 }));
 
 // PATCH /api/websites/:id/budgets — set or clear performance budgets
@@ -235,7 +236,7 @@ websiteRouter.patch('/websites/:id/budgets', asyncHandler<AuthedRequest>(async (
   const update = parsed.budgets === null ? { budgets: null, lastBudgetBreach: null } : parsed;
 
   const website = await Website.findOneAndUpdate(ownedSite(req), update, { returnDocument: 'after' });
-  res.json(found(website));
+  ok(res, found(website));
 }));
 
 // POST /api/websites/:id/automation/run — manual trigger for a single website
@@ -247,12 +248,12 @@ websiteRouter.post('/websites/:id/automation/run', asyncHandler<AuthedRequest>(a
     console.error('[ManualAudit] Failed:', (err as Error).message);
   });
 
-  res.json({ ok: true, message: 'Audit started in background' });
+  ok(res, { message: 'Audit started in background' });
 }));
 
 // DELETE /api/websites/:id
 // Silent on a miss by design: the caller wanted the site gone, and it is.
 websiteRouter.delete('/websites/:id', asyncHandler<AuthedRequest>(async (req, res) => {
   await Website.deleteOne(ownedSite(req));
-  res.json({ ok: true });
+  ok(res);
 }));

@@ -61,8 +61,9 @@ export async function registerUser(email = uniqueEmail()) {
   if (res.status !== 201) {
     throw new Error(`register failed: HTTP ${res.status} ${await res.text()}`);
   }
-  const { token, user } = await res.json();
-  return { token, user, email };
+  // Every endpoint answers `{ success, data }` — see the backend's lib/respond.ts.
+  const { data } = await res.json();
+  return { token: data.token, user: data.user, email };
 }
 
 /**

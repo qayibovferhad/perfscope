@@ -43,10 +43,10 @@ export function useIssueRumKey(websiteId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post<{ success: boolean; data: { rumKey: string } }>(
+      const res = await apiClient.post<{ rumKey: string }>(
         `/websites/${websiteId}/rum-key`,
       );
-      return res.data.data.rumKey;
+      return res.data.rumKey;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rum', websiteId] }),
   });

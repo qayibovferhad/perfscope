@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { parseFormFactor } from '../lib/params.js';
 import { CruxService } from '../services/crux.service.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
@@ -21,6 +22,6 @@ cruxRouter.get(
     // Mobile unless desktop was asked for — CrUX grades mobile-first.
     const formFactor: AuditFormFactor = parseFormFactor(req.query['formFactor']) ?? 'mobile';
 
-    res.json({ success: true, data: await CruxService.get(url, formFactor) });
+    ok(res, await CruxService.get(url, formFactor));
   }, 'Failed to load field data'),
 );

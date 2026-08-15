@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { ok } from '../lib/respond.js';
 import { randomBytes } from 'node:crypto';
 import { HistoryModel } from '../models/History.model.js';
 import { HistoryService } from '../services/history.service.js';
@@ -35,7 +36,7 @@ historyRouter.get(
     const doc = await HistoryModel.findOne({ shareToken: token }).lean();
     if (!doc?.fullResult) throw new AppError(404, 'Report not found');
 
-    res.json({ success: true, data: doc.fullResult, sharedAt: doc.createdAt });
+    ok(res, { result: doc.fullResult, sharedAt: doc.createdAt });
   }, 'Failed to load report'),
 );
 
@@ -48,7 +49,7 @@ historyRouter.get(
   '/history/all',
   emptyOnNoStorage(() => []),
   asyncHandler<AuthedRequest>(async (req, res) => {
-    res.json({ success: true, data: await HistoryService.getAll(req.userId) });
+    ok(res, await HistoryService.getAll(req.userId));
   }, 'Failed to load history'),
 );
 
@@ -58,7 +59,7 @@ historyRouter.get(
   '/history/scheduled',
   emptyOnNoStorage(() => []),
   asyncHandler<AuthedRequest>(async (req, res) => {
-    res.json({ success: true, data: await HistoryService.getScheduled(req.userId) });
+    ok(res, await HistoryService.getScheduled(req.userId));
   }, 'Failed to load scheduled runs'),
 );
 
@@ -70,7 +71,7 @@ historyRouter.get(
     const url = req.query['url'];
     if (!url || typeof url !== 'string') throw new AppError(400, 'url query param required');
 
-    res.json({ success: true, data: await HistoryService.get(url, req.userId) });
+    ok(res, await HistoryService.get(url, req.userId));
   }, 'Failed to load history'),
 );
 
@@ -91,7 +92,7 @@ historyRouter.post(
       doc.shareToken = randomBytes(SHARE_TOKEN_BYTES).toString('hex');
       await doc.save();
     }
-    res.json({ success: true, token: doc.shareToken });
+    ok(res, { token: doc.shareToken });
   }, 'Failed to create share link'),
 );
 
@@ -103,7 +104,7 @@ historyRouter.delete(
       { analysisId: String(req.params['id']), userId: req.userId },
       { shareToken: null },
     );
-    res.json({ success: true });
+    ok(res);
   }, 'Failed to revoke share link'),
 );
 
@@ -115,7 +116,7 @@ historyRouter.get(
     const data = await HistoryService.getById(String(req.params['id']), req.userId);
     if (!data) throw new AppError(404, 'Not found or result not stored');
 
-    res.json({ success: true, data });
+    ok(res, data);
   }, 'Failed to load result'),
 );
 
@@ -126,7 +127,7 @@ historyRouter.delete(
     const deleted = await HistoryService.remove(String(req.params['id']), req.userId);
     if (!deleted) throw new AppError(404, 'Audit not found');
 
-    res.json({ success: true });
+    ok(res);
   }, 'Failed to delete audit'),
 );
 
@@ -140,6 +141,6 @@ historyRouter.get(
     const data = await HistoryService.getByProject(String(req.params['id']), req.userId);
     if (!data) throw new AppError(404, 'Project not found');
 
-    res.json({ success: true, data });
+    ok(res, data);
   }, 'Failed to load project audits'),
 );

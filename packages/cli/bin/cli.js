@@ -10,6 +10,7 @@ import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { printReport, printJson, printMinimal } from '../src/reporter.js';
+import { unwrap } from '../src/api.js';
 import {
   loadCredentials, saveCredentials, clearCredentials, getConfigPath,
 } from '../src/auth.js';
@@ -62,10 +63,10 @@ async function loginCmd(opts) {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 2000));
     try {
-      const { data } = await axios.get(`${apiUrl}/api/auth/cli/poll`, {
+      const data = unwrap(await axios.get(`${apiUrl}/api/auth/cli/poll`, {
         params: { code },
         timeout: 5000,
-      });
+      }));
       if (data.token) {
         let email = '';
         try {
@@ -98,11 +99,10 @@ async function pickUrl(apiUrl, apiKey, customUrl = '') {
   let websites;
   const spinner = ora({ text: chalk.dim('Loading your websites…'), color: 'green' }).start();
   try {
-    const { data } = await axios.get(`${apiUrl}/api/websites`, {
+    websites = unwrap(await axios.get(`${apiUrl}/api/websites`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       timeout: 8000,
-    });
-    websites = data;
+    }));
     spinner.stop();
   } catch {
     spinner.fail(chalk.red('Could not fetch websites. Check --api-url and make sure you are logged in.'));

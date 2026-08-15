@@ -33,10 +33,15 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-/** GET an endpoint that answers with the `{ success, data }` envelope and unwrap it. */
+/**
+ * GET an endpoint and return its payload.
+ *
+ * The envelope is stripped by the response interceptor now, so this is a plain typed GET —
+ * kept because most reads want exactly this and because call sites already name it.
+ */
 export async function fetchJson<T>(path: string, params?: Record<string, unknown>): Promise<T> {
-  const res = await apiClient.get<{ success: boolean; data: T }>(path, params ? { params } : undefined);
-  return res.data.data;
+  const res = await apiClient.get<T>(path, params ? { params } : undefined);
+  return res.data;
 }
 
 /**
@@ -63,9 +68,28 @@ function trackStorageState(res: { headers?: Record<string, unknown> } | undefine
   useStorageStore.getState().setUnavailable(res.headers[STORAGE_HEADER] === 'unavailable');
 }
 
+/**
+ * Every successful API response is `{ success: true, data }`. Unwrapping it once here means
+ * `res.data` is the payload everywhere, rather than each call site remembering whether the
+ * endpoint it happens to be calling was one of the enveloped ones — which is the state this
+ * replaced, and which quietly produced `undefined` when a caller guessed wrong.
+ *
+ * The check is deliberately narrow: only a body with `success: true` and a `data` key is
+ * unwrapped, so anything else (a plain payload from an older deployment, a proxy's error
+ * page) is passed through untouched rather than turned into `undefined`.
+ */
+function unwrapEnvelope(res: { data?: unknown }): void {
+  const body = res.data;
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body
+      && (body as { success: unknown }).success === true) {
+    res.data = (body as { data: unknown }).data;
+  }
+}
+
 apiClient.interceptors.response.use(
   (res) => {
     trackStorageState(res);
+    unwrapEnvelope(res);
     return res;
   },
   (error) => {

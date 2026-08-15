@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
 import { enrichWithAi, persistAudit, resolveOrCreateProject } from '../services/auditPipeline.js';
 import { optionalAuth, type AuthRequest } from '../middleware/auth.middleware.js';
@@ -47,5 +48,5 @@ analyzerRouter.post('/analyze', optionalAuth, asyncHandler<AuthRequest>(async (r
     }
   }
 
-  res.json({ success: true, data: result, savedToHistory });
+  ok(res, { result, savedToHistory });
 }, 'Analysis failed'));

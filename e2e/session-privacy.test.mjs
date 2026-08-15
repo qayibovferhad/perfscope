@@ -82,7 +82,9 @@ test('captured session cookies never reach the client', async (t) => {
 
     await t.test('the client still learns that a session exists, and when', async () => {
       const { text } = await call('/websites');
-      const site = JSON.parse(text).find((w) => w.url === 'https://privacy-probe.example.com');
+      // Every endpoint answers `{ success, data }` now — see backend lib/respond.ts.
+      const { data } = JSON.parse(text);
+      const site = data.find((w) => w.url === 'https://privacy-probe.example.com');
       assert.deepEqual(
         Object.keys(site.session),
         ['capturedAt'],

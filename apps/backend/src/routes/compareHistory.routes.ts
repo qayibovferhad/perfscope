@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { CompareHistoryService } from '../services/compareHistory.service.js';
 import { emptyOnNoStorage, requireStorageForWrites } from '../middleware/storage.middleware.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
@@ -24,7 +25,7 @@ compareHistoryRouter.get(
   emptyOnNoStorage(() => []),
   asyncHandler<AuthedRequest>(async (req, res) => {
     const search = typeof req.query['search'] === 'string' ? req.query['search'] : undefined;
-    res.json({ success: true, data: await CompareHistoryService.listPairs(req.userId, search) });
+    ok(res, await CompareHistoryService.listPairs(req.userId, search));
   }, 'Failed to load compare history'),
 );
 
@@ -34,7 +35,7 @@ compareHistoryRouter.get(
   emptyOnNoStorage(() => []),
   asyncHandler<AuthedRequest>(async (req, res) => {
     const pairId = String(req.params['pairId'] ?? '');
-    res.json({ success: true, data: await CompareHistoryService.getPair(req.userId, pairId) });
+    ok(res, await CompareHistoryService.getPair(req.userId, pairId));
   }, 'Failed to load pair history'),
 );
 
@@ -55,6 +56,6 @@ compareHistoryRouter.post(
     // Returned as well as stored, so the page that just triggered the save can show the
     // verdict without a second round trip.
     const aiVerdict = await CompareHistoryService.save(req.userId, sourceUrl, targetUrl, source, competitor);
-    res.json({ success: true, data: { aiVerdict } });
+    ok(res, { aiVerdict });
   }, 'Failed to save comparison'),
 );

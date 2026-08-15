@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
 import { asyncHandler } from '../lib/errors.js';
@@ -14,7 +15,7 @@ competitorSessionRouter.get(
   '/competitor-sessions',
   asyncHandler<AuthedRequest>(async (req, res) => {
     const sessions = await CompetitorSession.find({ userId: req.userId }).sort({ createdAt: -1 });
-    res.json(sessions);
+    ok(res, sessions);
   }),
 );
 
@@ -23,6 +24,6 @@ competitorSessionRouter.delete(
   '/competitor-sessions/:id',
   asyncHandler<AuthedRequest>(async (req, res) => {
     await CompetitorSession.deleteOne({ _id: req.params['id']!, userId: req.userId });
-    res.json({ ok: true });
+    ok(res);
   }),
 );

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
 import { emptyOverview, getOverview } from '../services/overview.service.js';
 import { emptyOnNoStorage } from '../middleware/storage.middleware.js';
@@ -20,6 +21,6 @@ overviewRouter.get(
   requireAuth,
   emptyOnNoStorage(emptyOverview),
   asyncHandler<AuthedRequest>(async (req, res) => {
-    res.json({ success: true, data: await getOverview(req.userId) });
+    ok(res, await getOverview(req.userId));
   }),
 );

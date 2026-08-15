@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { ok } from '../lib/respond.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { isValidTime, type AuthResponse, type DigestPreference } from '@perfscope/shared';
@@ -40,7 +41,7 @@ function issueSession(res: Response, user: HydratedDocument<IUser>, status = 200
     token: sign({ sub: user._id, email: user.email, name: user.name }),
     user:  { sub: String(user._id), name: user.name, email: user.email, picture: user.picture },
   };
-  res.status(status).json(body);
+  ok(res, body, status);
 }
 
 // POST /api/auth/register
@@ -157,7 +158,7 @@ authRouter.get('/auth/digest', requireAuth, asyncHandler<AuthedRequest>(async (r
   // the cron and was being handed out with them.
   const { enabled, day, time } = user.digest ?? DEFAULT_DIGEST;
   const data: DigestPreference = { enabled, day, time };
-  res.json({ success: true, data });
+  ok(res, data);
 }));
 
 // PATCH /api/auth/digest — opt in/out of the weekly summary
@@ -181,7 +182,7 @@ authRouter.patch('/auth/digest', requireAuth, asyncHandler<AuthedRequest>(async 
   const user = await User.findByIdAndUpdate(req.userId, update, { new: true });
   if (!user) throw new AppError(404, 'User not found');
 
-  res.json({ success: true, data: user.digest });
+  ok(res, user.digest);
 }));
 
 // PATCH /api/auth/password — change (or, for Google-only accounts, set) the password
@@ -212,5 +213,5 @@ authRouter.patch('/auth/password', requireAuth, asyncHandler<AuthedRequest>(asyn
   user.password = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
   await user.save();
 
-  res.json({ ok: true });
+  ok(res);
 }));

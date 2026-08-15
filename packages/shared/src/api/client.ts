@@ -7,11 +7,11 @@ export interface ApiClientConfig {
   getToken: () => string | null | Promise<string | null>
 }
 
+/** Every response the API gives: `{ success: true, data }` or `{ success: false, error }`. */
 export interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
-  savedToHistory?: boolean
 }
 
 async function request<T>(
@@ -33,18 +33,19 @@ async function request<T>(
     throw new Error(body.error ?? `HTTP ${res.status}`)
   }
 
-  return res.json() as Promise<T>
+  // One shape for every endpoint, so unwrapping happens here rather than at each caller.
+  const body = await res.json() as ApiResponse<T>
+  if (!body.success) throw new Error(body.error ?? 'Request failed')
+  return body.data as T
 }
 
 export function createApiClient(config: ApiClientConfig) {
   return {
     async analyzeUrl(url: string): Promise<{ result: AnalysisResult; savedToHistory: boolean }> {
-      const json = await request<ApiResponse<AnalysisResult>>(config, '/api/analyze', {
+      return request<{ result: AnalysisResult; savedToHistory: boolean }>(config, '/api/analyze', {
         method: 'POST',
         body: JSON.stringify({ url }),
       })
-      if (!json.success || !json.data) throw new Error(json.error ?? 'Analysis failed')
-      return { result: json.data, savedToHistory: json.savedToHistory ?? false }
     },
 
     async getWebsites(): Promise<WebsiteDoc[]> {
@@ -52,11 +53,7 @@ export function createApiClient(config: ApiClientConfig) {
     },
 
     async getUrlHistory(url: string): Promise<HistoryEntry[]> {
-      const json = await request<ApiResponse<HistoryEntry[]>>(
-        config,
-        `/api/history?url=${encodeURIComponent(url)}`,
-      )
-      return json.data ?? []
+      return await request<HistoryEntry[]>(config, `/api/history?url=${encodeURIComponent(url)}`) ?? []
     },
   }
 }

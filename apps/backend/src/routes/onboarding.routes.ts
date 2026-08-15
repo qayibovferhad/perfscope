@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
 import { Website } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
@@ -52,6 +53,6 @@ onboardingRouter.get(
       complete: Object.values(steps).every(Boolean),
     };
 
-    res.json({ success: true, data: status });
+    ok(res, status);
   }),
 );

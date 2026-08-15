@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import type { AuthAuditSessionResponse } from '@perfscope/shared';
 import {
   createAuthAuditSession, hasSession, destroySession, extractSessionData,
@@ -26,13 +27,13 @@ authAuditRouter.post('/auth-audit/session', asyncHandler(async (req, res) => {
   if (!url) throw new AppError(400, 'url is required');
 
   const body: AuthAuditSessionResponse = { sessionId: await createAuthAuditSession(url) };
-  res.json(body);
+  ok(res, body);
 }, 'Failed to launch browser'));
 
 // GET /api/auth-audit/session/:sessionId — check if the session is still alive
 authAuditRouter.get('/auth-audit/session/:sessionId', asyncHandler(async (req, res) => {
   sessionIdOf(req.params['sessionId']);
-  res.json({ ok: true });
+  ok(res);
 }));
 
 // GET /api/auth-audit/session/:sessionId/extract — harvest cookies + localStorage,
@@ -42,7 +43,7 @@ authAuditRouter.get('/auth-audit/session/:sessionId/extract', asyncHandler(async
   const id   = sessionIdOf(req.params['sessionId']);
   const data = await extractSessionData(id);
   destroySession(id);
-  res.json(data);
+  ok(res, data);
 }, 'Failed to extract session data'));
 
 // DELETE /api/auth-audit/session/:sessionId — close browser and end session.
@@ -50,5 +51,5 @@ authAuditRouter.get('/auth-audit/session/:sessionId/extract', asyncHandler(async
 authAuditRouter.delete('/auth-audit/session/:sessionId', asyncHandler(async (req, res) => {
   const id = req.params['sessionId'];
   if (typeof id === 'string') destroySession(id);
-  res.json({ ok: true });
+  ok(res);
 }));

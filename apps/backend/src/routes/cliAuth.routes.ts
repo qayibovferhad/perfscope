@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ok } from '../lib/respond.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { CliAuthService } from '../services/cliAuth.service.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
@@ -19,7 +20,7 @@ function requireCode(value: unknown): string {
 router.post('/cli/init', asyncHandler(async (req, res) => {
   const code = requireCode((req.body as { code?: unknown }).code);
   await CliAuthService.register(code);
-  res.json({ ok: true });
+  ok(res);
 }, 'Could not start CLI login'));
 
 // Browser (CliAuthPage) → store token against the code.
@@ -33,7 +34,7 @@ router.post('/cli/complete', requireAuth, asyncHandler<AuthRequest>(async (req, 
   if (!await CliAuthService.complete(code, token)) {
     throw new AppError(404, 'Unknown or expired code');
   }
-  res.json({ ok: true });
+  ok(res);
 }, 'Could not complete CLI login'));
 
 // CLI → poll for token
@@ -42,8 +43,8 @@ router.get('/cli/poll', asyncHandler(async (req, res) => {
   const result = await CliAuthService.claim(code);
 
   if (result.status === 'unknown') throw new AppError(404, 'Unknown or expired code — re-run login');
-  if (result.status === 'pending') { res.json({ pending: true }); return; }
-  res.json({ token: result.token });
+  if (result.status === 'pending') { ok(res, { pending: true }); return; }
+  ok(res, { token: result.token });
 }, 'Could not check CLI login'));
 
 export { router as cliAuthRouter };
