@@ -19,6 +19,7 @@ import { StatePanel } from '@/shared/ui/state-panel';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { NextStepCard } from '@/features/advisor';
+import { useGettingStartedVisible } from '@/features/onboarding';
 
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
@@ -49,6 +50,7 @@ export function DashboardPage() {
   // Both charts in the top row take the fixed height together, or neither does: sizing
   // them independently is what put a 340px panel next to a 90px one in the first place,
   // and a brand-new account should not open onto a screen of tall empty boxes.
+  const gettingStarted = useGettingStartedVisible();
   const chartsTall = !!data && (hasTrendData(data.charts.trend) || hasVitalsData(data.charts.vitals));
 
   return (
@@ -69,7 +71,10 @@ export function DashboardPage() {
         }
       />
 
-      <NextStepCard />
+      {/* One "what to do next" block at a time. While the checklist is up it is the better
+          of the two — its steps are buttons that do the thing — and the advisor panel on
+          the right still carries the AI voice. */}
+      {!gettingStarted && <NextStepCard />}
 
       {/* The strip is the page's anchor. While the request is in flight its skeleton holds
           the same space — rendering nothing at all made a slow response look like a page

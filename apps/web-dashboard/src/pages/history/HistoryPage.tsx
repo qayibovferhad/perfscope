@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Spinner } from '@/shared/ui/spinner';
 import { Page, PageHeader } from '@/shared/ui/page';
+import { useAdviceContext } from '@/features/advisor';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useHistory, useAllHistory, fetchHistoryResult } from '@/entities/history';
@@ -85,6 +86,9 @@ export function HistoryPage() {
       }, { replace: true });
     }
   }
+
+  // Only when the user has drilled into one site; the overview list is account-wide.
+  useAdviceContext(url && hostname ? { scope: 'site', url, label: hostname } : null);
 
   return (
     <Page>

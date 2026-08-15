@@ -5,6 +5,8 @@ import { AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Page } from '@/shared/ui/page';
+import { useAdviceContext } from '@/features/advisor';
+import { getHostname } from '@/entities/website';
 import { apiClient } from '@/shared/api/client';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer';
@@ -112,6 +114,10 @@ export function AnalyzerPage() {
     a.click();
     URL.revokeObjectURL(href);
   }
+
+  // Once a result is on screen the analyzer is about that page. Before that it is a form,
+  // and account-wide advice is the more useful thing to have beside it.
+  useAdviceContext(data ? { scope: 'site', url: data.url, label: getHostname(data.url) } : null);
 
   return (
     <>

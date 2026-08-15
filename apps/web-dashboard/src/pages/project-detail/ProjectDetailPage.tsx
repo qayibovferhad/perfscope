@@ -8,6 +8,7 @@ import {
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
 import { getHostname, sessionState } from '@/entities/website';
+import { useAdviceContext } from '@/features/advisor';
 import { setComparePreload }    from '@/features/compare';
 import { fetchHistoryResult }   from '@/entities/history';
 import { useAnalysisStore }     from '@/features/analyzer';
@@ -90,6 +91,13 @@ export function ProjectDetailPage() {
     [allAudits, selectedIds],
   );
 
+  // Resolved here rather than after the guards below: this page returns early while it
+  // loads, and a hook cannot sit behind a conditional return.
+  const website = websites.find(w => w._id === id);
+
+  // The whole page is about this site, so the advisor should be too.
+  useAdviceContext(website ? { scope: 'site', url: website.url, label: getHostname(website.url) } : null);
+
   if (isLoading) return <ProjectDetailSkeleton />;
 
   // A failed request and a project that does not exist are different problems: one is
@@ -153,7 +161,6 @@ export function ProjectDetailPage() {
     }
   }
 
-  const website = websites.find(w => w._id === project.id);
   const session = sessionState(website);
 
   return (

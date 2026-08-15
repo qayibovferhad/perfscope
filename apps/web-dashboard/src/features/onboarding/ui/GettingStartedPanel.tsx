@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/button';
 import { Panel } from '@/shared/ui/panel';
 import { useWebsites } from '@/entities/website';
 import { useOnboarding } from '../model/useOnboarding';
+import { isDismissed, dismissForGood } from '../model/dismissal';
 
 /**
  * First-run path through the product, driven by what the account actually contains.
@@ -19,7 +20,7 @@ import { useOnboarding } from '../model/useOnboarding';
  */
 
 /** Matches the newer `ps-*` convention used for UI preferences (see 'ps-websites-view'). */
-const DISMISS_KEY = 'ps-onboarding-dismissed';
+
 
 interface Step {
   id:    OnboardingStepId;
@@ -77,7 +78,7 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
   // already mounted on that page, so this is deduped rather than a second request.
   const { websites } = useWebsites();
   const firstSiteId = websites[0]?._id;
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1');
+  const [dismissed, setDismissed] = useState(isDismissed);
 
   // Pending and failed both render nothing. A skeleton flashing above the headline
   // numbers is worse than a beat of nothing, and guidance must never block the page.
@@ -87,8 +88,7 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
   const first = STEPS.find(s => !status.steps[s.id]);
 
   function dismiss() {
-    // Permanent: a panel that reappears when a step regresses reads as nagging.
-    localStorage.setItem(DISMISS_KEY, '1');
+    dismissForGood();
     setDismissed(true);
   }
 

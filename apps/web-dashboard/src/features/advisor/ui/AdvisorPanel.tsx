@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router-dom';
 import { Sparkles, ChevronRight, RefreshCw } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
@@ -20,13 +19,12 @@ import { useAdvisorStore } from '../model/advisorStore';
  * overlays instead and the page keeps its width.
  */
 export function AdvisorPanel() {
-  const { open, toggle } = useAdvisorStore();
-  const { pathname } = useLocation();
+  const { open, toggle, context } = useAdvisorStore();
 
-  // Routes about one page get advice about that page. Everything else is account-wide —
-  // two scopes rather than one per route, because the advice a user needs on the websites
-  // list is the same advice they need on the dashboard.
-  const { data: advice, isPending, isFetching, refetch } = useAdvice('overview');
+  // The subject comes from whichever page is mounted (see `useAdviceContext`), not from
+  // matching the route here — the panel has no business knowing the route table.
+  const { data: advice, isPending, isFetching, refetch } =
+    useAdvice(context ? 'site' : 'overview', context?.url);
 
   // Nothing to show and nothing coming: no key configured, or the model had nothing to
   // say. Take the whole column back rather than leaving an empty frame.
@@ -64,7 +62,9 @@ export function AdvisorPanel() {
     >
       <header className="flex items-center gap-2 px-4 py-[14px] border-b border-ld-border sticky top-0 bg-ld-surface">
         <Sparkles className="w-4 h-4 text-ld-accent shrink-0" />
-        <span className="text-[13px] font-semibold text-ld-text">Advisor</span>
+        <span className="text-[13px] font-semibold text-ld-text truncate">
+          {context ? context.label : 'Advisor'}
+        </span>
 
         <Button
           variant="ghost"
@@ -103,7 +103,8 @@ export function AdvisorPanel() {
             )}
 
             <p className="mt-5 pt-3 border-t border-ld-border text-[11px] text-ld-text-3">
-              From your own audits, by Gemini. {pathname === '/dashboard' ? 'Across every site.' : 'Account-wide.'}
+              From your own audits, by Gemini.{' '}
+              {context ? `About ${context.label}.` : 'Across every site you track.'}
             </p>
           </>
         ) : null}

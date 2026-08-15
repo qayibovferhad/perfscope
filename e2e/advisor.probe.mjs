@@ -68,6 +68,32 @@ try {
     if (seen.overflowX) console.log('  ← the page scrolls sideways, which it must never do');
   }
 
+  // ── Scope follows the page ─────────────────────────────────────────────────
+  // Pages declare their own subject (see useAdviceContext), so the panel should be talking
+  // about one site on a site page and about the account everywhere else.
+  const { data: site } = await (await fetch(`${BACKEND_URL}/api/websites`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: 'https://scope-probe.example.com', name: 'Scope Probe' }),
+  })).json();
+
+  await page.setViewport({ width: 1920, height: 950 });
+  const heading = () => page.evaluate(() =>
+    document.querySelector('aside[aria-label="Advisor"] header span')?.textContent?.trim() ?? '(none)');
+
+  await page.goto(`${WEB_URL}/dashboard`, { waitUntil: 'networkidle0' });
+  await sleep(3000);
+  const onDashboard = await heading();
+
+  await page.goto(`${WEB_URL}/projects/${site._id}`, { waitUntil: 'networkidle0' });
+  await sleep(3500);
+  const onSite = await heading();
+
+  console.log(`\nscope  dashboard → "${onDashboard}", site page → "${onSite}"`);
+  console.log(onDashboard === 'Advisor' && onSite.includes('scope-probe')
+    ? '  ✓ the panel follows the page it is beside'
+    : '  ✗ the panel did not switch subject');
+
   console.log(`\nconsole errors: ${errors.length ? errors.map((e) => e.text).slice(0, 3).join(' | ') : 'none'}`);
 } finally {
   await browser.close();
