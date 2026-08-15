@@ -1,21 +1,83 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createHash } from 'node:crypto';
 import { config } from '../config/index.js';
-import type { AnalysisResult, NetworkRequest } from '@perfscope/shared';
+import { rateVital, VITAL_THRESHOLDS } from '@perfscope/shared';
+import type { AnalysisResult, NetworkRequest, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
+
+/** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
+const CACHE_TTL_MS = 6 * 60 * 60_000;
+const CACHE_MAX    = 300;
 
 export class AiService {
   static isAvailable(): boolean {
     return !!config.geminiApiKey;
   }
 
+  /**
+   * Google's rolling alias, not a pinned version. `gemini-2.0-flash-lite` was retired and
+   * every audit logged a 404 for weeks with nobody noticing; when this was fixed,
+   * `gemini-2.5-flash-lite` was *listed* by the models endpoint and already 404ing too.
+   * The alias moves with them. If Google ever drops it, ListModels is the place to look.
+   */
+  private static readonly MODEL = 'gemini-flash-lite-latest';
+
   private static getModel() {
     if (!config.geminiApiKey) throw new Error('GEMINI_API_KEY is not configured');
     const client = new GoogleGenerativeAI(config.geminiApiKey);
-    return client.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    return client.getGenerativeModel({ model: this.MODEL });
+  }
+
+  private static readonly cache = new Map<string, { text: string; expiresAt: number }>();
+
+  /**
+   * The single door to Gemini. Every prompt goes through here so the fence-stripping,
+   * the cache and the deadline are written once rather than per method.
+   *
+   * `timeoutMs` matters for the callers a person is waiting behind — an alert must go out
+   * whether or not the model has anything to say about it.
+   */
+  private static async generate(prompt: string, opts: { timeoutMs?: number } = {}): Promise<string> {
+    const key = createHash('sha256').update(this.MODEL).update('\0').update(prompt).digest('hex');
+    const hit = this.cache.get(key);
+    if (hit && hit.expiresAt > Date.now()) return hit.text;
+
+    const model = this.getModel();
+    const call  = model.generateContent(prompt).then(r => r.response.text());
+
+    const raw = opts.timeoutMs === undefined ? await call : await Promise.race([
+      call,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Gemini timed out after ${opts.timeoutMs}ms`)), opts.timeoutMs).unref()),
+    ]);
+
+    // Models fence JSON even when told not to; strip it once, here, for everyone.
+    const text = raw.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+
+    // An empty answer is not an answer worth remembering. Caching one would turn a single
+    // blank or refused response into six hours of silence for that exact prompt, and every
+    // caller treats empty as "nothing to say" rather than "ask again".
+    if (!text) return text;
+
+    if (this.cache.size >= CACHE_MAX) {
+      const now = Date.now();
+      for (const [k, v] of this.cache) if (v.expiresAt <= now) this.cache.delete(k);
+      if (this.cache.size >= CACHE_MAX) this.cache.delete(this.cache.keys().next().value!);
+    }
+    this.cache.set(key, { text, expiresAt: Date.now() + CACHE_TTL_MS });
+    return text;
+  }
+
+  /** Parse a fenced-or-bare JSON reply; `null` rather than a throw when the model rambles. */
+  private static parseJson<T>(text: string, label: string): T | null {
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      console.error(`[AI] Failed to parse ${label} JSON:`, text.slice(0, 200));
+      return null;
+    }
   }
 
   static async getInsights(result: AnalysisResult): Promise<string> {
-    const model = this.getModel();
-
     const failingAudits = result.audits
       .slice(0, 5)
       .map((a) => `- ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}`)
@@ -26,8 +88,7 @@ export class AiService {
 Performance:${result.scores.performance} LCP:${(result.metrics.lcp / 1000).toFixed(1)}s TBT:${Math.round(result.metrics.tbt)}ms CLS:${result.metrics.cls.toFixed(2)}
 Issues: ${failingAudits || 'none'}`;
 
-    const response = await model.generateContent(prompt);
-    return response.response.text();
+    return this.generate(prompt);
   }
 
   /**
@@ -38,7 +99,6 @@ Issues: ${failingAudits || 'none'}`;
     resources: Pick<NetworkRequest, 'url' | 'resourceType' | 'transferSize'>[],
   ): Promise<Map<string, string>> {
     if (resources.length === 0) return new Map();
-    const model = this.getModel();
 
     const list = resources
       .map((r, i) => {
@@ -54,19 +114,173 @@ Issues: ${failingAudits || 'none'}`;
 Resources:
 ${list}`;
 
-    const raw = await model.generateContent(prompt);
-    const text = raw.response.text().trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    const parsed = this.parseJson<Array<{ index: number; advice: string }>>(
+      await this.generate(prompt), 'resource advice');
+    if (!Array.isArray(parsed)) return new Map();
 
-    try {
-      const parsed = JSON.parse(text) as Array<{ index: number; advice: string }>;
-      return new Map(
-        parsed
-          .filter((e) => e.index >= 1 && e.index <= resources.length)
-          .map(({ index, advice }) => [resources[index - 1]!.url, advice]),
-      );
-    } catch {
-      console.error('[AI] Failed to parse resource advice JSON:', text.slice(0, 200));
-      return new Map();
+    return new Map(
+      parsed
+        .filter((e) => e.index >= 1 && e.index <= resources.length && typeof e.advice === 'string')
+        .map(({ index, advice }) => [resources[index - 1]!.url, advice.slice(0, 200)]),
+    );
+  }
+  // ─── Deepening one audit ────────────────────────────────────────────────────
+
+  /** Explaining a passing audit costs a token and says nothing. */
+  private static readonly AUDIT_LIMIT = 8;
+
+  /**
+   * Why each failing audit fails *on this page*, and the first thing to do about it.
+   *
+   * One call for every audit, never one per audit: eight round trips would cost eight
+   * times the latency and money to say things the model can say together, with more
+   * context, in one.
+   */
+  static async getAuditExplanations(result: AnalysisResult): Promise<Map<string, string>> {
+    const failing = result.audits
+      .filter((a) => a.score !== null && a.score < 0.9)
+      .slice(0, this.AUDIT_LIMIT);
+    if (failing.length === 0) return new Map();
+
+    const list = failing
+      .map((a) => `${a.id} | ${a.title}${a.displayValue ? ` | ${a.displayValue}` : ''}`)
+      .join('\n');
+
+    const prompt = `Web performance expert. For each failing Lighthouse audit below, say why it likely fails on THIS page and the first concrete step to fix it. Max 25 words each. Respond ONLY as a JSON array of {id, explanation}. No markdown, no prose.
+
+Page: ${result.url} (performance ${result.scores.performance})
+Audits (id | title | value):
+${list}`;
+
+    const parsed = this.parseJson<Array<{ id: string; explanation: string }>>(
+      await this.generate(prompt), 'audit explanations');
+    if (!Array.isArray(parsed)) return new Map();
+
+    const wanted = new Set(failing.map((a) => a.id));
+    return new Map(
+      parsed
+        .filter((e) => wanted.has(e.id) && typeof e.explanation === 'string')
+        .map(({ id, explanation }) => [id, explanation.slice(0, 300)]),
+    );
+  }
+
+  /**
+   * Per-vital notes and a narrative of how the page actually loaded.
+   *
+   * Combined into one call because both describe the same load, and because the waterfall
+   * is most of the context the metric notes need anyway.
+   *
+   * Which vitals are "not good" is decided here, from the shared thresholds — the model is
+   * told what to explain, never asked to judge whether a number is acceptable.
+   */
+  static async getPageNarrative(
+    result: AnalysisResult,
+  ): Promise<{ metrics: AiMetricNotes; waterfall: string | null }> {
+    const empty = { metrics: {} as AiMetricNotes, waterfall: null };
+
+    const keys = Object.keys(VITAL_THRESHOLDS).filter(
+      (k): k is keyof CoreWebVitals => k in result.metrics,
+    );
+    const poor = keys.filter((k) => rateVital(k, result.metrics[k]) !== 'good');
+
+    const requests = result.resources?.requests ?? [];
+    const heaviest = [...requests]
+      .sort((a, b) => b.transferSize - a.transferSize)
+      .slice(0, 5)
+      .map((r, i) => {
+        let path = r.url;
+        try { path = new URL(r.url).pathname; } catch { /* keep the whole url */ }
+        return `${i + 1}. [${r.resourceType}] ${path} ${Math.round(r.transferSize / 1024)}KB start ${Math.round(r.startTime)}ms ttfb ${Math.round(r.ttfb)}ms`;
+      })
+      .join('\n');
+
+    if (poor.length === 0 && heaviest.length === 0) return empty;
+
+    const prompt = `Web performance expert. Two things about this page load.
+
+1. For each metric listed, one note (max 20 words) on what is causing it here.
+2. "waterfall": 2-3 sentences narrating how this page loaded — the sequence, what blocked what.
+
+Respond ONLY as JSON: {"metrics": {"<key>": "<note>"}, "waterfall": "<prose>"}. No markdown.
+
+Page: ${result.url}
+Metrics needing a note: ${poor.length ? poor.map(k => `${k}=${Math.round(result.metrics[k] * 1000) / 1000}`).join(' ') : '(none)'}
+Requests: ${requests.length} total, ${result.resources?.thirdPartyRequests?.length ?? 0} third-party requests
+Heaviest:
+${heaviest || '(no request data)'}`;
+
+    const parsed = this.parseJson<{ metrics?: Record<string, unknown>; waterfall?: unknown }>(
+      await this.generate(prompt), 'page narrative');
+    if (!parsed) return empty;
+
+    const metrics: AiMetricNotes = {};
+    for (const k of poor) {
+      const note = parsed.metrics?.[k];
+      if (typeof note === 'string' && note.trim()) metrics[k] = note.slice(0, 200);
     }
+    const waterfall = typeof parsed.waterfall === 'string' && parsed.waterfall.trim()
+      ? parsed.waterfall.slice(0, 600)
+      : null;
+
+    return { metrics, waterfall };
+  }
+
+  // ─── Surfaces outside the analyzer ──────────────────────────────────────────
+
+  /**
+   * One or two sentences to go out with an alert.
+   *
+   * Time-boxed: an alert that is late is nearly as bad as one that never arrives, so the
+   * note is whatever the model managed inside the deadline, or nothing.
+   */
+  static async getAlertNote(
+    alert: { kind: string; url: string; formFactor: string | null; lines: string[] },
+    opts: { timeoutMs?: number } = {},
+  ): Promise<string | null> {
+    const prompt = `Web performance expert. A monitoring alert just fired. In at most 2 sentences, plain text, no markdown: what this likely means for users, and the first thing to check.
+
+Alert: ${alert.kind}
+Page: ${alert.url} (${alert.formFactor ?? 'desktop'})
+Findings:
+${alert.lines.map(l => `- ${l}`).join('\n')}`;
+
+    const text = (await this.generate(prompt, opts)).trim();
+    return text || null;
+  }
+
+  /** The editor's note at the top of the weekly digest. */
+  static async getDigestSummary(data: {
+    sites: number; audits: number; avgScore: number | null; prevAvgScore: number | null;
+    regressions: number; breaches: number;
+    slowest: Array<{ url: string; score: number; lcp: number }>;
+  }): Promise<string | null> {
+    const prompt = `Web performance expert writing the opening note of a weekly report. At most 3 sentences, plain text, no markdown: the biggest movement this week and the one page most worth fixing next. Do not repeat the numbers verbatim — interpret them.
+
+Sites: ${data.sites}, audits run: ${data.audits}
+Average score: ${data.avgScore ?? 'n/a'} (previous week: ${data.prevAvgScore ?? 'n/a'})
+Regressions: ${data.regressions}, budget breaches: ${data.breaches}
+Slowest pages:
+${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`).join('\n') || '- (none)'}`;
+
+    const text = (await this.generate(prompt)).trim();
+    return text || null;
+  }
+
+  /** The verdict on a saved head-to-head comparison. */
+  static async getCompareVerdict(entry: {
+    sourceUrl: string; targetUrl: string;
+    source:     { scores: Record<string, number>; metrics: Record<string, number> };
+    competitor: { scores: Record<string, number>; metrics: Record<string, number> };
+  }): Promise<string | null> {
+    const side = (s: { scores: Record<string, number>; metrics: Record<string, number> }) =>
+      `perf ${s.scores['performance'] ?? '?'} lcp ${Math.round(s.metrics['lcp'] ?? 0)}ms tbt ${Math.round(s.metrics['tbt'] ?? 0)}ms cls ${s.metrics['cls'] ?? 0}`;
+
+    const prompt = `Web performance expert. Two sites were just measured head to head. In 2-3 sentences, plain text, no markdown: who is faster overall, the single biggest gap, and the one metric the slower site should attack first.
+
+Yours (${entry.sourceUrl}): ${side(entry.source)}
+Rival (${entry.targetUrl}): ${side(entry.competitor)}`;
+
+    const text = (await this.generate(prompt)).trim();
+    return text || null;
   }
 }

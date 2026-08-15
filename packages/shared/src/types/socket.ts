@@ -45,6 +45,33 @@ export interface AuthAuditStartPayload {
   context?: 'competitor'
 }
 
+/**
+ * AI commentary, delivered after `analysis:complete`.
+ *
+ * Insights come from a second network round trip to Gemini that takes 2–4 s. Waiting for
+ * it before `complete` made every audit that much slower for a panel most people scroll to
+ * last — and while the model name was dead, that wait bought a 404. So the scores ship
+ * the moment they exist and this follows when it can. `analysisId` is the correlation:
+ * the client must ignore it for any other analysis, exactly as it does for progress.
+ *
+ * **Always emitted, even with every field empty.** That is the client's only signal that
+ * the AI phase is over: pending, failed and "no API key on this deployment" are otherwise
+ * indistinguishable, and a skeleton with no end condition would spin forever. When Gemini
+ * is unconfigured the empty event arrives immediately.
+ */
+export interface AnalysisInsightsPayload {
+  analysisId: string
+  insights: string
+  /** Per-resource tips keyed by request URL — the same map `NetworkRequest.advice` is filled from. */
+  advice?: Record<string, string>
+  /** Per-audit explanations keyed by `AuditItem.id`. */
+  auditExplanations?: Record<string, string>
+  /** Per-vital notes keyed by the vital, for vitals that are not already good. */
+  metricNotes?: Record<string, string>
+  /** How the page loaded, in prose. */
+  waterfall?: string
+}
+
 export interface AnalysisErrorPayload {
   analysisId: string
   message: string
@@ -59,6 +86,7 @@ export interface ServerToClientEvents {
   'analysis:progress': (data: AnalysisProgress) => void
   'analysis:partial':  (data: CategoryPartial)  => void
   'analysis:complete': (result: AnalysisResult) => void
+  'analysis:insights': (data: AnalysisInsightsPayload) => void
   'analysis:error':    (data: AnalysisErrorPayload) => void
 }
 

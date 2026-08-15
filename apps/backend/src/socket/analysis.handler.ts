@@ -103,19 +103,41 @@ async function runAudit({
   try {
     const result = await measure(onPartial, analysisId);
 
-    await enrichWithAi(result);
+    // The scores exist now; the user gets them now. Gemini is a second network round
+    // trip of 2–4 s that used to sit between the audit finishing and this emit — and
+    // for the weeks the model name was dead, that wait bought nothing but a 404.
+    socket.emit('analysis:complete', result);
 
     // Derived from the audited URL — see resolveProjectId for why the client's value
     // cannot be trusted on its own.
     const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
 
-    persistAudit(result, userId, ownerProjectId)
-      .catch(err => console.warn('[History] Save failed:', err));
-
     recordLoginWall(userId, result.url, result.authRedirectDetected)
       .catch(err => console.warn('[Website] Login-wall flag failed:', err));
 
-    socket.emit('analysis:complete', result);
+    // Enrich, then persist — the stored audit keeps the commentary the way it always did,
+    // and the live client receives it as its own event. `enrichWithAi` never throws for an
+    // AI failure (it logs and returns nothing), so a dead model costs a log line, not the save.
+    // 'deep' only here: this is the one entry path with a person watching the page the
+    // extra commentary decorates.
+    const ai = await enrichWithAi(result, { depth: 'deep' });
+
+    // Emitted unconditionally, even when every field is empty. The client shows a skeleton
+    // from `analysis:complete` until this arrives, so a silent AI phase — no key, a dead
+    // model, a page with nothing to say about it — would leave that skeleton up forever.
+    // This event means "the AI phase is over", and its contents are secondary.
+    socket.emit('analysis:insights', {
+      analysisId,
+      insights: ai.insights ?? '',
+      ...(ai.advice.size > 0 ? { advice: Object.fromEntries(ai.advice) } : {}),
+      ...(ai.auditExplanations.size > 0
+        ? { auditExplanations: Object.fromEntries(ai.auditExplanations) } : {}),
+      ...(Object.keys(ai.metricNotes).length > 0 ? { metricNotes: ai.metricNotes } : {}),
+      ...(ai.waterfall ? { waterfall: ai.waterfall } : {}),
+    });
+
+    persistAudit(result, userId, ownerProjectId)
+      .catch(err => console.warn('[History] Save failed:', err));
   } catch (err) {
     if (err instanceof SessionExpiredError) {
       await dropStaleSession(userId, url, err.loginUrl)

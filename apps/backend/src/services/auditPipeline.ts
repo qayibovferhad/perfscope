@@ -4,37 +4,99 @@ import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
-import type { AuditSource, AnalysisResult } from '@perfscope/shared';
+import type { AuditSource, AnalysisResult, AiMetricNotes } from '@perfscope/shared';
 
-/** Cap on critical resources sent for per-resource AI advice. */
-const AI_CRITICAL_LIMIT = 6;
+/** How many resources get their own AI tip. */
+const AI_ADVICE_LIMIT = 6;
+
+/**
+ * Floor for advising a resource at all (bytes, over the wire).
+ *
+ * Advice used to be gated on `NetworkRequest.isCritical`, which means "over 500 KB for a
+ * script, 1 MB for an image". Those are transfer sizes, i.e. post-compression — no audit
+ * in this database has ever had a single resource reach them, on any site, so the feature
+ * shipped dead. Weight is still the right signal; the threshold just has to be one real
+ * pages cross. The heaviest handful above this floor is what a person would look at first.
+ */
+const AI_ADVICE_MIN_BYTES = 30 * 1024;
+
+/** Types worth a size tip. A large document or XHR is a backend problem, not a payload one. */
+const AI_ADVICE_TYPES: ReadonlySet<string> = new Set(['script', 'stylesheet', 'image', 'font', 'media']);
 
 /** One length everywhere — a 7-char short id must identify the same audit at every entry point. */
 export const SHORT_ID_LEN = 7;
 
+/** Everything Gemini had to say — the same values enrichWithAi writes onto the result. */
+export interface AiEnrichment {
+  insights: string | null;
+  advice:   Map<string, string>;
+  /** Keyed by `AuditItem.id`. Empty at 'standard' depth. */
+  auditExplanations: Map<string, string>;
+  /** Keyed by vital. Empty at 'standard' depth. */
+  metricNotes: AiMetricNotes;
+  /** Empty at 'standard' depth. */
+  waterfall: string | null;
+}
+
 /**
- * Attach Gemini insights + per-resource advice to the result in place.
+ * How much commentary to ask for.
+ *
+ * `deep` costs two extra Gemini calls and is worth it only where someone is looking at the
+ * page it decorates. The nightly cron and the legacy REST path stay `standard`: their
+ * results feed trends and alerts, and nobody reads a per-audit explanation from a run that
+ * happened at 03:00.
+ */
+export type AiDepth = 'standard' | 'deep';
+
+/**
+ * Attach Gemini's commentary to the result in place, and return it.
  * No-op when no API key is configured; individual AI failures are logged and
  * never fail the audit itself.
+ *
+ * Returned as well as written because the socket path emits `analysis:complete` before
+ * this finishes and ships the commentary as its own event afterwards — it needs the values,
+ * not just a mutated object it already sent.
  */
-export async function enrichWithAi(result: AnalysisResult): Promise<void> {
-  if (!AiService.isAvailable()) return;
+export async function enrichWithAi(
+  result: AnalysisResult,
+  { depth = 'standard' }: { depth?: AiDepth } = {},
+): Promise<AiEnrichment> {
+  const nothing: AiEnrichment = {
+    insights: null, advice: new Map(), auditExplanations: new Map(), metricNotes: {}, waterfall: null,
+  };
+  if (!AiService.isAvailable()) return nothing;
 
-  const criticals = (result.resources?.requests ?? [])
-    .filter((r) => r.isCritical)
-    .slice(0, AI_CRITICAL_LIMIT);
+  const heaviest = (result.resources?.requests ?? [])
+    .filter((r) => AI_ADVICE_TYPES.has(r.resourceType) && r.transferSize >= AI_ADVICE_MIN_BYTES)
+    .sort((a, b) => b.transferSize - a.transferSize)
+    .slice(0, AI_ADVICE_LIMIT);
 
-  const [insights, adviceMap] = await Promise.all([
+  // One Promise.all, so the deep prompts cost the same wall time as the standard ones —
+  // and each carries its own catch, so a single failing prompt cannot take the others
+  // (or the audit) with it.
+  const [insights, adviceMap, auditExplanations, narrative] = await Promise.all([
     AiService.getInsights(result).catch((err: unknown) => {
       console.error('[AI] Insights failed:', err);
       return null;
     }),
-    criticals.length > 0
-      ? AiService.getResourceAdvice(criticals).catch((err: unknown) => {
+    heaviest.length > 0
+      ? AiService.getResourceAdvice(heaviest).catch((err: unknown) => {
           console.error('[AI] Resource advice failed:', err);
           return new Map<string, string>();
         })
       : Promise.resolve(new Map<string, string>()),
+    depth === 'deep'
+      ? AiService.getAuditExplanations(result).catch((err: unknown) => {
+          console.error('[AI] Audit explanations failed:', err);
+          return new Map<string, string>();
+        })
+      : Promise.resolve(new Map<string, string>()),
+    depth === 'deep'
+      ? AiService.getPageNarrative(result).catch((err: unknown) => {
+          console.error('[AI] Page narrative failed:', err);
+          return { metrics: {} as AiMetricNotes, waterfall: null };
+        })
+      : Promise.resolve({ metrics: {} as AiMetricNotes, waterfall: null }),
   ]);
 
   if (insights) result.aiInsights = insights;
@@ -45,6 +107,22 @@ export async function enrichWithAi(result: AnalysisResult): Promise<void> {
       if (advice) req.advice = advice;
     }
   }
+
+  // Written onto the result, not just returned, so `persistAudit` stores them and a
+  // reopened audit shows its AI without another Gemini call.
+  if (auditExplanations.size > 0) {
+    for (const audit of result.audits) {
+      const explanation = auditExplanations.get(audit.id);
+      if (explanation) audit.aiExplanation = explanation;
+    }
+  }
+  if (Object.keys(narrative.metrics).length > 0) result.aiMetricNotes = narrative.metrics;
+  if (narrative.waterfall) result.aiWaterfallNarrative = narrative.waterfall;
+
+  return {
+    insights, advice: adviceMap,
+    auditExplanations, metricNotes: narrative.metrics, waterfall: narrative.waterfall,
+  };
 }
 
 /** Persist the audit summary + full result under the owning user/project. */

@@ -32,11 +32,22 @@ export interface CoreWebVitals {
 export interface AuditItem {
   id:           string
   title:        string
+  /** Lighthouse's own documentation for this audit — generic, identical on every site. */
   description:  string
   score:        number | null
   displayValue: string | undefined
   impact:       AuditImpact
+  /**
+   * What this failure means *on this page*, and the first thing to do about it.
+   *
+   * Absent when Gemini is not configured, when the call failed, or when the audit passed
+   * (only failing audits are explained — explaining a pass costs a token and says nothing).
+   */
+  aiExplanation?: string
 }
+
+/** A short note per Core Web Vital, keyed by the vital. Only non-good vitals get one. */
+export type AiMetricNotes = Partial<Record<keyof CoreWebVitals, string>>
 
 export interface CategoryPartial {
   analysisId: string
@@ -264,7 +275,12 @@ export interface AnalysisResult {
   metrics:               CoreWebVitals
   audits:                AuditItem[]
   resources?:            ParsedResources
+  /** Three prioritised fixes for the page as a whole. */
   aiInsights?:           string
+  /** Per-vital commentary, for the vitals that are not already good. */
+  aiMetricNotes?:        AiMetricNotes
+  /** Two or three sentences narrating how this page actually loaded. */
+  aiWaterfallNarrative?: string
   timelineData?:         TimelineData
   flameChartData?:       FlameChartData
   dependencyGraph?:      DependencyGraph

@@ -40,6 +40,8 @@ export interface OverviewIncident {
   event:     string;
   metrics:   string[];
   lines:     string[];
+  /** What Gemini said when this alert was sent. Absent on alerts raised without AI. */
+  aiNote?:   string;
   delivery:  OverviewDelivery[];
   at:        string;
 }
