@@ -10,7 +10,16 @@ export const analyzerRouter: Router = Router();
 /**
  * POST /api/analyze — the REST audit path.
  *
- * The socket path is the real one; this survives because the Chrome extension uses it.
+ * **No first-party client uses this any more.** The Chrome extension was its last
+ * consumer and moved to the socket, because this path is capped by `HTTP_TIMEOUT_MS`
+ * (70s in app.ts) while an audit is allowed `RUN_TIMEOUT_MS` (4 minutes): a slow site
+ * reported failure to the caller while the audit carried on server-side, and a retry
+ * started a second one competing for the same CPU.
+ *
+ * Kept because it is a published endpoint someone may be scripting against, and because
+ * `createApiClient().analyzeUrl` is part of the shared package's public surface. Removing
+ * both is a deliberate call, not refactor fallout — but nothing in this repo would notice.
+ *
  * It used to live in `controllers/` — the only file there — with its own copy of the
  * AI enrichment (missing the per-resource half) and its own way of deciding which
  * project an audit belonged to. Both now come from auditPipeline, so the two entry

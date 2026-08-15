@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { runAnalysis } from '../analysisSocket'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { useActiveTabUrl, useApiClient } from '../useActiveTab'
 import { createApiClient, fmtSec, fmtMs, fmtCls } from '@perfscope/shared'
@@ -24,6 +25,7 @@ export function CompareTab({ backendUrl, token }: Props) {
   const [websitesErr,  setWebsitesErr]  = useState<string | null>(null)
   const [loading,      setLoading]      = useState(false)
   const [compareResult, setCompareResult] = useState<CompareState | null>(null)
+  const [progress,     setProgress]     = useState<string | null>(null)
   const [error,        setError]        = useState<string | null>(null)
 
   const api = useApiClient(backendUrl, token)
@@ -46,8 +48,10 @@ export function CompareTab({ backendUrl, token }: Props) {
 
     try {
       // Run competitor analysis + fetch your site's latest history in parallel
-      const [{ result: competitor }, history] = await Promise.all([
-        api.analyzeUrl(currentUrl),
+      const [competitor, history] = await Promise.all([
+        runAnalysis(backendUrl, token, currentUrl, {
+          onProgress: (p) => setProgress(`${p.message ?? 'Auditing…'} ${Math.round(p.progress ?? 0)}%`),
+        }).promise,
         api.getUrlHistory(yourSite.url),
       ])
 
@@ -60,6 +64,7 @@ export function CompareTab({ backendUrl, token }: Props) {
       setError(err instanceof Error ? err.message : 'Comparison failed')
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -114,7 +119,7 @@ export function CompareTab({ backendUrl, token }: Props) {
         loading={loading}
       >
         {loading ? (
-          <><LoadingSpinner size={16} /><span>Running analysis…</span></>
+          <><LoadingSpinner size={16} /><span>{progress ?? 'Running analysis…'}</span></>
         ) : (
           <><ScalesIcon /><span>Compare</span></>
         )}

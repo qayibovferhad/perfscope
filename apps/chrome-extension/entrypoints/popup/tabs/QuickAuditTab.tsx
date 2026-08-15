@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { runAnalysis } from '../analysisSocket'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { useActiveTabUrl, hostnameOf, pathnameOf } from '../useActiveTab'
-import { createApiClient, rateVital, RATING_COLOR, fmtSec, fmtMs, fmtCls, type ScoreRating } from '@perfscope/shared'
+import { rateVital, RATING_COLOR, fmtSec, fmtMs, fmtCls, type ScoreRating } from '@perfscope/shared'
 import type { AnalysisResult } from '@perfscope/shared'
 import { ScoreCard }      from '../components/ScoreCard'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -18,6 +19,7 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<AnalysisResult | null>(null)
   const [saved,      setSaved]      = useState(false)
+  const [progress,   setProgress]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
 
   async function handleAnalyze() {
@@ -26,16 +28,22 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
     setError(null)
     setResult(null)
     setSaved(false)
+    setProgress(null)
 
-    const api = createApiClient({ baseUrl: backendUrl, getToken: () => token })
     try {
-      const { result: data, savedToHistory } = await api.analyzeUrl(currentUrl)
-      setResult(data)
-      if (savedToHistory) setSaved(true)
+      const { promise } = runAnalysis(backendUrl, token, currentUrl, {
+        onProgress: (p) => setProgress(`${p.message ?? 'Auditing…'} ${Math.round(p.progress ?? 0)}%`),
+      })
+      setResult(await promise)
+      // The server saves whenever the request carries a user, and the popup cannot audit
+      // without being logged in — so a token is the honest signal here. The socket path
+      // persists in the background rather than reporting back, unlike the REST one.
+      setSaved(Boolean(token))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed')
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -73,7 +81,7 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
         loading={loading}
       >
         {loading
-          ? <><LoadingSpinner size={16} /><span>Analyzing…</span></>
+          ? <><LoadingSpinner size={16} /><span>{progress ?? 'Analyzing…'}</span></>
           : <><ChevronIcon /><span>Analyze Page</span></>
         }
       </PrimaryButton>
