@@ -13,7 +13,7 @@ interface StorageState {
 const DEFAULT_BACKEND = 'http://localhost:3101'
 const DEFAULT_WEB     = 'http://localhost:5173'
 
-/** Ask Chrome for host access to a custom backend origin. No-op when already granted. */
+/** Ask Chrome for host access to a custom origin. No-op when already granted. */
 async function ensureHostPermission(url: string): Promise<boolean> {
   try {
     const origin = new URL(url).origin + '/*'
@@ -54,10 +54,17 @@ export function App() {
     const backendUrl = backendInput.trim() || DEFAULT_BACKEND
     const webUrl     = webInput.trim()     || DEFAULT_WEB
 
-    const ok = await ensureHostPermission(backendUrl)
+    // Both origins need asking for, not just the backend. The dashboard origin is where the
+    // content script reads the JWT from, and without permission for it a self-hosted
+    // dashboard left the popup permanently signed out with nothing in the UI to explain why.
+    const ok = await ensureHostPermission(backendUrl) && await ensureHostPermission(webUrl)
     if (!ok) { setPermError(true); return }
 
-    browser.storage.local.set({ backendUrl, webUrl })
+    await browser.storage.local.set({ backendUrl, webUrl })
+    // The static content script only covers localhost:5173 and perfscope.app; anything else
+    // needs a dynamic registration, which the background worker owns.
+    await browser.runtime.sendMessage({ type: 'PERFSCOPE_WEB_URL', webUrl }).catch(() => undefined)
+
     setStorage(prev => ({ ...prev, backendUrl, webUrl }))
     setShowSettings(false)
   }
