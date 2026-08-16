@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useAdvice } from '../model/useAdvice';
 import { actionLink } from '../lib/actionLink';
+import { recordAdviceAction } from '../api/recordAction';
 
 /**
  * The advisor's headline, at the top of the dashboard.
@@ -50,6 +51,7 @@ export function NextStepCard() {
         {!isPending && first?.action && (
           <Link
             to={actionLink(first.action).to}
+            onClick={() => recordAdviceAction(first.action!)}
             className="hidden sm:inline-flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-[10px]
                        text-[12.5px] font-semibold
                        border border-ld-accent-line bg-ld-surface text-ld-accent

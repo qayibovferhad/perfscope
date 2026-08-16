@@ -6,6 +6,7 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { useAdvice } from '../model/useAdvice';
 import { useAdvisorStore } from '../model/advisorStore';
 import { actionLink } from '../lib/actionLink';
+import { recordAdviceAction } from '../api/recordAction';
 
 /**
  * The advisor, present on every page of the dashboard.
@@ -105,6 +106,7 @@ export function AdvisorPanel() {
                     {step.action && (
                       <Link
                         to={actionLink(step.action).to}
+                        onClick={() => recordAdviceAction(step.action!)}
                         className="inline-flex items-center gap-1 mt-[6px] text-[12px] font-semibold
                                    text-ld-accent hover:underline"
                       >

@@ -1,10 +1,13 @@
 import { AiService } from './ai.service.js';
+import { getRecommendationHistory, reconcileRecommendations } from './aiRecommendation.service.js';
 import { HistoryService } from './history.service.js';
 import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
-import type { AuditSource, AnalysisResult, AiMetricNotes } from '@perfscope/shared';
+import { HistoryModel } from '../models/History.model.js';
+import { HAS_RESULT_FILTER } from '../lib/history.js';
+import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
 const AI_ADVICE_LIMIT = 6;
@@ -62,7 +65,9 @@ export type AiDepth = 'standard' | 'deep';
  */
 export async function enrichWithAi(
   result: AnalysisResult,
-  { depth = 'standard' }: { depth?: AiDepth } = {},
+  // `userId` is optional and may be explicitly undefined — an anonymous audit has no
+  // history to compare against, which is the same as having no earlier run.
+  { depth = 'standard', userId }: { depth?: AiDepth; userId?: string | undefined } = {},
 ): Promise<AiEnrichment> {
   const nothing: AiEnrichment = {
     insights: null, advice: new Map(), auditExplanations: new Map(), metricNotes: {}, waterfall: null,
@@ -74,33 +79,71 @@ export async function enrichWithAi(
     .sort((a, b) => b.transferSize - a.transferSize)
     .slice(0, AI_ADVICE_LIMIT);
 
-  // One Promise.all, so the deep prompts cost the same wall time as the standard ones —
-  // and each carries its own catch, so a single failing prompt cannot take the others
-  // (or the audit) with it.
-  const [insights, adviceMap, auditExplanations, narrative] = await Promise.all([
-    AiService.getInsights(result).catch((err: unknown) => {
-      console.error('[AI] Insights failed:', err);
-      return null;
-    }),
+  // What this page measured last time, so the analysis can lead with what moved. Best
+  // effort: no owner, no storage or no earlier run all mean the same thing here — compare
+  // against nothing — and none of them is worth failing an audit over.
+  const previous = depth === 'deep' && userId
+    ? await HistoryModel
+        .findOne({ userId, url: result.url, analysisId: { $ne: result.id }, ...HAS_RESULT_FILTER })
+        .sort({ createdAt: -1 })
+        .select('scores metrics createdAt')
+        .lean()
+        .then(doc => doc ? {
+          scores:  doc.scores  as unknown as AnalysisResult['scores'],
+          metrics: doc.metrics as unknown as AnalysisResult['metrics'],
+          at:      new Date(doc.createdAt as unknown as string).toISOString().slice(0, 10),
+        } : null)
+        .catch(() => null)
+    : null;
+
+  // What the AI has already told this user about this page, so it can notice a repeat
+  // instead of restating itself for the sixth audit in a row — or notice that something
+  // it flagged before is no longer in the fixes and say so.
+  const recommendationHistory = depth === 'deep' && userId
+    ? await getRecommendationHistory(userId, result.url).catch(() => [])
+    : [];
+
+  // One Promise.all, so the deep work costs the same wall time as the standard path — and
+  // each carries its own catch, so a failing prompt cannot take the others (or the audit)
+  // with it.
+  const [analysis, adviceMap] = await Promise.all([
+    depth === 'deep'
+      ? AiService.analysePage(result, previous, recommendationHistory).catch((err: unknown) => {
+          console.error('[AI] Page analysis failed:', err);
+          return null;
+        })
+      // 'standard' still wants the headline fixes, and nothing reads the rest of the
+      // analysis on that path — the nightly cron's result is charted, not read.
+      : AiService.getInsights(result)
+          .then((text): AiPageAnalysis | null => text
+            ? { diagnosis: '', fixes: [text], metrics: {}, waterfall: null, audits: {} }
+            : null)
+          .catch((err: unknown) => {
+            console.error('[AI] Insights failed:', err);
+            return null;
+          }),
     heaviest.length > 0
       ? AiService.getResourceAdvice(heaviest).catch((err: unknown) => {
           console.error('[AI] Resource advice failed:', err);
           return new Map<string, string>();
         })
       : Promise.resolve(new Map<string, string>()),
-    depth === 'deep'
-      ? AiService.getAuditExplanations(result).catch((err: unknown) => {
-          console.error('[AI] Audit explanations failed:', err);
-          return new Map<string, string>();
-        })
-      : Promise.resolve(new Map<string, string>()),
-    depth === 'deep'
-      ? AiService.getPageNarrative(result).catch((err: unknown) => {
-          console.error('[AI] Page narrative failed:', err);
-          return { metrics: {} as AiMetricNotes, waterfall: null };
-        })
-      : Promise.resolve({ metrics: {} as AiMetricNotes, waterfall: null }),
   ]);
+
+  // Fold this run's fixes into the recommendation history — bumps repeats, resolves
+  // whatever dropped out of the list. Deep-only: 'standard' fixes are one collapsed
+  // string (see the getInsights branch above), not discrete recommendations to track.
+  if (depth === 'deep' && userId && analysis && analysis.fixes.length > 0) {
+    await reconcileRecommendations(userId, result, analysis.fixes);
+  }
+
+  // The diagnosis leads, because it is the thing the rest was derived from; without it the
+  // fixes read as three unrelated suggestions, which is what they used to be.
+  const insights = analysis
+    ? [analysis.diagnosis, ...analysis.fixes].filter(Boolean).join('\n\n')
+    : null;
+  const auditExplanations = new Map(Object.entries(analysis?.audits ?? {}));
+  const narrative = { metrics: analysis?.metrics ?? {}, waterfall: analysis?.waterfall ?? null };
 
   if (insights) result.aiInsights = insights;
 

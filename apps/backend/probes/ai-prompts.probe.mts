@@ -2,6 +2,9 @@
  * Exercises every AiService prompt against the live key, and proves each one degrades to a
  * neutral value rather than throwing.
  *
+ * `analysePage` is the one that matters most: it produces the diagnosis, fixes, metric
+ * notes, waterfall and per-audit lines in a single pass, so they agree by construction.
+ *
  * There is no test runner in this package, so run it by hand:
  *
  *     cd apps/backend && npx tsx probes/ai-prompts.probe.mts
@@ -37,22 +40,30 @@ const show = (label: string, value: unknown) => {
 
 // ─── The real calls ──────────────────────────────────────────────────────────
 
-console.time('getInsights');
-show('getInsights', await AiService.getInsights(result));
-console.timeEnd('getInsights');
+console.time('analysePage');
+const analysis = await AiService.analysePage(result);
+console.timeEnd('analysePage');
 
-console.time('getAuditExplanations');
-const expl = await AiService.getAuditExplanations(result);
-console.timeEnd('getAuditExplanations');
-console.log(`── getAuditExplanations ── ${expl.size} of the failing audits explained`);
-for (const [id, text] of [...expl].slice(0, 3)) console.log(`   ${id}: ${text}`);
-console.log();
+if (!analysis) {
+  console.log('── analysePage ── returned null (the model answered with something unparseable)');
+} else {
+  show('analysePage.diagnosis', analysis.diagnosis);
+  console.log('── analysePage.fixes ──');
+  analysis.fixes.forEach((f, i) => console.log(`   ${i + 1}. ${f}`));
+  show('analysePage.metrics', analysis.metrics);
+  show('analysePage.waterfall', analysis.waterfall);
+  console.log(`── analysePage.audits ── ${Object.keys(analysis.audits).length} failing audits explained`);
+  for (const [id, text] of Object.entries(analysis.audits).slice(0, 3)) console.log(`   ${id}: ${text}`);
+  console.log();
 
-console.time('getPageNarrative');
-const narrative = await AiService.getPageNarrative(result);
-console.timeEnd('getPageNarrative');
-show('getPageNarrative.metrics', narrative.metrics);
-show('getPageNarrative.waterfall', narrative.waterfall);
+  // The whole point of one pass: the surfaces must describe the same page. A metric note
+  // that blames something the diagnosis never mentions is the bug this replaced.
+  const words = new Set(analysis.diagnosis.toLowerCase().match(/[a-z]{5,}/g) ?? []);
+  const overlaps = Object.values(analysis.metrics)
+    .filter(n => (n.toLowerCase().match(/[a-z]{5,}/g) ?? []).some(w => words.has(w))).length;
+  console.log(`   metric notes sharing vocabulary with the diagnosis: ${overlaps} of ${Object.keys(analysis.metrics).length}`);
+  console.log();
+}
 
 show('getAlertNote', await AiService.getAlertNote({
   kind: 'budget breach',
@@ -83,10 +94,8 @@ const svc = AiService as unknown as { generate: (p: string, o?: unknown) => Prom
 const realGenerate = svc.generate;
 svc.generate = async () => 'Sorry, I cannot help with that.';
 try {
-  const e = await AiService.getAuditExplanations(result);
-  const n = await AiService.getPageNarrative(result);
-  console.log(`   getAuditExplanations → empty Map: ${e.size === 0}`);
-  console.log(`   getPageNarrative     → {} + null: ${Object.keys(n.metrics).length === 0 && n.waterfall === null}`);
+  const a = await AiService.analysePage(result);
+  console.log(`   analysePage          → null: ${a === null}`);
   const advice = await AiService.getResourceAdvice(
     (result.resources?.requests ?? []).slice(0, 2).map(r => ({ url: r.url, resourceType: r.resourceType, transferSize: r.transferSize })));
   console.log(`   getResourceAdvice    → empty Map: ${advice.size === 0}`);

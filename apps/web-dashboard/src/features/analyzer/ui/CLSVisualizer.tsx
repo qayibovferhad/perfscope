@@ -502,7 +502,10 @@ export function CLSVisualizer({
           <AnimatePresence initial={false}>
             {sortedElems.map((el, i) => (
               <motion.div
-                key={el.selector}
+                // Not the selector alone: one element can shift more than once during a
+                // load, so the same selector appears twice with different scores — and
+                // React would drop the second, hiding a real shift from the list.
+                key={`${el.selector}#${i}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}

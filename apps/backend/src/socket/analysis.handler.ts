@@ -120,7 +120,7 @@ async function runAudit({
     // AI failure (it logs and returns nothing), so a dead model costs a log line, not the save.
     // 'deep' only here: this is the one entry path with a person watching the page the
     // extra commentary decorates.
-    const ai = await enrichWithAi(result, { depth: 'deep' });
+    const ai = await enrichWithAi(result, { depth: 'deep', userId });
 
     // Emitted unconditionally, even when every field is empty. The client shows a skeleton
     // from `analysis:complete` until this arrives, so a silent AI phase — no key, a dead

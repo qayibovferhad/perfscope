@@ -4,7 +4,67 @@ import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkE
 import { parseTimeline } from './timeline-parser.js';
 import { parseCLSData } from './cls-parser.js';
 import { parseThirdParties } from './third-party-parser.js';
-import type { AnalysisResult, AuditItem, AuditImpact, AnalysisCategory, CategoryPartial, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
+import type { AnalysisResult, AuditItem, AuditDetail, AuditImpact, AnalysisCategory, CategoryPartial, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
+
+/** Lighthouse item shapes vary by audit: DOM audits nest `node.selector`/`node.snippet`,
+ *  network audits carry `url`, opportunities carry a wasted-bytes/wasted-ms/total-bytes
+ *  figure. Normalise whatever is present; skip items that carry none of it. Capped at 5 —
+ *  an audit with 300 unlabelled images explains itself in three, and `fullResult` still
+ *  has to fit in the AI prompt and the database. Strings truncated to ~120 chars for the
+ *  same reason. */
+const AUDIT_DETAIL_LIMIT = 5;
+
+/** Keeps the start — right for snippets, where the tag name and key attributes lead. */
+const truncateHead = (s: string, max = 120): string => (s.length > max ? s.slice(0, max - 1) + '…' : s);
+
+/** Keeps the end — right for URLs, where the filename/query is at the tail, not the host. */
+const truncateTail = (s: string, max = 120): string => (s.length > max ? '…' + s.slice(-(max - 1)) : s);
+
+/**
+ * A CSS ancestor-chain selector's useful part — the actual failing element, not the divs
+ * around it — is its *last* segment. Truncating from the head (as every other field does)
+ * was cutting that segment off mid-class-name, e.g. "div.Foo > div.Bar > a.Anc…" instead of
+ * the class the model needed to cite.
+ */
+const truncateSelector = (selector: string, max = 120): string => {
+  const parts = selector.split(' > ');
+  const last = parts[parts.length - 1] ?? selector;
+  if (last.length <= max) return parts.length > 1 ? `… > ${last}` : last;
+  return truncateTail(last, max);
+};
+
+export function extractAuditDetails(details: unknown): AuditDetail[] | undefined {
+  if (!details || typeof details !== 'object') return undefined;
+  const items = (details as { items?: unknown[] }).items;
+  if (!Array.isArray(items) || items.length === 0) return undefined;
+
+  const out: AuditDetail[] = [];
+  for (const raw of items) {
+    if (out.length >= AUDIT_DETAIL_LIMIT) break;
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as Record<string, unknown>;
+    const node = item['node'] as Record<string, unknown> | undefined;
+
+    const selector = typeof node?.['selector'] === 'string' ? truncateSelector(node['selector'] as string) : undefined;
+    const snippet  = typeof node?.['snippet']  === 'string' ? truncateHead(node['snippet']  as string) : undefined;
+    const url      = typeof item['url']        === 'string' ? truncateTail(item['url']      as string) : undefined;
+
+    let value: string | undefined;
+    if (typeof item['value'] === 'string')            value = truncateHead(item['value'] as string);
+    else if (typeof item['wastedMs'] === 'number')     value = `${Math.round(item['wastedMs'] as number)}ms wasted`;
+    else if (typeof item['wastedBytes'] === 'number')  value = `${Math.round((item['wastedBytes'] as number) / 1024)}KB wasted`;
+    else if (typeof item['totalBytes'] === 'number')   value = `${Math.round((item['totalBytes'] as number) / 1024)}KB`;
+
+    if (!selector && !snippet && !url && !value) continue;
+    out.push({
+      ...(selector ? { selector } : {}),
+      ...(snippet  ? { snippet }  : {}),
+      ...(url      ? { url }      : {}),
+      ...(value    ? { value }    : {}),
+    });
+  }
+  return out.length > 0 ? out : undefined;
+}
 
 export function toScore(raw: number | null | undefined): number {
   return Math.round((raw ?? 0) * 100);
@@ -25,14 +85,18 @@ export function extractFailingAudits(
     .filter(([, a]) => a.score !== null && (a.score ?? 1) < 0.9)
     .sort(([, a], [, b]) => (a.score ?? 1) - (b.score ?? 1))
     .slice(0, 15)
-    .map(([id, a]): AuditItem => ({
-      id,
-      title: a.title ?? id,
-      description: a.description ?? '',
-      score: a.score ?? null,
-      displayValue: a.displayValue,
-      impact: scoreToImpact(a.score ?? null),
-    }));
+    .map(([id, a]): AuditItem => {
+      const details = extractAuditDetails(a.details);
+      return {
+        id,
+        title: a.title ?? id,
+        description: a.description ?? '',
+        score: a.score ?? null,
+        displayValue: a.displayValue,
+        impact: scoreToImpact(a.score ?? null),
+        ...(details ? { details } : {}),
+      };
+    });
 }
 
 export function detectAuthRedirect(

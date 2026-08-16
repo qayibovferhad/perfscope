@@ -44,6 +44,19 @@ export interface AuditItem {
    * (only failing audits are explained — explaining a pass costs a token and says nothing).
    */
   aiExplanation?: string
+  /** The first few things this audit flagged on this page — the selector, the request,
+   *  the value. Capped: an audit with 300 unlabelled images explains itself in three. */
+  details?: AuditDetail[]
+}
+
+/** One flagged item from a Lighthouse audit's `details.items`, normalised across the
+ *  shapes Lighthouse uses: `node.selector`/`node.snippet` for DOM audits, `url` for
+ *  network ones, a wasted-bytes/wasted-ms/total-bytes figure for opportunities. */
+export interface AuditDetail {
+  selector?: string
+  snippet?:  string
+  url?:      string
+  value?:    string
 }
 
 /**
@@ -82,6 +95,29 @@ export interface AiAdviceAction {
   kind: 'audit' | 'schedule' | 'compare' | 'budgets'
   /** One of the user's own site URLs. */
   url:  string
+}
+
+/**
+ * Everything Gemini has to say about one audit, from a single pass over it.
+ *
+ * The analyzer used to ask four separate questions — top fixes, per-vital notes, a
+ * waterfall narrative, per-audit explanations — each in its own request, each seeing only
+ * its own slice. They disagreed: one blamed a hero image at 3.8s, another blamed audio and
+ * API payloads at 2.8s, a third blamed translation files at 2.6s, all about the same load.
+ *
+ * One diagnosis, then every surface derived from it, so they cannot contradict each other.
+ */
+export interface AiPageAnalysis {
+  /** One sentence: what is actually wrong with this page. The others hang off it. */
+  diagnosis: string
+  /** Three fixes, in the order worth doing. */
+  fixes:     string[]
+  /** Per vital that is not already good. */
+  metrics:   AiMetricNotes
+  /** How this load actually went, in prose. */
+  waterfall: string | null
+  /** Keyed by `AuditItem.id` — why this one fails *here*, not what the audit means. */
+  audits:    Record<string, string>
 }
 
 /** A short note per Core Web Vital, keyed by the vital. Only non-good vitals get one. */

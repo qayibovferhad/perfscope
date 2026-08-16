@@ -187,12 +187,16 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
             </tr>
           </thead>
           <tbody>
-            {criticals.map((req) => {
+            {criticals.map((req, i) => {
               const { dot, text } = sizeColor(req);
               const name = filename(req.url);
               return (
                 <tr
-                  key={req.url}
+                  // Index-suffixed: a URL is not unique in a request list. Real pages fetch
+                  // the same one repeatedly — a polling endpoint on one audited site appears
+                  // eleven times — and React drops the duplicates, so rows silently vanished
+                  // from this table.
+                  key={`${req.url}#${i}`}
                   className="border-b border-ld-border last:border-0 hover:bg-ld-surface-hover transition-colors"
                 >
                   <td className="px-[12px] py-[8px]">

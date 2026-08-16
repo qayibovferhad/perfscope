@@ -1,12 +1,30 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'node:crypto';
 import { config } from '../config/index.js';
-import { rateVital, VITAL_THRESHOLDS } from '@perfscope/shared';
-import type { AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
+import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
+import type {
+  AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
+  CoreWebVitals, PerformanceScores,
+} from '@perfscope/shared';
+import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
 const CACHE_MAX    = 300;
+
+/**
+ * How every prompt in this file is told to write.
+ *
+ * Six prompts grew independently and ended up in six registers — a numbered command list,
+ * subjectless fragments ("Delayed by heavy script execution"), flowing prose, semicolon
+ * instructions — so the product read as six tools rather than one assistant. This is the
+ * single answer to "what does PerfScope sound like".
+ */
+const VOICE = `Write as one consistent assistant:
+- Address the reader as "you" and their site as "your". Plain sentences, no markdown, no numbered lists, no headings.
+- Durations in seconds above 1000ms ("3.79s"), otherwise milliseconds ("240ms"). Never write a raw millisecond figure like "3787 milliseconds".
+- Never restate what a metric or an audit means. Say what it means for THIS page.
+- One idea per sentence. No filler, no "consider", no "it is recommended".`;
 
 export class AiService {
   static isAvailable(): boolean {
@@ -77,6 +95,164 @@ export class AiService {
     }
   }
 
+/**
+   * One pass over an audit, producing everything the analyzer shows.
+   *
+   * Replaces `getInsights`, `getPageNarrative` and `getAuditExplanations`, which each made
+   * their own request and each saw only their own slice — so the same load got three
+   * different explanations with three different timestamps. Deriving all of it from one
+   * `diagnosis` makes agreement structural rather than lucky, and costs one call where
+   * there were three.
+   */
+  static async analysePage(
+    result: AnalysisResult,
+    /**
+     * The previous audit of this same URL, when there is one.
+     *
+     * Without it every run of an unchanged page produces the same paragraph, which is
+     * correct and useless — the reader has read it already. Told what moved, the analysis
+     * leads with the movement, which is different every time by definition and is the
+     * thing someone re-auditing actually wants to know.
+     */
+    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    /**
+     * Fixes already given for this page, oldest concern first. Without this every audit
+     * re-derives the same three fixes from scratch and repeats them verbatim for as long
+     * as the user leaves the underlying problem alone — indistinguishable, to the reader,
+     * from the AI not having noticed it said this already.
+     */
+    history?: RecommendationHistoryEntry[] | null,
+  ): Promise<AiPageAnalysis | null> {
+    const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
+      .filter(k => k in result.metrics);
+    const poor = vitals.filter(k => rateVital(k, result.metrics[k]) !== 'good');
+
+    const failing = result.audits
+      .filter(a => (a.score ?? 1) < 1)
+      .slice(0, this.AUDIT_LIMIT);
+
+    const short = (url?: string) => {
+      if (!url) return '';
+      try { return ' ' + new URL(url).pathname; } catch { return ' ' + url; }
+    };
+
+    const heaviest = [...(result.resources?.requests ?? [])]
+      .sort((a, b) => b.transferSize - a.transferSize)
+      .slice(0, 8)
+      .map(r => `  ${r.resourceType}${short(r.url)} ${Math.round(r.transferSize / 1024)}KB starts ${Math.round(r.startTime)}ms ttfb ${Math.round(r.ttfb)}ms`)
+      .join('\n');
+
+    // The specifics that make advice about *this* page rather than about web performance:
+    // which function blocked the thread, which element moved, which library is on board.
+    // All of it is already in the result and none of it used to reach the model, which is
+    // why every audit came back with the same few sentences about third-party scripts.
+    const longTasks = [...(result.flameChartData?.events ?? [])]
+      .filter(e => e.isLongTask)
+      .sort((a, b) => b.durationMs - a.durationMs)
+      .slice(0, 6)
+      .map(e => `  ${Math.round(e.durationMs)}ms ${e.name}${short(e.url)} at ${Math.round(e.startMs)}ms`)
+      .join('\n');
+
+    const shifts = (result.clsData?.elements ?? [])
+      .filter(e => e.score > 0)
+      .slice(0, 4)
+      .map(e => `  ${e.score.toFixed(3)} ${e.selector}${e.rootCause ? ` (${e.rootCause})` : ''}`)
+      .join('\n');
+
+    const vendors = (result.thirdParty ?? [])
+      .slice(0, 5)
+      .map(t => `  ${t.name}: ${Math.round(t.blockingTime)}ms blocking, ${Math.round(t.transferSize / 1024)}KB over ${t.requestCount} requests`)
+      .join('\n');
+
+    const libraries = (result.resources?.detectedLibraries ?? []).map(l => l.name).join(', ');
+
+    const s = result.scores;
+    const weakCategories = [
+      s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
+      s.bestPractices < 90 ? `best practices ${s.bestPractices}` : null,
+      s.seo < 90 ? `SEO ${s.seo}` : null,
+    ].filter(Boolean);
+
+    const prompt = `You are a web performance expert reading one Lighthouse result.
+
+${VOICE}
+
+Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
+
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change.\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
+${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given (timesGiven ≥ 1), do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it has been given 2 or more times already (this would be its third audit or later), go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never restate a past fix verbatim.\n` : ''}
+
+Answer ONLY with JSON:
+{"diagnosis": string, "fixes": [string], "metrics": {${poor.map(k => `"${k}": string`).join(', ')}}, "waterfall": string, "audits": {${failing.map(a => `"${a.id}": string`).join(', ')}}}
+
+- diagnosis: one sentence naming the single root problem on this page.
+- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric.
+- metrics: one sentence per key, saying what made THAT metric what it is here — consistent with the diagnosis.
+- waterfall: two or three sentences on how this load actually went, in order.
+- audits: one sentence per key: why it fails on this page and the first thing to change. Never define the audit.
+${poor.length === 0 ? '- Every vital is already good, so "metrics" is {}.\n' : ''}${failing.length === 0 ? '- Nothing is failing, so "audits" is {}.\n' : ''}
+URL: ${result.url}
+${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
+LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
+${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
+${libraries ? `Libraries on the page: ${libraries}` : ''}
+${history && history.length > 0 ? `\nRecommendations given before on this page:\n${history.map(h => `  ${h.resolved ? '[now fixed] ' : `[given ${h.timesGiven}x, still open] `}${h.fix}`).join('\n')}\n` : ''}
+
+Longest main-thread tasks:
+${longTasks || '  (none over the long-task threshold)'}
+
+Heaviest resources:
+${heaviest || '  (none recorded)'}
+
+Layout shifts:
+${shifts || '  (none)'}
+
+Third-party vendors:
+${vendors || '  (none)'}
+
+Failing audits:
+${failing.map(a => {
+  const head = `  ${a.id} — ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}`;
+  const items = (a.details ?? []).map(d => {
+    const bits = [
+      d.selector,
+      d.snippet && d.snippet !== d.selector ? d.snippet : undefined,
+      d.url,
+      d.value,
+    ].filter(Boolean);
+    return bits.length ? `    ${bits.join('  ')}` : null;
+  }).filter((l): l is string => l !== null);
+  return items.length ? `${head}\n${items.join('\n')}` : head;
+}).join('\n') || '  (none)'}`;
+
+    const parsed = this.parseJson<{
+      diagnosis?: unknown; fixes?: unknown; metrics?: unknown; waterfall?: unknown; audits?: unknown;
+    }>(await this.generate(prompt), 'page analysis');
+
+    if (!parsed || typeof parsed.diagnosis !== 'string' || !parsed.diagnosis.trim()) return null;
+
+    /** Keep only the keys we asked about, so a hallucinated metric cannot reach the UI. */
+    const pick = (raw: unknown, allowed: string[]): Record<string, string> => {
+      if (!raw || typeof raw !== 'object') return {};
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        if (allowed.includes(k) && typeof v === 'string' && v.trim()) out[k] = v.trim().slice(0, 300);
+      }
+      return out;
+    };
+
+    return {
+      diagnosis: parsed.diagnosis.trim().slice(0, 300),
+      fixes: (Array.isArray(parsed.fixes) ? parsed.fixes : [])
+        .filter((f): f is string => typeof f === 'string' && !!f.trim())
+        .slice(0, 6).map(f => f.trim().slice(0, 300)),
+      metrics:   pick(parsed.metrics, poor) as AiMetricNotes,
+      waterfall: typeof parsed.waterfall === 'string' && parsed.waterfall.trim()
+        ? parsed.waterfall.trim().slice(0, 600) : null,
+      audits:    pick(parsed.audits, failing.map(a => a.id)),
+    };
+  }
+
   static async getInsights(result: AnalysisResult): Promise<string> {
     const failingAudits = result.audits
       .slice(0, 5)
@@ -127,105 +303,9 @@ ${list}`;
   // ─── Deepening one audit ────────────────────────────────────────────────────
 
   /** Explaining a passing audit costs a token and says nothing. */
-  private static readonly AUDIT_LIMIT = 8;
-
-  /**
-   * Why each failing audit fails *on this page*, and the first thing to do about it.
-   *
-   * One call for every audit, never one per audit: eight round trips would cost eight
-   * times the latency and money to say things the model can say together, with more
-   * context, in one.
-   */
-  static async getAuditExplanations(result: AnalysisResult): Promise<Map<string, string>> {
-    const failing = result.audits
-      .filter((a) => a.score !== null && a.score < 0.9)
-      .slice(0, this.AUDIT_LIMIT);
-    if (failing.length === 0) return new Map();
-
-    const list = failing
-      .map((a) => `${a.id} | ${a.title}${a.displayValue ? ` | ${a.displayValue}` : ''}`)
-      .join('\n');
-
-    const prompt = `Web performance expert. For each failing Lighthouse audit below, say why it likely fails on THIS page and the first concrete step to fix it. Max 25 words each. Respond ONLY as a JSON array of {id, explanation}. No markdown, no prose.
-
-Page: ${result.url} (performance ${result.scores.performance})
-Audits (id | title | value):
-${list}`;
-
-    const parsed = this.parseJson<Array<{ id: string; explanation: string }>>(
-      await this.generate(prompt), 'audit explanations');
-    if (!Array.isArray(parsed)) return new Map();
-
-    const wanted = new Set(failing.map((a) => a.id));
-    return new Map(
-      parsed
-        .filter((e) => wanted.has(e.id) && typeof e.explanation === 'string')
-        .map(({ id, explanation }) => [id, explanation.slice(0, 300)]),
-    );
-  }
-
-  /**
-   * Per-vital notes and a narrative of how the page actually loaded.
-   *
-   * Combined into one call because both describe the same load, and because the waterfall
-   * is most of the context the metric notes need anyway.
-   *
-   * Which vitals are "not good" is decided here, from the shared thresholds — the model is
-   * told what to explain, never asked to judge whether a number is acceptable.
-   */
-  static async getPageNarrative(
-    result: AnalysisResult,
-  ): Promise<{ metrics: AiMetricNotes; waterfall: string | null }> {
-    const empty = { metrics: {} as AiMetricNotes, waterfall: null };
-
-    const keys = Object.keys(VITAL_THRESHOLDS).filter(
-      (k): k is keyof CoreWebVitals => k in result.metrics,
-    );
-    const poor = keys.filter((k) => rateVital(k, result.metrics[k]) !== 'good');
-
-    const requests = result.resources?.requests ?? [];
-    const heaviest = [...requests]
-      .sort((a, b) => b.transferSize - a.transferSize)
-      .slice(0, 5)
-      .map((r, i) => {
-        let path = r.url;
-        try { path = new URL(r.url).pathname; } catch { /* keep the whole url */ }
-        return `${i + 1}. [${r.resourceType}] ${path} ${Math.round(r.transferSize / 1024)}KB start ${Math.round(r.startTime)}ms ttfb ${Math.round(r.ttfb)}ms`;
-      })
-      .join('\n');
-
-    if (poor.length === 0 && heaviest.length === 0) return empty;
-
-    const prompt = `Web performance expert. Two things about this page load.
-
-1. For each metric listed, one note (max 20 words) on what is causing it here.
-2. "waterfall": 2-3 sentences narrating how this page loaded — the sequence, what blocked what.
-
-Respond ONLY as JSON: {"metrics": {"<key>": "<note>"}, "waterfall": "<prose>"}. No markdown.
-
-Page: ${result.url}
-Metrics needing a note: ${poor.length ? poor.map(k => `${k}=${Math.round(result.metrics[k] * 1000) / 1000}`).join(' ') : '(none)'}
-Requests: ${requests.length} total, ${result.resources?.thirdPartyRequests?.length ?? 0} third-party requests
-Heaviest:
-${heaviest || '(no request data)'}`;
-
-    const parsed = this.parseJson<{ metrics?: Record<string, unknown>; waterfall?: unknown }>(
-      await this.generate(prompt), 'page narrative');
-    if (!parsed) return empty;
-
-    const metrics: AiMetricNotes = {};
-    for (const k of poor) {
-      const note = parsed.metrics?.[k];
-      if (typeof note === 'string' && note.trim()) metrics[k] = note.slice(0, 200);
-    }
-    const waterfall = typeof parsed.waterfall === 'string' && parsed.waterfall.trim()
-      ? parsed.waterfall.slice(0, 600)
-      : null;
-
-    return { metrics, waterfall };
-  }
-
-  // ─── Surfaces outside the analyzer ──────────────────────────────────────────
+  /** Failing audits explained per run. Fourteen covers a genuinely bad page without
+   *  turning the response into a wall the reader skims past. */
+  private static readonly AUDIT_LIMIT = 14;
 
   /**
    * One or two sentences to go out with an alert.
@@ -237,7 +317,11 @@ ${heaviest || '(no request data)'}`;
     alert: { kind: string; url: string; formFactor: string | null; lines: string[] },
     opts: { timeoutMs?: number } = {},
   ): Promise<string | null> {
-    const prompt = `Web performance expert. A monitoring alert just fired. In at most 2 sentences, plain text, no markdown: what this likely means for users, and the first thing to check.
+    const prompt = `You are a web performance expert. A monitoring alert just fired.
+
+${VOICE}
+
+In at most 2 sentences: what this likely means for the people using the page, and the first thing to check.
 
 Alert: ${alert.kind}
 Page: ${alert.url} (${alert.formFactor ?? 'desktop'})
@@ -254,7 +338,11 @@ ${alert.lines.map(l => `- ${l}`).join('\n')}`;
     regressions: number; breaches: number;
     slowest: Array<{ url: string; score: number; lcp: number }>;
   }): Promise<string | null> {
-    const prompt = `Web performance expert writing the opening note of a weekly report. At most 3 sentences, plain text, no markdown: the biggest movement this week and the one page most worth fixing next. Do not repeat the numbers verbatim — interpret them.
+    const prompt = `You are a web performance expert writing the opening note of a weekly report.
+
+${VOICE}
+
+At most 3 sentences: the biggest movement this week and the one page most worth fixing next.
 
 Sites: ${data.sites}, audits run: ${data.audits}
 Average score: ${data.avgScore ?? 'n/a'} (previous week: ${data.prevAvgScore ?? 'n/a'})
@@ -286,12 +374,16 @@ ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`
 
     const prompt = `You are a web performance advisor embedded in a monitoring tool. The user is looking at: ${input.scope}.
 
+${VOICE}
+
 Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail": string, "action": {"kind": string, "url": string} | null}]}
 
 - headline: at most 12 words, the single most useful thing to say right now.
 - steps: 1 to 3, ordered by what to do first. title at most 8 words, detail at most 25 words and concrete.
 - If everything looks healthy, say so plainly and suggest what to watch, rather than inventing problems.
 - Refer to specific sites and numbers from the context. Never repeat a number without interpreting it.
+- If the context describes something the user did as a direct result of past advice (an action they took and what happened after), that is the news — lead the headline with it, plainly saying whether it helped, using the exact numbers given. Do not invent this if the context does not mention it.
+- If the context includes a trend toward a target, you may work the pace into a step (how it's moving, roughly how long at that rate) — but only using the numbers given, never a projection you calculated yourself.
 - action: include it ONLY when the step is one of these four things this tool can do, and ONLY with a url from the list below. Otherwise use null — most advice is work done outside this tool.
     "audit"    run an audit of that page now
     "schedule" set up recurring audits for it
@@ -355,7 +447,11 @@ ${input.lines.join('\n')}`;
     const side = (s: { scores: Record<string, number>; metrics: Record<string, number> }) =>
       `perf ${s.scores['performance'] ?? '?'} lcp ${Math.round(s.metrics['lcp'] ?? 0)}ms tbt ${Math.round(s.metrics['tbt'] ?? 0)}ms cls ${s.metrics['cls'] ?? 0}`;
 
-    const prompt = `Web performance expert. Two sites were just measured head to head. In 2-3 sentences, plain text, no markdown: who is faster overall, the single biggest gap, and the one metric the slower site should attack first.
+    const prompt = `You are a web performance expert. Two sites were just measured head to head.
+
+${VOICE}
+
+In 2-3 sentences: who is faster overall, the single biggest gap, and the one metric the slower site should attack first.
 
 Yours (${entry.sourceUrl}): ${side(entry.source)}
 Rival (${entry.targetUrl}): ${side(entry.competitor)}`;

@@ -2,12 +2,33 @@ import type { AiAdvice } from '@perfscope/shared';
 import { AiService } from './ai.service.js';
 import { getOverview } from './overview.service.js';
 import { findWebsiteByHost } from './websiteLookup.js';
+import { getActionOutcome } from './adviceAction.service.js';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import {
-  fmtMs, fmtCls, targetProgress, readTargetValue, TARGET_DIRECTION,
-  type TargetMetric, type TargetProgress,
+  fmtMs, fmtCls, targetProgress, readTargetValue, TARGET_DIRECTION, forecastMetric,
+  type TargetMetric, type TargetProgress, type ForecastMetric,
 } from '@perfscope/shared';
+
+const FORECAST_METRICS: ForecastMetric[] = ['performance', 'lcp', 'tbt', 'cls'];
+
+/** How a metric's forecast reads as a line of prose for the model, not the Targets tab's
+ *  own formatting (that lives in the web-dashboard) — just enough for it to reason about
+ *  pace without inventing a number that isn't here. */
+function describeForecastLine(metric: ForecastMetric, budget: number | null, forecast: ReturnType<typeof forecastMetric>): string | null {
+  if (!forecast || forecast.confidence === 'low') return null;
+  const unit = (v: number) => metric === 'performance' ? String(Math.round(v)) : metric === 'cls' ? fmtCls(v) : fmtMs(v);
+  const label = metric.toUpperCase();
+
+  if (forecast.direction === 'flat') return `${label} holding steady around ${unit(forecast.current)}.`;
+
+  const verb = forecast.slopePerDay > 0 ? 'rising' : 'falling';
+  const pace = `${label} is ${verb}, now ${unit(forecast.current)}`;
+  if (budget !== null && forecast.daysToBudget !== null) {
+    return `${pace} — at this rate, crosses the ${unit(budget)} target in ~${Math.round(forecast.daysToBudget)} days.`;
+  }
+  return `${pace}.`;
+}
 
 /** One target, in the units and direction a person reads it in. */
 function describeTarget(p: TargetProgress): string {
@@ -107,6 +128,13 @@ async function buildSiteContext(
     .lean();
 
   const lines: string[] = [`Page: ${url}`];
+
+  // Closing the loop: if they acted on a past "audit this" suggestion and the result is
+  // still fresh news (see getActionOutcome's own gating), that is the most important
+  // thing on the page right now — ahead of anything else in the context.
+  const outcome = await getActionOutcome(userId, url).catch(() => null);
+  if (outcome) lines.push(outcome);
+
   const latest = runs[0];
 
   // Targets turn the advisor from a commentator into a coach: told what the user is aiming
@@ -147,6 +175,26 @@ async function buildSiteContext(
   for (const r of [...runs].reverse()) {
     const m = r.metrics;
     lines.push(`- score ${r.scores?.performance ?? '?'}, LCP ${fmtMs(m?.lcp ?? 0)}, TBT ${fmtMs(m?.tbt ?? 0)}, CLS ${m?.cls ?? '?'}`);
+  }
+
+  // Same fit the Targets tab draws (forecastMetric, shared) — turns "here is what
+  // happened" into "here is where this is headed", the difference between reporting a
+  // number and coaching toward one. Silently skipped per metric when there isn't enough
+  // signal yet (forecastMetric returns null, or its own confidence is 'low').
+  const forecastLines = FORECAST_METRICS
+    .map(metric => {
+      const budget  = (site?.budgets?.[metric] ?? null) as number | null;
+      const samples = [...runs].reverse().map(r => ({
+        at:    String(r.createdAt),
+        value: metric === 'performance' ? (r.scores?.performance ?? 0) : (r.metrics?.[metric] ?? 0),
+      }));
+      return describeForecastLine(metric, budget, forecastMetric(metric, samples, budget));
+    })
+    .filter((l): l is string => l !== null);
+
+  if (forecastLines.length) {
+    lines.push('Trend:');
+    for (const l of forecastLines) lines.push(`- ${l}`);
   }
 
   return { scope: `one page they track: ${url}`, lines, knownUrls: [url] };

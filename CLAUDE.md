@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## AI layer — read before touching anything AI
+
+`docs/ai/HANDOFF.md` is the entry point: how the layer is wired, how to measure it, the
+exact next step and the traps. `docs/ai/PLAN.md` is the six-phase plan it executes.
+Written 2026-08-16 for a session starting with no memory of the one that produced them.
+Do not start AI work without reading HANDOFF.md first — the biggest lever (audit
+`details.items` are dropped in `lhr-transform.ts`) is not discoverable from the code alone.
+
 ## Git Policy
 
 **Never push to remote without explicit user request.**
