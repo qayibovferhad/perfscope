@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { printReport, printJson, printMinimal } from '../src/reporter.js';
+import { printReport, printJson, printMinimal, printInsights } from '../src/reporter.js';
 import { unwrap } from '../src/api.js';
 import {
   loadCredentials, saveCredentials, clearCredentials, getConfigPath,
@@ -350,7 +350,7 @@ function ghAnnotate(level, message) {
 }
 
 /** Markdown table appended to the workflow run page, when running under GitHub Actions. */
-function writeGithubSummary(url, rows, passed) {
+function writeGithubSummary(url, rows, passed, aiInsights) {
   const file = process.env.GITHUB_STEP_SUMMARY;
   if (!file) return;
 
@@ -369,6 +369,9 @@ function writeGithubSummary(url, rows, passed) {
       return `| ${labelOf(r.metric)} | ${measured} | ${comparator} ${formatValue(r.metric, r.budget)} | ${verdict} |`;
     }),
     '',
+    // The summary is what the team reads on the PR, long after the log has scrolled by.
+    // A table of numbers says what broke; this says what to do about it.
+    ...(aiInsights ? ['> ' + String(aiInsights).trim().replace(/\n+/g, '\n> '), ''] : []),
   ].join('\n');
 
   try {
@@ -463,12 +466,13 @@ async function ciCmd(opts) {
       budget,
       passed,
       failures,
+      aiInsights: result.aiInsights ?? null,
     });
   } else {
     printBudgetTable(rows);
   }
 
-  writeGithubSummary(targetUrl, rows, passed);
+  writeGithubSummary(targetUrl, rows, passed, result.aiInsights);
 
   if (passed) {
     say(chalk.greenBright('  ✓ Budget passed') + chalk.dim(` — ${rows.length} threshold(s) checked\n`));
@@ -477,6 +481,11 @@ async function ciCmd(opts) {
 
   say(chalk.redBright('  ✗ Budget failed') + chalk.dim(` — ${failures.length} of ${rows.length} threshold(s)\n`));
   for (const f of failures) ghAnnotate('error', `${targetUrl} — ${describeFailure(f)}`);
+
+  // The one moment a developer is definitely reading this output is when it just failed
+  // their build — and until now it told them a number was too high and nothing else. The
+  // commentary is already generated and already on the result; it was simply dropped.
+  printInsights(result.aiInsights);
 
   process.exit(opts.warnOnly ? EXIT.OK : EXIT.BUDGET);
 }

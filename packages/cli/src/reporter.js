@@ -130,32 +130,7 @@ export function printReport(result, originalUrl) {
 
   console.log('');
 
-  // ── AI Insight ───────────────────────────────────────────
-  if (aiInsights && typeof aiInsights === 'string' && aiInsights.trim()) {
-    console.log('  ' + DIVIDER('SENIOR INSIGHT'));
-    console.log('');
-
-    const words   = aiInsights.trim().split(/\s+/);
-    const maxCols = W - 8;
-    let   line    = '';
-    const lines   = [];
-
-    for (const word of words) {
-      if ((line + ' ' + word).trim().length > maxCols) {
-        if (line) lines.push(line.trim());
-        line = word;
-      } else {
-        line = line ? line + ' ' + word : word;
-      }
-    }
-    if (line) lines.push(line.trim());
-
-    console.log(`  ${chalk.yellow('💡')} ${chalk.italic(lines[0] ?? '')}`);
-    for (let i = 1; i < lines.length; i++) {
-      console.log(`     ${chalk.dim(lines[i])}`);
-    }
-    console.log('');
-  }
+  printInsights(aiInsights);
 
   // ── Next Steps ───────────────────────────────────────────
   console.log('  ' + DIVIDER('NEXT STEPS'));
@@ -164,6 +139,44 @@ export function printReport(result, originalUrl) {
   console.log(`  ${chalk.dim('→')} Run again     ${chalk.dim(`npx perfscope --url ${displayUrl}`)}`);
   console.log('');
   console.log('  ' + LINE);
+  console.log('');
+}
+
+/**
+ * Gemini's read on the audit, wrapped to the terminal.
+ *
+ * Its own export because two places need it and only one had it: the full report printed
+ * the commentary, while `perfscope ci` — the one moment a developer is definitely reading
+ * this output, because it just failed their build — printed a number that was too high and
+ * nothing about what to do. It is already generated and already on the result.
+ *
+ * A no-op when there is nothing to say, so callers do not have to check first.
+ */
+export function printInsights(aiInsights) {
+  if (!aiInsights || typeof aiInsights !== 'string' || !aiInsights.trim()) return;
+
+  console.log('  ' + DIVIDER('SENIOR INSIGHT'));
+  console.log('');
+
+  const words   = aiInsights.trim().split(/\s+/);
+  const maxCols = W - 8;
+  let   line    = '';
+  const lines   = [];
+
+  for (const word of words) {
+    if ((line + ' ' + word).trim().length > maxCols) {
+      if (line) lines.push(line.trim());
+      line = word;
+    } else {
+      line = line ? line + ' ' + word : word;
+    }
+  }
+  if (line) lines.push(line.trim());
+
+  console.log(`  ${chalk.yellow('💡')} ${chalk.italic(lines[0] ?? '')}`);
+  for (let i = 1; i < lines.length; i++) {
+    console.log(`     ${chalk.dim(lines[i])}`);
+  }
   console.log('');
 }
 
