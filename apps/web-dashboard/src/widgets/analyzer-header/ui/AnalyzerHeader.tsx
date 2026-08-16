@@ -17,9 +17,13 @@ const iconCls = 'text-ld-text-3 group-hover:text-ld-accent transition-colors';
 export function AnalyzerHeader({ hasData, onExport, onAuthModal, onShare, shareState }: Props) {
   return (
     <div className="flex items-start justify-between gap-5 flex-wrap mb-7">
+      {/* No wordmark here. The sidebar already carries the brand on every page, and a page
+          whose heading is the product's name tells you nothing about the page. */}
       <div>
-        <h1 className="text-[30px] font-extrabold tracking-[-0.03em] text-ld-text leading-none">PerfScope</h1>
-        <p className="text-[15px] text-ld-text-2 mt-1">Analyze any website's performance with Lighthouse.</p>
+        <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] text-ld-text leading-none">
+          New audit
+        </h1>
+        <p className="text-[15px] text-ld-text-2 mt-[6px]">Analyze any website's performance with Lighthouse.</p>
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">

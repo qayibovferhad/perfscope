@@ -54,12 +54,12 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
             user, and routing them through the landing page tore the whole shell down and
             rebuilt it a frame later — the redirect was correct and the flash was real. */}
         <Link to="/dashboard" className="flex items-center gap-2.5 flex-1 min-w-0">
-          <span className="w-[30px] h-[30px] rounded-[9px] grid place-items-center bg-ld-grad shadow-ld-glow shrink-0">
-            <svg viewBox="0 0 24 24" fill="none" className="w-[17px] h-[17px]">
+          <span className="w-[36px] h-[36px] rounded-[11px] grid place-items-center bg-ld-grad shadow-ld-glow shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" className="w-[21px] h-[21px]">
               <path d="M3 12h3l2.5-7 4 14 3-9 2 2H21" stroke="#04130d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </span>
-          <span className="font-bold text-[17px] tracking-[-0.02em] text-ld-text">
+          <span className="font-bold text-[18px] tracking-[-0.02em] text-ld-text">
             Perf<b className="text-ld-accent-2 font-extrabold">Scope</b>
           </span>
         </Link>
