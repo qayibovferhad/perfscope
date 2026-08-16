@@ -3,12 +3,13 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
-  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert,
+  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert, Target,
 } from 'lucide-react';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
 import { getHostname, sessionState } from '@/entities/website';
 import { useAdviceContext } from '@/features/advisor';
+import { TargetsPanel } from '@/features/targets';
 import { setComparePreload }    from '@/features/compare';
 import { fetchHistoryResult }   from '@/entities/history';
 import { useAnalysisStore }     from '@/features/analyzer';
@@ -27,7 +28,7 @@ import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects';
 import { scoreBand, type AnalysisResult } from '@/entities/analysis';
 
-type ProjectTab = 'audits' | 'field';
+type ProjectTab = 'audits' | 'field' | 'targets';
 
 export function ProjectDetailPage() {
   const { id }    = useParams<{ id: string }>();
@@ -44,7 +45,10 @@ export function ProjectDetailPage() {
 
   // In the URL so a reload, a back button or a shared link lands on the same tab.
   const [params, setParams] = useSearchParams();
-  const tab: ProjectTab = params.get('tab') === 'field' ? 'field' : 'audits';
+  const tab: ProjectTab =
+    params.get('tab') === 'field'   ? 'field'
+  : params.get('tab') === 'targets' ? 'targets'
+  : 'audits';
 
   function setTab(next: ProjectTab) {
     // The floating compare bar belongs to the audit table; leaving it armed while the
@@ -86,6 +90,15 @@ export function ProjectDetailPage() {
     return last ? { lcp: last.metrics.lcp, cls: last.metrics.cls, fcp: last.metrics.fcp } : null;
   }, [allAudits]);
 
+  // The newest scored run, whole — the targets panel compares every metric against it,
+  // not only the three the field comparison needs.
+  const latestRun = useMemo(() => {
+    const scored = allAudits
+      .filter(hasResult)
+      .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
+    return scored.at(-1) ?? null;
+  }, [allAudits]);
+
   const selectedAudits = useMemo(
     () => allAudits.filter((a) => selectedIds.has(a.id)),
     [allAudits, selectedIds],
@@ -94,6 +107,11 @@ export function ProjectDetailPage() {
   // Resolved here rather than after the guards below: this page returns early while it
   // loads, and a hook cannot sit behind a conditional return.
   const website = websites.find(w => w._id === id);
+
+  // Shown on the tab, so the page says whether there is anything there before you click.
+  const targetCount = website?.budgets
+    ? (['performance', 'lcp', 'tbt', 'cls', 'inp'] as const).filter(m => website.budgets?.[m] != null).length
+    : 0;
 
   // The whole page is about this site, so the advisor should be too.
   useAdviceContext(website ? { scope: 'site', url: website.url, label: getHostname(website.url) } : null);
@@ -318,6 +336,7 @@ export function ProjectDetailPage() {
             tabs={[
               { key: 'audits', label: 'Audits',     icon: <BarChart3 className="w-[16px] h-[16px]" />, badge: stats.totalAudits || undefined },
               { key: 'field',  label: 'Field data', icon: <Activity  className="w-[16px] h-[16px]" /> },
+              { key: 'targets', label: 'Targets',   icon: <Target    className="w-[16px] h-[16px]" />, badge: targetCount || undefined },
             ]}
             active={tab}
             onChange={setTab}
@@ -325,7 +344,14 @@ export function ProjectDetailPage() {
             className="self-start"
           />
 
-        {tab === 'field' ? (
+        {tab === 'targets' ? (
+          website ? (
+            <TargetsPanel
+              site={website}
+              latest={latestRun ? { scores: latestRun.scores, metrics: latestRun.metrics } as never : null}
+            />
+          ) : null
+        ) : tab === 'field' ? (
           <RumPanel websiteId={project.id} lab={latestLab} />
         ) : (
         <>

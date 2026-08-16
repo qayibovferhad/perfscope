@@ -7,7 +7,7 @@ import { scoreBand, BAND_TEXT } from '@/entities/analysis';
 
 /** Each reason states what is wrong, not what the field is called. */
 const REASON_LABEL: Record<OverviewAttentionReason, string> = {
-  breach:        'Budget broken',
+  breach:        'Off target',
   requiresLogin: 'Needs a login',
   lowScore:      'Scoring poorly',
   neverAudited:  'Never audited',
@@ -34,7 +34,7 @@ export function AttentionCard({ rows, className }: { rows: OverviewAttention[]; 
           <div className="flex items-start gap-[10px] py-[6px]">
             <CheckCircle2 className="w-[16px] h-[16px] text-ld-accent shrink-0 mt-[1px]" />
             <p className="text-[13px] text-ld-text-2 leading-[1.55]">
-              Every tracked site is audited, scoring above 50 and within its budgets.
+              Every tracked site is audited, scoring above 50 and inside its targets.
             </p>
           </div>
         ) : (

@@ -57,7 +57,31 @@ export interface AiAdvice {
   /** At most a dozen words — the one useful thing to say right now. */
   headline: string
   /** Ordered by what to do first. Empty when there is nothing to act on. */
-  steps: { title: string; detail: string }[]
+  steps: AiAdviceStep[]
+}
+
+export interface AiAdviceStep {
+  title:  string
+  detail: string
+  /**
+   * Where this step can actually be carried out, when it maps to something the app does.
+   *
+   * Advice that says "audit example.com" and leaves you to find the analyzer is a note;
+   * the same advice with somewhere to click is a step. Absent when the step is something
+   * the user does outside PerfScope — most fixes are.
+   */
+  action?: AiAdviceAction
+}
+
+/**
+ * A closed set on purpose. The model picks a `kind`, and the server checks the `url`
+ * against sites the user actually has before it goes out — a link invented from nothing is
+ * worse than no link.
+ */
+export interface AiAdviceAction {
+  kind: 'audit' | 'schedule' | 'compare' | 'budgets'
+  /** One of the user's own site URLs. */
+  url:  string
 }
 
 /** A short note per Core Web Vital, keyed by the vital. Only non-good vitals get one. */

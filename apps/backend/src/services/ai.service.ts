@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createHash } from 'node:crypto';
 import { config } from '../config/index.js';
 import { rateVital, VITAL_THRESHOLDS } from '@perfscope/shared';
-import type { AnalysisResult, NetworkRequest, AiAdvice, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
+import type { AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, CoreWebVitals } from '@perfscope/shared';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
@@ -258,7 +258,7 @@ ${alert.lines.map(l => `- ${l}`).join('\n')}`;
 
 Sites: ${data.sites}, audits run: ${data.audits}
 Average score: ${data.avgScore ?? 'n/a'} (previous week: ${data.prevAvgScore ?? 'n/a'})
-Regressions: ${data.regressions}, budget breaches: ${data.breaches}
+Regressions: ${data.regressions}, targets missed: ${data.breaches}
 Slowest pages:
 ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`).join('\n') || '- (none)'}`;
 
@@ -279,17 +279,25 @@ ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`
     scope: string;
     /** Pre-formatted lines of context. The caller decides what is worth showing. */
     lines: string[];
+    /** URLs the model is allowed to attach an action to. Anything else is dropped. */
+    knownUrls: string[];
   }): Promise<AiAdvice | null> {
     if (input.lines.length === 0) return null;
 
     const prompt = `You are a web performance advisor embedded in a monitoring tool. The user is looking at: ${input.scope}.
 
-Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail": string}]}
+Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail": string, "action": {"kind": string, "url": string} | null}]}
 
 - headline: at most 12 words, the single most useful thing to say right now.
 - steps: 1 to 3, ordered by what to do first. title at most 8 words, detail at most 25 words and concrete.
 - If everything looks healthy, say so plainly and suggest what to watch, rather than inventing problems.
 - Refer to specific sites and numbers from the context. Never repeat a number without interpreting it.
+- action: include it ONLY when the step is one of these four things this tool can do, and ONLY with a url from the list below. Otherwise use null — most advice is work done outside this tool.
+    "audit"    run an audit of that page now
+    "schedule" set up recurring audits for it
+    "compare"  measure it against a competitor
+    "budgets"  set up where breach alerts are sent (webhook or email)
+  Urls you may use: ${input.knownUrls.join(', ') || '(none)'}
 
 Context:
 ${input.lines.join('\n')}`;
@@ -299,15 +307,43 @@ ${input.lines.join('\n')}`;
     if (!parsed || typeof parsed.headline !== 'string' || !parsed.headline.trim()) return null;
 
     const steps = Array.isArray(parsed.steps) ? parsed.steps : [];
+    const allowed = new Set(input.knownUrls);
+
     return {
       headline: parsed.headline.trim().slice(0, 140),
       steps: steps
-        .filter((s): s is { title: string; detail: string } =>
+        .filter((s): s is { title: string; detail: string; action?: unknown } =>
           !!s && typeof (s as { title?: unknown }).title === 'string'
               && typeof (s as { detail?: unknown }).detail === 'string')
         .slice(0, 3)
-        .map(s => ({ title: s.title.trim().slice(0, 80), detail: s.detail.trim().slice(0, 220) })),
+        .map(s => {
+          const action = this.parseAction(s.action, allowed);
+          return {
+            title:  s.title.trim().slice(0, 80),
+            detail: s.detail.trim().slice(0, 220),
+            ...(action ? { action } : {}),
+          };
+        }),
     };
+  }
+
+  /**
+   * An action, or nothing.
+   *
+   * Both halves are checked against a closed set: the kind against what the app can
+   * actually do, and the url against sites the user really has. A model that invents a
+   * plausible-looking url would otherwise produce a button that goes somewhere wrong,
+   * which is worse than a step with no button at all.
+   */
+  private static parseAction(raw: unknown, allowed: Set<string>): AiAdviceAction | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const { kind, url } = raw as { kind?: unknown; url?: unknown };
+
+    const KINDS = ['audit', 'schedule', 'compare', 'budgets'] as const;
+    if (typeof kind !== 'string' || !KINDS.includes(kind as (typeof KINDS)[number])) return undefined;
+    if (typeof url !== 'string' || !allowed.has(url)) return undefined;
+
+    return { kind: kind as AiAdviceAction['kind'], url };
   }
 
   /** The verdict on a saved head-to-head comparison. */

@@ -17,6 +17,7 @@ export * from './lib/hasResult.js'
 export * from './lib/forecast.js'
 export * from './lib/regression.js'
 export * from './lib/schedule.js'
+export * from './lib/targets.js'
 
 // ─── API client ─────────────────────────────────────────────────────────────
 export * from './api/client.js'

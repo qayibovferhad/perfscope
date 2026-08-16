@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Moon, Plus, X, Route, Loader2 } from 'lucide-react';
-import { expandSchedule, SCORE_BANDS, VITAL_THRESHOLDS, type AutomationScheduleMode, type AutomationSlot } from '@perfscope/shared';
+import { Moon, Plus, X, Route, Loader2, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { expandSchedule, fmtMs, type AutomationScheduleMode, type AutomationSlot } from '@perfscope/shared';
 import { Modal }              from '@/shared/ui/modal/Modal';
 import { Input }              from '@/shared/ui/input';
 import { Button }             from '@/shared/ui/button';
@@ -34,19 +35,9 @@ export function SetupModal({ site, open, onClose }: Props) {
   // form and saving from it wiped the site's real schedule — a configured automation would
   // just stop, with the UI still claiming it was set up.
 
-  // Budgets — hydrated from the site so reopening the modal shows current thresholds.
-  const [budgetPerf, setBudgetPerf] = useState(site.budgets?.performance?.toString() ?? '');
-  const [budgetLcp,  setBudgetLcp]  = useState(site.budgets?.lcp?.toString() ?? '');
-  const [budgetTbt,  setBudgetTbt]  = useState(site.budgets?.tbt?.toString() ?? '');
-  const [budgetCls,  setBudgetCls]  = useState(site.budgets?.cls?.toString() ?? '');
-  const [budgetInp,  setBudgetInp]  = useState(site.budgets?.inp?.toString() ?? '');
+  // Alert channels. The thresholds themselves live on the site's own page.
   const [webhookUrl, setWebhookUrl] = useState(site.budgets?.webhookUrl ?? '');
   const [alertEmail, setAlertEmail] = useState(site.budgets?.alertEmail ?? '');
-
-  const parseNum = (v: string): number | null => {
-    const n = Number(v.trim());
-    return v.trim() !== '' && Number.isFinite(n) ? n : null;
-  };
 
   function handleAdd() {
     const raw = input.trim();
@@ -69,19 +60,30 @@ export function SetupModal({ site, open, onClose }: Props) {
     slots: cleanedSlots, spreadMinutes,
   });
 
+  // Read-only, so this modal shows what the alerts are measured against without owning it.
+  const targetSummary = ([
+    site.budgets?.performance != null ? `perf ≥ ${site.budgets.performance}` : null,
+    site.budgets?.lcp != null ? `LCP ≤ ${fmtMs(site.budgets.lcp)}` : null,
+    site.budgets?.tbt != null ? `TBT ≤ ${fmtMs(site.budgets.tbt)}` : null,
+    site.budgets?.cls != null ? `CLS ≤ ${site.budgets.cls}` : null,
+    site.budgets?.inp != null ? `INP ≤ ${fmtMs(site.budgets.inp)}` : null,
+  ].filter(Boolean) as string[]).join(', ');
+
   async function handleSave() {
     await Promise.all([
       automation.save({
         routes, enabled, scheduleTime,
         scheduleMode: mode, slots: cleanedSlots, spreadMinutes,
       }),
+      // Thresholds are passed through untouched — this modal no longer owns them, and
+      // sending nulls here would silently wipe the targets set on the site's own page.
       setBudgets.mutateAsync({
         id:          site._id,
-        performance: parseNum(budgetPerf),
-        lcp:         parseNum(budgetLcp),
-        tbt:         parseNum(budgetTbt),
-        cls:         parseNum(budgetCls),
-        inp:         parseNum(budgetInp),
+        performance: site.budgets?.performance ?? null,
+        lcp:         site.budgets?.lcp  ?? null,
+        tbt:         site.budgets?.tbt  ?? null,
+        cls:         site.budgets?.cls  ?? null,
+        inp:         site.budgets?.inp  ?? null,
         webhookUrl:  webhookUrl.trim() || null,
         alertEmail:  alertEmail.trim() || null,
       }),
@@ -164,37 +166,40 @@ export function SetupModal({ site, open, onClose }: Props) {
           onSpreadMinutes={setSpreadMinutes}
         />
 
-        {/* Performance budgets */}
+        {/* Alerts — channels only.
+
+            The thresholds used to be edited here too, which made this modal the *only*
+            place a site's targets could be set: to give a site a goal you first had to go
+            and configure a timetable, and the site's own page could never show you what
+            the goal was. They live on the site now, where they belong; this keeps the part
+            that is genuinely about being told — where the message goes. */}
         <div>
           <p className="text-[9px] font-bold uppercase tracking-widest mb-2 text-ld-text-3">
-            Performance budgets <span className="normal-case font-medium tracking-normal">— checked against audits, and against real-user p75</span>
+            Alerts <span className="normal-case font-medium tracking-normal">— where a breach or a regression is announced</span>
           </p>
-          <div className="grid grid-cols-5 gap-2 max-[560px]:grid-cols-3">
-            {([
-              // Placeholders are web.dev's "good" thresholds, read from the shared table.
-              ['Min score', budgetPerf, setBudgetPerf, String(SCORE_BANDS.good)],
-              ['Max LCP ms', budgetLcp, setBudgetLcp, String(VITAL_THRESHOLDS.lcp.good)],
-              ['Max TBT ms', budgetTbt, setBudgetTbt, String(VITAL_THRESHOLDS.tbt.good)],
-              ['Max CLS', budgetCls, setBudgetCls, String(VITAL_THRESHOLDS.cls.good)],
-              ['Max INP ms', budgetInp, setBudgetInp, String(VITAL_THRESHOLDS.inp.good)],
-            ] as const).map(([label, value, setter, ph]) => (
-              <div key={label}>
-                <p className="text-[9px] text-ld-text-3 mb-1">{label}</p>
-                <Input
-                  value={value}
-                  onChange={e => setter(e.target.value)}
-                  placeholder={ph}
-                  inputMode="decimal"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-            ))}
+
+          <div className="flex items-start gap-[10px] px-[12px] py-[10px] rounded-[10px] border border-ld-border bg-ld-surface-2">
+            <Target className="w-[14px] h-[14px] text-ld-accent shrink-0 mt-[2px]" />
+            <p className="text-[11px] text-ld-text-2 leading-[1.55] flex-1">
+              {targetSummary
+                ? <>Targets for this site: <span className="font-mono text-ld-text">{targetSummary}</span>.</>
+                : <>No targets set for this site yet — alerts will still fire on a sharp regression against the previous run.</>}
+              {' '}
+              <Link
+                to={`/projects/${site._id}`}
+                className="font-semibold text-ld-accent hover:underline"
+                onClick={onClose}
+              >
+                {targetSummary ? 'Change them' : 'Set targets'}
+              </Link>
+            </p>
           </div>
+
           <p className="text-[9.5px] text-ld-text-3 mt-3 leading-[1.5]">
-            Alerts fire on a budget breach, and whenever a run degrades sharply against the
-            previous audit of the same page — set a channel to get regression alerts even
-            without thresholds. LCP, CLS and INP are also checked hourly against real-user
-            p75; INP has no lab equivalent, so it is field-only.
+            Alerts fire when a target is breached, and whenever a run degrades sharply
+            against the previous audit of the same page — set a channel to get regression
+            alerts even without targets. LCP, CLS and INP are also checked hourly against
+            real-user p75; INP has no lab equivalent, so it is field-only.
           </p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>

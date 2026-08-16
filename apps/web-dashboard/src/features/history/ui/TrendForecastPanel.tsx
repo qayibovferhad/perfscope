@@ -37,7 +37,7 @@ interface Props {
 
 /**
  * Projects each tracked metric forward with a least-squares fit over the runs already
- * on screen — no extra request — and, where the site has a budget, names the day the
+ * on screen — no extra request — and, where the site has a target, names the day the
  * line crosses it. Low-confidence fits say so instead of quoting a date.
  *
  * Renders nothing until there are enough usable runs to fit a line.
@@ -110,7 +110,7 @@ export function TrendForecastPanel({ url, entries }: Props) {
       <div className="px-[24px] py-[12px] border-t border-ld-border bg-ld-surface-2">
         <span className="font-mono text-[11px] text-ld-text-3 opacity-70">
           Straight-line projection from past runs — it assumes nothing else changes.
-          {!budgets && ' Set budgets on the automation page to get crossing dates.'}
+          {!budgets && ' Set targets on the site\u2019s page to get crossing dates.'}
         </span>
       </div>
     </div>

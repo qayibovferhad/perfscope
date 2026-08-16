@@ -119,7 +119,7 @@ function attentionFor(site: IWebsite, score: SiteScore | undefined): OverviewAtt
     return {
       ...base,
       reason: 'breach',
-      detail: first ? `${first.metric} ${first.value} against a budget of ${first.budget}` : null,
+      detail: first ? `${first.metric} ${first.value} against a target of ${first.budget}` : null,
     };
   }
   if (site.requiresLogin) {

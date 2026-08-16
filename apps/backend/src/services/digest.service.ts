@@ -110,7 +110,7 @@ export function renderDigest(name: string, data: DigestData): { subject: string;
     `Audits run:         ${data.audits}`,
     `Average score:      ${movement(data.avgScore, data.prevAvgScore)}`,
     `Regressions:        ${data.regressions}`,
-    `Budget breaches:    ${data.breaches}`,
+    `Targets missed:     ${data.breaches}`,
   ];
 
   const slowLines = data.slowest.length
@@ -148,7 +148,7 @@ export function renderDigest(name: string, data: DigestData): { subject: string;
     `<li>Audits run: <b>${data.audits}</b></li>`,
     `<li>Average score: <b>${movement(data.avgScore, data.prevAvgScore)}</b></li>`,
     `<li>Regressions: <b>${data.regressions}</b></li>`,
-    `<li>Budget breaches: <b>${data.breaches}</b></li>`,
+    `<li>Targets missed: <b>${data.breaches}</b></li>`,
     '</ul>',
     '<p><b>Slowest pages</b> (latest run)</p>',
     `<table style="font-family:ui-monospace,monospace;font-size:13px;border-collapse:collapse">${rows}</table>`,

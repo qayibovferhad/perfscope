@@ -31,7 +31,7 @@ const EVENT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 type AlertStatus = 'firing' | 'recovered' | 'event';
 
 export interface Alert {
-  /** Short headline, e.g. "budget breach". */
+  /** Short headline, e.g. "target missed". */
   kind:    string;
   /** Machine-readable event name, e.g. "budget.breach". */
   event:   string;

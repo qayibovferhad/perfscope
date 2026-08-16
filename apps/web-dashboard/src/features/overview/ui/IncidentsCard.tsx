@@ -17,9 +17,11 @@ import { AiNote } from '@/shared/ui/ai-card';
  */
 
 const EVENT_LABEL: Record<string, string> = {
-  'budget.breach':    'Budget broken',
+  // Keys are the stored event names and cannot change without orphaning open
+  // incidents; the labels are what a person reads, and follow the app's wording.
+  'budget.breach':    'Target missed',
   'audit.regression': 'Regression',
-  'rum.breach':       'Field budget broken',
+  'rum.breach':       'Field target missed',
 };
 
 function DeliveryNote({ delivery }: { delivery: OverviewIncident['delivery'] }) {
@@ -65,7 +67,7 @@ export function IncidentsCard({ incidents, className }: { incidents: OverviewInc
             <p className="text-[13px] text-ld-text-2 leading-[1.55]">
               Nothing is firing.{' '}
               <span className="text-ld-text-3">
-                Budgets and regressions raise an alert here on the next run.
+                Missed targets and regressions raise an alert here on the next run.
               </span>
             </p>
           </div>

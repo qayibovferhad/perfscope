@@ -37,7 +37,7 @@ interface FieldFailure {
 
 function describe(f: FieldFailure): string {
   const format = f.metric === 'cls' ? fmtCls : fmtMs;
-  return `${f.metric.toUpperCase()} p75 ${format(f.value)} across ${f.samples} page views (budget ≤ ${format(f.budget)})`;
+  return `${f.metric.toUpperCase()} p75 ${format(f.value)} across ${f.samples} page views (target ≤ ${format(f.budget)})`;
 }
 
 async function evaluate(site: IWebsite): Promise<FieldFailure[]> {
@@ -74,23 +74,23 @@ async function checkFieldBudgets(site: IWebsite): Promise<void> {
 
   if (failures.length === 0) {
     await dispatchAlert(site, {
-      kind:   'field budget recovered',
-      event:  'rum.recovered',
+      kind:   'field data back on target',
+      event:  'rum.recovered',  // stored key — dedup matches it against existing incidents
       status: 'recovered',
       url:    site.url,
       formFactor: null,
       metrics: [],
-      lines:  ['Real-user metrics are back within budget.'],
+      lines:  ['Real users are back inside every target.'],
       payload: {},
     });
     return;
   }
 
-  console.warn(`[RUM budgets] ${site.url} over budget in the field: ${failures.map(f => f.metric).join(', ')}`);
+  console.warn(`[RUM targets] ${site.url} missed in the field: ${failures.map(f => f.metric).join(', ')}`);
 
   await dispatchAlert(site, {
-    kind:   'field budget breach',
-    event:  'rum.breach',
+    kind:   'field target missed',
+    event:  'rum.breach',  // stored key — see above
     status: 'firing',
     url:    site.url,
     formFactor: null,

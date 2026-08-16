@@ -1,6 +1,7 @@
-import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight, Gauge } from 'lucide-react';
+import { Globe, Link2, ShieldCheck, ShieldAlert, Clock, Zap, GitCompareArrows, ExternalLink, Trash2, ArrowRight, Target } from 'lucide-react';
 import { motion }          from 'framer-motion';
 import { Link }            from 'react-router-dom';
+import { cn }              from '@/shared/lib/utils';
 import { getHostname, sessionState } from '@/entities/website';
 import type { Website }    from '@/entities/website';
 import type { SiteScoreInfo } from '@/features/websites';
@@ -25,10 +26,24 @@ interface Props {
   onDelete:  () => void;
 }
 
+/** Targets a lab audit can judge. INP is field-only, so it never counts as met or missed. */
+const LAB_TARGETS = ['performance', 'lcp', 'tbt', 'cls'] as const;
+
 export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onDelete }: Props) {
   const hostname   = getHostname(site.url);
   const detailPath = `/projects/${site._id}`;
   const session    = sessionState(site);
+
+  // `met` is null until an audit has actually judged them — targets that nothing has
+  // measured yet are set, not passing, and saying "3 / 3 met" for a site that has never
+  // been audited would be a lie the card tells confidently.
+  const targets = (() => {
+    const set = LAB_TARGETS.filter(m => site.budgets?.[m] != null).length;
+    if (!set) return { set: 0, missed: 0, met: null as number | null };
+    if (!scoreInfo.lastAuditedAt) return { set, missed: 0, met: null as number | null };
+    const missed = site.lastBudgetBreach?.failures.length ?? 0;
+    return { set, missed, met: Math.max(0, set - missed) };
+  })();
 
   return (
     <motion.article
@@ -94,16 +109,32 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
               <ShieldAlert className="w-[13px] h-[13px]" /> Session expired
             </span>
           )}
-          {/* The latest audit broke this site's performance budgets. */}
-          {site.lastBudgetBreach && (
-            <span
-              className="inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border border-ld-rose-line bg-ld-rose-wash text-ld-rose"
-              title={`${site.lastBudgetBreach.url} broke: ${site.lastBudgetBreach.failures.map(f => f.metric).join(', ')}`}
+          {/* Targets at a glance.
+
+              The badge used to say only what had gone wrong — "2 targets missed" — so a
+              site that met four out of five looked identical to one that met none, and
+              the only way to see progress was to open the site. Both numbers, from data
+              already on the card: the targets set, and the ones the last audit missed. */}
+          {targets.set > 0 && (
+            <Link
+              to={`${detailPath}?tab=targets`}
+              onClick={e => e.stopPropagation()}
+              className={cn(
+                'relative z-10 inline-flex items-center gap-[6px] text-[12px] font-semibold px-[10px] py-[5px] rounded-full border transition-colors',
+                targets.missed > 0
+                  ? 'border-ld-rose-line bg-ld-rose-wash text-ld-rose hover:bg-ld-rose-soft'
+                  : targets.met === null
+                  ? 'border-ld-border text-ld-text-3 hover:bg-ld-surface-hover'
+                  : 'border-ld-accent-line bg-ld-accent-soft text-[var(--ld-accent-2)] hover:bg-ld-surface-hover',
+              )}
             >
-              <Gauge className="w-[13px] h-[13px]" /> Budget breach
-            </span>
+              <Target className="w-[13px] h-[13px]" />
+              {targets.met === null
+                ? `${targets.set} target${targets.set === 1 ? '' : 's'} set`
+                : `${targets.met} / ${targets.set} targets met`}
+            </Link>
           )}
-          {/* The last audit landed on a login screen — the scores are for that screen. */}
+
           {/* Only when there is no session at all — with one, "expired" above says it. */}
           {site.requiresLogin && session === 'none' && (
             <span
