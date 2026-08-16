@@ -1,5 +1,6 @@
 import type { CoreWebVitals, PerformanceScores } from '../types/analysis.js'
 import type { BudgetFailure } from '../types/website.js'
+import { fmtMs, fmtCls } from './format.js'
 
 /**
  * A number you set on a site, and the two things it means.
@@ -113,4 +114,21 @@ export function collectTargetFailures(
   }
 
   return failures
+}
+
+/**
+ * One missed target, in the words the user set it in — "target", not "budget": these are
+ * the numbers entered on the site's own Targets tab, and a raw millisecond figure
+ * ("lcp 4035.519 against a target of 2500") is the same fact told in the wrong unit.
+ *
+ * The one formatter every surface that shows a `BudgetFailure` reads from — the breach
+ * alert, the overview's attention card, and anything future that lists one — so they
+ * cannot drift into three different renderings of the same number.
+ */
+export function describeBudgetFailure(f: BudgetFailure): string {
+  switch (f.metric) {
+    case 'performance': return `performance score ${f.value} (target ≥ ${f.budget})`
+    case 'cls':         return `CLS ${fmtCls(f.value)} (target ≤ ${fmtCls(f.budget)})`
+    default:            return `${f.metric.toUpperCase()} ${fmtMs(f.value)} (target ≤ ${fmtMs(f.budget)})`
+  }
 }

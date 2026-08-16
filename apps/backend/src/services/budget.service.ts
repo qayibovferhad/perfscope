@@ -1,4 +1,4 @@
-import { fmtMs, fmtCls, hasResult, collectTargetFailures, type BudgetFailure, type AnalysisResult } from '@perfscope/shared';
+import { hasResult, collectTargetFailures, describeBudgetFailure, type BudgetFailure, type AnalysisResult } from '@perfscope/shared';
 import type { IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
@@ -12,21 +12,6 @@ import type { OwningSite } from './websiteLookup.js';
  */
 function collectFailures(result: AnalysisResult, budgets: NonNullable<IWebsite['budgets']>): BudgetFailure[] {
   return collectTargetFailures(result.scores, result.metrics, budgets);
-}
-
-/**
- * One missed target, in the words the user set it in.
- *
- * "Target", not "budget": these are the numbers entered on the site's own Targets tab, and
- * an email about a "budget breach" for a number labelled "target" in the app is the same
- * fact told twice in two vocabularies.
- */
-function describeFailure(f: BudgetFailure): string {
-  switch (f.metric) {
-    case 'performance': return `performance score ${f.value} (target ≥ ${f.budget})`;
-    case 'cls':         return `CLS ${fmtCls(f.value)} (target ≤ ${fmtCls(f.budget)})`;
-    default:            return `${f.metric.toUpperCase()} ${fmtMs(f.value)} (target ≤ ${fmtMs(f.budget)})`;
-  }
 }
 
 /**
@@ -97,7 +82,7 @@ export async function checkBudgets(result: AnalysisResult, site: OwningSite): Pr
     url:    breach.url,
     formFactor: breach.formFactor,
     metrics: failures.map(f => f.metric),
-    lines:  failures.map(describeFailure),
+    lines:  failures.map(describeBudgetFailure),
     analysisId: breach.analysisId,
     payload: { analysisId: breach.analysisId, failures: breach.failures },
   });

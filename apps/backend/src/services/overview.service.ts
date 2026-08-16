@@ -1,4 +1,4 @@
-import { SCORE_BANDS, type OverviewData, type OverviewAttention, type OverviewIncident } from '@perfscope/shared';
+import { SCORE_BANDS, describeBudgetFailure, type OverviewData, type OverviewAttention, type OverviewIncident } from '@perfscope/shared';
 import { meanRounded } from '../lib/stats.js';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
@@ -119,7 +119,7 @@ function attentionFor(site: IWebsite, score: SiteScore | undefined): OverviewAtt
     return {
       ...base,
       reason: 'breach',
-      detail: first ? `${first.metric} ${first.value} against a target of ${first.budget}` : null,
+      detail: first ? describeBudgetFailure(first) : null,
     };
   }
   if (site.requiresLogin) {

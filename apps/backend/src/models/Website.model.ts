@@ -1,6 +1,6 @@
 import { Schema, model, type Types } from 'mongoose';
 import { sessionSchema, redactSession, type ISessionData } from './session.schema.js';
-import type { AutomationScheduleMode } from '@perfscope/shared';
+import type { AutomationScheduleMode, BudgetFailure } from '@perfscope/shared';
 
 /** One group of routes and the time of day they run. */
 const automationSlotSchema = new Schema(
@@ -118,7 +118,7 @@ export interface IBudgetBreach {
   analysisId: string;
   url:        string;
   formFactor: string | null;
-  failures:   Array<{ metric: string; value: number; budget: number }>;
+  failures:   BudgetFailure[];
   at:         Date;
 }
 
