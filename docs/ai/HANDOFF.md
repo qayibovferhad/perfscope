@@ -378,8 +378,52 @@ uncaught exception it's reaping from rather than assume it does.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn.
 
-**Next:** phase 5 (model — try `gemini-flash-latest` against the phase-1 probe) per
-§5/PLAN.md. Not started; wait for the user's go-ahead before beginning it.
+## 4e. Phase 5 — DONE, 2026-08-16 — decision: stay on `gemini-flash-lite-latest`
+
+**Why:** PLAN.md's own condition for even trying this — "yalnız 1-2-dən sonra... eyni
+fixture, iki model, konkretlik yan-yana" — was met (phases 1-2 landed, evidence exists to
+give a stronger model something to work with). No source change first: a probe reached
+into `AiService`'s private static `MODEL` field via `(AiService as any).MODEL = …` for the
+one measurement, restored it immediately after — zero production code touched for the
+experiment itself, exactly so a negative result costs nothing to back out of.
+
+**Method:** one real bbc.com audit, so both models graded the *same* `AnalysisResult` —
+page-content variance (bbc.com's ads/scripts differ audit to audit) is not a confound.
+Called `AiService.analysePage(result)` once per model.
+
+**Result — no clean comparison was possible, and that is itself the finding:**
+- `gemini-flash-lite-latest` (current default): **3 separate runs today** (this probe plus
+  two of phase 1's verification runs), **5 of 5 concrete every time** — already at the
+  metric's ceiling. There is no headroom left for a "smarter" model to show up on this
+  number.
+- `gemini-flash-latest` (candidate): **`503 Service Unavailable` ("high demand") on every
+  attempt** — 2 immediate failures across 2 separate probe invocations, then a 3-attempt
+  backoff retry (5s/10s/15s) that also failed 3-for-3, then a 4th attempt that never
+  returned at all (killed after ~10 minutes — `generate()` calls `model.generateContent`
+  with no `timeoutMs`, so a hung request just hangs). **Zero successful responses**
+  obtained in this session, from either machine.
+
+**Decision:** stay on `gemini-flash-lite-latest`. Two independent reasons, either one
+sufficient alone:
+1. The metric this phase exists to move (concreteness) is already at its ceiling on lite —
+   nothing to gain even if the candidate answered.
+2. The candidate never answered. A model with this failure rate would visibly hurt the
+   product even if its *answers* were better: this app's own design rule is "no 'AI
+   unavailable' text is ever written" (`AiCard`/`AiNote` just render nothing when there's
+   no commentary) — meaning a flaky model wouldn't show an error, it would silently make
+   the AI layer disappear for whatever fraction of audits hit a 503.
+
+**If retried later:** the 503s may be Google-side capacity, not a property of the model
+itself — worth a retry some other day rather than concluding the model is permanently
+unusable. If retried, add a `timeoutMs` to the comparison call (or reuse
+`generate`'s own, currently unset for `analysePage`) so a hang doesn't cost ten minutes
+again.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn. (No source files changed by this phase — decision-only.)
+
+**Next:** phase 6 (extension popup, CLI report) per §5/PLAN.md. Not started; wait for the
+user's go-ahead before beginning it.
 
 ---
 
