@@ -1,9 +1,11 @@
-import { Sparkles, ChevronRight, RefreshCw } from 'lucide-react';
+import { Sparkles, ChevronRight, RefreshCw, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useAdvice } from '../model/useAdvice';
 import { useAdvisorStore } from '../model/advisorStore';
+import { actionLink } from '../lib/actionLink';
 
 /**
  * The advisor, present on every page of the dashboard.
@@ -97,6 +99,19 @@ export function AdvisorPanel() {
                     </span>
                     <p className="text-[12.5px] font-semibold text-ld-text leading-snug">{step.title}</p>
                     <p className="text-[12px] text-ld-text-2 leading-relaxed mt-[2px]">{step.detail}</p>
+                    {/* Advice you can act on where you are reading it. Only present when
+                        the step maps to something this app does — most fixes happen in
+                        the user's own codebase, and a link there would be a lie. */}
+                    {step.action && (
+                      <Link
+                        to={actionLink(step.action).to}
+                        className="inline-flex items-center gap-1 mt-[6px] text-[12px] font-semibold
+                                   text-ld-accent hover:underline"
+                      >
+                        {actionLink(step.action).label}
+                        <ArrowRight className="w-[13px] h-[13px]" />
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ol>

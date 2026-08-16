@@ -2,6 +2,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useAdvice } from '../model/useAdvice';
+import { actionLink } from '../lib/actionLink';
 
 /**
  * The advisor's headline, at the top of the dashboard.
@@ -44,13 +45,17 @@ export function NextStepCard() {
           )}
         </div>
 
-        {!isPending && (advice?.steps.length ?? 0) > 1 && (
+        {/* The action, where there is one — the whole point of putting advice on the
+            dashboard is that acting on it is one click, not a hunt for the right page. */}
+        {!isPending && first?.action && (
           <Link
-            to="/websites"
-            className="hidden sm:inline-flex items-center gap-1.5 shrink-0 text-[12.5px] font-semibold
-                       text-ld-accent hover:underline"
+            to={actionLink(first.action).to}
+            className="hidden sm:inline-flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-[10px]
+                       text-[12.5px] font-semibold
+                       border border-ld-accent-line bg-ld-surface text-ld-accent
+                       hover:bg-ld-surface-hover transition-colors"
           >
-            {advice!.steps.length - 1} more
+            {actionLink(first.action).label}
             <ArrowRight className="w-[14px] h-[14px]" />
           </Link>
         )}

@@ -39,6 +39,17 @@ if (!advice) {
   // The whole point is advice about *this* account, not web performance in general.
   const mentionsASite = JSON.stringify(advice).match(/example\.com|bbc\.com/i);
   console.log(`  names one of the seeded sites: ${mentionsASite ? 'yes' : 'NO — advice may be generic'}`);
+
+  // Actions are validated server-side against the account's real sites; a link to a URL
+  // the user does not have would send them somewhere wrong, which is worse than no link.
+  const actions = advice.steps.map((s) => s.action).filter(Boolean);
+  const seeded = ['https://example.com', 'https://www.bbc.com'];
+  console.log(`  steps with an action: ${actions.length} of ${advice.steps.length}`);
+  for (const a of actions) {
+    const okUrl  = seeded.includes(a.url);
+    const okKind = ['audit', 'schedule', 'compare', 'budgets'].includes(a.kind);
+    console.log(`    ${a.kind} → ${a.url}  ${okUrl && okKind ? '✓' : '✗ invented or unknown kind'}`);
+  }
 }
 
 // ─── The panel ───────────────────────────────────────────────────────────────
