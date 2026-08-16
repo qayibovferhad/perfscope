@@ -573,10 +573,44 @@ duration and name.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn.
 
+## 4i. Beyond PLAN.md's six phases — fix-impact numbers, 2026-08-16
+
+Third of the five "more depth" ideas (§4g). Three left unstarted: a self-critique second
+pass, lab-vs-field/CrUX comparison, cross-page pattern detection.
+
+**Why:** Lighthouse computes `overallSavingsMs`/`overallSavingsBytes` on every
+"opportunity" audit (unused-javascript, render-blocking-resources, …) — its own estimate
+of what fixing that audit is actually worth. It reached the product only as unstructured
+text inside `displayValue` ("Est savings of 803 KiB"), never as a number the fixes list
+could be ranked by. The model was ordering "fixes" by its own sense of what sounded worse.
+
+**What shipped:**
+1. `AuditItem` gained `savingsMs?: number` / `savingsBytes?: number` (`packages/shared`).
+2. `lhr-transform.ts`'s `extractSavings()` pulls them off the same `details` object
+   `extractAuditDetails` already reads (`overallSavingsMs`/`overallSavingsBytes`, sibling
+   fields to `items`) — only when present and positive; most diagnostic audits never carry
+   one, and `AuditItem` correctly has neither field on those.
+3. `ai.service.ts`'s "Failing audits" line now shows `[potential savings: ~740ms, ~803KB]`
+   when present, and the "fixes" instruction adds one sentence: weigh a stated ms/KB number
+   over your own sense of severity — "a 900ms opportunity outranks a 40ms one even if the
+   smaller one sounds scarier described in words."
+
+**Measured** (bbc.com, one live audit) — the cleanest confirmation of any of these three
+additions, first try: `unused-javascript` extracted `savingsMs=740, savingsBytes=821823`
+matching Lighthouse's own "Est savings of 803 KiB"; `uses-responsive-images` extracted
+`savingsMs=30, savingsBytes=48847`. The resulting fixes **cited the numbers directly**:
+*"…to reclaim 803KB of wasted payload"*, *"…to save 1,012KB"*, *"…to save 48KB"*,
+*"…wasting up to 3000ms on text rendering delays"* — every one traceable to an extracted
+field, not invented. `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces:
+all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
 **Next:** the rest of PLAN.md's six phases are done (§4-4f above). No phase 7 is planned;
 re-read PLAN.md's "Nə ETMİRİK" section before adding one (no general chatbot, no
-streaming, no fine-tuning). Four more "depth" ideas listed at the top of this section are
-proposed, not started.
+streaming, no fine-tuning). Three more "depth" ideas remain proposed, not started (listed
+at the top of this section).
 
 ---
 

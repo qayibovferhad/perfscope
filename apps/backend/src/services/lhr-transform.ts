@@ -78,6 +78,22 @@ export function scoreToImpact(score: number | null): AuditImpact {
   return 'low';
 }
 
+/**
+ * `overallSavingsMs`/`overallSavingsBytes` sit on the same `details` object as `items`,
+ * but only on "opportunity" audits (render-blocking-resources, unused-javascript, …) —
+ * most diagnostics never compute one. Lighthouse's own number for "how much this is
+ * actually costing", previously only reachable as unstructured text inside
+ * `displayValue`.
+ */
+function extractSavings(details: unknown): { savingsMs?: number; savingsBytes?: number } {
+  if (!details || typeof details !== 'object') return {};
+  const d = details as { overallSavingsMs?: unknown; overallSavingsBytes?: unknown };
+  const out: { savingsMs?: number; savingsBytes?: number } = {};
+  if (typeof d.overallSavingsMs === 'number' && d.overallSavingsMs > 0) out.savingsMs = Math.round(d.overallSavingsMs);
+  if (typeof d.overallSavingsBytes === 'number' && d.overallSavingsBytes > 0) out.savingsBytes = Math.round(d.overallSavingsBytes);
+  return out;
+}
+
 export function extractFailingAudits(
   audits: Record<string, { score?: number | null; title?: string; description?: string; displayValue?: string; details?: unknown }>,
 ): AuditItem[] {
@@ -87,6 +103,7 @@ export function extractFailingAudits(
     .slice(0, 15)
     .map(([id, a]): AuditItem => {
       const details = extractAuditDetails(a.details);
+      const savings = extractSavings(a.details);
       return {
         id,
         title: a.title ?? id,
@@ -95,6 +112,7 @@ export function extractFailingAudits(
         displayValue: a.displayValue,
         impact: scoreToImpact(a.score ?? null),
         ...(details ? { details } : {}),
+        ...savings,
       };
     });
 }

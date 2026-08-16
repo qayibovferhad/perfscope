@@ -47,6 +47,15 @@ export interface AuditItem {
   /** The first few things this audit flagged on this page — the selector, the request,
    *  the value. Capped: an audit with 300 unlabelled images explains itself in three. */
   details?: AuditDetail[]
+  /**
+   * Lighthouse's own estimate of this audit's total impact — `overallSavingsMs` /
+   * `overallSavingsBytes` off the raw LHR, present only on "opportunity" audits that
+   * compute one (most diagnostics don't). Previously only reachable as unstructured text
+   * inside `displayValue`; kept numeric so a fix can be ranked by real impact instead of
+   * a model's own guess at severity.
+   */
+  savingsMs?:    number
+  savingsBytes?: number
 }
 
 /** One flagged item from a Lighthouse audit's `details.items`, normalised across the

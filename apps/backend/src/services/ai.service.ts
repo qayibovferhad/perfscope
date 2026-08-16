@@ -236,7 +236,11 @@ ${vendors || '  (none)'}
 
 Failing audits:
 ${failing.map(a => {
-  const head = `  ${a.id} — ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}`;
+  const savings = [
+    a.savingsMs    ? `~${a.savingsMs}ms`                              : null,
+    a.savingsBytes ? `~${Math.round(a.savingsBytes / 1024)}KB` : null,
+  ].filter(Boolean).join(', ');
+  const head = `  ${a.id} — ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}${savings ? ` [potential savings: ${savings}]` : ''}`;
   const items = (a.details ?? []).map(d => {
     const bits = [
       d.selector,
@@ -292,7 +296,7 @@ Answer ONLY with JSON:
 {"diagnosis": string, "fixes": [string], "metrics": {${poor.map(k => `"${k}": string`).join(', ')}}, "waterfall": string, "audits": {${failing.map(a => `"${a.id}": string`).join(', ')}}}
 
 - diagnosis: one sentence naming the single root problem on this page.
-- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric.
+- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric. When a failing audit below states a potential savings in ms or KB, weigh that real number over your own sense of what looks worse — a 900ms opportunity outranks a 40ms one even if the smaller one sounds scarier described in words.
 - metrics: one sentence per key, saying what made THAT metric what it is here — consistent with the diagnosis.
 - waterfall: two or three sentences on how this load actually went, in order.
 - audits: one sentence per key: why it fails on this page and the first thing to change. Never define the audit.
