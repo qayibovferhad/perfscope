@@ -84,7 +84,13 @@ export function AskAboutAudit({ analysisId }: Props) {
     // Bottom-LEFT deliberately: the advisor panel's own collapsed toggle lives on the
     // right edge of the viewport (see AdvisorPanel.tsx), and a second floating AI
     // affordance stacked in the same corner reads as clutter, not two features.
-    <div ref={panelRef} className="fixed bottom-6 left-6 z-[45] flex flex-col items-start">
+    //
+    // The offset itself has to clear `Sidebar.tsx`, which is `w-72` (288px) and always
+    // visible from `md:` up (`DashboardLayout.tsx`'s `hidden md:flex`) — a bare `left-6`
+    // put this button and its popup ON TOP OF the nav rail on any screen wide enough to
+    // show one. Below `md` there is no persistent sidebar (a slide-out drawer instead,
+    // closed by default), so the plain edge offset is fine there.
+    <div ref={panelRef} className="fixed bottom-6 left-4 md:left-[19rem] z-[45] flex flex-col items-start">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -92,7 +98,7 @@ export function AskAboutAudit({ analysisId }: Props) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="mb-3 w-[340px] max-w-[calc(100vw-3rem)] rounded-2xl border border-ld-accent-line bg-ld-surface shadow-ld-shadow-card overflow-hidden flex flex-col"
+            className="mb-3 w-[380px] max-w-[calc(100vw-2rem)] md:max-w-[calc(100vw-21rem)] h-[520px] max-h-[calc(100vh-8rem)] rounded-2xl border border-ld-accent-line bg-ld-surface shadow-ld-shadow-card overflow-hidden flex flex-col"
           >
             <div className="flex items-center gap-2 px-4 py-3 border-b border-ld-border shrink-0">
               <Sparkles className="w-4 h-4 text-ld-accent shrink-0" />
@@ -107,20 +113,32 @@ export function AskAboutAudit({ analysisId }: Props) {
               </button>
             </div>
 
-            {exchanges.length > 0 && (
-              <div className="max-h-[280px] overflow-y-auto px-4 py-3 space-y-3">
-                {exchanges.map((ex, i) => (
-                  <div key={i} className="space-y-1.5">
-                    <p className="text-[12.5px] font-semibold text-ld-text leading-snug">{ex.question}</p>
-                    <div className="flex items-start gap-1.5 text-xs leading-relaxed text-ld-text-2">
-                      <Sparkles className="mt-0.5 h-3 w-3 text-ld-accent shrink-0" />
-                      <span>{ex.answer}</span>
+            {/* Fixed-height log, not just a growing max-height: the popup reads as a real
+                chat window from the moment it opens, not a thin strip that only becomes
+                one after the first answer. */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+              {exchanges.length > 0 ? (
+                <div className="space-y-4">
+                  {exchanges.map((ex, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <p className="text-[13px] font-semibold text-ld-text leading-snug">{ex.question}</p>
+                      <div className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ld-text-2">
+                        <Sparkles className="mt-0.5 h-3 w-3 text-ld-accent shrink-0" />
+                        <span>{ex.answer}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <div ref={logEndRef} />
-              </div>
-            )}
+                  ))}
+                  <div ref={logEndRef} />
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+                  <Sparkles className="w-5 h-5 text-ld-accent-line" />
+                  <p className="text-[12.5px] text-ld-text-3 leading-relaxed">
+                    Ask anything about this audit — the answer comes from exactly what it measured.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="p-4 pt-3 border-t border-ld-border shrink-0">
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -130,17 +148,17 @@ export function AskAboutAudit({ analysisId }: Props) {
                   onChange={(e) => setQuestion(e.target.value.slice(0, QUESTION_LIMIT))}
                   placeholder={outOfQuestions ? 'No questions left for this audit' : 'Ask a question…'}
                   disabled={disabled}
-                  wrapperClassName="h-9"
-                  className="text-[13px]"
+                  wrapperClassName="h-10"
+                  className="text-[13.5px]"
                 />
                 <Button
                   type="submit"
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   disabled={disabled || !question.trim()}
                   aria-label="Send"
                 >
-                  {ask.isPending ? '…' : <ArrowRight className="w-[13px] h-[13px]" />}
+                  {ask.isPending ? '…' : <ArrowRight className="w-[14px] h-[14px]" />}
                 </Button>
               </form>
 
@@ -161,9 +179,9 @@ export function AskAboutAudit({ analysisId }: Props) {
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-label={open ? 'Close ask box' : 'Ask about this audit'}
-        className="h-12 w-12 rounded-full grid place-items-center border border-ld-accent-line bg-ld-surface text-ld-accent shadow-ld-shadow-card hover:bg-ld-surface-hover transition-colors"
+        className="h-14 w-14 rounded-full grid place-items-center border border-ld-accent-line bg-ld-surface text-ld-accent shadow-ld-shadow-card hover:bg-ld-surface-hover transition-colors"
       >
-        {open ? <X className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+        {open ? <X className="w-[22px] h-[22px]" /> : <Sparkles className="w-[22px] h-[22px]" />}
       </button>
     </div>,
     document.body,
