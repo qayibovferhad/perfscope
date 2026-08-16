@@ -765,6 +765,75 @@ turn.
 re-read PLAN.md's "Nə ETMİRİK" section before proposing new ones (no general chatbot, no
 streaming, no fine-tuning).
 
+## 4m. Bug found live by the user, 2026-08-16 — `answerQuestion` refused definitional questions
+
+**What happened:** the user asked the question box "what is best practices" and got
+*"This audit does not contain information about what the Best Practices score generally
+indicates"* — a non-answer to a completely reasonable question, caught within minutes of
+the feature going live.
+
+**Root cause:** phase 4's `answerQuestion` prompt said "Answer using ONLY the evidence
+below... not general web-performance knowledge beyond what is needed to interpret these
+numbers" — written to stop the model inventing page-specific facts (a fake filename, a
+fake number), but phrased broadly enough that it also banned explaining what a *term*
+means. "What is Best Practices" isn't a claim about this page, it's a request to define
+a category — general knowledge, not a hallucination risk — and the instruction couldn't
+tell the two apart.
+
+**Fix:** rewrote the instruction to separate them explicitly: explaining what a term,
+metric or category means is general knowledge and should be answered plainly (ideally
+connected to this page's own score where relevant); claiming something *specific happened
+on this page* still must come from the evidence, with the "this audit doesn't have that
+information" refusal reserved for page-specific claims only.
+
+**Verified live**, same audit, three questions: *"what is best practices"* → *"Best
+practices measures code health and security standards. Your page scores 61 in this
+category."*; the longer phrasing → same, connected to the actual failing audits
+(deprecated APIs, third-party cookies); a genuinely out-of-scope page-specific question
+("your score exactly one year ago") → still correctly declined, confirming the fix didn't
+also loosen the real guardrail. `pnpm build`, `pnpm test`, lint, `tsc --noEmit`: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+## 4n. Measurement-noise awareness + PerfScope's own system knowledge, 2026-08-17
+
+Raised directly by the user hitting it live: "my numbers vary a lot between audits — 75
+one time, 30 the next — how do we fix this?" Two things landed together because they're
+the same root cause read from two directions.
+
+**4n-a. Measurement-noise awareness.** `buildPageContext` now computes `measurementNote`
+from `result.measurement` (already existed — `MeasurementQuality`, unused by the AI layer
+until now): a single-run (Fast mode) audit gets an explicit note that Lighthouse scores
+swing run to run and this is one sample; a Precise-mode audit (`runs > 1`) gets its own
+`spread` reported, with a stronger note when spread ≥15 points ("this page's own load
+behavior is genuinely unstable, not just measurement noise"). `analysePage`'s "previous
+run" instruction now hedges a movement claim when the current run was single-shot —
+"dropped to X — though this is a single run and could partly be noise" — instead of
+stating a possibly-noisy swing as settled fact, and suggests a Precise re-audit when the
+movement is the diagnosis's main point.
+
+**4n-b. `answerQuestion` learns PerfScope's own concepts, not just Lighthouse's.**
+Extended §4m's "explaining a term is general knowledge" principle to cover the tool
+itself: a short block of facts about what Fast vs. Precise mode actually do, what Targets
+are, what a CrUX/field comparison is — so a question about *why the tool behaves a
+certain way* gets a correct, specific answer instead of silence or a guess.
+
+**Measured**, live, bbc.com:
+- Fast-mode audit → `measurement: {"runs":1,"scores":[78],"median":78,"spread":0}`.
+- Asked *"why does my performance score vary so much between audits, sometimes 75
+  sometimes 30?"*: *"Your audit ran in Fast mode, which performs a single test and is
+  prone to swings from CPU scheduling and network jitter. Switching to Precise mode runs
+  multiple tests and reports the median score to eliminate that noise."* — correct,
+  specific, actionable, first attempt.
+- Second Fast-mode run of the same URL, `analysePage` diagnosis: *"Since the previous run,
+  performance rose to 84 while total blocking time dropped to 657ms — though this is a
+  single run and could partly be noise."* — hedge landed exactly as instructed.
+- `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
 ---
 
 ## 5. Phases 2–6, pointers only (details in PLAN.md)
