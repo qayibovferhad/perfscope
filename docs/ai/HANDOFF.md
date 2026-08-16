@@ -422,8 +422,161 @@ again.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn. (No source files changed by this phase — decision-only.)
 
-**Next:** phase 6 (extension popup, CLI report) per §5/PLAN.md. Not started; wait for the
-user's go-ahead before beginning it.
+## 4f. Phase 6 — DONE, 2026-08-16 (uncommitted — awaiting the user's word to commit)
+
+**Why:** three surfaces this product has that the dashboard doesn't, each with a gap the
+other five phases never touched.
+
+**6a. Extension popup had no AI at all.** `analysisSocket.ts`'s `runAnalysis` received
+`analysis:insights` and threw it away — a comment there said so on purpose (the popup
+closes on blur, holding the socket open seemed like it would buy nothing). Added an
+optional `onInsights` callback: omit it (as `CompareTab` still does) and behavior is
+unchanged; pass it and the socket stays open up to 15s waiting for the event. `QuickAuditTab`
+now shows one `AiInsightsCard` (new, `entrypoints/popup/components/`) with the same
+`insights` string the dashboard's `AiCard` reads — no per-audit/per-vital breakdown, the
+popup is ~360px wide and this is the one sentence someone glancing at it reads.
+
+**6b. CLI `--output report` had a worse bug than "skips per-audit lines" — it never had
+the data to skip.** `runSocketAnalysis` in `bin/cli.js` copied `data.insights` onto the
+result but never touched `data.auditExplanations`, so `result.audits[].aiExplanation` was
+always empty; a `printAuditExplanations` function would have found nothing to print no
+matter how it was written. Fixed the merge first, then added
+`reporter.js`'s `printAuditExplanations` (new "WHY THESE AUDITS FAIL HERE" section,
+between the page-level insight and "Next Steps") — only audits carrying an explanation
+print, so a passing audit or one Gemini had nothing to say about produces no line.
+Verified by calling `printReport` directly with a synthetic result (`audits[]` with and
+without `aiExplanation`) — output confirmed correct, word-wrap holds, the
+without-explanation audit is silently skipped. **Not verified through the actual CLI
+end-to-end**: `perfscope --url …` prompts interactively (website picker, name-this-site)
+in a way that doesn't resolve over piped non-TTY stdin, and forcing it through wasn't
+worth the time against directly exercising the function that does the printing. If this
+matters later, `perfscope ci --url … ` is non-interactive but calls `printInsights` only,
+not `printReport` — a real end-to-end check needs either a TTY or a `--yes`-style flag
+that doesn't exist yet.
+
+**6c. Public share report — already correct, nothing to build.** Checked
+`PublicReportPage.tsx`: it renders `AnalyzerResultsPanel` without `askEnabled` (so no ask
+box — correct, no owner to answer against) but `AiCard` renders unconditionally inside
+that panel regardless, so the stored `aiInsights` already shows. The advisor is mounted by
+`DashboardLayout`, which this page never uses. Both halves of PLAN.md's phase 6 bullet
+("shows saved AI" / "no advisor, and shouldn't") were already true; the "could be a line
+for whoever it's shared with" part was a soft suggestion, not a bug, and the existing
+AiCard already serves that need.
+
+**Measured:** `pnpm build`, `pnpm test` — 99 tests (71 shared + 12 web-dashboard + 16
+`@perfscope/cli`, the last of those never counted in earlier phases' totals even though it
+was always running), lint (`web-dashboard` 0 errors, `@perfscope/cli` 0 errors),
+`tsc --noEmit` in backend/web-dashboard/extension: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+## 4g. Beyond PLAN.md's six phases — resource diff, 2026-08-16 (uncommitted)
+
+Not one of the original six; asked for directly ("mürəkkəb işləməsi üçün" — make it work
+with more depth) after the six were done, as the concrete first step of that ask, in the
+same spirit as phase 1: turn a plain-language comparison into evidence.
+
+**Why:** `analysePage` already told the reader a metric moved since the previous run
+(scores/vitals only). It never said *why* — the more useful sentence is "LCP moved because
+you shipped a 400KB hero image", not "LCP moved".
+
+**What shipped:**
+1. `apps/backend/src/lib/resourceDiff.ts` — pure, no I/O, `diffResources(current, previous)`
+   → added/removed/grown/shrunk requests (top 5 each, ≥5KB **and** ≥15% change to count —
+   a 2KB→2.3KB tracking pixel is not a finding) plus added/removed libraries and vendors.
+   Keys on **origin+pathname, not the full URL** — ad/tracking endpoints
+   (`pubads_impl.js?cb=…`) mint a fresh cache-buster on every single load, and diffing on
+   the raw URL reported that as a removed request and a new one on every audit of every
+   page carrying one. Caught this from this session's own earlier probe output (the same
+   `cb=` values changing run to run were sitting right there) before it ever shipped as a
+   noisy diff — verified with a synthetic unit-style check (5 assertions, all pass) before
+   ever touching a live audit.
+2. `apps/backend/src/services/previousRun.service.ts` — new `getPreviousRun(userId, url,
+   before)`, replacing the inline `scores metrics createdAt`-only queries that used to live
+   separately in `auditPipeline.ts` and `askQuestion.service.ts` (now both call this).
+   Projects `fullResult.resources.requests` / `.detectedLibraries` / `fullResult.thirdParty`
+   alongside the old fields — not the whole `fullResult` (timeline, flame chart, heap trace
+   are not needed for a resource diff).
+3. `ai.service.ts`'s `buildPageContext` computes the diff when both sides have a resource
+   list, and — only when `resourceDiffHasChanges` — adds a "What changed since that run"
+   block to the context, reusing the same `previous`-run reasoning `analysePage` and
+   `answerQuestion` already shared. One new prompt sentence: if the diff names a file,
+   vendor or library, use it to explain the movement by name; if it doesn't explain the
+   movement, say the movement is real without inventing a cause (a slow network day, a
+   third party's own release, are real reasons that don't show up in this page's own diff).
+
+**Measured** (bbc.com, two real audits back to back): `getPreviousRun` correctly found the
+first run's 206-request snapshot; the diff found 5 added / 4 removed / 1 grown (a
+doubleclick ad request, 7.7KB→22KB — a real change, not cache-buster noise, confirming the
+path-key fix works) / 0 shrunk; `analysePage(r2, previous)` correctly opened with the
+score/LCP movement. It did **not** name the grown ad request as the cause — correctly: an
+ad-impression byte count has no causal story for an LCP *improvement*, and the prompt's own
+instruction says not to invent one. This is the harder case to verify (an external site's
+resource set barely changes in two loads seconds apart) and the honest result: the pipeline
+is proven correct end-to-end; a case where the diff is *the* explanation and the model
+visibly uses it by name is still unconfirmed live — worth another look with a fixture whose
+bundle actually changed between two known audits.
+
+`pnpm build`, `pnpm test` (99 tests), lint (0 errors across `web-dashboard` and `cli`),
+`tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+## 4h. Beyond PLAN.md's six phases — long task → resource attribution, 2026-08-16
+
+Second of five "more depth" ideas raised in-conversation after PLAN.md's six phases
+landed (the other four: fix-impact scoring off Lighthouse's own `overallSavingsMs`/Bytes,
+a self-critique second pass, lab-vs-field/CrUX comparison, cross-page pattern detection —
+none started).
+
+**Why:** "Longest main-thread tasks" and "Heaviest resources" were two independent
+sections in the prompt — the model had to guess whether any task was caused by any
+resource. It sometimes could (the V8 profiler occasionally names the script directly on
+the trace event) and sometimes couldn't, and the prompt gave no signal either way.
+
+**What shipped:** `apps/backend/src/lib/longTaskAttribution.ts` —
+`attributeLongTasks(tasks, resources)`, pure, two attribution paths the prompt now
+distinguishes explicitly:
+- **Direct** — the trace event already named a script (`FlameChartEvent.url`, set by
+  `flame-chart-parser.ts` from the V8 profiler's own stack). Resolved against the resource
+  list purely to attach its size — a 3KB handler and a 400KB bundle are different findings
+  even under the same task name.
+- **Inferred** — no direct attribution, but a script resource's `[startTime, endTime]`
+  download/execute window overlaps the task's `[startMs, startMs+durationMs]` window.
+  Heaviest overlapping script wins (parse/execute cost scales with size). Labelled
+  "likely" in the prompt text, and the instructions say plainly: this is a timing
+  coincidence, not proof — name the file, don't claim certainty the data doesn't have.
+
+Wired into `buildPageContext`'s `longTasks` block in `ai.service.ts` — same section, same
+place in the prompt, now with resource attribution baked into each line instead of a bare
+duration and name.
+
+**Measured:**
+- Pure function, synthetic: 3 tasks (direct / inferred-with-two-candidates / no-overlap),
+  all 3 assertions pass — direct picks the named file, inferred correctly ignores a
+  same-window image resource and picks the heavier of two overlapping scripts, no-overlap
+  attributes nothing.
+- Live, bbc.com: two consecutive real audits both happened to have **zero** tasks over the
+  50ms threshold (TBT 195ms and below both times — genuine run-to-run variance, confirmed
+  by checking `flameChartData.events` directly: 1900+ events, all under 50ms, not a parsing
+  bug). Real-world long-task appearance is not on-demand, so the actual rendered-line
+  format was verified separately with a synthetic `AnalysisResult` fed straight through
+  `buildPageContext`: direct attribution rendered `— /known.js (39KB)`, inferred rendered
+  `— likely script /heavy-vendor.js (244KB), downloading/executing at this time`, correctly
+  excluding a same-window non-script resource and picking the heavier of two overlapping
+  candidates in a version of the same setup as the unit check.
+- `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green (same
+  baseline as §4g).
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** the rest of PLAN.md's six phases are done (§4-4f above). No phase 7 is planned;
+re-read PLAN.md's "Nə ETMİRİK" section before adding one (no general chatbot, no
+streaming, no fine-tuning). Four more "depth" ideas listed at the top of this section are
+proposed, not started.
 
 ---
 

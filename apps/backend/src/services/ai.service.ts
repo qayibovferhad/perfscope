@@ -4,9 +4,12 @@ import { config } from '../config/index.js';
 import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
 import type {
   AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
-  CoreWebVitals, PerformanceScores,
+  CoreWebVitals,
 } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
+import type { PreviousRun } from './previousRun.service.js';
+import { diffResources, resourceDiffHasChanges } from '../lib/resourceDiff.js';
+import { attributeLongTasks } from '../lib/longTaskAttribution.js';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
@@ -114,7 +117,7 @@ export class AiService {
    */
   private static buildPageContext(
     result: AnalysisResult,
-    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    previous?: PreviousRun | null,
     history?: RecommendationHistoryEntry[] | null,
   ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[] } {
     const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
@@ -140,12 +143,31 @@ export class AiService {
     // which function blocked the thread, which element moved, which library is on board.
     // All of it is already in the result and none of it used to reach the model, which is
     // why every audit came back with the same few sentences about third-party scripts.
-    const longTasks = [...(result.flameChartData?.events ?? [])]
-      .filter(e => e.isLongTask)
-      .sort((a, b) => b.durationMs - a.durationMs)
-      .slice(0, 6)
-      .map(e => `  ${Math.round(e.durationMs)}ms ${e.name}${short(e.url)} at ${Math.round(e.startMs)}ms`)
-      .join('\n');
+    //
+    // A long task and a resource used to be two unrelated lists — attributeLongTasks
+    // chains them: which script was this task actually running, directly (the trace
+    // named it) or inferred (a script's download/execute window overlapped it). The
+    // model gets to cite a specific file instead of a bare "250ms scripting task".
+    const attributedTasks = attributeLongTasks(
+      [...(result.flameChartData?.events ?? [])]
+        .filter(e => e.isLongTask)
+        .sort((a, b) => b.durationMs - a.durationMs)
+        .slice(0, 6)
+        .map(e => ({ name: e.name, startMs: e.startMs, durationMs: e.durationMs, ...(e.url ? { url: e.url } : {}) })),
+      (result.resources?.requests ?? []).map(r => ({
+        url: r.url, resourceType: r.resourceType, transferSize: r.transferSize,
+        startTime: r.startTime, endTime: r.endTime,
+      })),
+    );
+
+    const longTasks = attributedTasks.map(t => {
+      const base = `  ${Math.round(t.durationMs)}ms ${t.name} at ${Math.round(t.startMs)}ms`;
+      if (!t.resource) return base;
+      const size = `${Math.round(t.resource.transferSize / 1024)}KB`;
+      return t.resource.direct
+        ? `${base} —${short(t.resource.url)} (${size})`
+        : `${base} — likely ${t.resource.resourceType}${short(t.resource.url)} (${size}), downloading/executing at this time`;
+    }).join('\n');
 
     const shifts = (result.clsData?.elements ?? [])
       .filter(e => e.score > 0)
@@ -161,8 +183,40 @@ export class AiService {
     const libraries = (result.resources?.detectedLibraries ?? []).map(l => l.name).join(', ');
     const s = result.scores;
 
+    // Not just "the score moved" but "moved because you shipped this" — the same
+    // instinct as phase 1's audit details, applied to the comparison instead of the
+    // single audit. Only computed when both sides actually have a resource list to
+    // diff (an old stored run from before phase 1's fields existed still compares on
+    // scores/metrics alone, same as before this existed).
+    const changeSince = previous?.resources && result.resources
+      ? (() => {
+          const diff = diffResources(
+            {
+              requests: result.resources!.requests,
+              detectedLibraries: result.resources!.detectedLibraries,
+              thirdParty: result.thirdParty ?? [],
+            },
+            previous.resources,
+          );
+          if (!resourceDiffHasChanges(diff)) return '';
+
+          const fmtKB = (b: number) => `${Math.round(b / 1024)}KB`;
+          const name  = (url: string) => short(url).trim() || url;
+          const lines: string[] = [];
+          if (diff.added.length)   lines.push(`  Added: ${diff.added.map(r => `${name(r.url)} (${fmtKB(r.transferSize)})`).join(', ')}`);
+          if (diff.removed.length) lines.push(`  Removed: ${diff.removed.map(r => name(r.url)).join(', ')}`);
+          if (diff.grown.length)   lines.push(`  Grew: ${diff.grown.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
+          if (diff.shrunk.length)  lines.push(`  Shrunk: ${diff.shrunk.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
+          if (diff.librariesAdded.length)   lines.push(`  New libraries: ${diff.librariesAdded.join(', ')}`);
+          if (diff.librariesRemoved.length) lines.push(`  Removed libraries: ${diff.librariesRemoved.join(', ')}`);
+          if (diff.vendorsAdded.length)     lines.push(`  New vendors: ${diff.vendorsAdded.join(', ')}`);
+          if (diff.vendorsRemoved.length)   lines.push(`  Removed vendors: ${diff.vendorsRemoved.join(', ')}`);
+          return `\nWhat changed since that run:\n${lines.join('\n')}\n`;
+        })()
+      : '';
+
     const context = `URL: ${result.url}
-${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
+${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
 ${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
 ${libraries ? `Libraries on the page: ${libraries}` : ''}
@@ -208,7 +262,7 @@ ${failing.map(a => {
      * leads with the movement, which is different every time by definition and is the
      * thing someone re-auditing actually wants to know.
      */
-    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    previous?: PreviousRun | null,
     /**
      * Fixes already given for this page, oldest concern first. Without this every audit
      * re-derives the same three fixes from scratch and repeats them verbatim for as long
@@ -231,7 +285,7 @@ ${VOICE}
 
 Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
 
-${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change.\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
 ${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given (timesGiven ≥ 1), do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it has been given 2 or more times already (this would be its third audit or later), go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never restate a past fix verbatim.\n` : ''}
 
 Answer ONLY with JSON:
@@ -286,7 +340,7 @@ ${context}`;
   static async answerQuestion(
     result: AnalysisResult,
     question: string,
-    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    previous?: PreviousRun | null,
     history?: RecommendationHistoryEntry[] | null,
   ): Promise<string | null> {
     const { context } = this.buildPageContext(result, previous, history);

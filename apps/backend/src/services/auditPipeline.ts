@@ -1,12 +1,11 @@
 import { AiService } from './ai.service.js';
 import { getRecommendationHistory, reconcileRecommendations } from './aiRecommendation.service.js';
+import { getPreviousRun } from './previousRun.service.js';
 import { HistoryService } from './history.service.js';
 import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
-import { HistoryModel } from '../models/History.model.js';
-import { HAS_RESULT_FILTER } from '../lib/history.js';
 import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
@@ -79,21 +78,12 @@ export async function enrichWithAi(
     .sort((a, b) => b.transferSize - a.transferSize)
     .slice(0, AI_ADVICE_LIMIT);
 
-  // What this page measured last time, so the analysis can lead with what moved. Best
-  // effort: no owner, no storage or no earlier run all mean the same thing here — compare
-  // against nothing — and none of them is worth failing an audit over.
+  // What this page measured last time, so the analysis can lead with what moved — and,
+  // via diffResources inside buildPageContext, name the actual file responsible for the
+  // movement. Best effort: no owner, no storage or no earlier run all mean the same thing
+  // here — compare against nothing — and none of them is worth failing an audit over.
   const previous = depth === 'deep' && userId
-    ? await HistoryModel
-        .findOne({ userId, url: result.url, analysisId: { $ne: result.id }, ...HAS_RESULT_FILTER })
-        .sort({ createdAt: -1 })
-        .select('scores metrics createdAt')
-        .lean()
-        .then(doc => doc ? {
-          scores:  doc.scores  as unknown as AnalysisResult['scores'],
-          metrics: doc.metrics as unknown as AnalysisResult['metrics'],
-          at:      new Date(doc.createdAt as unknown as string).toISOString().slice(0, 10),
-        } : null)
-        .catch(() => null)
+    ? await getPreviousRun(userId, result.url, new Date(result.timestamp)).catch(() => null)
     : null;
 
   // What the AI has already told this user about this page, so it can notice a repeat

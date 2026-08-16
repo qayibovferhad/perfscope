@@ -1,8 +1,8 @@
 import type { AnalysisResult } from '@perfscope/shared';
 import { AiService } from './ai.service.js';
 import { getRecommendationHistory } from './aiRecommendation.service.js';
+import { getPreviousRun } from './previousRun.service.js';
 import { HistoryModel } from '../models/History.model.js';
-import { HAS_RESULT_FILTER } from '../lib/history.js';
 
 /** "Sonsuz sual = sonsuz xərc" — a soft cap, not billing-critical, so a small race on the
  *  count under concurrent requests is an acceptable trade against not punishing the user
@@ -32,22 +32,7 @@ export async function askAboutAudit(
 
   const result = doc.fullResult as unknown as AnalysisResult;
 
-  const previous = await HistoryModel
-    .findOne({
-      userId, url: result.url,
-      analysisId: { $ne: analysisId },
-      createdAt:  { $lt: doc.createdAt },
-      ...HAS_RESULT_FILTER,
-    })
-    .sort({ createdAt: -1 })
-    .select('scores metrics createdAt')
-    .lean()
-    .then(p => p ? {
-      scores:  p.scores  as unknown as AnalysisResult['scores'],
-      metrics: p.metrics as unknown as AnalysisResult['metrics'],
-      at:      new Date(p.createdAt as unknown as string).toISOString().slice(0, 10),
-    } : null)
-    .catch(() => null);
+  const previous = await getPreviousRun(userId, result.url, doc.createdAt).catch(() => null);
 
   const history = await getRecommendationHistory(userId, result.url).catch(() => []);
 
