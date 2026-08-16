@@ -6,6 +6,7 @@ import { rateVital, RATING_COLOR, fmtSec, fmtMs, fmtCls, type ScoreRating } from
 import type { AnalysisResult } from '@perfscope/shared'
 import { ScoreCard }      from '../components/ScoreCard'
 import { LoadingSpinner } from '../components/LoadingSpinner'
+import { AiInsightsCard } from '../components/AiInsightsCard'
 
 interface Props {
   backendUrl: string
@@ -18,6 +19,7 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
   const currentUrl = useActiveTabUrl()
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<AnalysisResult | null>(null)
+  const [insights,   setInsights]   = useState<string | null>(null)
   const [saved,      setSaved]      = useState(false)
   const [progress,   setProgress]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
@@ -27,12 +29,17 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
     setLoading(true)
     setError(null)
     setResult(null)
+    setInsights(null)
     setSaved(false)
     setProgress(null)
 
     try {
       const { promise } = runAnalysis(backendUrl, token, currentUrl, {
         onProgress: (p) => setProgress(`${p.message ?? 'Auditing…'} ${Math.round(p.progress ?? 0)}%`),
+        // Fires after the scores below already rendered — same split the dashboard uses.
+        // No skeleton for it: the popup can close before this ever arrives, and there is
+        // nothing to un-show if it does.
+        onInsights: (i) => { if (i.insights) setInsights(i.insights) },
       })
       setResult(await promise)
       // The server saves whenever the request carries a user, and the popup cannot audit
@@ -121,6 +128,8 @@ export function QuickAuditTab({ backendUrl, webUrl, token }: Props) {
               <VitalChip label="FCP" value={fmtSec(result.metrics.fcp)} rating={rateVital('fcp', result.metrics.fcp)} />
             </div>
           </div>
+
+          {insights && <AiInsightsCard text={insights} />}
 
           <button
             onClick={() => browser.tabs.create({ url: `${webUrl}/history?open=${result.id}` })}

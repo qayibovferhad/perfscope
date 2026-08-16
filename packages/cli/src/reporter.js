@@ -68,10 +68,35 @@ function row(label, value, extra = '') {
   return `  ${chalk.dim(pad(label, 16))} ${value}  ${extra}`;
 }
 
+/** Greedy word-wrap to `maxCols` — the one paragraph-wrapping rule every section here
+ *  that prints prose (the AI insight, an audit's explanation) shares. */
+function wrapText(text, maxCols) {
+  const words = text.trim().split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    if ((line + ' ' + word).trim().length > maxCols) {
+      if (line) lines.push(line.trim());
+      line = word;
+    } else {
+      line = line ? line + ' ' + word : word;
+    }
+  }
+  if (line) lines.push(line.trim());
+  return lines;
+}
+
+const IMPACT_COLOR = {
+  critical: chalk.redBright,
+  high:     chalk.red,
+  medium:   chalk.yellow,
+  low:      chalk.dim,
+};
+
 // ── Main export ──────────────────────────────────────────
 
 export function printReport(result, originalUrl) {
-  const { url, scores, metrics, aiInsights, timestamp } = result;
+  const { url, scores, metrics, aiInsights, audits, timestamp } = result;
 
   const date = timestamp
     ? new Date(timestamp).toLocaleString('en-US', {
@@ -131,6 +156,7 @@ export function printReport(result, originalUrl) {
   console.log('');
 
   printInsights(aiInsights);
+  printAuditExplanations(audits);
 
   // ── Next Steps ───────────────────────────────────────────
   console.log('  ' + DIVIDER('NEXT STEPS'));
@@ -158,26 +184,41 @@ export function printInsights(aiInsights) {
   console.log('  ' + DIVIDER('SENIOR INSIGHT'));
   console.log('');
 
-  const words   = aiInsights.trim().split(/\s+/);
-  const maxCols = W - 8;
-  let   line    = '';
-  const lines   = [];
-
-  for (const word of words) {
-    if ((line + ' ' + word).trim().length > maxCols) {
-      if (line) lines.push(line.trim());
-      line = word;
-    } else {
-      line = line ? line + ' ' + word : word;
-    }
-  }
-  if (line) lines.push(line.trim());
+  const lines = wrapText(aiInsights, W - 8);
 
   console.log(`  ${chalk.yellow('💡')} ${chalk.italic(lines[0] ?? '')}`);
   for (let i = 1; i < lines.length; i++) {
     console.log(`     ${chalk.dim(lines[i])}`);
   }
   console.log('');
+}
+
+/**
+ * Per-audit commentary — why *this* audit fails on *this* page, not what the audit means
+ * in general. The full report used to stop at the page-level insight above and never
+ * showed these, even though they were already sitting on `result.audits[].aiExplanation`
+ * (phase 6 of docs/ai/PLAN.md: the CLI report skipped per-audit lines every other AI
+ * surface in the product already had).
+ *
+ * Only failing audits with an explanation — a passing audit has nothing to explain, and
+ * one Gemini did not reach (deep enrichment did not run, or it had nothing to say) prints
+ * nothing rather than a blank line.
+ */
+export function printAuditExplanations(audits) {
+  const explained = (audits ?? []).filter((a) => a?.aiExplanation && a.aiExplanation.trim());
+  if (explained.length === 0) return;
+
+  console.log('  ' + DIVIDER('WHY THESE AUDITS FAIL HERE'));
+  console.log('');
+
+  for (const audit of explained) {
+    const impactColor = IMPACT_COLOR[audit.impact] ?? chalk.dim;
+    console.log(`  ${impactColor('●')} ${chalk.bold(audit.title)}`);
+    for (const line of wrapText(audit.aiExplanation, W - 6)) {
+      console.log(`    ${chalk.dim(line)}`);
+    }
+    console.log('');
+  }
 }
 
 export function printJson(result) {

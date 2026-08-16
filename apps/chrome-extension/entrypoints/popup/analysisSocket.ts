@@ -4,7 +4,12 @@ import type {
   ClientToServerEvents,
   AnalysisResult,
   AnalysisProgress,
+  AnalysisInsightsPayload,
 } from '@perfscope/shared'
+
+/** `analysis:insights` arrives after `analysis:complete`, on its own schedule — bounded
+ *  so a dead model or a slow reply doesn't hold the socket open indefinitely. */
+const INSIGHTS_TIMEOUT_MS = 15_000
 
 /**
  * Run an audit over the socket, the way the dashboard does.
@@ -25,17 +30,35 @@ export function runAnalysis(
   baseUrl: string,
   token: string | null,
   url: string,
-  { onProgress }: { onProgress?: (p: AnalysisProgress) => void } = {},
+  { onProgress, onInsights }: {
+    onProgress?: (p: AnalysisProgress) => void
+    /**
+     * Fired once, after the returned promise has already resolved — the same split the
+     * dashboard uses: scores never wait for Gemini. Omit it (as `CompareTab` does — two
+     * results side by side have no room for per-audit commentary) and the socket closes
+     * the moment scores land, same as before this option existed. Pass it and the socket
+     * stays open up to `INSIGHTS_TIMEOUT_MS` waiting for `analysis:insights`; if the popup
+     * has since closed there is simply no one listening, which costs nothing.
+     */
+    onInsights?: (insights: AnalysisInsightsPayload) => void
+  } = {},
 ): { promise: Promise<AnalysisResult>; cancel: () => void } {
   const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(baseUrl, {
     auth: token ? { token } : {},
   })
 
   let settled = false
+  let insightsDone = !onInsights
   const close = () => { socket.removeAllListeners(); socket.disconnect() }
+  const closeIfDone = () => { if (settled && insightsDone) close() }
 
   const promise = new Promise<AnalysisResult>((resolve, reject) => {
-    const fail = (err: Error) => { if (settled) return; settled = true; close(); reject(err) }
+    const fail = (err: Error) => {
+      if (settled) return
+      settled = true; insightsDone = true
+      close()
+      reject(err)
+    }
 
     socket.on('connect', () => socket.emit('analysis:start', { url }))
     socket.on('connect_error', (err) =>
@@ -45,17 +68,24 @@ export function runAnalysis(
     socket.on('analysis:complete', (result) => {
       if (settled) return
       settled = true
-      // Deliberately not waiting for analysis:insights. The popup has no panel for AI
-      // commentary, and it closes the moment it loses focus — holding the socket open for
-      // a couple of extra seconds would buy nothing and often be cut off anyway.
-      close()
       resolve(result)
+
+      if (onInsights) {
+        const timeout = setTimeout(() => { insightsDone = true; closeIfDone() }, INSIGHTS_TIMEOUT_MS)
+        socket.once('analysis:insights', (insights) => {
+          clearTimeout(timeout)
+          insightsDone = true
+          onInsights(insights)
+          closeIfDone()
+        })
+      }
+      closeIfDone()
     })
     socket.on('analysis:error', (e) => fail(new Error(e?.message ?? 'Analysis failed')))
   })
 
   return {
     promise,
-    cancel: () => { if (!settled) { settled = true; close() } },
+    cancel: () => { if (!settled || !insightsDone) { settled = true; insightsDone = true; close() } },
   }
 }

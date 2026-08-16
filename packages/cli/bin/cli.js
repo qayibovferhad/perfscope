@@ -334,6 +334,15 @@ function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
     socket.on('analysis:insights', (data) => {
       if (!done) return;
       if (data?.insights) done.aiInsights = data.insights;
+      // Per-audit commentary — dropped here before, so the full report had the page-level
+      // insight but never why any one audit fails on this page (see printAuditExplanations
+      // in reporter.js). Keyed by AuditItem.id, same as every other surface reads it.
+      if (data?.auditExplanations && Array.isArray(done.audits)) {
+        for (const audit of done.audits) {
+          const explanation = data.auditExplanations[audit.id];
+          if (explanation) audit.aiExplanation = explanation;
+        }
+      }
       clearTimeout(graceTimer);
       finish(resolve, done);
     });
