@@ -209,7 +209,7 @@ export function AnalyzerPage() {
       )}
 
       <AnimatePresence>
-        {data && <AnalyzerResultsPanel data={data} aiPending={aiPending} />}
+        {data && <AnalyzerResultsPanel data={data} aiPending={aiPending} askEnabled />}
       </AnimatePresence>
     </Page>
     </>

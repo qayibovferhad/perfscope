@@ -3,6 +3,7 @@ import { ok } from '../lib/respond.js';
 import { randomBytes } from 'node:crypto';
 import { HistoryModel } from '../models/History.model.js';
 import { HistoryService } from '../services/history.service.js';
+import { askAboutAudit } from '../services/askQuestion.service.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.js';
 import {
   requireStorage, requireStorageForWrites, emptyOnNoStorage,
@@ -106,6 +107,29 @@ historyRouter.delete(
     );
     ok(res);
   }, 'Failed to revoke share link'),
+);
+
+// POST /api/history/:id/ask { question } — answer one question against this audit's own
+// evidence, exactly what analysePage saw. Five per audit — see askQuestion.service.ts.
+historyRouter.post(
+  '/history/:id/ask',
+  requireStorage,
+  asyncHandler<AuthedRequest>(async (req, res) => {
+    const question = req.body?.question;
+    if (typeof question !== 'string' || !question.trim()) {
+      throw new AppError(400, 'question is required');
+    }
+    if (question.length > 500) throw new AppError(400, 'question is too long');
+
+    const result = await askAboutAudit(req.userId, String(req.params['id']), question.trim());
+
+    switch (result.status) {
+      case 'not_found':     throw new AppError(404, 'Audit not found');
+      case 'limit_reached': throw new AppError(429, 'You have asked the most questions this audit allows');
+      case 'no_answer':     throw new AppError(502, 'Could not produce an answer');
+      case 'ok':             ok(res, { answer: result.answer, questionsRemaining: result.questionsRemaining });
+    }
+  }, 'Failed to answer question'),
 );
 
 // GET /api/history/:id  — full analysis result for a single audit

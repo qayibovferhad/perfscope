@@ -104,25 +104,19 @@ export class AiService {
    * `diagnosis` makes agreement structural rather than lucky, and costs one call where
    * there were three.
    */
-  static async analysePage(
+  /**
+   * The exact evidence `analysePage` reasons over, as one block of text: scores, vitals,
+   * longest tasks, heaviest resources, layout shifts, vendors, libraries, recommendation
+   * history, and every failing audit with the details phase 1 taught `lhr-transform` to
+   * keep. Split out so `answerQuestion` can put the identical context in front of the
+   * model — the point of the question box is that it sees exactly what the analysis saw,
+   * not a fresh, cheaper summary of the same page.
+   */
+  private static buildPageContext(
     result: AnalysisResult,
-    /**
-     * The previous audit of this same URL, when there is one.
-     *
-     * Without it every run of an unchanged page produces the same paragraph, which is
-     * correct and useless — the reader has read it already. Told what moved, the analysis
-     * leads with the movement, which is different every time by definition and is the
-     * thing someone re-auditing actually wants to know.
-     */
     previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
-    /**
-     * Fixes already given for this page, oldest concern first. Without this every audit
-     * re-derives the same three fixes from scratch and repeats them verbatim for as long
-     * as the user leaves the underlying problem alone — indistinguishable, to the reader,
-     * from the AI not having noticed it said this already.
-     */
     history?: RecommendationHistoryEntry[] | null,
-  ): Promise<AiPageAnalysis | null> {
+  ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[] } {
     const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
       .filter(k => k in result.metrics);
     const poor = vitals.filter(k => rateVital(k, result.metrics[k]) !== 'good');
@@ -165,33 +159,9 @@ export class AiService {
       .join('\n');
 
     const libraries = (result.resources?.detectedLibraries ?? []).map(l => l.name).join(', ');
-
     const s = result.scores;
-    const weakCategories = [
-      s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
-      s.bestPractices < 90 ? `best practices ${s.bestPractices}` : null,
-      s.seo < 90 ? `SEO ${s.seo}` : null,
-    ].filter(Boolean);
 
-    const prompt = `You are a web performance expert reading one Lighthouse result.
-
-${VOICE}
-
-Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
-
-${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change.\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
-${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given (timesGiven ≥ 1), do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it has been given 2 or more times already (this would be its third audit or later), go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never restate a past fix verbatim.\n` : ''}
-
-Answer ONLY with JSON:
-{"diagnosis": string, "fixes": [string], "metrics": {${poor.map(k => `"${k}": string`).join(', ')}}, "waterfall": string, "audits": {${failing.map(a => `"${a.id}": string`).join(', ')}}}
-
-- diagnosis: one sentence naming the single root problem on this page.
-- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric.
-- metrics: one sentence per key, saying what made THAT metric what it is here — consistent with the diagnosis.
-- waterfall: two or three sentences on how this load actually went, in order.
-- audits: one sentence per key: why it fails on this page and the first thing to change. Never define the audit.
-${poor.length === 0 ? '- Every vital is already good, so "metrics" is {}.\n' : ''}${failing.length === 0 ? '- Nothing is failing, so "audits" is {}.\n' : ''}
-URL: ${result.url}
+    const context = `URL: ${result.url}
 ${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
 ${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
@@ -225,6 +195,56 @@ ${failing.map(a => {
   return items.length ? `${head}\n${items.join('\n')}` : head;
 }).join('\n') || '  (none)'}`;
 
+    return { context, failing, poor };
+  }
+
+  static async analysePage(
+    result: AnalysisResult,
+    /**
+     * The previous audit of this same URL, when there is one.
+     *
+     * Without it every run of an unchanged page produces the same paragraph, which is
+     * correct and useless — the reader has read it already. Told what moved, the analysis
+     * leads with the movement, which is different every time by definition and is the
+     * thing someone re-auditing actually wants to know.
+     */
+    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    /**
+     * Fixes already given for this page, oldest concern first. Without this every audit
+     * re-derives the same three fixes from scratch and repeats them verbatim for as long
+     * as the user leaves the underlying problem alone — indistinguishable, to the reader,
+     * from the AI not having noticed it said this already.
+     */
+    history?: RecommendationHistoryEntry[] | null,
+  ): Promise<AiPageAnalysis | null> {
+    const { context, failing, poor } = this.buildPageContext(result, previous, history);
+    const s = result.scores;
+    const weakCategories = [
+      s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
+      s.bestPractices < 90 ? `best practices ${s.bestPractices}` : null,
+      s.seo < 90 ? `SEO ${s.seo}` : null,
+    ].filter(Boolean);
+
+    const prompt = `You are a web performance expert reading one Lighthouse result.
+
+${VOICE}
+
+Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
+
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change.\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
+${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given (timesGiven ≥ 1), do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it has been given 2 or more times already (this would be its third audit or later), go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never restate a past fix verbatim.\n` : ''}
+
+Answer ONLY with JSON:
+{"diagnosis": string, "fixes": [string], "metrics": {${poor.map(k => `"${k}": string`).join(', ')}}, "waterfall": string, "audits": {${failing.map(a => `"${a.id}": string`).join(', ')}}}
+
+- diagnosis: one sentence naming the single root problem on this page.
+- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric.
+- metrics: one sentence per key, saying what made THAT metric what it is here — consistent with the diagnosis.
+- waterfall: two or three sentences on how this load actually went, in order.
+- audits: one sentence per key: why it fails on this page and the first thing to change. Never define the audit.
+${poor.length === 0 ? '- Every vital is already good, so "metrics" is {}.\n' : ''}${failing.length === 0 ? '- Nothing is failing, so "audits" is {}.\n' : ''}
+${context}`;
+
     const parsed = this.parseJson<{
       diagnosis?: unknown; fixes?: unknown; metrics?: unknown; waterfall?: unknown; audits?: unknown;
     }>(await this.generate(prompt), 'page analysis');
@@ -251,6 +271,41 @@ ${failing.map(a => {
         ? parsed.waterfall.trim().slice(0, 600) : null,
       audits:    pick(parsed.audits, failing.map(a => a.id)),
     };
+  }
+
+  /**
+   * Answers one question about one audit — the analyzer's monologue, made answerable.
+   *
+   * Deliberately not a chatbot: no conversation history is kept (each call is independent
+   * and costs one Gemini request, which `generate`'s own 6h cache already covers for a
+   * repeated question), and the model sees exactly the evidence `analysePage` saw and
+   * nothing else. A question about something this audit did not measure gets told so,
+   * rather than an answer drawn from general web-performance knowledge that would read as
+   * if it came from this page's own data.
+   */
+  static async answerQuestion(
+    result: AnalysisResult,
+    question: string,
+    previous?: { scores: PerformanceScores; metrics: CoreWebVitals; at: string } | null,
+    history?: RecommendationHistoryEntry[] | null,
+  ): Promise<string | null> {
+    const { context } = this.buildPageContext(result, previous, history);
+
+    const prompt = `You are a web performance expert. Someone is looking at this Lighthouse result and has asked a question about it.
+
+${VOICE}
+
+Answer using ONLY the evidence below — this audit's own data, not general web-performance knowledge beyond what is needed to interpret these numbers. If the question asks about something this audit did not measure or does not contain, say plainly that this audit doesn't have that information, rather than guessing or answering in general terms.
+
+Answer in 1 to 3 sentences. Plain text — no JSON, no markdown, no headings.
+
+${context}
+
+Question: ${question}`;
+
+    const raw = await this.generate(prompt);
+    const answer = raw.trim();
+    return answer ? answer.slice(0, 600) : null;
   }
 
   static async getInsights(result: AnalysisResult): Promise<string> {

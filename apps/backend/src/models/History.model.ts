@@ -42,6 +42,9 @@ export interface IHistory extends Document {
   /** Who asked for this run. Absent on documents written before the field existed,
    *  which were all manual — every query treats "not scheduled" as manual. */
   source?:       'manual' | 'scheduled';
+  /** Questions answered against this audit's own evidence — see `askQuestion.service.ts`.
+   *  Absent means zero; a soft per-audit cap, not billing-critical, so no migration. */
+  aiQuestionsAsked?: number;
   createdAt:     Date;
 }
 
@@ -62,6 +65,7 @@ const HistorySchema = new Schema<IHistory>(
     // apart: the audit lists stay a record of what the user did, and the scheduled page
     // reports what the timetable found.
     source:        { type: String, enum: ['manual', 'scheduled'], default: 'manual' },
+    aiQuestionsAsked: { type: Number, default: 0 },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

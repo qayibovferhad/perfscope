@@ -298,8 +298,88 @@ a projection it invents itself.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn.
 
-**Next:** phase 4 (ask — a per-audit question box) per §5/PLAN.md. Not started; wait for
-the user's go-ahead before beginning it.
+## 4d. Phase 4 — DONE, 2026-08-16 (uncommitted — awaiting the user's word to commit)
+
+**Why:** all of the AI in this product is a monologue. A reader who wants to know "why
+does that matter" or "what about X" has nowhere to ask; the only options are trust it or
+leave.
+
+**What shipped:**
+1. `ai.service.ts` — `analysePage`'s context-building (scores, vitals, longest tasks,
+   heaviest resources, layout shifts, vendors, libraries, recommendation history, and
+   every failing audit with its phase-1 details) was pulled out into
+   `buildPageContext(result, previous, history)`, a private static method both
+   `analysePage` and the new `answerQuestion(result, question, previous, history)` call.
+   Same evidence, same prompt data, so an answer cannot say something the diagnosis above
+   it would disagree with — this was the point of "the prompt is analysePage's exact
+   context + the question", not a nice-to-have.
+   `answerQuestion` returns plain text (1-3 sentences, no JSON), instructed to say plainly
+   when the question asks about something this audit's data doesn't contain rather than
+   answering from general knowledge. Free — reuses `generate()`'s existing 6h prompt
+   cache, so a repeated question costs one Gemini call total, not one per reader.
+2. `askQuestion.service.ts` (new) — `askAboutAudit(userId, analysisId, question)`. Loads
+   the `History` row, builds the same `previous`/recommendation-history lookups
+   `enrichWithAi` does, calls `answerQuestion`. Five questions per audit
+   (`MAX_QUESTIONS_PER_AUDIT`), tracked on a new `History.aiQuestionsAsked` counter,
+   **incremented only after a successful answer** — a Gemini timeout or empty reply
+   should not spend one of the user's five.
+3. `POST /api/history/:id/ask { question }` — `history.routes.ts`. 404 (audit not
+   found/no result), 429 (limit reached), 502 (model produced nothing), 200
+   `{ answer, questionsRemaining }`.
+4. `features/analyzer/ui/AskAboutAudit.tsx` + `model/useAskQuestion.ts` — the box under
+   the page's `AiCard`. No chat history by design (each question independent, per PLAN.md
+   §4b); `questionsRemaining` from the response disables the box before a 6th round-trip.
+   Wired into `AnalyzerResultsPanel` behind a new `askEnabled` prop, opt-in and defaulted
+   off — that widget also renders the *public, unauthenticated* share report
+   (`PublicReportPage`), which has no owner to answer against. Only `AnalyzerPage` passes
+   `askEnabled`.
+
+**Measured** (bbc.com, one live audit, real HTTP calls to `/history/:id/ask`):
+- A question about something this specific run's evidence didn't contain (per-script
+  third-party breakdown wasn't in this run's `thirdParty`/audit details) got: *"This audit
+  does not contain a breakdown of main-thread time by individual third-party script. It
+  only shows that third-party code blocked your main thread for 850ms in total."* — declined
+  correctly rather than inventing a script name.
+- An out-of-scope question (competitor scores, historical data) got: *"This audit does not
+  contain historical data from last month for your site. Your audit also does not include
+  any information or scores for your competitors."*
+- Repeating the first question verbatim returned the identical answer in 11ms — the
+  `generate()` cache working as designed.
+- Five questions succeeded with `questionsRemaining` counting down 4, 3, 2, 1, 0; the 6th
+  and 7th both got `429`.
+- `pnpm build`, `pnpm test` (83 tests), lint (0 errors), `tsc --noEmit` in all 4
+  workspaces: all green, same bar as phases 1-3.
+
+**Not verified this session:** the frontend box's actual rendering. No browser tool was
+available (declined for this session); only code review + the backend contract it calls
+were checked. Before relying on this being done, open an audit in the analyzer and
+confirm the box appears under the AI card, submits, and disables at 5.
+
+**Also fixed in passing, unrelated to the plan:** the overview dashboard's "Off target"
+attention card was showing raw millisecond numbers (`lcp 4035.519 against a target of
+2500`) instead of a formatted string — `overview.service.ts`'s `attentionFor` built its
+own string from `site.lastBudgetBreach.failures[0]` instead of going through the
+formatter `budget.service.ts` already had. Moved that formatter to
+`packages/shared/src/lib/targets.ts` as `describeBudgetFailure` so both call sites (and
+anything future) share one definition; tightened `IBudgetBreach.failures`'s type from
+`string` to the real `BudgetFailure` union in the process, which is what caught that the
+two were drifting.
+
+**Also encountered, not caused by this session's changes:** the dev backend crashed twice
+tonight on a real user's live audit — an uncaught `Protocol error (Runtime.evaluate):
+Target closed` from Lighthouse during `[Chrome] Reaping browsers after uncaught
+exception`, and once restarted, the next audit attempt hung indefinitely (no Chrome
+process, no worker thread, no progress event — looked like a stuck `AuditQueue` slot the
+crash never released). Both times a full process restart cleared it. Worth a real fix
+later: whatever holds the queue slot should release it in a `finally`, not only on the
+happy path, and the reaping handler should confirm the process actually survives the
+uncaught exception it's reaping from rather than assume it does.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** phase 5 (model — try `gemini-flash-latest` against the phase-1 probe) per
+§5/PLAN.md. Not started; wait for the user's go-ahead before beginning it.
 
 ---
 

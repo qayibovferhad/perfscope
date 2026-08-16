@@ -13,6 +13,7 @@ import { InteractionTimeline } from '@/features/analyzer';
 import { CLSVisualizer } from '@/features/analyzer';
 import { ResourcesAlert } from '@/features/analyzer';
 import { ThirdPartyPanel } from '@/features/analyzer';
+import { AskAboutAudit } from '@/features/analyzer';
 import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer';
 import { AiCard } from '@/shared/ui/ai-card';
@@ -46,12 +47,18 @@ interface Props {
    * was written when they were run and is already in `data`.
    */
   aiPending?: boolean;
+  /**
+   * The question box under the page's AiCard needs an authenticated owner to answer
+   * against — this widget also renders the public share report (`PublicReportPage`),
+   * which has neither, so the box is opt-in rather than defaulting on.
+   */
+  askEnabled?: boolean;
 }
 
 /** Score gap across runs beyond which the page's own variance dominates the number. */
 const NOISY_SPREAD = 8;
 
-export function AnalyzerResultsPanel({ data, aiPending }: Props) {
+export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
   const measurement = data.measurement;
   // Field data for the same URL/device — renders nothing when Chrome has no
   // real-user sample for this page (or the server has no CrUX key).
@@ -125,6 +132,7 @@ export function AnalyzerResultsPanel({ data, aiPending }: Props) {
       </section>
 
       <AiCard text={data.aiInsights} pending={aiPending} />
+      {askEnabled && !aiPending && data.aiInsights && <AskAboutAudit analysisId={data.id} />}
 
       <section>
         <SectionTitle>Core Web Vitals</SectionTitle>
