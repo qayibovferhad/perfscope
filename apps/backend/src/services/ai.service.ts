@@ -4,12 +4,15 @@ import { config } from '../config/index.js';
 import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
 import type {
   AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
-  CoreWebVitals,
+  CoreWebVitals, CruxData,
 } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
+import { extractIdentifiers } from './aiRecommendation.service.js';
 import type { PreviousRun } from './previousRun.service.js';
 import { diffResources, resourceDiffHasChanges } from '../lib/resourceDiff.js';
 import { attributeLongTasks } from '../lib/longTaskAttribution.js';
+import { compareLabAndField } from '../lib/labFieldComparison.js';
+import { findSitewideVendors, type OtherRouteVendors } from '../lib/crossPageVendors.js';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
@@ -119,7 +122,9 @@ export class AiService {
     result: AnalysisResult,
     previous?: PreviousRun | null,
     history?: RecommendationHistoryEntry[] | null,
-  ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[] } {
+    fieldData?: CruxData | null,
+    otherRoutesVendors?: OtherRouteVendors[] | null,
+  ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[]; hasSitewideVendors: boolean } {
     const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
       .filter(k => k in result.metrics);
     const poor = vitals.filter(k => rateVital(k, result.metrics[k]) !== 'good');
@@ -180,6 +185,22 @@ export class AiService {
       .map(t => `  ${t.name}: ${Math.round(t.blockingTime)}ms blocking, ${Math.round(t.transferSize / 1024)}KB over ${t.requestCount} requests`)
       .join('\n');
 
+    // A vendor that costs this page something and also costs several of the user's OTHER
+    // pages the same thing is not this page's problem — it's a tag-manager/governance
+    // problem, and the fix is different (remove or replace the vendor once, not chase it
+    // route by route).
+    const sitewideVendors = otherRoutesVendors && otherRoutesVendors.length > 0
+      ? findSitewideVendors(
+          (result.thirdParty ?? []).map(t => ({ name: t.name, blockingTime: t.blockingTime })),
+          otherRoutesVendors,
+        )
+      : [];
+    const sitewideLines = sitewideVendors.length > 0
+      ? `\nAlso weighing down other pages you track:\n${sitewideVendors.map(v =>
+          `  ${v.name}: ${v.hereMs}ms here, and ${v.otherRoutes.length} other route${v.otherRoutes.length === 1 ? '' : 's'} (${v.otherRoutes.map(r => `${r.routePath} ${r.blockingMs}ms`).join(', ')})`
+        ).join('\n')}\n`
+      : '';
+
     const libraries = (result.resources?.detectedLibraries ?? []).map(l => l.name).join(', ');
     const s = result.scores;
 
@@ -215,8 +236,28 @@ export class AiService {
         })()
       : '';
 
+    // Lab (this Lighthouse run) vs field (real Chrome users, CrUX's trailing 28 days) —
+    // sat next to each other on screen without either surface comparing them. A gap
+    // usually means the audience's real devices/networks differ from Lighthouse's
+    // throttling profile, not that either number is wrong.
+    const fieldComparison = fieldData
+      ? (() => {
+          const gaps = compareLabAndField(
+            { lcp: result.metrics.lcp, cls: result.metrics.cls, fcp: result.metrics.fcp },
+            fieldData,
+          );
+          if (gaps.length === 0) return '';
+          const fmtVal = (metric: string, v: number) => metric === 'cls' ? v.toFixed(3) : fmtMs(v);
+          const lines = gaps.map(g => {
+            const dir = g.gap > 0 ? 'worse' : 'better';
+            return `  ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, real users' p75 ${fmtVal(g.metric, g.fieldP75)} — ${dir} for real users, ${Math.round(g.poorShare * 100)}% of them in the "poor" bucket`;
+          });
+          return `\nReal users (CrUX, ${fieldData.collectedFrom} to ${fieldData.collectedTo}, ${fieldData.scope} scope) vs this lab run:\n${lines.join('\n')}\n`;
+        })()
+      : '';
+
     const context = `URL: ${result.url}
-${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
+${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
 ${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
 ${libraries ? `Libraries on the page: ${libraries}` : ''}
@@ -233,7 +274,7 @@ ${shifts || '  (none)'}
 
 Third-party vendors:
 ${vendors || '  (none)'}
-
+${sitewideLines}
 Failing audits:
 ${failing.map(a => {
   const savings = [
@@ -253,7 +294,88 @@ ${failing.map(a => {
   return items.length ? `${head}\n${items.join('\n')}` : head;
 }).join('\n') || '  (none)'}`;
 
-    return { context, failing, poor };
+    return { context, failing, poor, hasSitewideVendors: sitewideVendors.length > 0 };
+  }
+
+  /**
+   * Everything a fix could legitimately cite by name — filenames, libraries, CLS
+   * selectors, long-task functions, vendors, audit-detail selectors. The same evidence
+   * `probes/ai-quality.probe.mts` builds to *score* concreteness after the fact; here it
+   * gates `findUngroundedFixes` *before* a fix ever reaches the reader.
+   */
+  private static buildEvidenceSet(result: AnalysisResult): Set<string> {
+    const tail = (s: string) => (s.split('/').pop()?.split('?')[0] ?? '').toLowerCase();
+    const evidence = new Set<string>();
+    for (const q of result.resources?.requests ?? [])   { try { evidence.add(tail(new URL(q.url).pathname)); } catch { /* skip */ } }
+    for (const l of result.resources?.detectedLibraries ?? []) evidence.add(l.name.toLowerCase());
+    for (const e of result.clsData?.elements ?? [])      evidence.add((e.selector.split(' > ').pop() ?? '').toLowerCase());
+    for (const e of result.flameChartData?.events ?? []) if (e.isLongTask && e.url) evidence.add(tail(e.url));
+    for (const t of result.thirdParty ?? [])             evidence.add(t.name.toLowerCase());
+    for (const a of result.audits) for (const d of a.details ?? [])
+      if (d.selector) evidence.add((d.selector.split(' > ').pop() ?? '').toLowerCase());
+    return evidence;
+  }
+
+  /**
+   * A fix "cites" something specific when it contains a filename or a generated-class
+   * style identifier (the same extractor phase 2's recommendation fingerprinting uses —
+   * `extractIdentifiers`). Flagged when NONE of a fix's identifiers appear anywhere in
+   * the evidence this audit actually contains: a plausible-sounding filename or selector
+   * that was never in the data is a hallucination, not a paraphrase.
+   *
+   * A fix with no specific-looking claim at all is never flagged — "improve your heading
+   * hierarchy" isn't citing anything, so there's nothing to verify, and generic-but-true
+   * advice shouldn't be punished for being generic.
+   */
+  private static findUngroundedFixes(fixes: string[], evidence: Set<string>): number[] {
+    const flagged: number[] = [];
+    fixes.forEach((fix, i) => {
+      const identifiers = extractIdentifiers(fix);
+      if (identifiers.length === 0) return;
+      const grounded = identifiers.some(id => [...evidence].some(e => e.includes(id) || id.includes(e)));
+      if (!grounded) flagged.push(i);
+    });
+    return flagged;
+  }
+
+  /**
+   * The escalation path — one extra Gemini call, and only when `findUngroundedFixes`
+   * actually found something to check. Most audits never trigger this: it costs nothing
+   * on the common path, and is the thing that catches an invented filename before a
+   * reader does. Never throws; a failed critique just leaves the original fixes in place
+   * — a plausible-but-unverified fix reaching the reader is the existing risk, not a new
+   * one this introduces.
+   */
+  private static async critiqueFixes(
+    fixes: string[], flaggedIndices: number[], evidence: Set<string>,
+  ): Promise<string[]> {
+    if (flaggedIndices.length === 0) return fixes;
+
+    const prompt = `You wrote these fixes for a Lighthouse audit. Each numbered one below cites a file, class or element name that does not appear anywhere in this audit's actual evidence — check each and correct it.
+
+${VOICE}
+
+Evidence this audit actually contains (filenames, selectors, vendor and library names):
+${[...evidence].slice(0, 60).join(', ') || '(none)'}
+
+Fixes to check:
+${flaggedIndices.map(i => `${i}: ${fixes[i]}`).join('\n')}
+
+For each: if the name it cites is not in the evidence above, either rewrite it to cite something that IS there, or drop the specific claim and describe the fix in general terms instead. Do not invent a replacement name that also isn't in the evidence, and do not add any other specific number or detail that isn't already in the original sentence or the evidence above — fix only what was wrong, don't embellish the rest.
+
+Answer ONLY with JSON: {"corrected": {${flaggedIndices.map(i => `"${i}": string`).join(', ')}}}`;
+
+    const parsed = await this.generate(prompt)
+      .then(raw => this.parseJson<{ corrected?: Record<string, unknown> }>(raw, 'fix critique'))
+      .catch((err: unknown) => { console.error('[AI] Fix critique failed:', err); return null; });
+    if (!parsed?.corrected) return fixes;
+
+    const corrected = [...fixes];
+    for (const i of flaggedIndices) {
+      const fixed = parsed.corrected[String(i)];
+      if (typeof fixed === 'string' && fixed.trim()) corrected[i] = fixed.trim().slice(0, 300);
+    }
+    return corrected;
   }
 
   static async analysePage(
@@ -274,8 +396,15 @@ ${failing.map(a => {
      * from the AI not having noticed it said this already.
      */
     history?: RecommendationHistoryEntry[] | null,
+    /** Real-user CrUX data for this page, when the account has a key and CrUX has a
+     *  sample for it — absent is a normal outcome, same as no earlier audit. */
+    fieldData?: CruxData | null,
+    /** The latest audited state of this user's other tracked routes on the same host —
+     *  what lets a vendor be named as a site-wide problem, not just this page's. */
+    otherRoutesVendors?: OtherRouteVendors[] | null,
   ): Promise<AiPageAnalysis | null> {
-    const { context, failing, poor } = this.buildPageContext(result, previous, history);
+    const { context, failing, poor, hasSitewideVendors } =
+      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors);
     const s = result.scores;
     const weakCategories = [
       s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
@@ -289,7 +418,7 @@ ${VOICE}
 
 Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
 
-${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}${fieldData ? ` If "Real users" below shows a real gap from this lab run, mention it — a lab number that looks fine while real users see it worse is itself the finding, and probably means their actual devices or networks are weaker than this run's simulated conditions, not that this run is wrong.` : ''}${hasSitewideVendors ? ` If "Also weighing down other pages you track" below lists a vendor, say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once rather than optimizing this one page.` : ''}
 ${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given (timesGiven ≥ 1), do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it has been given 2 or more times already (this would be its third audit or later), go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never restate a past fix verbatim.\n` : ''}
 
 Answer ONLY with JSON:
@@ -319,11 +448,18 @@ ${context}`;
       return out;
     };
 
+    const rawFixes = (Array.isArray(parsed.fixes) ? parsed.fixes : [])
+      .filter((f): f is string => typeof f === 'string' && !!f.trim())
+      .slice(0, 6).map(f => f.trim().slice(0, 300));
+
+    // Self-critique: only costs a call when a fix actually cites something unverifiable.
+    const evidence = this.buildEvidenceSet(result);
+    const flagged  = this.findUngroundedFixes(rawFixes, evidence);
+    const fixes    = flagged.length > 0 ? await this.critiqueFixes(rawFixes, flagged, evidence) : rawFixes;
+
     return {
       diagnosis: parsed.diagnosis.trim().slice(0, 300),
-      fixes: (Array.isArray(parsed.fixes) ? parsed.fixes : [])
-        .filter((f): f is string => typeof f === 'string' && !!f.trim())
-        .slice(0, 6).map(f => f.trim().slice(0, 300)),
+      fixes,
       metrics:   pick(parsed.metrics, poor) as AiMetricNotes,
       waterfall: typeof parsed.waterfall === 'string' && parsed.waterfall.trim()
         ? parsed.waterfall.trim().slice(0, 600) : null,
@@ -346,8 +482,10 @@ ${context}`;
     question: string,
     previous?: PreviousRun | null,
     history?: RecommendationHistoryEntry[] | null,
+    fieldData?: CruxData | null,
+    otherRoutesVendors?: OtherRouteVendors[] | null,
   ): Promise<string | null> {
-    const { context } = this.buildPageContext(result, previous, history);
+    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors);
 
     const prompt = `You are a web performance expert. Someone is looking at this Lighthouse result and has asked a question about it.
 

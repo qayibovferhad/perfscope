@@ -607,10 +607,163 @@ all green.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn.
 
-**Next:** the rest of PLAN.md's six phases are done (§4-4f above). No phase 7 is planned;
-re-read PLAN.md's "Nə ETMİRİK" section before adding one (no general chatbot, no
-streaming, no fine-tuning). Three more "depth" ideas remain proposed, not started (listed
-at the top of this section).
+**Next:** see §4j below — the fourth idea.
+
+---
+
+## 4j. Beyond PLAN.md's six phases — self-critique pass, 2026-08-16
+
+Fourth of the five "more depth" ideas (§4g). Two left unstarted: lab-vs-field/CrUX
+comparison, cross-page pattern detection.
+
+**Why:** every prior addition in this "more depth" run gave the model more evidence; none
+of them checked whether it actually *used* the evidence correctly. A fix that names a
+plausible-sounding file that was never on the page is a hallucination the reader has no
+way to catch — they don't have the audit's raw data open next to it.
+
+**What shipped, deliberately two-tier so it costs nothing on the common path:**
+1. `AiService.buildEvidenceSet(result)` — the same evidence set
+   `probes/ai-quality.probe.mts` builds to *score* concreteness after the fact, now live
+   inside the service so it can gate a fix *before* it reaches the reader.
+2. `findUngroundedFixes(fixes, evidence)` — deterministic, no API call. Reuses
+   `extractIdentifiers` (phase 2's fingerprinting) to pull filename/generated-class-style
+   tokens out of each fix; flags a fix only when it names something specific that matches
+   nothing in the evidence. A fix with no specific-looking claim ("improve your heading
+   hierarchy") is never flagged — nothing to verify, and generic-but-true advice
+   shouldn't be punished for being generic.
+3. `critiqueFixes(fixes, flaggedIndices, evidence)` — the escalation, and the only new
+   Gemini call in this whole addition: fires *only* when step 2 found something to check,
+   shown the flagged fix(es) plus the real evidence list, told to correct the citation or
+   drop the specific claim — and explicitly told not to invent a replacement citation or
+   embellish the sentence with any other unverified detail while fixing it (caught live —
+   the first version corrected a hallucinated filename correctly but added an invented
+   "down to 1.45s" alongside it; one more prompt clause stopped that).
+4. Wired into `analysePage`'s return path, after fixes are parsed.
+
+**Measured:**
+- Deterministic check, synthetic: a well-grounded 2-fix set → 0 flagged (confirms zero
+  cost on the common case); a set with one real citation and one invented filename → flags
+  exactly the invented one, index 1.
+- Live `critiqueFixes` call on that same hallucinated case: *"Split
+  totally-made-up-file.js…"* → *"Split real-vendor-bundle.js into smaller chunks to
+  reduce parse time."* — corrected to the real filename, no embellishment (after the
+  prompt fix above), the non-flagged fix passed through byte-for-byte unchanged.
+- Live full pipeline, bbc.com: `analysePage` returned 5 fixes in 4869ms — the same single-
+  call latency as every other run this session, confirming the critique gate added zero
+  extra calls when nothing needed correcting (0 of 5 flagged). This is the expected common
+  case, not a gap in testing — the escalation path is proven separately above.
+- `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** see §4k below.
+
+---
+
+## 4k. Beyond PLAN.md's six phases — lab vs. field (CrUX), 2026-08-16
+
+Fifth and last of the "more depth" ideas (§4g). One remains unstarted: cross-page pattern
+detection.
+
+**Why:** `CruxService` already sits real-user field data (Chrome UX Report, trailing
+28 days) next to the lab numbers on screen — nobody, human or model, was comparing the two.
+A gap between them is itself a finding: a fast lab run next to a slow field p75 usually
+means the audience's real devices/networks are weaker than Lighthouse's throttling
+profile, not that either number is wrong.
+
+**What shipped:**
+1. `apps/backend/src/lib/labFieldComparison.ts` — `compareLabAndField(lab, field)`, pure.
+   Only compares metrics both sides actually measure the same way: LCP, CLS, FCP. (TBT has
+   no clean field equivalent — INP is the closest real-world analogue but a genuinely
+   different metric, input-response rather than main-thread-blocking; SI/TTI aren't in
+   CrUX at all.) A gap has to clear both an absolute and a 25% relative bar to surface —
+   same shape of threshold `resourceDiff.ts` uses, for the same reason: noise isn't a
+   finding.
+2. `auditPipeline.ts`'s `enrichWithAi` and `askQuestion.service.ts`'s `askAboutAudit` both
+   now call `CruxService.get(result.url, formFactor)` (deep-depth only, same as
+   `previous`/`history`) and pass it through to `analysePage`/`answerQuestion`.
+3. `buildPageContext` renders a "Real users (CrUX, `<dates>`, `<url|origin>` scope) vs
+   this lab run" block when there's a significant gap, and one new prompt sentence: if the
+   block shows a real gap, mention it — the lab number isn't wrong just because reality
+   differs from it.
+
+**Measured:**
+- Pure function, synthetic: LCP given a 2600ms real gap → flagged with the right numbers;
+  CLS (near-identical) and FCP (gap under the 25% bar) → correctly not flagged.
+- `buildPageContext` formatting, synthetic `CruxData`: renders *"LCP: lab 1.20s, real
+  users' p75 3.80s — worse for real users, 40% of them in the 'poor' bucket"*; with
+  `fieldData: null` the "Real users" block is completely absent from the context — no
+  clutter, no error.
+- Live, bbc.com, real socket audit through the full pipeline: `analysis:insights` arrived
+  with `aiInsights`/`auditExplanations`/`aiWaterfallNarrative` all present and persisted
+  correctly, confirming the CrUX-null path (**this environment has no `CRUX_API_KEY`
+  configured** — see §"Unset Env Keys" territory) doesn't break anything downstream.
+  **Not verified**: real field data actually reaching the model and being cited, since
+  that needs a live key this session doesn't have. If `CRUX_API_KEY` gets configured
+  later, re-run this exact check on a page CrUX has real samples for — the pure-function
+  and formatting checks above are the parts that don't need one; the live end-to-end
+  citation is the part that still does.
+- `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** see §4l — the fifth and last of these ideas.
+
+---
+
+## 4l. Beyond PLAN.md's six phases — cross-page vendor patterns, 2026-08-16
+
+Fifth and last of the "more depth" ideas raised in §4g. All five are now done.
+
+**Why:** a vendor script that costs one page something and costs several of the user's
+*other* tracked pages the same thing isn't that page's problem — it's a tag-manager or
+vendor-governance problem, and the fix is different (remove or govern the vendor once,
+not optimize each page it happens to sit on). Nothing before this looked past the single
+page being audited.
+
+**What shipped:**
+1. `apps/backend/src/lib/crossPageVendors.ts` — `findSitewideVendors(currentVendors,
+   otherRoutes)`, pure. A vendor has to cost ≥50ms on THIS page and on at least 2 OTHER
+   routes (same two-part bar — absolute floor, minimum count — every threshold in this
+   "more depth" run uses) to be named "site-wide" rather than "also happens to be on one
+   other page".
+2. `apps/backend/src/services/crossPageVendors.service.ts` — `getOtherRoutesVendors(userId,
+   currentUrl)`. One aggregation: match this user's `History` rows under the same host
+   (`normalizedUrlHostRegex`, the same helper `findWebsiteByHost` uses) excluding the
+   current URL, group by `routePath` taking the latest per route, capped at 20 routes.
+   Projects only `fullResult.thirdParty`, not the whole stored result.
+3. Wired into `auditPipeline.ts` and `askQuestion.service.ts` (deep-depth only, same
+   pattern as `previous`/`history`/`fieldData`), through to `buildPageContext`, which adds
+   an "Also weighing down other pages you track" block and — the same two-step pattern
+   §4j used for the self-critique gate — returns a `hasSitewideVendors` boolean so
+   `analysePage`'s own instruction text can react to it without reaching into
+   `buildPageContext`'s internals.
+
+**Measured:**
+- Pure function, synthetic: a heavy vendor appearing above threshold on 2 of 3 other
+  routes (the third route's copy was below the 50ms floor) → flagged with exactly those 2
+  routes, sorted heaviest first; a vendor heavy only on the current page → correctly not
+  flagged.
+- `buildPageContext` formatting, synthetic: rendered *"Google Ads: 300ms here, and 2 other
+  routes (/sport 400ms, /news 250ms)"*.
+- **Live, bbc.com, three real routes** (`/news`, `/sport`, home) under one throwaway
+  account — the strongest live result of any of these five additions, confirmed on the
+  first attempt: `bbci.co.uk` came back heavy on all three (117ms /news, 473ms /sport,
+  374ms home — all clearing the 50ms floor). `getOtherRoutesVendors` correctly returned
+  both other routes with their vendor data, and `analysePage`'s last fix read: *"Govern or
+  remove the bbci.co.uk vendor scripts, which cost you 374ms here and also harm your
+  /sport and /news routes."* — named by domain, named the specific other routes, framed
+  as a one-time fix rather than per-page optimization, exactly the instruction's intent.
+- `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** all five "more depth" ideas from §4g are done (§4h–§4l). No more are queued;
+re-read PLAN.md's "Nə ETMİRİK" section before proposing new ones (no general chatbot, no
+streaming, no fine-tuning).
 
 ---
 

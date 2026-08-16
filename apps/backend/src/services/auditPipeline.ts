@@ -6,6 +6,8 @@ import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
+import { CruxService } from './crux.service.js';
+import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
@@ -93,12 +95,24 @@ export async function enrichWithAi(
     ? await getRecommendationHistory(userId, result.url).catch(() => [])
     : [];
 
+  // Real users, not just this one lab run — CruxService.get already sat next to the lab
+  // numbers on screen without either surface comparing them. Null (no key, no data for
+  // this page, a failed request) is a normal outcome, same as no earlier audit.
+  const fieldData = depth === 'deep'
+    ? await CruxService.get(result.url, result.formFactor ?? 'desktop').catch(() => null)
+    : null;
+
+  // Same vendor, several of this user's other pages — not this page's problem alone.
+  const otherRoutesVendors = depth === 'deep' && userId
+    ? await getOtherRoutesVendors(userId, result.url).catch(() => [])
+    : [];
+
   // One Promise.all, so the deep work costs the same wall time as the standard path — and
   // each carries its own catch, so a failing prompt cannot take the others (or the audit)
   // with it.
   const [analysis, adviceMap] = await Promise.all([
     depth === 'deep'
-      ? AiService.analysePage(result, previous, recommendationHistory).catch((err: unknown) => {
+      ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors).catch((err: unknown) => {
           console.error('[AI] Page analysis failed:', err);
           return null;
         })

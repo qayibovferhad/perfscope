@@ -2,6 +2,8 @@ import type { AnalysisResult } from '@perfscope/shared';
 import { AiService } from './ai.service.js';
 import { getRecommendationHistory } from './aiRecommendation.service.js';
 import { getPreviousRun } from './previousRun.service.js';
+import { CruxService } from './crux.service.js';
+import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { HistoryModel } from '../models/History.model.js';
 
 /** "Sonsuz sual = sonsuz xərc" — a soft cap, not billing-critical, so a small race on the
@@ -36,7 +38,11 @@ export async function askAboutAudit(
 
   const history = await getRecommendationHistory(userId, result.url).catch(() => []);
 
-  const answer = await AiService.answerQuestion(result, question, previous, history);
+  const fieldData = await CruxService.get(result.url, result.formFactor ?? 'desktop').catch(() => null);
+
+  const otherRoutesVendors = await getOtherRoutesVendors(userId, result.url).catch(() => []);
+
+  const answer = await AiService.answerQuestion(result, question, previous, history, fieldData, otherRoutesVendors);
   if (!answer) return { status: 'no_answer' };
 
   // Only spent on an actual answer — a Gemini timeout or an empty reply should not cost
