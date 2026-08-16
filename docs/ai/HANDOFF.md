@@ -834,6 +834,80 @@ certain way* gets a correct, specific answer instead of silence or a guess.
 **Left uncommitted per standing rule** — do not commit without the user saying so in that
 turn.
 
+## 4o. "Mərhələ 7" plan, item A-1 — the Advisor gets the same evidence, 2026-08-17
+
+After all five "more depth" ideas (§4h–4l) landed on `analysePage`, the always-on Advisor
+panel — the one AI surface that speaks without being asked — was still running on the
+original phase-3 context (targets, trend, action outcome). This closes that gap for the
+two additions that fit the Advisor's own scope (a whole site, not one audit): sitewide
+vendor patterns and lab-vs-field. (Not brought over: the resource diff and long-task
+attribution, which are inherently per-audit-pair comparisons the Advisor's trend lines
+already cover at a coarser grain; self-critique and fix-impact numbers, which only make
+sense once there's a `fixes` list to check — the Advisor's `steps` are a different shape.)
+
+**What shipped:** `advice.service.ts`'s `buildSiteContext` now also calls
+`getOtherRoutesVendors` + `findSitewideVendors` (the exact §4l functions, reused — no
+Advisor-specific reimplementation) against the site's newest audit's `thirdParty` list,
+and `CruxService.get` + `compareLabAndField` (§4k) against its `metrics`. Both append
+lines only when there's something to say; `getAdvice`'s prompt gained two matching
+instructions, same shape as `analysePage`'s.
+
+**Measured**, live, three real bbc.com routes under one throwaway account, first attempt:
+headline *"Your page speed is dragged down by shared third party vendors"*; steps named
+`bbci.co.uk` ("costs 572ms on your current page and also slows down your news and sport
+routes") and Ozone Project by name, both correctly scoped to "across your site" rather
+than framed as this-page-only advice. CrUX-null path (no key in this environment) logged
+its own warning and skipped cleanly, same as everywhere else it's wired in.
+`pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next (rest of the "Mərhələ 7" plan, not started):** A-2 — extend the self-critique
+grounding check (§4j) to `diagnosis` and the per-audit `audits` map, not just `fixes`.
+A-3 — give the extension popup and CLI report the same depth additions they never got in
+§4f (phase 6 wired only the base `insights` string). B-4 — RUM data alongside CrUX.
+B-5 — verify live field-data citation once `CRUX_API_KEY` exists. C-6 — the ask box
+beyond the analyzer (Compare, History detail).
+
+---
+
+## 4p. "Mərhələ 7" plan, item A-2 — self-critique now checks the whole response, 2026-08-17
+
+§4j's grounding check only ever looked at `fixes`. `diagnosis` and the per-audit `audits`
+map are the exact same shape of risk — free text the model writes that can cite a filename
+or selector that isn't actually in this audit's evidence — and had no check on them at all.
+A hallucinated name sitting in the opening sentence of the diagnosis is at least as
+misleading as one in fix #3; there was never a reason those two fields got a pass.
+
+**What shipped:** `ai.service.ts`'s `findUngroundedFixes`/`critiqueFixes` (fixes-only) are
+now `findUngroundedTexts`/`critiqueTexts`, generalised to a `{key, text}[]` shape —
+`diagnosis`, `fix:0..5`, `audit:<id>` — so one grounding pass and, when needed, one
+correction call covers all three fields together instead of three separate mechanisms.
+`analysePage`'s return-construction block builds that combined item list right after
+parsing the model's JSON, runs the check once, and maps any corrections back onto
+`diagnosis`/`fixes`/`audits` by key. Still the same trade the original had: this costs
+nothing extra on the common path (most responses flag nothing), and only spends the one
+extra Gemini call when something in the response actually needs it.
+
+**Measured:** an offline unit probe against `findUngroundedTexts` directly (via the class's
+private-static back door, no Gemini call) confirmed the split is correct — a diagnosis and
+a fix that both cite real evidence pass through untouched, a fix and an audit explanation
+citing names outside the evidence set both get flagged. Then a live run of `analysePage`
+against a real stored audit (testlandau.cubicsbms.com, perf 87 / a11y 47 / bp 96 / seo 75)
+completed in 4.2s with diagnosis, all 6 fixes and all 14 failing-audit explanations
+populated and — on manual read — every named file, selector and vendor (`packages/
+templating.js`, `input#search-daterange-dashboardV2`, `a#completeSale`, `/app/app.js`)
+matching what that page's own evidence actually contains; nothing invented.
+`pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule** — do not commit without the user saying so in that
+turn.
+
+**Next:** A-3 — give the extension popup and CLI report the same depth additions they
+never got in §4f. B-4 — RUM data alongside CrUX. B-5 — verify live field-data citation once
+`CRUX_API_KEY` exists. C-6 — the ask box beyond the analyzer (Compare, History detail).
+
 ---
 
 ## 5. Phases 2–6, pointers only (details in PLAN.md)

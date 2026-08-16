@@ -312,7 +312,7 @@ ${failing.map(a => {
    * Everything a fix could legitimately cite by name — filenames, libraries, CLS
    * selectors, long-task functions, vendors, audit-detail selectors. The same evidence
    * `probes/ai-quality.probe.mts` builds to *score* concreteness after the fact; here it
-   * gates `findUngroundedFixes` *before* a fix ever reaches the reader.
+   * gates `findUngroundedTexts` *before* a claim ever reaches the reader.
    */
   private static buildEvidenceSet(result: AnalysisResult): Set<string> {
     const tail = (s: string) => (s.split('/').pop()?.split('?')[0] ?? '').toLowerCase();
@@ -338,55 +338,63 @@ ${failing.map(a => {
    * hierarchy" isn't citing anything, so there's nothing to verify, and generic-but-true
    * advice shouldn't be punished for being generic.
    */
-  private static findUngroundedFixes(fixes: string[], evidence: Set<string>): number[] {
-    const flagged: number[] = [];
-    fixes.forEach((fix, i) => {
-      const identifiers = extractIdentifiers(fix);
-      if (identifiers.length === 0) return;
-      const grounded = identifiers.some(id => [...evidence].some(e => e.includes(id) || id.includes(e)));
-      if (!grounded) flagged.push(i);
+  /**
+   * One piece of free text this pass might need to check, keyed so a correction can be
+   * mapped back to exactly where it came from — <code>diagnosis</code>, <code>fix:2</code>,
+   * <code>audit:unused-javascript</code>. Generalised from the fixes-only version this
+   * replaced: a hallucinated filename is exactly as misleading sitting in the diagnosis
+   * sentence or a per-audit explanation as it is in a fix, and there is no reason those two
+   * fields got a pass the first time this was built.
+   */
+  private static findUngroundedTexts(
+    items: { key: string; text: string }[], evidence: Set<string>,
+  ): { key: string; text: string }[] {
+    return items.filter(({ text }) => {
+      const identifiers = extractIdentifiers(text);
+      if (identifiers.length === 0) return false;
+      return !identifiers.some(id => [...evidence].some(e => e.includes(id) || id.includes(e)));
     });
-    return flagged;
   }
 
   /**
-   * The escalation path — one extra Gemini call, and only when `findUngroundedFixes`
-   * actually found something to check. Most audits never trigger this: it costs nothing
-   * on the common path, and is the thing that catches an invented filename before a
-   * reader does. Never throws; a failed critique just leaves the original fixes in place
-   * — a plausible-but-unverified fix reaching the reader is the existing risk, not a new
-   * one this introduces.
+   * The escalation path — one extra Gemini call covering every flagged item together
+   * (the diagnosis, any fixes, any per-audit explanations), and only when
+   * `findUngroundedTexts` actually found something to check. Most audits never trigger
+   * this: it costs nothing on the common path, and is the thing that catches an invented
+   * filename before a reader does. Never throws; a failed critique just leaves the
+   * original text in place — a plausible-but-unverified claim reaching the reader is the
+   * existing risk, not a new one this introduces.
    */
-  private static async critiqueFixes(
-    fixes: string[], flaggedIndices: number[], evidence: Set<string>,
-  ): Promise<string[]> {
-    if (flaggedIndices.length === 0) return fixes;
+  private static async critiqueTexts(
+    flagged: { key: string; text: string }[], evidence: Set<string>,
+  ): Promise<Map<string, string>> {
+    const corrections = new Map<string, string>();
+    if (flagged.length === 0) return corrections;
 
-    const prompt = `You wrote these fixes for a Lighthouse audit. Each numbered one below cites a file, class or element name that does not appear anywhere in this audit's actual evidence — check each and correct it.
+    const prompt = `You wrote this analysis of a Lighthouse audit. Each keyed line below cites a file, class or element name that does not appear anywhere in this audit's actual evidence — check each and correct it.
 
 ${VOICE}
 
 Evidence this audit actually contains (filenames, selectors, vendor and library names):
 ${[...evidence].slice(0, 60).join(', ') || '(none)'}
 
-Fixes to check:
-${flaggedIndices.map(i => `${i}: ${fixes[i]}`).join('\n')}
+Lines to check:
+${flagged.map(f => `${f.key}: ${f.text}`).join('\n')}
 
-For each: if the name it cites is not in the evidence above, either rewrite it to cite something that IS there, or drop the specific claim and describe the fix in general terms instead. Do not invent a replacement name that also isn't in the evidence, and do not add any other specific number or detail that isn't already in the original sentence or the evidence above — fix only what was wrong, don't embellish the rest.
+For each: if the name it cites is not in the evidence above, either rewrite it to cite something that IS there, or drop the specific claim and describe it in general terms instead. Do not invent a replacement name that also isn't in the evidence, and do not add any other specific number or detail that isn't already in the original sentence or the evidence above — fix only what was wrong, don't embellish the rest.
 
-Answer ONLY with JSON: {"corrected": {${flaggedIndices.map(i => `"${i}": string`).join(', ')}}}`;
+Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).join(', ')}}}`;
 
     const parsed = await this.generate(prompt)
-      .then(raw => this.parseJson<{ corrected?: Record<string, unknown> }>(raw, 'fix critique'))
-      .catch((err: unknown) => { console.error('[AI] Fix critique failed:', err); return null; });
-    if (!parsed?.corrected) return fixes;
+      .then(raw => this.parseJson<{ corrected?: Record<string, unknown> }>(raw, 'text critique'))
+      .catch((err: unknown) => { console.error('[AI] Text critique failed:', err); return null; });
+    if (!parsed?.corrected) return corrections;
 
-    const corrected = [...fixes];
-    for (const i of flaggedIndices) {
-      const fixed = parsed.corrected[String(i)];
-      if (typeof fixed === 'string' && fixed.trim()) corrected[i] = fixed.trim().slice(0, 300);
+    for (const f of flagged) {
+      const fixed = parsed.corrected[f.key];
+      if (typeof fixed === 'string' && fixed.trim()) corrections.set(f.key, fixed.trim().slice(0, 300));
     }
-    return corrected;
+    return corrections;
   }
 
   static async analysePage(
@@ -459,22 +467,38 @@ ${context}`;
       return out;
     };
 
+    const diagnosis = parsed.diagnosis.trim().slice(0, 300);
     const rawFixes = (Array.isArray(parsed.fixes) ? parsed.fixes : [])
       .filter((f): f is string => typeof f === 'string' && !!f.trim())
       .slice(0, 6).map(f => f.trim().slice(0, 300));
+    const rawAudits = pick(parsed.audits, failing.map(a => a.id));
 
-    // Self-critique: only costs a call when a fix actually cites something unverifiable.
+    // Self-critique: one check across every free-text field this response carries — the
+    // diagnosis, each fix, each per-audit explanation — and only one correction call, only
+    // when something actually cites evidence that isn't there. A hallucinated filename is
+    // exactly as misleading in the opening sentence as it is in fix #3.
     const evidence = this.buildEvidenceSet(result);
-    const flagged  = this.findUngroundedFixes(rawFixes, evidence);
-    const fixes    = flagged.length > 0 ? await this.critiqueFixes(rawFixes, flagged, evidence) : rawFixes;
+    const items: { key: string; text: string }[] = [
+      { key: 'diagnosis', text: diagnosis },
+      ...rawFixes.map((text, i) => ({ key: `fix:${i}`, text })),
+      ...Object.entries(rawAudits).map(([id, text]) => ({ key: `audit:${id}`, text })),
+    ];
+    const flagged = this.findUngroundedTexts(items, evidence);
+    const corrections = await this.critiqueTexts(flagged, evidence);
+
+    const fixes = rawFixes.map((text, i) => corrections.get(`fix:${i}`) ?? text);
+    const audits: Record<string, string> = {};
+    for (const [id, text] of Object.entries(rawAudits)) {
+      audits[id] = corrections.get(`audit:${id}`) ?? text;
+    }
 
     return {
-      diagnosis: parsed.diagnosis.trim().slice(0, 300),
+      diagnosis: corrections.get('diagnosis') ?? diagnosis,
       fixes,
       metrics:   pick(parsed.metrics, poor) as AiMetricNotes,
       waterfall: typeof parsed.waterfall === 'string' && parsed.waterfall.trim()
         ? parsed.waterfall.trim().slice(0, 600) : null,
-      audits:    pick(parsed.audits, failing.map(a => a.id)),
+      audits,
     };
   }
 
@@ -508,6 +532,7 @@ Two different things can be true of the same answer, and mixing them up is the m
 
 This tool, PerfScope, is also fair game for the first bullet above — a question about how the TOOL works (not generic web-performance vocabulary) should be answered from what's actually true of it:
 - "Fast" mode runs Lighthouse once — quick, but one run can swing several points on the same page purely from CPU scheduling and network jitter (see the note at the top of the context, if this run was Fast). "Precise" mode runs it several times and reports the MEDIAN, a far more reliable number. If someone asks why their numbers jump around between audits, the answer is: switch to Precise mode — that is the tool's own fix for exactly that, not a bug and not something wrong with their page.
+- Best Practices specifically swings even harder than the performance score does, because several of its audits (console errors, deprecated API usage, third-party cookies) depend on which ad or tracking script happened to fire on that exact page load — ad auctions aren't deterministic, so one run's third-party script throws a console error and fails an audit that a different script simply doesn't trigger the next run. If a question is specifically about Best Practices varying a lot, name this — it's a real, separate reason beyond generic single-run noise, not just a repeat of the Fast-mode explanation.
 - "Targets" are goals set per site on the Targets tab (a floor for the performance score, a ceiling for LCP/TBT/CLS) — meeting them is what the advisor plans toward.
 - A "Real users" / CrUX comparison, when present in the context below, is actual Chrome users over the trailing 28 days — different from, and not more or less "correct" than, this one lab run.
 
@@ -653,6 +678,8 @@ Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail"
 - Refer to specific sites and numbers from the context. Never repeat a number without interpreting it.
 - If the context describes something the user did as a direct result of past advice (an action they took and what happened after), that is the news — lead the headline with it, plainly saying whether it helped, using the exact numbers given. Do not invent this if the context does not mention it.
 - If the context includes a trend toward a target, you may work the pace into a step (how it's moving, roughly how long at that rate) — but only using the numbers given, never a projection you calculated yourself.
+- If the context lists a vendor "also weighing down other pages on this site", say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once, not optimizing this one page.
+- If the context compares real users (CrUX) against this lab run and shows a real gap, mention it — a lab number that looks fine while real users see it worse is itself the finding, not a contradiction to explain away.
 - action: include it ONLY when the step is one of these four things this tool can do, and ONLY with a url from the list below. Otherwise use null — most advice is work done outside this tool.
     "audit"    run an audit of that page now
     "schedule" set up recurring audits for it

@@ -3,6 +3,10 @@ import { AiService } from './ai.service.js';
 import { getOverview } from './overview.service.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { getActionOutcome } from './adviceAction.service.js';
+import { CruxService } from './crux.service.js';
+import { getOtherRoutesVendors } from './crossPageVendors.service.js';
+import { findSitewideVendors } from '../lib/crossPageVendors.js';
+import { compareLabAndField } from '../lib/labFieldComparison.js';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import {
@@ -124,7 +128,10 @@ async function buildSiteContext(
     .find({ userId, url, ...HAS_RESULT_FILTER })
     .sort({ createdAt: -1 })
     .limit(HISTORY_RUNS)
-    .select('scores metrics createdAt')
+    // fullResult.thirdParty/formFactor ride along on all six rows returned (Mongo has no
+    // per-document projection), but only `latest`'s copy — the newest run — is ever read,
+    // for the sitewide-vendor and lab-vs-field checks below.
+    .select('scores metrics createdAt fullResult.thirdParty fullResult.formFactor')
     .lean();
 
   const lines: string[] = [`Page: ${url}`];
@@ -195,6 +202,47 @@ async function buildSiteContext(
   if (forecastLines.length) {
     lines.push('Trend:');
     for (const l of forecastLines) lines.push(`- ${l}`);
+  }
+
+  const latestFull = (latest as unknown as {
+    fullResult?: { thirdParty?: { name?: string; blockingTime?: number }[]; formFactor?: 'mobile' | 'desktop' };
+  } | undefined)?.fullResult;
+
+  // The same "not just this page's problem" check analysePage runs per audit, now at the
+  // scope the advisor actually coaches at: the whole site.
+  const siteVendors = latestFull?.thirdParty ?? [];
+  if (siteVendors.length > 0) {
+    const otherRoutes = await getOtherRoutesVendors(userId, url).catch(() => []);
+    if (otherRoutes.length > 0) {
+      const sitewide = findSitewideVendors(
+        siteVendors.filter((t): t is { name: string; blockingTime: number } => typeof t.name === 'string')
+          .map(t => ({ name: t.name, blockingTime: t.blockingTime ?? 0 })),
+        otherRoutes,
+      );
+      if (sitewide.length > 0) {
+        lines.push('Also weighing down other pages on this site:');
+        for (const v of sitewide) {
+          lines.push(`- ${v.name}: ${v.hereMs}ms here, and ${v.otherRoutes.length} other route${v.otherRoutes.length === 1 ? '' : 's'} (${v.otherRoutes.map(r => `${r.routePath} ${r.blockingMs}ms`).join(', ')})`);
+        }
+      }
+    }
+  }
+
+  // Real users, same lab-vs-field comparison analysePage makes per audit — at the site
+  // scope this reads as "is this page's lab score representative of who actually visits it".
+  const fieldData = await CruxService.get(url, latestFull?.formFactor ?? 'desktop').catch(() => null);
+  if (fieldData && latest?.metrics) {
+    const gaps = compareLabAndField(
+      { lcp: latest.metrics.lcp ?? 0, cls: latest.metrics.cls ?? 0, fcp: latest.metrics.fcp ?? 0 },
+      fieldData,
+    );
+    if (gaps.length > 0) {
+      const fmtVal = (m: string, v: number) => m === 'cls' ? v.toFixed(3) : fmtMs(v);
+      lines.push(`Real users (CrUX, ${fieldData.collectedFrom} to ${fieldData.collectedTo}) vs this lab run:`);
+      for (const g of gaps) {
+        lines.push(`- ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, real p75 ${fmtVal(g.metric, g.fieldP75)} — ${g.gap > 0 ? 'worse' : 'better'} for real users`);
+      }
+    }
   }
 
   return { scope: `one page they track: ${url}`, lines, knownUrls: [url] };
