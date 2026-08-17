@@ -36,6 +36,42 @@ export function extractIdentifiers(text: string): string[] {
   return [...out];
 }
 
+/**
+ * A leading clause a past audit announced its own repeat count with — "For the twenty-
+ * second time, still open, ", "Again, for the seventeenth time, ", "As before, " — before
+ * the fix's actual instruction was fixed to stop generating this exact phrasing (see
+ * ai.service.ts's `repeatTier`). The generation fix does nothing for text that was already
+ * written this way and stored: `fixText` persists verbatim, and every subsequent audit's
+ * "Recommendations given before" context handed the model its own past ordinal back as the
+ * established phrasing to continue, which just re-triggered the same pattern indefinitely.
+ * Stripped wherever this text is read back, so old contamination cannot keep propagating
+ * regardless of when it entered storage — a migration would only clean what already
+ * happened, not what a not-yet-hit code path might still write.
+ */
+const REPEAT_PREAMBLE_PATTERNS: RegExp[] = [
+  /^again,\s*/i,
+  /^for the [a-z-]+ time,\s*/i,
+  /^still open,\s*/i,
+  /^as before,\s*/i,
+  /^once more,\s*/i,
+  /^one more time,\s*/i,
+  /^repeating(?: myself)?,\s*/i,
+];
+
+export function stripRepeatPreamble(fix: string): string {
+  let s = fix.trim();
+  let matched = true;
+  while (matched) {
+    matched = false;
+    for (const re of REPEAT_PREAMBLE_PATTERNS) {
+      const next = s.replace(re, '');
+      if (next !== s) { s = next.trim(); matched = true; }
+    }
+  }
+  if (!s) return fix.trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'to', 'from', 'your', 'you', 'and', 'or', 'of', 'in', 'on', 'for',
   'with', 'that', 'this', 'is', 'are', 'by', 'into', 'so', 'it', 'its', 'so', 'which',
@@ -92,7 +128,7 @@ export async function getRecommendationHistory(
     .lean();
 
   return rows.map(r => ({
-    fix:        r.fixText,
+    fix:        stripRepeatPreamble(r.fixText),
     timesGiven: r.timesGiven,
     resolved:   r.resolvedAt !== null,
   }));
@@ -119,11 +155,10 @@ export async function reconcileRecommendations(
     const url = result.url;
     const pageIdentifiers = buildPageIdentifiers(result);
 
-    const fixMeta = fixes.map(fix => ({
-      fix,
-      fingerprint: fingerprintFix(fix),
-      identifiers: extractIdentifiers(fix),
-    }));
+    const fixMeta = fixes.map(fix => {
+      const clean = stripRepeatPreamble(fix);
+      return { fix: clean, fingerprint: fingerprintFix(clean), identifiers: extractIdentifiers(clean) };
+    });
     const seenThisRun = new Set(fixMeta.map(f => f.fingerprint));
 
     await Promise.all(fixMeta.map(({ fix, fingerprint, identifiers }) =>

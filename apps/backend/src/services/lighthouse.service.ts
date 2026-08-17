@@ -453,7 +453,12 @@ export class LighthouseService extends EventEmitter {
         undefined, artifacts,
       );
       result.formFactor = formFactor ?? 'desktop';
-      if (passes.length > 1) result.measurement = measurement;
+      // Unconditional, matching analyzeStreaming's own `full.measurement = measurement` —
+      // a single-pass session audit needs `{runs: 1, ...}` on the result just as much as
+      // a single-pass non-session one does, so the AI layer's Fast-vs-Precise check
+      // (`!result.measurement || result.measurement.runs <= 1`) has real data instead of
+      // reading a silent `undefined` as "no information" for every session-backed page.
+      result.measurement = measurement;
 
       // A session was injected and Lighthouse still ended up on a login screen:
       // the cookies are stale. Reporting this as a 0-score audit would poison the

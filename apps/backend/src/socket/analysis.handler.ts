@@ -186,7 +186,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
       await runAudit({
         socket, url, userId, projectId,
         measure: (onPartial, analysisId) => savedSession
-          ? lighthouseService.analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, analysisId })
+          ? lighthouseService.analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, runs, analysisId })
           : lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId }),
         expiredMessage: err => err.message,
       });

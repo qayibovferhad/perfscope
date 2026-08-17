@@ -991,6 +991,93 @@ vitals table. CLI's own `lint`/`typecheck`/`test` (16/16) all green, plus
 
 ---
 
+## 4s. §4q's bug 1 fix was incomplete — the contamination was already in storage, 2026-08-17
+
+The user reported the exact same "for the twenty-second time, still open" text again,
+minutes after §4q shipped and the dev server had already reloaded it. Reproduced with a
+read-only probe against the real user's own `AiRecommendation` history for
+testlandau.cubicsbms.com (`userId 6a7c502896aaf2b421fc8be6`, real `timesGiven` up to 24) —
+confirmed the bucketing fix alone does nothing for this page, because the contamination was
+never in the *generation* path at all by the time it's read back.
+
+**Root cause:** `reconcileRecommendations` (`aiRecommendation.service.ts`) stores the
+model's exact generated fix text verbatim in `AiRecommendation.fixText` on every audit.
+Fixes generated *before* §4q's prompt change already contained literal ordinals ("For the
+twenty-second time, still open, you must add..."), and that stored string is handed back to
+every future audit's "Recommendations given before" context unchanged. §4q's prompt fix
+only stops the model from *inventing* new ordinal phrasing going forward — it does nothing
+about a past run's ordinal-laden sentence sitting right there in the context as the
+apparent established phrasing for that finding, which the model then reasonably echoed or
+lightly reworded rather than discarding. A generation-side fix cannot retroactively clean
+data that already contains the bug; the two are independent failure points and both needed
+closing.
+
+**Fix:** `stripRepeatPreamble()` (`aiRecommendation.service.ts`) strips a leading
+repeat-announcement clause — "again,", "for the Nth time,", "still open,", "as before,", and
+a few variants, applied repeatedly until none match — and is now called in two places:
+`getRecommendationHistory()` (read time — heals every already-contaminated row the moment
+it's read, no migration needed, protects against any future contamination source too) and
+`reconcileRecommendations()` (write time — keeps newly stored `fixText` clean, and
+fingerprinting now runs on the cleaned text so a preamble's stray words can't perturb the
+word-signature fallback fingerprint for fixes with no real identifier).
+
+**Measured:** a unit probe ran `stripRepeatPreamble` against the five exact sentences the
+user pasted — all five stripped to the correct clean imperative, byte-for-byte. Then the
+same read-only reproduction (real history, real stored result, no writes) re-run against
+current code: the "Recommendations given before" context now shows clean text with no
+ordinals, and a fresh live `analysePage` call produced fixes reading "As before, you must
+add..." and "Still open from previous reviews, you must eliminate..." — repeats correctly
+flagged as repeats, zero ordinals, zero raw counts. `pnpm build`, `pnpm test`, lint,
+`tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
+## 4t. §4q's bug 2 fix was correct but starved of real data — `runs` never reached
+session-injected audits, 2026-08-17
+
+The user reported the Fast-mode hedge *again* on a genuine Precise-mode run. §4q's prompt
+fix (an explicit "this is already the median of N runs, don't hedge" instruction for the
+`runs > 1` branch) was correct and unchanged — the bug was one level down: the audit
+actually run for this URL was never Precise in the first place.
+
+**Root cause:** `testlandau.cubicsbms.com` has a saved login session on this account (the
+CLAUDE.md-documented same-origin auto-injection: "the target is same-origin with a stored
+[session]"). `socket/analysis.handler.ts`'s `analysis:start` handler computes `runs` from
+`payload.precision` (line 175) but only forwarded it to the non-session branch —
+`analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, analysisId })`
+never received `runs` at all, so `lighthouse.service.ts`'s `injectedSessionAudit` fell back
+to its own default parameter (`runs = 1`). Every audit of a session-backed page ran Fast
+mode regardless of what the user picked in the UI — confirmed live: a real Precise-mode
+socket audit of this exact URL came back with `measurement: undefined` on
+`analysis:complete`. A second, smaller bug rode along: `injectedSessionAudit` only wrote
+`result.measurement` `if (passes.length > 1)`, unlike `analyzeStreaming`'s unconditional
+`full.measurement = measurement` — so even a correctly-single-run session audit left
+`measurement` as `undefined` rather than an explicit `{runs: 1, ...}`, indistinguishable
+from a result that never measured at all.
+
+**Fix:** `analysis.handler.ts` now passes `runs` into both branches of the ternary
+identically. `injectedSessionAudit` now sets `result.measurement` unconditionally, matching
+`analyzeStreaming`. **Not touched:** `auth-audit:start` (the explicit "capture a new login
+session" flow) calls `analyzeWithInjectedSession` without `runs` too, and
+`AuthAuditStartPayload` has no `precision` field at all — that flow was never wired for
+precision selection in the first place, a pre-existing scope gap rather than a regression,
+and out of scope for this specific repro (the user hit the *auto-injection* path, not a
+fresh session capture). Worth closing later if someone reports it.
+
+**Measured:** live, against the real account and this real session-backed URL. Before the
+fix: `analysis:complete` with `precision: 'median'` returned `measurement: undefined`.
+After the fix and a clean server reload: the same request returned
+`measurement: {"runs":3,"scores":[59,86,77],"median":77,"spread":27}` (this page's own load
+is genuinely unstable — the spread is real, not a measurement artifact) and the diagnosis
+opened with no hedge language. `pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4
+workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
 ## 5. Phases 2–6, pointers only (details in PLAN.md)
 
 - **Phase 2 (memory)** — new model `AiRecommendation`; fingerprint = normalised fix text
