@@ -47,8 +47,17 @@ type PartialCallback = (data: CategoryPartial) => void;
  * project they happened to open last, or under none at all. Since the project detail page
  * queries strictly by projectId, such an audit shows up on the wrong site or nowhere.
  *
- * The audited URL is the reliable signal, so derive the project from it and only fall
- * back to the supplied id when no website matches.
+ * The audited URL is the reliable signal, so derive the project from it — a lookup only,
+ * never a create. This first tried falling back to `resolveOrCreateProject` when no
+ * website matched, on the reasoning that "first sight creates the site" is already the
+ * rule everywhere else — but the analyzer is the one place someone deliberately runs a
+ * one-off check on a URL they do *not* own or want tracked (a competitor's page, a client's
+ * site, anything typed in just to see a number), and silently adding it to their Websites
+ * list on read is not what "check this URL" means. `provided` is never trusted either — an
+ * untracked URL's audit is simply untracked (`projectId: undefined`), same as it always
+ * was for a URL with no matching site. Explicit tracking stays exactly that: the Websites
+ * page, the CLI's own "Save website?" prompt before it ever emits `analysis:start`, or a
+ * project-scoped audit whose URL still matches that project.
  */
 async function resolveProjectId(
   userId: string | undefined,
@@ -58,9 +67,9 @@ async function resolveProjectId(
   if (!userId) return provided;
   try {
     const site = await findWebsiteByHost(userId, url);
-    return site ? String(site._id) : provided;
+    return site ? String(site._id) : undefined;
   } catch {
-    return provided;
+    return undefined;
   }
 }
 

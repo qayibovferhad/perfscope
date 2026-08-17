@@ -1078,6 +1078,108 @@ workspaces: all green.
 
 ---
 
+## 4u. Login-wall false positive on plain sites — `wikipedia.org`, 2026-08-17
+
+Not an AI-layer bug, but found while the user was testing §4t's fix on a suggested "stable
+site to measure" — wikipedia.org came back "This page redirected to a login screen", which
+is wrong; Wikipedia has no login wall for reading articles.
+
+**Root cause:** `detectAuthRedirect()` (`lhr-transform.ts`) treated *any* cross-origin
+redirect as auth/SSO ("almost always SSO/auth" per its own old comment) — but
+`https://wikipedia.org` plainly 301s to `https://www.wikipedia.org` (confirmed with
+`curl -I`), and apex→www is a different host, hence a different `origin`, hence flagged.
+The same blanket rule would misfire on any protocol-upgrade, geoIP, or language-subdomain
+redirect landing on a different host — all common, all benign, none related to a login wall.
+
+**Fix:** dropped the cross-origin branch entirely. The one signal that is actually specific
+to a login wall — the destination path itself looking like an auth route
+(`/login`, `/signin`, `/oauth`, `/sso`, …) — is now checked regardless of whether the
+redirect stayed same-origin or not, so a same-origin `/login` bounce and a cross-origin SSO
+bounce to `accounts.example.com/oauth/authorize` are both still caught, while an apex→www,
+protocol, or subdomain hop that doesn't land on an auth-shaped path no longer is.
+
+**Measured:** a unit probe covered 8 cases including the exact wikipedia.org redirect pair
+just observed, a same-origin `/login` bounce, and a cross-origin SSO bounce — all 8 correct.
+Then a live socket audit of `https://wikipedia.org` through the running server:
+`authRedirectDetected: null`, performance score 100. `pnpm build`, `pnpm test`, lint,
+`tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
+## 4v. A stale `projectId` could steal another site's audit, 2026-08-17
+
+Reported live: the user opened the analyzer scoped to testlandau, then — without
+navigating away — retyped the URL box to wikipedia.org and audited that. The wikipedia
+result showed up filed under testlandau's project.
+
+**Root cause:** `AnalyzerPage.tsx` reads `projectId` from the URL's query string
+(`searchParams.get('projectId')`), which only changes on navigation — editing the free-text
+`url` input and clicking Analyze does not touch it. So a project-scoped page visit
+(`/analyzer?projectId=<testlandau>&url=...`) leaves that `projectId` sitting in the query
+string for every subsequent analyze call in the same visit, regardless of what URL is
+actually submitted. The socket handler already had a `resolveProjectId` guard for exactly
+this staleness (its own comment named the risk explicitly), but the guard was incomplete:
+it correctly reassigns the audit when the new URL already belongs to a *different* tracked
+website, but when the new URL had never been tracked before — wikipedia.org, a one-off
+check, anything typed straight into the box — `findWebsiteByHost` finds nothing, and the
+old code fell back to returning the stale `provided` id unchanged, filing a total
+stranger's audit under whatever project the tab happened to be scoped to.
+
+**Fix:** the fallback is now `resolveOrCreateProject(userId, url)` (`auditPipeline.ts`) —
+the same "first sight creates the site" rule every other entry path already uses — instead
+of blindly trusting `provided`. A URL that already has a tracked website still resolves to
+it; a URL that doesn't now gets its own fresh project instead of inheriting someone else's.
+`provided` is only read at all when `userId` is missing (anonymous sessions have no
+projects to resolve or create). The frontend's stale-query-string behavior itself is
+unchanged — this is a backend-only fix, and correctly so: query-string staleness is normal
+navigation behavior, the bug was trusting it for something it can't answer.
+
+**Measured:** a probe simulating the exact reported sequence — create an unrelated
+"stale" website/project for a throwaway account, then emit `analysis:start` for
+wikipedia.org while still attaching that stale project's id (exactly what the leftover
+query string would send) — confirmed the persisted History row's `projectId` is now a
+freshly created project matching wikipedia.org, not the stale one.
+`pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
+## 4w. §4v's fix over-corrected — auto-creating a website was never wanted, 2026-08-17
+
+Immediately after §4v, the user flagged the fix's own side effect: analyzing a URL that
+isn't a tracked website now silently added it as one. Not what they wanted either — a
+one-off check on some other URL shouldn't join the Websites list at all, tracked or not,
+new project or old.
+
+**What changed:** §4v's `resolveProjectId` fallback — call `resolveOrCreateProject` when
+no existing website matches — is reverted to a lookup only. No match now means
+`projectId: undefined`, same as it always meant for a URL nobody tracks; it is not filed
+under the stale id from the query string (§4v's actual bug, still fixed) and not filed
+under a freshly auto-created site either (this turn's fix). A URL that *does* match an
+existing tracked website still correctly resolves to that website's real project —
+§4v's core fix is untouched, only the "nothing matched" branch changed. Explicit tracking —
+the Websites page, the CLI's own "Save website?" prompt, a project-scoped audit whose URL
+still matches — is unaffected; none of those go through this fallback in the first place.
+Left alone: `analyzer.routes.ts` (`POST /api/analyze`), which still auto-creates via
+`resolveOrCreateProject` — that route's own comment says no first-party client uses it any
+more (the extension moved to the socket path this handler covers), so it wasn't the
+surface the user hit and changing it wasn't asked for.
+
+**Measured:** a probe covering both cases in one run, against a throwaway account with two
+pre-existing tracked websites (a "stale" one and a real one, `example.com`): (1) auditing
+wikipedia.org (untracked) while passing the stale website's id as `projectId` — website
+count stayed at 2 (no third one created), and the persisted row's `projectId` was empty; (2)
+auditing `example.com` (tracked) while passing the *same* stale id — the row still correctly
+landed under `example.com`'s own real project, not the stale one. Both passed.
+`pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
 ## 5. Phases 2–6, pointers only (details in PLAN.md)
 
 - **Phase 2 (memory)** — new model `AiRecommendation`; fingerprint = normalised fix text

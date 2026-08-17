@@ -123,13 +123,16 @@ export function detectAuthRedirect(
 ): { finalUrl: string } | undefined {
   if (!requestedUrl || !finalUrl || requestedUrl === finalUrl) return undefined;
   try {
-    const req = new URL(requestedUrl);
     const fin = new URL(finalUrl);
     const authPattern = /\/(login|signin|sign[-_]in|auth|sso|oauth|session\/new|account\/login|users\/sign_in)/i;
-    // Cross-origin redirect is almost always SSO/auth
-    if (req.origin !== fin.origin) return { finalUrl };
-    // Same origin but path changed to an auth route
-    if (req.pathname !== fin.pathname && authPattern.test(fin.pathname)) return { finalUrl };
+    // Used to also flag *any* cross-origin redirect as auth — wikipedia.org → www.wikipedia.org
+    // is exactly that (different host, so a different origin) and has nothing to do with a
+    // login wall; so does an apex→www redirect, a geoIP/language subdomain hop, or a plain
+    // http→https upgrade landing on a different host. The destination path actually looking
+    // like a login route is the one signal that isn't also true of an ordinary redirect,
+    // cross-origin or not — an SSO bounce to a separate accounts domain still lands on a
+    // path like /login or /oauth, same as a same-origin one does.
+    if (authPattern.test(fin.pathname)) return { finalUrl };
   } catch { /* ignore malformed URLs */ }
   return undefined;
 }
