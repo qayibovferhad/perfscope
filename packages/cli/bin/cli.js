@@ -343,6 +343,11 @@ function runSocketAnalysis(apiUrl, token, url, spinner, timeoutMs) {
           if (explanation) audit.aiExplanation = explanation;
         }
       }
+      // Per-vital notes and the load narrative — generated in the same call as `insights`
+      // and shown on the dashboard, but never carried over here before (see
+      // printWaterfallNarrative and the vitals loop in reporter.js).
+      if (data?.metricNotes) done.aiMetricNotes = data.metricNotes;
+      if (data?.waterfall)   done.aiWaterfallNarrative = data.waterfall;
       clearTimeout(graceTimer);
       finish(resolve, done);
     });

@@ -910,6 +910,87 @@ never got in §4f. B-4 — RUM data alongside CrUX. B-5 — verify live field-da
 
 ---
 
+## 4q. Two live bugs found by the user while working, 2026-08-17
+
+Both reported mid-session while the user was actually using the product — same standing
+pattern as §4m: fix on sight, verify live, keep going.
+
+**Bug 1 — repeat fixes read as a scold.** On a page re-audited often, `analysePage`'s
+context handed the model the raw repeat count (`[given ${timesGiven}x, still open]`), and
+on this user's own heavily-re-audited page the model had started echoing it back verbatim
+per fix — "for the twenty-second time, still open", "for the twenty-first time, still
+open" — on every recurring item in the list. **Fix:** a new `repeatTier(timesGiven)`
+collapses the count into one of three phrases (`given once before` / `a few times before` /
+`many times before`) before it ever reaches the prompt — the model has no number left to
+turn into an ordinal. The generation instruction was also tightened: explicitly forbids any
+count or ordinal ("no 'for the Nth time'"), and tells the model to vary which word carries
+the repeat across a response with more than one recurring fix, so a list of five repeats
+doesn't read as five copies of the same sentence.
+
+**Bug 2 — a Precise-mode diagnosis still hedged like a Fast-mode one.** The user reported a
+diagnosis reading "...though this is a single run and could partly be noise..." while
+running Precise (median-of-3) mode, where that caveat is specifically wrong — a probe
+forcing `result.measurement.runs = 3` and a real 15-point forced score gap confirmed the
+condition gating that phrase is correctly false in this case (a live two-run Precise probe
+against example.com never produced it either), so the model was reaching for that hedge on
+its own initiative rather than being told to. **Fix:** the prompt's `runs > 1` branch, which
+previously contributed nothing (empty string), now carries an explicit counter-instruction —
+"this run is already the noise-resistant reading, state the movement plainly, no 'single
+run' hedge" — closing the gap regardless of whether the model was following the letter of
+the missing instruction or general Lighthouse-variance training knowledge.
+
+**Measured:** both fixes verified live. The bucketing probe printed all three tiers
+correctly with zero raw numbers in the context string. A live `analysePage` call (forced
+`measurement.runs = 3` + a forced previous-run gap + a fake `timesGiven: 21` history entry,
+run against a real stored testlandau.cubicsbms.com result) produced fixes reading "...which
+is a hard change to make on this architecture" and "...as before..." — varied phrasing, no
+ordinals — and a diagnosis with no hedge language despite the forced score movement.
+`pnpm build`, `pnpm test`, lint, `tsc --noEmit` in all 4 workspaces: all green.
+
+**Left uncommitted per standing rule.**
+
+---
+
+## 4r. "Mərhələ 7" plan, item A-3 — the CLI report gets the fields it was dropping, 2026-08-17
+
+§4f (phase 6) put an AI card in the extension popup and fixed the CLI so per-audit
+`aiExplanation` reached the terminal report — but `analysePage` also returns `metricNotes`
+(one sentence per weak vital) and `waterfall` (how the load actually went), and neither ever
+reached `packages/cli`. They rode over the wire on the same `analysis:insights` event the
+CLI already listens to; the CLI just never read those two keys off it.
+
+**What shipped:** `bin/cli.js`'s `analysis:insights` handler now also merges
+`data.metricNotes → done.aiMetricNotes` and `data.waterfall → done.aiWaterfallNarrative`,
+same shape as the existing `auditExplanations` merge right above it. `reporter.js` prints
+`aiMetricNotes[key]` as a dim wrapped line under each vital row it has something to say
+about, and gained `printWaterfallNarrative()` — a new "HOW THIS PAGE LOADED" section between
+the headline insight and the per-audit breakdown, exported standalone the same way
+`printInsights`/`printAuditExplanations` are (for `perfscope ci`, though ci's own budget-fail
+output deliberately stays terse — this is the full-report path only, matching how §4f drew
+that same line for `auditExplanations`).
+
+**Extension popup: deliberately left alone.** `AiInsightsCard.tsx`'s own comment from §4f
+already reasoned through this — "the popup is ~360px wide and closes the moment it loses
+focus, so this is the one sentence someone glancing at it actually reads" — and ships a
+direct "View full report in PerfScope →" link for anyone who wants the rest. Revisiting a
+documented, deliberate scope call from the same phase needs a real reason, and cramming
+per-vital notes or a waterfall paragraph into a popup that size isn't one.
+
+**Measured:** a live socket audit of testlandau.cubicsbms.com through the real merge logic
+(mirrored from `bin/cli.js`, since exercising the interactive CLI binary itself needs a TTY
+this environment doesn't have) produced `aiMetricNotes` for `fcp`/`lcp`/`cls`/`si`/`tti` and
+a populated `aiWaterfallNarrative`, fed straight through the real `printReport()` — the "HOW
+THIS PAGE LOADED" section and the per-vital notes both rendered correctly, aligned under the
+vitals table. CLI's own `lint`/`typecheck`/`test` (16/16) all green, plus
+`pnpm build`/`pnpm test`/lint/`tsc --noEmit` across all 4 workspaces.
+
+**Left uncommitted per standing rule.**
+
+**Next:** B-4 — RUM data alongside CrUX. B-5 — verify live field-data citation once
+`CRUX_API_KEY` exists. C-6 — the ask box beyond the analyzer (Compare, History detail).
+
+---
+
 ## 5. Phases 2–6, pointers only (details in PLAN.md)
 
 - **Phase 2 (memory)** — new model `AiRecommendation`; fingerprint = normalised fix text
