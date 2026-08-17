@@ -87,7 +87,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <StorageBanner />
 
         <div className="flex-1 flex min-h-0">
-          <main ref={mainRef} className="flex-1 overflow-y-auto">{children}</main>
+          <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">{children}</main>
           {/* Its own column rather than an overlay: a panel that sits on top of the page
               competes with it, and every page caps its width well short of the viewport. */}
           <AdvisorPanel />
