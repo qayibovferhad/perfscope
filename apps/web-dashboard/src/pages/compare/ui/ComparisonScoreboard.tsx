@@ -1,12 +1,24 @@
 import { Trophy } from 'lucide-react';
 import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, sideOf } from './sides';
-import type { AnalysisResult, CoreWebVitals } from '@/entities/analysis';
+import type { CoreWebVitals } from '@/entities/analysis';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
+
+/**
+ * Everything this widget actually reads off a side — narrower than the full
+ * `AnalysisResult` deliberately, so the same component can render from a completed audit
+ * OR from a still-streaming side's `performance`-category partial (same fields, both
+ * shapes carry them) without a second, parallel "early" version of this layout to keep in
+ * sync with this one.
+ */
+export interface ScoreboardSide {
+  scores:  { performance: number };
+  metrics: Pick<CoreWebVitals, 'lcp' | 'fcp' | 'tbt' | 'si' | 'cls'>;
+}
 
 const CIRC = 2 * Math.PI * 72; // r=72 → ≈ 452.4
 
-const METRICS: { key: keyof CoreWebVitals; abbr: string; label: string; fmt: (v: number) => string }[] = [
+const METRICS: { key: keyof ScoreboardSide['metrics']; abbr: string; label: string; fmt: (v: number) => string }[] = [
   { key: 'lcp', abbr: 'LCP', label: 'Largest Contentful Paint', fmt: fmtMs  },
   { key: 'fcp', abbr: 'FCP', label: 'First Contentful Paint',   fmt: fmtMs  },
   { key: 'tbt', abbr: 'TBT', label: 'Total Blocking Time',      fmt: fmtMs  },
@@ -153,7 +165,7 @@ function MetricBar({ abbr, label, tVal, cVal, fmt }: {
 export function ComparisonScoreboard({
   target, competitor,
 }: {
-  target: AnalysisResult; competitor: AnalysisResult;
+  target: ScoreboardSide; competitor: ScoreboardSide;
 }) {
   const tScore = Math.round(target.scores.performance);
   const cScore = Math.round(competitor.scores.performance);
