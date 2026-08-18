@@ -132,7 +132,9 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
       </section>
 
       <AiCard text={data.aiInsights} pending={aiPending} />
-      {askEnabled && !aiPending && data.aiInsights && <AskAboutAudit analysisId={data.id} />}
+      {askEnabled && !aiPending && data.aiInsights && (
+        <AskAboutAudit subjects={[{ key: 'page', label: 'this audit', analysisId: data.id }]} />
+      )}
 
       <section>
         <SectionTitle>Core Web Vitals</SectionTitle>

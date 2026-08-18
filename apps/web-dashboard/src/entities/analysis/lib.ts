@@ -1,4 +1,7 @@
-import { rateScore, rateVital, RATING_COLOR, type ScoreRating, type VitalKey, type TimelineFrame } from '@perfscope/shared';
+import {
+  rateScore, rateVital, RATING_COLOR,
+  type ScoreRating, type VitalKey, type TimelineFrame, type AnalysisResult, type AnalysisInsightsPayload,
+} from '@perfscope/shared';
 
 // Hex literals (not CSS vars) because callers derive alpha variants ("`${color}18`");
 // the values are the shared RATING_COLOR palette, aliased for existing call sites.
@@ -26,6 +29,37 @@ export const vitalBand = (key: VitalKey, value: number): ScoreBand =>
 export function scoreColor(score: number): string {
   const band = scoreBand(score);
   return band === 'good' ? SCORE_GOOD : band === 'warn' ? SCORE_WARN : SCORE_BAD;
+}
+
+/**
+ * Folds an `analysis:insights` payload onto the result it belongs to. Shared by the
+ * analyzer's own socket hook and the compare page's — both attach the same `onInsights`
+ * event, and the merge (insights text, per-resource advice, per-audit explanations, metric
+ * notes, waterfall narrative) has to stay identical or the two surfaces would show a
+ * differently-assembled result for the same underlying audit.
+ */
+export function mergeAnalysisInsights(prev: AnalysisResult, payload: AnalysisInsightsPayload): AnalysisResult {
+  const next: AnalysisResult = { ...prev, aiInsights: payload.insights || prev.aiInsights };
+
+  const advice = payload.advice;
+  if (advice && next.resources) {
+    next.resources = {
+      ...next.resources,
+      requests: next.resources.requests.map((r) =>
+        advice[r.url] ? { ...r, advice: advice[r.url] } : r),
+    };
+  }
+
+  const explanations = payload.auditExplanations;
+  if (explanations) {
+    next.audits = next.audits.map((a) =>
+      explanations[a.id] ? { ...a, aiExplanation: explanations[a.id] } : a);
+  }
+
+  if (payload.metricNotes) next.aiMetricNotes = payload.metricNotes;
+  if (payload.waterfall)   next.aiWaterfallNarrative = payload.waterfall;
+
+  return next;
 }
 
 /** Last filmstrip frame at or before `ms` — the frame a scrubber position shows. */

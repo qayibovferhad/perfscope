@@ -3,17 +3,26 @@ import type { AsyncStatus } from '@/shared/lib/types';
 import { startCompareAnalysis, startCompareAuthAudit } from '../api/compareSocket';
 import type { AuditFormFactor } from '@perfscope/shared';
 import type { AuditPrecision } from '@/entities/analysis';
-import type { AnalysisResult, AnalysisProgress } from '@/entities/analysis';
+import { mergeAnalysisInsights } from '@/entities/analysis';
+import type { AnalysisResult, AnalysisProgress, AnalysisInsightsPayload } from '@/entities/analysis';
 
+/**
+ * Where `data` came from — 'live' is a real socket run, backed by a `History` row a
+ * question can be asked against; 'external' is an uploaded JSON file or a preloaded pair
+ * (`consumeComparePreload`), which may carry an id with no corresponding row this user
+ * owns. Ask-about-audit gates on this so it never targets an id that isn't really theirs.
+ */
+export type ComparisonSideOrigin = 'live' | 'external';
 
 interface State {
   status:   AsyncStatus;
   data:     AnalysisResult | null;
   progress: AnalysisProgress | null;
   error:    string | null;
+  origin:   ComparisonSideOrigin | null;
 }
 
-const INITIAL: State = { status: 'idle', data: null, progress: null, error: null };
+const INITIAL: State = { status: 'idle', data: null, progress: null, error: null, origin: null };
 
 export function useComparisonSide() {
   const [state, setState] = useState<State>(INITIAL);
@@ -22,25 +31,33 @@ export function useComparisonSide() {
   const callbacks = {
     onProgress: (progress: AnalysisProgress) => setState((prev) => ({ ...prev, progress })),
     onPartial:  () => {},
-    onComplete: (data: AnalysisResult)        => setState({ status: 'success', data, progress: null, error: null }),
-    onError:    (error: string)               => setState({ status: 'error', error, data: null, progress: null }),
+    onComplete: (data: AnalysisResult) =>
+      setState({ status: 'success', data, progress: null, error: null, origin: 'live' }),
+    // Gemini's commentary, arriving after onComplete — same merge the analyzer's own
+    // socket hook uses. Without this, `data.aiInsights` never lands on a compare side.
+    onInsights: (payload: AnalysisInsightsPayload) =>
+      setState((prev) =>
+        prev.data && prev.data.id === payload.analysisId
+          ? { ...prev, data: mergeAnalysisInsights(prev.data, payload) }
+          : prev),
+    onError:    (error: string) => setState({ status: 'error', error, data: null, progress: null, origin: null }),
   };
 
   const analyze = useCallback((url: string, formFactor?: AuditFormFactor, precision?: AuditPrecision) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', data: null, progress: null, error: null });
+    setState({ status: 'loading', data: null, progress: null, error: null, origin: null });
     cleanupRef.current = startCompareAnalysis(url, callbacks, formFactor, precision);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startAuthAudit = useCallback((sessionId: string, url: string, formFactor?: AuditFormFactor) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', data: null, progress: null, error: null });
+    setState({ status: 'loading', data: null, progress: null, error: null, origin: null });
     cleanupRef.current = startCompareAuthAudit(sessionId, url, callbacks, formFactor);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setData = useCallback((data: AnalysisResult) => {
     cleanupRef.current?.();
-    setState({ status: 'success', data, progress: null, error: null });
+    setState({ status: 'success', data, progress: null, error: null, origin: 'external' });
   }, []);
 
   const reset = useCallback(() => {
@@ -55,6 +72,7 @@ export function useComparisonSide() {
     reset,
     data:      state.data,
     progress:  state.progress,
+    origin:    state.origin,
     isIdle:    state.status === 'idle',
     isLoading: state.status === 'loading',
     isSuccess: state.status === 'success',

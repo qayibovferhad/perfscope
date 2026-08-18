@@ -1180,6 +1180,93 @@ landed under `example.com`'s own real project, not the stale one. Both passed.
 
 ---
 
+## 4x. "Mərhələ 7" plan, items B-4 and C-6, plus a timeout fix, 2026-08-18
+
+Three independent pieces of the "Mərhələ 7" backlog (§4o/4p's "Next" list), done together.
+
+**Timeout.** `generate()`'s `timeoutMs` was a real, working `Promise.race` — but abandoning
+the *await* while the underlying `model.generateContent` call kept running server-side, and
+only `getAlertNote` actually passed one. Switched to the Gemini SDK's own native
+`{ timeout }` request option (`model.generateContent(prompt, { timeout: opts.timeoutMs })`),
+which genuinely aborts the outbound request via the SDK's own `AbortController`. Gave
+`analysePage`/`getAdvice`/`answerQuestion` a shared `DEEP_CALL_TIMEOUT_MS` default — first
+tried 20s, which turned out to be **wrong**: a live run against `analysePage`'s own heaviest
+fixture (15 failing audits, full phase-1 details, resource diff, cross-page vendors) took
+22.5s legitimately and got killed as if it were a hang. Raised to 45s; the same fixture then
+completed normally at 3.9s (the 22.5s run was real but not typical). Also added a `.catch`
+to `askQuestion.service.ts`'s `answerQuestion` call, the one call site with no error handling
+at all. **Lesson for next time a timeout gets tuned here:** measure the heaviest real prompt
+before picking a number — this codebase's own "more depth" additions (§4h–4l) keep making
+`analysePage`'s prompt bigger, so whatever's generous today may not be tomorrow.
+
+**C-6, Compare.** The backend (`askAboutAudit`, `/history/:id/ask`) was already agnostic to
+which UI surface calls it — no backend change needed. The real gap: `useComparisonSide.ts`
+never wired `onInsights` at all (a deliberate decision at the time, per its own comment —
+"the compare page's short-lived sockets have no panel to put it in"), so `data.aiInsights`
+never landed on a compare side and the existing `askEnabled && data.aiInsights` gate would
+never have fired. Fixed by extracting the merge logic `useAnalysis.ts`'s `applyInsights` had
+inline into a shared pure function, `mergeAnalysisInsights` (`entities/analysis/lib.ts`), and
+calling it from both hooks. Two floating `AskAboutAudit` buttons stacked in the same bottom-
+left corner (per the existing doc comment, bottom-right is reserved for the advisor's
+toggle) would have overlapped, so `AskAboutAudit` was reshaped from a single `analysisId`
+prop to a `subjects: {key,label,analysisId}[]` array — 1 subject (Analyzer's own usage,
+unchanged) renders exactly as before; 2 subjects (Compare) adds a small tab strip, one
+button, one popup, switching which page's evidence a question is answered against. Gated to
+`origin === 'live'` (a new field on `useComparisonSide`'s state) so an uploaded/preloaded
+side, whose id may not be a `History` row this user owns, never gets a working-looking Ask
+button that 404s.
+
+**B-4, RUM alongside CrUX.** The RUM pipeline (beacon, `RumEvent`, p75 aggregation, the
+Field-data tab) was already fully built and in production use — the AI layer just never
+called it. Added `getRumSummaryForUrl(userId, url, formFactor)` (`rum.service.ts`): resolves
+the URL to the user's tracked `Website` via the existing `findWebsiteByHost`, tries a
+path-scoped `RumSummary` first, falls back to site-wide when the exact path has no samples
+(mirrors CrUX's own url→origin fallback), `null` when there's no tracked site or no traffic
+at all. `RumMetricSummary` was already deliberately shaped as `CruxMetric` plus a `samples`
+count (see its doc comment in `packages/shared/src/types/rum.ts`) specifically so RUM could
+reuse the CrUX comparison path rather than a second one that could drift — added
+`rumAsFieldData(rum, url): CruxData` (`labFieldComparison.ts`) to do exactly that, so
+`compareLabAndField` runs unmodified against either source. Wired into
+`ai.service.ts` (`analysePage`/`answerQuestion`, a new "Your own visitors" context block next
+to CrUX's "Real users" one, plus one prompt instruction on weighing the two against each
+other when both are present), `auditPipeline.ts`'s `enrichWithAi` (deep-depth only, same
+gate as `previous`/`fieldData`), `askQuestion.service.ts`, and `advice.service.ts`'s
+`buildSiteContext` (the advisor).
+
+**Measured:**
+- Timeout: live `analysePage` runs against the testlandau `/requests` fixture — one abort at
+  the old 20s threshold (real, not a bug: the call genuinely took 22.5s), zero aborts at 45s
+  across a second run at 3.9s. `getAdvice` verified live via `e2e/advisor.probe.mjs` (all
+  checks pass) — confirms the new timeout path doesn't break the advisor's normal case.
+- C-6: `pnpm build`/`test`/lint all green; not visually verified in a browser (declined this
+  session, same limitation as §4d's frontend box) — before relying on the Compare tab
+  switcher being right, open `/compare` with two real audits and confirm the two buttons
+  don't collide and both answer against their own side.
+- B-4: no real RUM traffic exists in this environment yet (3 sites have a `rumKey` issued,
+  0 `RumEvent` rows on any of them — snippet not embedded anywhere live), so — same honest
+  gap as CrUX's own §4k — live model *citation* of real RUM data is unverified. What was
+  verified: `getRumSummaryForUrl`'s path→site fallback and null-on-no-traffic behavior
+  (direct calls), and the full pipeline with **synthetic** `RumEvent` rows inserted for
+  testlandau (real site, cleaned up after in `finally`) — `buildPageContext`'s "Your own
+  visitors" block rendered the correct numbers (lab LCP 3.51s vs RUM p75 6.05s, correctly
+  flagged; CLS and FCP correctly excluded, both under the 25% gap threshold) — confirmed by
+  reading the raw context string directly. The live `analysePage` call itself did not
+  mention the RUM gap in its diagnosis/fixes that run — not a wiring bug, a reasonable model
+  choice: this fixture's dominant issue (2.6s of blocking main-thread JS) filled the limited
+  fix slots first. Re-check once real RUM traffic exists on a page whose data actually
+  changes the answer.
+- `pnpm build`, `pnpm test`, `pnpm --filter @perfscope/web-dashboard lint` (0 errors),
+  `tsc --noEmit` in backend + web-dashboard: all green throughout.
+
+**Left uncommitted per standing rule.**
+
+**Next:** the two Compare-visual and RUM-live-citation gaps just above. Otherwise, B-5
+(verify CrUX citation once `CRUX_API_KEY` exists) and the rest of C-6 (History detail page
+doesn't exist as a standalone route — deliberately not built this round, see the C-6 section
+above) are what's left of "Mərhələ 7".
+
+---
+
 ## 5. Phases 2–6, pointers only (details in PLAN.md)
 
 - **Phase 2 (memory)** — new model `AiRecommendation`; fingerprint = normalised fix text

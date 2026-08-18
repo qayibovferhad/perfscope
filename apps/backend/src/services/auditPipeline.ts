@@ -8,6 +8,7 @@ import { checkBudgets } from './budget.service.js';
 import { checkRegressions } from './regression.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
+import { getRumSummaryForUrl } from './rum.service.js';
 import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
@@ -107,12 +108,19 @@ export async function enrichWithAi(
     ? await getOtherRoutesVendors(userId, result.url).catch(() => [])
     : [];
 
+  // This site's own visitors, when it has a RUM snippet installed — a second, independent
+  // field reading next to CrUX's public one. Scoped to the owner's own tracked site, so
+  // (unlike CrUX) it needs a userId, not just a URL.
+  const rumData = depth === 'deep' && userId
+    ? await getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null)
+    : null;
+
   // One Promise.all, so the deep work costs the same wall time as the standard path — and
   // each carries its own catch, so a failing prompt cannot take the others (or the audit)
   // with it.
   const [analysis, adviceMap] = await Promise.all([
     depth === 'deep'
-      ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors).catch((err: unknown) => {
+      ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors, rumData).catch((err: unknown) => {
           console.error('[AI] Page analysis failed:', err);
           return null;
         })

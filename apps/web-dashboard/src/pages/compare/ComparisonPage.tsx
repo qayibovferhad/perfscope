@@ -15,6 +15,7 @@ import { SideInputBar } from '@/features/compare';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
 import { DeepComparison } from './ui/DeepComparison';
 import { AiCard } from '@/shared/ui/ai-card';
+import { AskAboutAudit, type AskSubject } from '@/features/analyzer';
 import { PageHeader } from '@/shared/ui/page';
 import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
@@ -62,6 +63,18 @@ export function ComparisonPage() {
 
   const isRunning  = target.isLoading || competitor.isLoading;
   const bothLoaded = target.isSuccess  && competitor.isSuccess;
+
+  // Ask-about-audit, per side: only for a side that came from a real socket run (an
+  // uploaded/preloaded result's id may not be a `History` row this user owns) and only
+  // once its own AI pass has actually landed — same gate the analyzer page itself uses.
+  const askSubjects: AskSubject[] = [
+    target.origin === 'live' && target.data?.aiInsights
+      ? { key: 'target', label: 'Your page', analysisId: target.data.id }
+      : null,
+    competitor.origin === 'live' && competitor.data?.aiInsights
+      ? { key: 'competitor', label: 'Competitor', analysisId: competitor.data.id }
+      : null,
+  ].filter((s): s is AskSubject => s !== null);
 
   useEffect(() => {
     if (bothLoaded && target.data && competitor.data && !savedRef.current) {
@@ -275,6 +288,8 @@ export function ComparisonPage() {
           <WaterfallComparison target={target.data} competitor={competitor.data} />
         )}
       </AnimatePresence>
+
+      {askSubjects.length > 0 && <AskAboutAudit subjects={askSubjects} />}
     </Page>
   );
 }

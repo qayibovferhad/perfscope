@@ -4,6 +4,7 @@ import {
   type RumTrend, type RumTrendPoint, type AuditFormFactor,
 } from '@perfscope/shared';
 import { RumEvent } from '../models/RumEvent.model.js';
+import { findWebsiteByHost } from './websiteLookup.js';
 import type { PipelineStage, Types } from 'mongoose';
 
 /**
@@ -122,6 +123,32 @@ export async function getRumSummary(query: RumQuery): Promise<RumSummary> {
     pageViews: Number(row['pageViews'] ?? 0),
     metrics,
   };
+}
+
+/**
+ * The AI layer's entry point: resolve a plain audited URL to the user's own tracked site
+ * and its real-visitor data, or `null` when there is nothing to add (no tracked site, or
+ * a tracked site with no snippet installed yet / no traffic in the window).
+ *
+ * Scoped to this exact path first — same "URL beats origin" preference CrUX's own
+ * lookup uses — and falls back to the whole site only when the path itself has no
+ * samples, rather than silently reporting a site-wide number as if it were page-specific.
+ */
+export async function getRumSummaryForUrl(
+  userId: string, url: string, formFactor?: AuditFormFactor,
+): Promise<RumSummary | null> {
+  const site = await findWebsiteByHost(userId, url);
+  if (!site) return null;
+
+  const path = (() => { try { return new URL(url).pathname; } catch { return undefined; } })();
+
+  if (path) {
+    const scoped = await getRumSummary({ websiteId: site._id, path, device: formFactor, days: 7 });
+    if (scoped.pageViews > 0) return scoped;
+  }
+
+  const sitewide = await getRumSummary({ websiteId: site._id, device: formFactor, days: 7 });
+  return sitewide.pageViews > 0 ? sitewide : null;
 }
 
 /** Busiest paths in the window, so the dashboard can point at where the traffic is. */

@@ -6,7 +6,8 @@ import { getActionOutcome } from './adviceAction.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { findSitewideVendors } from '../lib/crossPageVendors.js';
-import { compareLabAndField } from '../lib/labFieldComparison.js';
+import { compareLabAndField, rumAsFieldData } from '../lib/labFieldComparison.js';
+import { getRumSummaryForUrl } from './rum.service.js';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import {
@@ -241,6 +242,23 @@ async function buildSiteContext(
       lines.push(`Real users (CrUX, ${fieldData.collectedFrom} to ${fieldData.collectedTo}) vs this lab run:`);
       for (const g of gaps) {
         lines.push(`- ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, real p75 ${fmtVal(g.metric, g.fieldP75)} — ${g.gap > 0 ? 'worse' : 'better'} for real users`);
+      }
+    }
+  }
+
+  // A second, independent field reading — this account's own visitors, when they have a
+  // RUM snippet installed. Same comparison as CrUX above, just against a different source.
+  const rumData = await getRumSummaryForUrl(userId, url, latestFull?.formFactor).catch(() => null);
+  if (rumData && latest?.metrics) {
+    const gaps = compareLabAndField(
+      { lcp: latest.metrics.lcp ?? 0, cls: latest.metrics.cls ?? 0, fcp: latest.metrics.fcp ?? 0 },
+      rumAsFieldData(rumData, url),
+    );
+    if (gaps.length > 0) {
+      const fmtVal = (m: string, v: number) => m === 'cls' ? v.toFixed(3) : fmtMs(v);
+      lines.push(`Your own visitors (RUM, last 7 days, ${rumData.pageViews} page views) vs this lab run:`);
+      for (const g of gaps) {
+        lines.push(`- ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, your visitors' p75 ${fmtVal(g.metric, g.fieldP75)} — ${g.gap > 0 ? 'worse' : 'better'} for them`);
       }
     }
   }

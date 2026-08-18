@@ -4,19 +4,29 @@ import { config } from '../config/index.js';
 import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
 import type {
   AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
-  CoreWebVitals, CruxData,
+  CoreWebVitals, CruxData, RumSummary,
 } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
 import { extractIdentifiers } from './aiRecommendation.service.js';
 import type { PreviousRun } from './previousRun.service.js';
 import { diffResources, resourceDiffHasChanges } from '../lib/resourceDiff.js';
 import { attributeLongTasks } from '../lib/longTaskAttribution.js';
-import { compareLabAndField } from '../lib/labFieldComparison.js';
+import { compareLabAndField, rumAsFieldData } from '../lib/labFieldComparison.js';
 import { findSitewideVendors, type OtherRouteVendors } from '../lib/crossPageVendors.js';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
 const CACHE_MAX    = 300;
+
+/**
+ * Bounds the calls a person is actually waiting behind (analyzer diagnosis, the advisor,
+ * an asked question) so a hung Gemini request can't leave a skeleton up forever — measured
+ * once at ~10 minutes with no timeout at all. NOT a tight SLA: `analysePage`'s own heaviest
+ * measured fixture (15 failing audits, full details + resource diff + cross-page vendors)
+ * took 22.5s legitimately — a tighter bound killed that real, successful answer as if it
+ * were a hang. This only needs to catch an actual stall, so it stays well above real latency.
+ */
+const DEEP_CALL_TIMEOUT_MS = 45_000;
 
 /**
  * How every prompt in this file is told to write.
@@ -82,13 +92,11 @@ export class AiService {
     if (hit && hit.expiresAt > Date.now()) return hit.text;
 
     const model = this.getModel();
-    const call  = model.generateContent(prompt).then(r => r.response.text());
-
-    const raw = opts.timeoutMs === undefined ? await call : await Promise.race([
-      call,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Gemini timed out after ${opts.timeoutMs}ms`)), opts.timeoutMs).unref()),
-    ]);
+    // The SDK's own `timeout` option aborts the underlying fetch; a `Promise.race` around an
+    // un-cancelled call only abandons the wait while the request keeps running server-side.
+    const requestOptions = opts.timeoutMs === undefined ? undefined : { timeout: opts.timeoutMs };
+    const result = await model.generateContent(prompt, requestOptions);
+    const raw = result.response.text();
 
     // Models fence JSON even when told not to; strip it once, here, for everyone.
     const text = raw.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
@@ -140,6 +148,7 @@ export class AiService {
     history?: RecommendationHistoryEntry[] | null,
     fieldData?: CruxData | null,
     otherRoutesVendors?: OtherRouteVendors[] | null,
+    rumData?: RumSummary | null,
   ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[]; hasSitewideVendors: boolean } {
     const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
       .filter(k => k in result.metrics);
@@ -283,8 +292,31 @@ export class AiService {
         })()
       : '';
 
+    // Your own visitors, not the public Chrome sample — a second, independent field
+    // reading, when this site has its own RUM snippet installed. `RumMetricSummary`
+    // deliberately carries the same p75/bucket shape `CruxMetric` does (see
+    // packages/shared/src/types/rum.ts), so the exact comparison logic CrUX uses above
+    // runs unmodified here; only the label and the sample count differ.
+    const rumComparison = rumData
+      ? (() => {
+          const asField = rumAsFieldData(rumData, result.url);
+          const gaps = compareLabAndField(
+            { lcp: result.metrics.lcp, cls: result.metrics.cls, fcp: result.metrics.fcp },
+            asField,
+          );
+          if (gaps.length === 0) return '';
+          const fmtVal = (metric: string, v: number) => metric === 'cls' ? v.toFixed(3) : fmtMs(v);
+          const lines = gaps.map(g => {
+            const dir = g.gap > 0 ? 'worse' : 'better';
+            const samples = rumData.metrics[g.metric]?.samples ?? 0;
+            return `  ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, your own visitors' p75 ${fmtVal(g.metric, g.fieldP75)} (${samples} samples) — ${dir} for them`;
+          });
+          return `\nYour own visitors (RUM, ${rumData.scope === 'path' ? 'this page' : 'site-wide'}, last 7 days, ${rumData.pageViews} page views) vs this lab run:\n${lines.join('\n')}\n`;
+        })()
+      : '';
+
     const context = `URL: ${result.url}
-${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
+${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}${rumComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
 ${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
 ${libraries ? `Libraries on the page: ${libraries}` : ''}
@@ -437,9 +469,13 @@ Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).j
     /** The latest audited state of this user's other tracked routes on the same host —
      *  what lets a vendor be named as a site-wide problem, not just this page's. */
     otherRoutesVendors?: OtherRouteVendors[] | null,
+    /** This site's own real-visitor data, when a RUM snippet is installed and has traffic
+     *  for this page (or the site, as a fallback) — independent of, and may disagree
+     *  with, CrUX's public sample. */
+    rumData?: RumSummary | null,
   ): Promise<AiPageAnalysis | null> {
     const { context, failing, poor, hasSitewideVendors } =
-      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors);
+      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData);
     const s = result.scores;
     const weakCategories = [
       s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
@@ -453,7 +489,7 @@ ${VOICE}
 
 Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
 
-${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).${!result.measurement || result.measurement.runs <= 1 ? ` This run was a single sample (Fast mode, see the note at the top of the context) — hedge the movement claim accordingly ("dropped to X — though this is a single run and could partly be noise") rather than stating it as a settled fact, and suggest a Precise-mode re-audit when the movement is the main point of the diagnosis.` : ` This run is the median of ${result.measurement.runs} runs (Precise mode, see the note at the top of the context) — that already IS the noise-resistant reading, so state the movement plainly, with no "single run", "could be noise" or similar hedge; that caveat belongs only to a Fast-mode single sample, not this one.`}\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}${fieldData ? ` If "Real users" below shows a real gap from this lab run, mention it — a lab number that looks fine while real users see it worse is itself the finding, and probably means their actual devices or networks are weaker than this run's simulated conditions, not that this run is wrong.` : ''}${hasSitewideVendors ? ` If "Also weighing down other pages you track" below lists a vendor, say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once rather than optimizing this one page.` : ''}
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).${!result.measurement || result.measurement.runs <= 1 ? ` This run was a single sample (Fast mode, see the note at the top of the context) — hedge the movement claim accordingly ("dropped to X — though this is a single run and could partly be noise") rather than stating it as a settled fact, and suggest a Precise-mode re-audit when the movement is the main point of the diagnosis.` : ` This run is the median of ${result.measurement.runs} runs (Precise mode, see the note at the top of the context) — that already IS the noise-resistant reading, so state the movement plainly, with no "single run", "could be noise" or similar hedge; that caveat belongs only to a Fast-mode single sample, not this one.`}\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}${fieldData ? ` If "Real users" below shows a real gap from this lab run, mention it — a lab number that looks fine while real users see it worse is itself the finding, and probably means their actual devices or networks are weaker than this run's simulated conditions, not that this run is wrong.` : ''}${rumData ? ` "Your own visitors" below is a second, independent field reading — this site's own traffic, not the public Chrome sample "Real users" is. Weigh it at least as heavily as CrUX, since it is the account's own data; if the two disagree, say so plainly rather than picking one silently, and if only "Your own visitors" is present, treat it exactly as you would a CrUX gap.` : ''}${hasSitewideVendors ? ` If "Also weighing down other pages you track" below lists a vendor, say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once rather than optimizing this one page.` : ''}
 ${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given, do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it says "given a few times" or "given many times", go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never count or name how many times it's been given — no "for the Nth time", no ordinals, no numbers at all; the reader wants to know it's still open, not be scolded with a tally. And if more than one fix in this response is a repeat, don't open every one of them the same way — vary which word carries it ("again" for one, "still open" for another, folded into the sentence for a third) so the list doesn't read like a form letter.\n` : ''}
 
 Answer ONLY with JSON:
@@ -469,7 +505,7 @@ ${context}`;
 
     const parsed = this.parseJson<{
       diagnosis?: unknown; fixes?: unknown; metrics?: unknown; waterfall?: unknown; audits?: unknown;
-    }>(await this.generate(prompt), 'page analysis');
+    }>(await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS }), 'page analysis');
 
     if (!parsed || typeof parsed.diagnosis !== 'string' || !parsed.diagnosis.trim()) return null;
 
@@ -535,8 +571,9 @@ ${context}`;
     history?: RecommendationHistoryEntry[] | null,
     fieldData?: CruxData | null,
     otherRoutesVendors?: OtherRouteVendors[] | null,
+    rumData?: RumSummary | null,
   ): Promise<string | null> {
-    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors);
+    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData);
 
     const prompt = `You are a web performance expert. Someone is looking at this Lighthouse result and has asked a question about it.
 
@@ -551,6 +588,7 @@ This tool, PerfScope, is also fair game for the first bullet above — a questio
 - Best Practices specifically swings even harder than the performance score does, because several of its audits (console errors, deprecated API usage, third-party cookies) depend on which ad or tracking script happened to fire on that exact page load — ad auctions aren't deterministic, so one run's third-party script throws a console error and fails an audit that a different script simply doesn't trigger the next run. If a question is specifically about Best Practices varying a lot, name this — it's a real, separate reason beyond generic single-run noise, not just a repeat of the Fast-mode explanation.
 - "Targets" are goals set per site on the Targets tab (a floor for the performance score, a ceiling for LCP/TBT/CLS) — meeting them is what the advisor plans toward.
 - A "Real users" / CrUX comparison, when present in the context below, is actual Chrome users over the trailing 28 days — different from, and not more or less "correct" than, this one lab run.
+- A "Your own visitors" comparison, when present, is this account's own RUM data — a snippet installed on their own site, their own recent traffic, distinct from CrUX's public sample. If someone asks the difference: CrUX is the public, 28-day Chrome-wide number for pages popular enough to qualify; RUM is only this site's own visitors, any window, and can see pages CrUX cannot (low-traffic pages, pages behind a login).
 
 Answer in 1 to 3 sentences. Plain text — no JSON, no markdown, no headings.
 
@@ -558,7 +596,7 @@ ${context}
 
 Question: ${question}`;
 
-    const raw = await this.generate(prompt);
+    const raw = await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
     const answer = raw.trim();
     return answer ? answer.slice(0, 600) : null;
   }
@@ -696,6 +734,7 @@ Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail"
 - If the context includes a trend toward a target, you may work the pace into a step (how it's moving, roughly how long at that rate) — but only using the numbers given, never a projection you calculated yourself.
 - If the context lists a vendor "also weighing down other pages on this site", say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once, not optimizing this one page.
 - If the context compares real users (CrUX) against this lab run and shows a real gap, mention it — a lab number that looks fine while real users see it worse is itself the finding, not a contradiction to explain away.
+- If the context also shows "Your own visitors" (RUM), that is this account's own traffic, not CrUX's public sample — weigh it at least as heavily; if it and CrUX disagree, say so rather than picking one silently.
 - action: include it ONLY when the step is one of these four things this tool can do, and ONLY with a url from the list below. Otherwise use null — most advice is work done outside this tool.
     "audit"    run an audit of that page now
     "schedule" set up recurring audits for it
@@ -706,7 +745,7 @@ Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail"
 Context:
 ${input.lines.join('\n')}`;
 
-    const raw = await this.generate(prompt);
+    const raw = await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
     const parsed = this.parseJson<{ headline?: unknown; steps?: unknown }>(raw, 'advice');
     if (!parsed || typeof parsed.headline !== 'string' || !parsed.headline.trim()) return null;
 

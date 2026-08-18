@@ -4,6 +4,7 @@ import { getRecommendationHistory } from './aiRecommendation.service.js';
 import { getPreviousRun } from './previousRun.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
+import { getRumSummaryForUrl } from './rum.service.js';
 import { HistoryModel } from '../models/History.model.js';
 
 /** "Sonsuz sual = sonsuz xərc" — a soft cap, not billing-critical, so a small race on the
@@ -42,7 +43,10 @@ export async function askAboutAudit(
 
   const otherRoutesVendors = await getOtherRoutesVendors(userId, result.url).catch(() => []);
 
-  const answer = await AiService.answerQuestion(result, question, previous, history, fieldData, otherRoutesVendors);
+  const rumData = await getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null);
+
+  const answer = await AiService.answerQuestion(result, question, previous, history, fieldData, otherRoutesVendors, rumData)
+    .catch(() => null);
   if (!answer) return { status: 'no_answer' };
 
   // Only spent on an actual answer — a Gemini timeout or an empty reply should not cost

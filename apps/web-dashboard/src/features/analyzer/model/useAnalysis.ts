@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
-import { startAnalysis, joinAnalysis, emitAuthAuditStart, type AuditPrecision } from '@/entities/analysis';
+import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
 import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory, AuditFormFactor } from '@/entities/analysis';
 import type { AnalysisInsightsPayload } from '@perfscope/shared';
@@ -89,25 +89,7 @@ export function useAnalysis() {
     const prev = stateRef.current;
     if (!prev.data || prev.data.id !== data.analysisId) return;
 
-    const next: AnalysisResult = { ...prev.data, aiInsights: data.insights || prev.data.aiInsights };
-
-    const advice = data.advice;
-    if (advice && next.resources) {
-      next.resources = {
-        ...next.resources,
-        requests: next.resources.requests.map((r) =>
-          advice[r.url] ? { ...r, advice: advice[r.url] } : r),
-      };
-    }
-
-    const explanations = data.auditExplanations;
-    if (explanations) {
-      next.audits = next.audits.map((a) =>
-        explanations[a.id] ? { ...a, aiExplanation: explanations[a.id] } : a);
-    }
-
-    if (data.metricNotes) next.aiMetricNotes = data.metricNotes;
-    if (data.waterfall)   next.aiWaterfallNarrative = data.waterfall;
+    const next = mergeAnalysisInsights(prev.data, data);
 
     // aiPending drops here whether or not anything came back: an empty payload is the
     // server saying it has nothing to add, which is an answer, not a reason to keep waiting.

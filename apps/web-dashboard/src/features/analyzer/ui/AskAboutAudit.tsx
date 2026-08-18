@@ -4,10 +4,24 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
+import { cn } from '@/shared/lib/utils';
 import { useAskQuestion } from '../model/useAskQuestion';
 
-interface Props {
+/** One thing this widget can be asked about — its own `History` row. */
+export interface AskSubject {
+  key: string;
+  label: string;
   analysisId: string;
+}
+
+interface Props {
+  /**
+   * 1 subject (the analyzer's own usage): plain "Ask about this audit" header, no switcher.
+   * 2 subjects (compare's usage — target + competitor): a small tab strip picks which
+   * page's evidence the question is answered against. Each subject keeps its own log and
+   * its own five-question budget, since each is answered by a separate `History` row.
+   */
+  subjects: AskSubject[];
 }
 
 interface Exchange {
@@ -34,27 +48,33 @@ const QUESTION_LIMIT = 500;
  * `fixed` element inside a transformed or `overflow-hidden` ancestor gets clipped or
  * mispositioned, and the analyzer's result cards are exactly that kind of ancestor.
  */
-export function AskAboutAudit({ analysisId }: Props) {
+export function AskAboutAudit({ subjects }: Props) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const [exchanges, setExchanges] = useState<Exchange[]>([]);
-  const [remaining, setRemaining] = useState(MAX_QUESTIONS);
-  const ask = useAskQuestion(analysisId);
+  const [activeKey, setActiveKey] = useState(subjects[0]?.key);
+  const [exchanges, setExchanges] = useState<Record<string, Exchange[]>>({});
+  const [remaining, setRemaining] = useState<Record<string, number>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  const outOfQuestions = remaining <= 0;
+  const active = subjects.find((s) => s.key === activeKey) ?? subjects[0];
+  const ask = useAskQuestion(active?.analysisId ?? '');
+  const activeExchanges = active ? (exchanges[active.key] ?? []) : [];
+  const activeRemaining = active ? (remaining[active.key] ?? MAX_QUESTIONS) : MAX_QUESTIONS;
+
+  const outOfQuestions = activeRemaining <= 0;
   const disabled = outOfQuestions || ask.isPending;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const q = question.trim();
-    if (!q || disabled) return;
+    if (!q || disabled || !active) return;
 
+    const key = active.key;
     ask.mutate(q, {
       onSuccess: (data) => {
-        setExchanges(prev => [...prev, { question: q, answer: data.answer }]);
-        setRemaining(data.questionsRemaining);
+        setExchanges((prev) => ({ ...prev, [key]: [...(prev[key] ?? []), { question: q, answer: data.answer }] }));
+        setRemaining((prev) => ({ ...prev, [key]: data.questionsRemaining }));
         setQuestion('');
       },
     });
@@ -78,7 +98,9 @@ export function AskAboutAudit({ analysisId }: Props) {
   // New exchange arrives below the fold of a growing log — keep it in view.
   useEffect(() => {
     if (open) logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [exchanges, open]);
+  }, [activeExchanges, open]);
+
+  if (!active) return null;
 
   return createPortal(
     // Bottom-LEFT deliberately: the advisor panel's own collapsed toggle lives on the
@@ -113,13 +135,33 @@ export function AskAboutAudit({ analysisId }: Props) {
               </button>
             </div>
 
+            {subjects.length > 1 && (
+              <div className="flex gap-1 px-4 pt-3 shrink-0">
+                {subjects.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setActiveKey(s.key)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors',
+                      s.key === active.key
+                        ? 'bg-ld-accent-soft text-ld-accent'
+                        : 'text-ld-text-3 hover:text-ld-text-2',
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Fixed-height log, not just a growing max-height: the popup reads as a real
                 chat window from the moment it opens, not a thin strip that only becomes
                 one after the first answer. */}
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
-              {exchanges.length > 0 ? (
+              {activeExchanges.length > 0 ? (
                 <div className="space-y-4">
-                  {exchanges.map((ex, i) => (
+                  {activeExchanges.map((ex, i) => (
                     <div key={i} className="space-y-1.5">
                       <p className="text-[13px] font-semibold text-ld-text leading-snug">{ex.question}</p>
                       <div className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ld-text-2">
@@ -134,7 +176,8 @@ export function AskAboutAudit({ analysisId }: Props) {
                 <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
                   <Sparkles className="w-5 h-5 text-ld-accent-line" />
                   <p className="text-[12.5px] text-ld-text-3 leading-relaxed">
-                    Ask anything about this audit — the answer comes from exactly what it measured.
+                    Ask anything about {subjects.length > 1 ? active.label : 'this audit'} — the answer comes from
+                    exactly what it measured.
                   </p>
                 </div>
               )}
@@ -165,9 +208,9 @@ export function AskAboutAudit({ analysisId }: Props) {
               {ask.isError && (
                 <p className="mt-2 text-xs text-ld-rose">Could not get an answer — try again.</p>
               )}
-              {!ask.isError && remaining < MAX_QUESTIONS && (
+              {!ask.isError && activeRemaining < MAX_QUESTIONS && (
                 <p className="mt-2 text-xs text-ld-text-3">
-                  {outOfQuestions ? 'No questions left for this audit.' : `${remaining} of ${MAX_QUESTIONS} questions left.`}
+                  {outOfQuestions ? 'No questions left for this audit.' : `${activeRemaining} of ${MAX_QUESTIONS} questions left.`}
                 </p>
               )}
             </div>
@@ -177,7 +220,7 @@ export function AskAboutAudit({ analysisId }: Props) {
 
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         aria-label={open ? 'Close ask box' : 'Ask about this audit'}
         className="h-14 w-14 rounded-full grid place-items-center border border-ld-accent-line bg-ld-surface text-ld-accent shadow-ld-shadow-card hover:bg-ld-surface-hover transition-colors"
       >

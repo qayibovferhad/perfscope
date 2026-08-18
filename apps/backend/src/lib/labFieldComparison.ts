@@ -6,7 +6,7 @@
  * usually means the audience's real devices/networks are worse than Lighthouse's
  * throttling profile assumes, not that the lab number is wrong.
  */
-import type { CruxData } from '@perfscope/shared';
+import type { CruxData, RumSummary } from '@perfscope/shared';
 
 export interface LabFieldGap {
   metric:    'lcp' | 'cls' | 'fcp'
@@ -45,4 +45,21 @@ export function compareLabAndField(
     out.push({ metric, labValue, fieldP75: m.p75, gap, poorShare: m.poor });
   }
   return out;
+}
+
+/**
+ * Lets `compareLabAndField` run unmodified against RUM data too. `RumMetricSummary` is
+ * deliberately shaped as `CruxMetric` plus a sample count (see
+ * packages/shared/src/types/rum.ts) specifically so the two sources can share this kind of
+ * logic instead of a second, parallel comparison function that could drift from this one.
+ */
+export function rumAsFieldData(rum: RumSummary, url: string): CruxData {
+  return {
+    scope:         rum.scope === 'path' ? 'url' : 'origin',
+    url,
+    formFactor:    rum.device === 'mobile' ? 'mobile' : 'desktop',
+    collectedFrom: rum.from.slice(0, 10),
+    collectedTo:   rum.to.slice(0, 10),
+    metrics:       rum.metrics,
+  };
 }
