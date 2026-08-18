@@ -10,12 +10,13 @@ import { normalizeUrl } from '@/shared/lib/utils';
 import { useComparisonSide } from '@/features/compare';
 import { useWebsites } from '@/entities/website';
 import { useAuditModeStore, FormFactorToggle, PrecisionToggle } from '@/entities/analysis';
+import type { AnalysisResult, PartialMap } from '@/entities/analysis';
 import { useCompetitorSessions } from '@/features/compare';
 import { SideInputBar } from '@/features/compare';
 import { ComparisonScoreboard } from './ui/ComparisonScoreboard';
 import { DeepComparison } from './ui/DeepComparison';
 import { AiCard } from '@/shared/ui/ai-card';
-import { AskAboutAudit, type AskSubject } from '@/features/analyzer';
+import { AskAboutAudit, StreamingScores, StreamingMetrics, type AskSubject } from '@/features/analyzer';
 import { PageHeader } from '@/shared/ui/page';
 import { ComparisonEngine } from './ui/ComparisonEngine';
 import { FilmstripComparison } from './ui/FilmstripComparison';
@@ -222,6 +223,20 @@ export function ComparisonPage() {
         </div>
       )}
 
+      {/* ── Streaming scores ─────────────────────────────────────────────────
+          Each side's own worker threads report their category scores independently, and
+          the two sides run on separate sockets — one finishing first (or one category
+          within a side finishing first) used to sit on screen unseen until BOTH audits
+          fully completed. Mirrors the analyzer's own StreamingScores/StreamingMetrics: a
+          side still running shows its partials as they land, a side already done shows
+          its real final numbers immediately rather than waiting for the other side. */}
+      {!bothLoaded && (target.isLoading || target.isSuccess || competitor.isLoading || competitor.isSuccess) && (
+        <div className="grid grid-cols-2 gap-4 max-[760px]:grid-cols-1">
+          <SideStreaming label="Your page" side={target} />
+          <SideStreaming label="Competitor" side={competitor} />
+        </div>
+      )}
+
       {/* Idle: everything below the launch button was otherwise blank on first visit */}
       {!isRunning && !bothLoaded && !target.data && !competitor.data && (
         <AnalysisIdlePanel
@@ -257,39 +272,93 @@ export function ComparisonPage() {
       {/* ── Category Scores + Core Web Vitals ────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
-          <ComparisonSide target={target.data} competitor={competitor.data} />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.06 }}
+          >
+            <ComparisonSide target={target.data} competitor={competitor.data} />
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Comparison Engine ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
-          <ComparisonEngine target={target.data} competitor={competitor.data} />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.12 }}
+          >
+            <ComparisonEngine target={target.data} competitor={competitor.data} />
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Deep Comparison ───────────────────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
-          <DeepComparison target={target.data} competitor={competitor.data} />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.18 }}
+          >
+            <DeepComparison target={target.data} competitor={competitor.data} />
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Filmstrip Comparison ──────────────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
-          <FilmstripComparison target={target.data} competitor={competitor.data} />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.24 }}
+          >
+            <FilmstripComparison target={target.data} competitor={competitor.data} />
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Waterfall Timeline Comparison ─────────────────────────────────── */}
       <AnimatePresence>
         {bothLoaded && target.data && competitor.data && (
-          <WaterfallComparison target={target.data} competitor={competitor.data} />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.3 }}
+          >
+            <WaterfallComparison target={target.data} competitor={competitor.data} />
+          </motion.div>
         )}
       </AnimatePresence>
 
       {askSubjects.length > 0 && <AskAboutAudit subjects={askSubjects} />}
     </Page>
+  );
+}
+
+/** A finished audit's scores/metrics, reshaped as an already-fully-resolved `PartialMap`
+ *  so `StreamingScores`/`StreamingMetrics` can render a done side exactly like a still-
+ *  streaming one — no separate "final" rendering path to keep in sync with the live one. */
+function finalAsPartials(data: AnalysisResult): PartialMap {
+  return {
+    performance:      { analysisId: data.id, category: 'performance',     score: data.scores.performance,   metrics: data.metrics, audits: [] },
+    accessibility:    { analysisId: data.id, category: 'accessibility',   score: data.scores.accessibility, audits: [] },
+    'best-practices': { analysisId: data.id, category: 'best-practices',  score: data.scores.bestPractices, audits: [] },
+    seo:              { analysisId: data.id, category: 'seo',             score: data.scores.seo,           audits: [] },
+  };
+}
+
+function SideStreaming({ label, side }: { label: string; side: ReturnType<typeof useComparisonSide> }) {
+  if (!side.isLoading && !side.isSuccess) return null;
+  const partials = side.data ? finalAsPartials(side.data) : side.partials;
+  return (
+    <div className="space-y-4">
+      <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3">{label}</p>
+      <StreamingScores partials={partials} />
+      <StreamingMetrics partials={partials} />
+    </div>
   );
 }

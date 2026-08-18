@@ -1,7 +1,13 @@
 import {
   rateScore, rateVital, RATING_COLOR,
   type ScoreRating, type VitalKey, type TimelineFrame, type AnalysisResult, type AnalysisInsightsPayload,
+  type AnalysisCategory, type CategoryPartial,
 } from '@perfscope/shared';
+
+/** One category's live result, keyed by category, as they stream in before the full
+ *  audit completes — shared so both the analyzer's own hook and the compare page's
+ *  (two independent audits, each streaming separately) render partials identically. */
+export type PartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
 
 // Hex literals (not CSS vars) because callers derive alpha variants ("`${color}18`");
 // the values are the shared RATING_COLOR palette, aliased for existing call sites.

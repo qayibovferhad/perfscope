@@ -52,7 +52,7 @@ export { GLOSSARY, thresholdLine, goodThreshold, CATEGORY_BAND_LINE, isVitalKey 
 export type { GlossaryKey, CategoryKey } from './glossary'
 export { GlossaryTip } from './ui/GlossaryTip'
 export type { FieldMetricKey } from './fieldMetrics'
-export type { ScoreBand } from './lib'
+export type { ScoreBand, PartialMap } from './lib'
 
 export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
 export { MetricsGrid } from './ui/MetricsGrid'

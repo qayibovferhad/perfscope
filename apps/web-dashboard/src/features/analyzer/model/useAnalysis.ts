@@ -3,11 +3,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
-import type { AnalysisResult, AnalysisProgress, CategoryPartial, AnalysisCategory, AuditFormFactor } from '@/entities/analysis';
+import type { AnalysisResult, AnalysisProgress, AuditFormFactor, PartialMap } from '@/entities/analysis';
 import type { AnalysisInsightsPayload } from '@perfscope/shared';
 
-
-export type PartialMap = Partial<Record<AnalysisCategory, CategoryPartial>>;
+export type { PartialMap } from '@/entities/analysis';
 
 interface State {
   status:   AsyncStatus;

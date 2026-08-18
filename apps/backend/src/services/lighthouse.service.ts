@@ -624,23 +624,43 @@ export class LighthouseService extends EventEmitter {
 
       const port = Number(new URL(browser.wsEndpoint()).port);
 
-      const result = await lighthouse(url, {
-        port,
-        output: 'json',
-        logLevel: 'error',
-        onlyCategories: categories,
-        ...(formFactor === 'mobile'
-          ? { formFactor: 'mobile' as const,
-              screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
-          : { screenEmulation: { disabled: true } }),
-        throttlingMethod: 'provided',
-        // Nothing downstream reads the full-page screenshot; the filmstrip comes from the
-        // trace. `skipAboutBlank` is deliberately NOT set here: the injected-session path
-        // hooks page creation over CDP to restore localStorage, and that sequence is not
-        // worth a second off a run that already carries a login.
-        disableFullPageScreenshot: true,
-        ...(disableStorageReset ? { disableStorageReset: true } : {}),
+      // Unlike the worker-thread path (its own RUN_TIMEOUT_MS watchdog per worker, killing
+      // Chrome and rejecting on a stall), this main-thread path had no timeout at all — and
+      // every call here is serialized through one shared promise chain
+      // (`queueMainThreadRun`), so a single hung run (a stuck CDP call, a "Target closed"
+      // mid-flight) didn't just strand its own caller, it wedged every future call into this
+      // method — any audit, any user, until a full process restart — behind a promise that
+      // would never settle. Confirmed live: a session-injected compare audit stuck at
+      // "Running Lighthouse audit..." for 60+ seconds with no progress and no error.
+      // `killChrome` (not just abandoning the await) matches the worker path's own fail()
+      // — Promise.race only stops waiting, it does not cancel the underlying CDP call.
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          killChrome(browser.process()?.pid);
+          reject(new Error(`Lighthouse run exceeded ${RUN_TIMEOUT_MS / 60_000} minutes and was aborted`));
+        }, RUN_TIMEOUT_MS).unref();
       });
+
+      const result = await Promise.race([
+        lighthouse(url, {
+          port,
+          output: 'json',
+          logLevel: 'error',
+          onlyCategories: categories,
+          ...(formFactor === 'mobile'
+            ? { formFactor: 'mobile' as const,
+                screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
+            : { screenEmulation: { disabled: true } }),
+          throttlingMethod: 'provided',
+          // Nothing downstream reads the full-page screenshot; the filmstrip comes from the
+          // trace. `skipAboutBlank` is deliberately NOT set here: the injected-session path
+          // hooks page creation over CDP to restore localStorage, and that sequence is not
+          // worth a second off a run that already carries a login.
+          disableFullPageScreenshot: true,
+          ...(disableStorageReset ? { disableStorageReset: true } : {}),
+        }),
+        timeout,
+      ]);
 
       if (!result) throw new Error('Lighthouse returned no result');
 

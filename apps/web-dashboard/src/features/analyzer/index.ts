@@ -7,6 +7,7 @@
 export { TimelineProvider } from './model/TimelineContext';
 export { useAnalysisStore } from './model/analysisStore';
 export { useAnalysis } from './model/useAnalysis';
+export type { PartialMap } from './model/useAnalysis';
 export { AnalyzerSearchForm } from './ui/AnalyzerSearchForm';
 export { AskAboutAudit } from './ui/AskAboutAudit';
 export type { AskSubject } from './ui/AskAboutAudit';
