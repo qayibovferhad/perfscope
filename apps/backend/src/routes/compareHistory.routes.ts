@@ -43,10 +43,15 @@ compareHistoryRouter.get(
 compareHistoryRouter.post(
   '/compare-history',
   asyncHandler<AuthedRequest>(async (req, res) => {
-    const { sourceUrl, targetUrl, source, competitor } = req.body as {
+    const { sourceUrl, targetUrl, source, competitor, sourceAnalysisId, competitorAnalysisId } = req.body as {
       sourceUrl: string; targetUrl: string;
       source: { scores: Record<string, number>; metrics: Record<string, number> };
       competitor: { scores: Record<string, number>; metrics: Record<string, number> };
+      /** Optional: lets the verdict cite this side's actual failing audits/resources/
+       *  vendors instead of only the eight numbers below. Omitted for an uploaded or
+       *  preloaded side, which may not be a `History` row this user owns. */
+      sourceAnalysisId?: string;
+      competitorAnalysisId?: string;
     };
 
     if (!sourceUrl || !targetUrl || !source || !competitor) {
@@ -55,7 +60,9 @@ compareHistoryRouter.post(
 
     // Returned as well as stored, so the page that just triggered the save can show the
     // verdict without a second round trip.
-    const aiVerdict = await CompareHistoryService.save(req.userId, sourceUrl, targetUrl, source, competitor);
+    const aiVerdict = await CompareHistoryService.save(
+      req.userId, sourceUrl, targetUrl, source, competitor, sourceAnalysisId, competitorAnalysisId,
+    );
     ok(res, { aiVerdict });
   }, 'Failed to save comparison'),
 );

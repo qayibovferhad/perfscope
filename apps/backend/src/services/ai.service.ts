@@ -789,25 +789,64 @@ ${input.lines.join('\n')}`;
     return { kind: kind as AiAdviceAction['kind'], url };
   }
 
-  /** The verdict on a saved head-to-head comparison. */
+  /**
+   * The verdict on a saved head-to-head comparison.
+   *
+   * `sourceFacts`/`competitorFacts` — each side's heaviest resource, top-blocking vendor
+   * and worst failing audits (see `citableFacts`), when the caller could look up the full
+   * stored audit for that side (best-effort; absent for an uploaded/preloaded side, or an
+   * old row from before this existed). Without them the model has eight numbers and
+   * nothing to name — the same "reads as generic advice" gap phase 1 of the AI plan closed
+   * for the single-audit analyzer, here for the first time on the compare verdict.
+   *
+   * The cause is asked for as a SEPARATE, closed-set field rather than left inside free
+   * prose, and checked against the exact fact strings before it's used — a free-prose
+   * instruction alone ("cite it if evidence explains the gap, don't invent one otherwise")
+   * was tried first and measured to fail live, repeatedly: given the exact same facts, the
+   * model still wrote "your site should attack LCP, likely due to a missing charset
+   * declaration" — a plausible-sounding but entirely fictional cause not present in the
+   * facts at all. `extractIdentifiers`'s filename/selector check (used elsewhere in this
+   * file) doesn't catch this shape of hallucination either: "charset declaration" isn't a
+   * filename or a generated class, it's an invented *concept*, so nothing about it looks
+   * ungrounded to a pattern-based check. A closed-set field the caller validates is the
+   * only version of this that can't invent — the same reason `getAdvice`'s `action.url`
+   * is checked against the account's real sites rather than trusted from the model's text.
+   */
   static async getCompareVerdict(entry: {
     sourceUrl: string; targetUrl: string;
     source:     { scores: Record<string, number>; metrics: Record<string, number> };
     competitor: { scores: Record<string, number>; metrics: Record<string, number> };
+    sourceFacts?: string[] | null;
+    competitorFacts?: string[] | null;
   }): Promise<string | null> {
     const side = (s: { scores: Record<string, number>; metrics: Record<string, number> }) =>
       `perf ${s.scores['performance'] ?? '?'} lcp ${Math.round(s.metrics['lcp'] ?? 0)}ms tbt ${Math.round(s.metrics['tbt'] ?? 0)}ms cls ${s.metrics['cls'] ?? 0}`;
+
+    const sourceScore     = entry.source.scores['performance']     ?? 0;
+    const competitorScore = entry.competitor.scores['performance'] ?? 0;
+    const loserFacts = sourceScore <= competitorScore ? (entry.sourceFacts ?? []) : (entry.competitorFacts ?? []);
 
     const prompt = `You are a web performance expert. Two sites were just measured head to head.
 
 ${VOICE}
 
-In 2-3 sentences: who is faster overall, the single biggest gap, and the one metric the slower site should attack first.
+Answer ONLY with JSON: {"text": string, "cause": string | null}
+- "text": 2-3 sentences — who is faster overall, the single biggest gap, and the one metric the slower site should attack first. Numbers only; no reason or cause of any kind in this field, that belongs in "cause" below.
+- "cause": if one of the strings in "Slower site's facts" below plausibly explains the gap, copy it EXACTLY, character for character, as this field's entire value. If none of them do, or the list is empty, this field is null. Never write a cause here in your own words — an exact copy or null, nothing else.
 
 Yours (${entry.sourceUrl}): ${side(entry.source)}
-Rival (${entry.targetUrl}): ${side(entry.competitor)}`;
+Rival (${entry.targetUrl}): ${side(entry.competitor)}
+Slower site's facts: ${loserFacts.length ? loserFacts.map(f => `"${f}"`).join(', ') : '(none)'}`;
 
-    const text = (await this.generate(prompt)).trim();
-    return text || null;
+    const parsed = this.parseJson<{ text?: unknown; cause?: unknown }>(await this.generate(prompt), 'compare verdict');
+    if (!parsed || typeof parsed.text !== 'string' || !parsed.text.trim()) return null;
+
+    const text  = parsed.text.trim();
+    const cause = typeof parsed.cause === 'string' ? parsed.cause.trim() : null;
+    // Exact-match only against the closed set actually offered — a near-match is still a
+    // rewrite, and a rewrite is exactly the failure mode this exists to rule out.
+    const validCause = cause && loserFacts.includes(cause) ? cause : null;
+
+    return validCause ? `${text} Likely cause: ${validCause}.` : text;
   }
 }
