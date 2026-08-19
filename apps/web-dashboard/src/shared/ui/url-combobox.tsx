@@ -28,6 +28,10 @@ interface Props {
 }
 
 const MAX_SHOWN = 6;
+/** Below this many typed characters (protocol stripped, so "https://" alone never
+ *  counts), nothing shows — a field the user just clicked into, with the "https://"
+ *  placeholder already in it, isn't "typing" yet. */
+const MIN_QUERY_LEN = 2;
 
 /**
  * A plain URL field until there's something to suggest — no entity knowledge here, the
@@ -50,10 +54,11 @@ export function UrlCombobox({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const matches = useMemo(() => {
-    const q = value.trim().toLowerCase();
-    if (!q) return [];
+    const full = value.trim().toLowerCase();
+    const q = full.replace(/^https?:\/\//, '');
+    if (q.length < MIN_QUERY_LEN) return [];
     return suggestions
-      .filter((s) => s.url.toLowerCase() !== q && s.url.toLowerCase().includes(q))
+      .filter((s) => s.url.toLowerCase() !== full && s.url.toLowerCase().includes(q))
       .slice(0, MAX_SHOWN);
   }, [value, suggestions]);
 
@@ -112,7 +117,6 @@ export function UrlCombobox({
         placeholder={placeholder}
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
         onKeyDown={(e) => {
           if (!showDropdown) return;
           if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((activeIndex + 1) % matches.length); }

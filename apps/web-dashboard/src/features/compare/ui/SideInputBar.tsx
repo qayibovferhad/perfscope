@@ -107,8 +107,10 @@ export function SideInputBar({
             className={`flex-1 ${isSuccess ? 'opacity-75' : ''}`}
           />
 
-          {/* Lock (auth) button — competitor side only */}
-          {rival && !isSuccess && (
+          {/* Lock (auth) button — both sides. Its handler already treats target and
+              competitor identically (see ComparisonPage's handleLaunch and onAuthAudit),
+              this control was just never given the same UI as the competitor's. */}
+          {!isSuccess && (
             <button
               type="button"
               title={hasAuthSession ? 'Session active — click to change' : 'Authenticated audit'}
