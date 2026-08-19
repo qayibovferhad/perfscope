@@ -9,3 +9,4 @@ export type {
 
 export { getHostname, sessionState, type SessionState } from './lib'
 export { useWebsites } from './model/useWebsites'
+export { useUrlSuggestions } from './model/useUrlSuggestions'

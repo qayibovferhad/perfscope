@@ -5,13 +5,14 @@ import { Segmented } from '@/shared/ui/segmented';
 import { DEVICE_MODES, PrecisionToggle } from '@/entities/analysis';
 import { Button } from '@/shared/ui/button';
 import { Panel } from '@/shared/ui/panel';
-import { Input } from '@/shared/ui/input';
+import { UrlCombobox, type UrlSuggestion } from '@/shared/ui/url-combobox';
 import { ProgressStepper } from '@/entities/analysis';
 import type { AnalysisProgress, AuditFormFactor, AuditPrecision } from '@/entities/analysis';
 
 interface Props {
   url:           string;
   setUrl:        (v: string) => void;
+  suggestions:   UrlSuggestion[];
   isPending:     boolean;
   authSessionId: string | null;
   sessionStatus: SessionState;
@@ -27,7 +28,7 @@ interface Props {
 }
 
 export function AnalyzerSearchForm({
-  url, setUrl, isPending, authSessionId, sessionStatus, progress,
+  url, setUrl, suggestions, isPending, authSessionId, sessionStatus, progress,
   formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession,
 }: Props) {
   return (
@@ -74,17 +75,16 @@ export function AnalyzerSearchForm({
 
       {/* Input row */}
       <form onSubmit={onSubmit} className="flex gap-[10px]">
-        <Input
+        <UrlCombobox
           icon={<Globe />}
           mono
-          type="text"
           placeholder="https://example.com"
           value={url}
-          onChange={e => setUrl(e.target.value)}
+          onChange={setUrl}
+          suggestions={suggestions}
           disabled={isPending}
-          spellCheck={false}
-          wrapperClassName="flex-1"
-          className="py-[14px] text-[15px]"
+          className="flex-1"
+          inputClassName="py-[14px] text-[15px]"
         />
         <Button
           type="submit"

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Globe, Paperclip, AlertCircle, CheckCircle2, RotateCcw, ShieldAlert, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Input } from '@/shared/ui/input';
+import { UrlCombobox, type UrlSuggestion } from '@/shared/ui/url-combobox';
 import { Button } from '@/shared/ui/button';
 import { ProgressStepper } from '@/entities/analysis';
 import { AuthAuditModal } from '@/features/auth-audit';
@@ -14,6 +14,7 @@ interface Props {
   side:           Side;
   url:            string;
   onUrlChange:    (url: string) => void;
+  suggestions:    UrlSuggestion[];
   isLoading:      boolean;
   isSuccess:      boolean;
   isError:        boolean;
@@ -29,7 +30,7 @@ interface Props {
 const isRivalSide = (side: Side) => side === 'competitor';
 
 export function SideInputBar({
-  side, url, onUrlChange,
+  side, url, onUrlChange, suggestions,
   isLoading, isSuccess, isError, error,
   progress, data, onUpload, onReset, onAuthAudit, hasAuthSession = false,
 }: Props) {
@@ -95,18 +96,16 @@ export function SideInputBar({
 
         {/* ── URL input row ─────────────────────────────────────────────────── */}
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Input
-              icon={<Globe />}
-              type="text"
-              placeholder={placeholder}
-              value={url}
-              onChange={e => onUrlChange(e.target.value)}
-              disabled={isLoading || isSuccess}
-              mono
-              wrapperClassName={isSuccess ? 'opacity-75' : ''}
-            />
-          </div>
+          <UrlCombobox
+            icon={<Globe />}
+            placeholder={placeholder}
+            value={url}
+            onChange={onUrlChange}
+            suggestions={suggestions}
+            disabled={isLoading || isSuccess}
+            mono
+            className={`flex-1 ${isSuccess ? 'opacity-75' : ''}`}
+          />
 
           {/* Lock (auth) button — competitor side only */}
           {rival && !isSuccess && (

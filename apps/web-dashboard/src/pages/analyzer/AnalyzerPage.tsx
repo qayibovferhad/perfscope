@@ -17,7 +17,7 @@ import { StreamingScores } from '@/features/analyzer';
 import { StreamingMetrics } from '@/features/analyzer';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
 import { usePrefetchStore, useAuditModeStore, type AuditFormFactor } from '@/entities/analysis';
-import { useWebsites, sessionState } from '@/entities/website';
+import { useWebsites, useUrlSuggestions, sessionState } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
@@ -29,6 +29,7 @@ export function AnalyzerPage() {
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
+  const suggestions   = useUrlSuggestions();
   const matchedSite   = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
   const sessionStatus = sessionState(matchedSite);
   const handledUrl = useRef<string | null>(null);
@@ -142,6 +143,7 @@ export function AnalyzerPage() {
       <AnalyzerSearchForm
         url={url}
         setUrl={setUrl}
+        suggestions={suggestions}
         isPending={isPending}
         authSessionId={authSessionId}
         sessionStatus={sessionStatus}

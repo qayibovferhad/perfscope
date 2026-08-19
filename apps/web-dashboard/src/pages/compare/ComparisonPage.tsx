@@ -8,7 +8,7 @@ import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useComparisonSide } from '@/features/compare';
-import { useWebsites } from '@/entities/website';
+import { useWebsites, useUrlSuggestions } from '@/entities/website';
 import { useAuditModeStore, FormFactorToggle, PrecisionToggle } from '@/entities/analysis';
 import { useCompetitorSessions } from '@/features/compare';
 import { SideInputBar } from '@/features/compare';
@@ -38,6 +38,7 @@ export function ComparisonPage() {
   const [competitorAuthSession, setCompetitorAuthSession] = useState<string | null>(null);
 
   const { websites } = useWebsites();
+  const suggestions = useUrlSuggestions();
   const { sessions: competitorSessions } = useCompetitorSessions();
   const urlHasSavedSession = (url: string) =>
     websites.some(w => url.startsWith(w.url) && !!w.session) ||
@@ -86,6 +87,11 @@ export function ComparisonPage() {
         targetUrl:  competitor.data.url,
         source:     { scores: target.data.scores, metrics: target.data.metrics },
         competitor: { scores: competitor.data.scores, metrics: competitor.data.metrics },
+        // Lets the verdict cite this side's actual failing audits/vendors/resources
+        // instead of only the numbers above — only when the id is really this user's own
+        // History row (an uploaded or preloaded side's id may not be).
+        ...(target.origin === 'live'     ? { sourceAnalysisId:     target.data.id }     : {}),
+        ...(competitor.origin === 'live' ? { competitorAnalysisId: competitor.data.id } : {}),
       })
         .then((res) => setVerdict({ text: res.data?.aiVerdict ?? null, pending: false }))
         // Signed out, or no storage: there is no verdict and no way to get one. Drop the
@@ -163,6 +169,7 @@ export function ComparisonPage() {
           side="target"
           url={targetUrl}
           onUrlChange={handleTargetUrlChange}
+          suggestions={suggestions}
           isLoading={target.isLoading}
           isSuccess={target.isSuccess}
           isError={target.isError}
@@ -178,6 +185,7 @@ export function ComparisonPage() {
           side="competitor"
           url={competitorUrl}
           onUrlChange={setCompetitorUrl}
+          suggestions={suggestions}
           isLoading={competitor.isLoading}
           isSuccess={competitor.isSuccess}
           isError={competitor.isError}
