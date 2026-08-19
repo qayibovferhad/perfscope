@@ -1,3 +1,5 @@
+import { useId } from 'react';
+import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 
 export interface SegmentOption<T> {
@@ -19,10 +21,20 @@ interface Props<T extends string> {
   size?: 'default' | 'sm';
 }
 
-/** (Icon +) label radio group styled as one control. */
+/**
+ * (Icon +) label radio group styled as one control.
+ *
+ * The active background is one `motion.span` shared across every option via `layoutId`,
+ * not a class toggled per-button — switching the class made the highlight jump straight
+ * to the new option with nothing in between; framer-motion animates the same element's
+ * position and size instead, so it visibly slides. `useId` keys the layoutId per mounted
+ * instance so two Segmented controls on the same page (device profile, precision) never
+ * share one and animate into each other.
+ */
 export function Segmented<T extends string>({
   options, value, onChange, disabled = false, ariaLabel, className, size = 'default',
 }: Props<T>) {
+  const layoutId = useId();
   const btnSize = size === 'sm'
     ? 'text-[11px] px-[9px] py-[4px] rounded-[7px]'
     : 'text-[12px] px-[11px] py-[6px] rounded-[8px]';
@@ -43,14 +55,21 @@ export function Segmented<T extends string>({
             title={title}
             disabled={disabled}
             onClick={() => onChange(v)}
-            className={`inline-flex items-center gap-[6px] font-semibold transition-all duration-150 disabled:opacity-50 ${btnSize} ${
-              active
-                ? 'bg-ld-accent-soft text-ld-accent-2 [box-shadow:inset_0_0_0_1px_var(--ld-accent-line)]'
-                : 'text-ld-text-3 hover:text-ld-text-2'
+            className={`relative inline-flex items-center gap-[6px] font-semibold transition-colors duration-150 disabled:opacity-50 ${btnSize} ${
+              active ? 'text-ld-accent-2' : 'text-ld-text-3 hover:text-ld-text-2'
             }`}
           >
-            {Icon && <Icon className="w-[13px] h-[13px]" />}
-            {label}
+            {active && (
+              <motion.span
+                layoutId={`segmented-${layoutId}`}
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                className="absolute inset-0 rounded-[8px] bg-ld-accent-soft [box-shadow:inset_0_0_0_1px_var(--ld-accent-line)]"
+              />
+            )}
+            <span className="relative inline-flex items-center gap-[6px]">
+              {Icon && <Icon className="w-[13px] h-[13px]" />}
+              {label}
+            </span>
           </button>
         );
       })}
