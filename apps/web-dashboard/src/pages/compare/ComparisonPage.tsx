@@ -199,18 +199,24 @@ export function ComparisonPage() {
         />
       </div>
 
-      {/* ── Launch + progress strip ────────────────────────────────────────── */}
+      {/* ── Launch bar ───────────────────────────────────────────────────────
+          Settings and the primary action used to float as two separate, centered
+          elements with a gap of empty page between them — nothing tied the audit
+          configuration to the button that runs it. One bordered strip, split
+          left (what to run) / right (run it), reads as a single control instead of two
+          unrelated ones stacked by coincidence. */}
       {!bothLoaded && (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap rounded-[14px] border border-ld-border bg-ld-surface-2 px-5 py-4">
           {/* Same pair of choices as the analyzer, and stored in the same place: a compare
               run was always single-shot, so its numbers could not be lined up against a
               precise run of the same page. */}
-          <div className="flex items-center gap-2 flex-wrap justify-center">
+          <div className="flex items-center gap-3 flex-wrap">
             <FormFactorToggle
               value={formFactor}
               onChange={setFormFactor}
               disabled={isRunning}
             />
+            <span className="w-px h-5 bg-ld-border-strong shrink-0" aria-hidden />
             <PrecisionToggle
               value={precision}
               onChange={setPrecision}
@@ -222,12 +228,11 @@ export function ComparisonPage() {
             size="lg"
             disabled={!canLaunch}
             onClick={handleLaunch}
-            className="gap-2.5 px-8 font-semibold disabled:opacity-40"
+            className="gap-2.5 px-8 font-semibold disabled:opacity-40 max-[560px]:w-full"
           >
             <Zap className="w-[17px] h-[17px]" />
             Launch Competitive Analysis
           </Button>
-
         </div>
       )}
 
