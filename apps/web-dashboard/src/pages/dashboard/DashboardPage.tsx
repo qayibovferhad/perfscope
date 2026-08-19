@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { TrendingUp, CalendarDays, BarChart3, Plus } from 'lucide-react';
 import { GettingStartedPanel } from '@/features/onboarding';
 import { AddWebsiteModal } from '@/features/websites';
@@ -34,6 +35,15 @@ function TotalsStripSkeleton() {
 function PanelSkeleton({ className }: { className: string }) {
   return <Skeleton className={`w-full rounded-[16px] ${className}`} />;
 }
+
+/** One entrance for every section, staggered by call order — the page used to appear all
+ *  at once, which reads as static no matter how much is actually on it. `y` first is
+ *  intentional: the identical rhythm compare's own sections settled on (§ ComparisonPage). */
+const fadeUp = (delay: number) => ({
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.4, ease: 'easeOut' as const, delay },
+});
 
 /**
  * The account at a glance — the first screen after logging in.
@@ -74,12 +84,21 @@ export function DashboardPage() {
       {/* One "what to do next" block at a time. While the checklist is up it is the better
           of the two — its steps are buttons that do the thing — and the advisor panel on
           the right still carries the AI voice. */}
-      {!gettingStarted && <NextStepCard />}
+      {!gettingStarted && (
+        <motion.div {...fadeUp(0)}>
+          <NextStepCard />
+        </motion.div>
+      )}
 
       {/* The strip is the page's anchor. While the request is in flight its skeleton holds
           the same space — rendering nothing at all made a slow response look like a page
-          that had failed to draw. */}
-      {data ? <TotalsStrip totals={data.totals} /> : isPending ? <TotalsStripSkeleton /> : null}
+          that had failed to draw. Skeletons don't get the entrance — a placeholder easing
+          in reads as an animation glitch, not as progress. */}
+      {data ? (
+        <motion.div {...fadeUp(0.05)}>
+          <TotalsStrip totals={data.totals} />
+        </motion.div>
+      ) : isPending ? <TotalsStripSkeleton /> : null}
 
       {/* First-run path. Renders nothing once every step is done, or if dismissed. */}
       <GettingStartedPanel onAddWebsite={() => setModalOpen(true)} />
@@ -115,50 +134,64 @@ export function DashboardPage() {
 
             {/* Trend leads, and takes the wider half: it carries thirty days on the x axis
                 against the split's three rows. Both are pinned to the same height. */}
-            <Panel className={cn('col-span-7 flex flex-col max-[1100px]:col-span-1', chartsTall && 'h-[340px]')}>
-              <PanelHeader
-                icon={<TrendingUp />}
-                title="Performance over time"
-                meta={`last ${data.charts.days} days`}
-              />
-              <PanelBody className="flex-1 min-h-0">
-                <ScoreTrendChart trend={data.charts.trend} days={data.charts.days} />
-              </PanelBody>
-            </Panel>
+            <motion.div {...fadeUp(0.1)} className="col-span-7 max-[1100px]:col-span-1">
+              <Panel className={cn('flex flex-col h-full', chartsTall && 'h-[340px]')}>
+                <PanelHeader
+                  icon={<TrendingUp />}
+                  title="Performance over time"
+                  meta={`last ${data.charts.days} days`}
+                />
+                <PanelBody className="flex-1 min-h-0">
+                  <ScoreTrendChart trend={data.charts.trend} days={data.charts.days} />
+                </PanelBody>
+              </Panel>
+            </motion.div>
 
-            <Panel className={cn('col-span-5 flex flex-col max-[1100px]:col-span-1', chartsTall && 'h-[340px]')}>
-              <PanelHeader
-                icon={<BarChart3 />}
-                title="Where the runs land"
-                meta="all audits in window"
-              />
-              <PanelBody className="flex-1 min-h-0">
-                <VitalsSplitChart vitals={data.charts.vitals} />
-              </PanelBody>
-            </Panel>
+            <motion.div {...fadeUp(0.15)} className="col-span-5 max-[1100px]:col-span-1">
+              <Panel className={cn('flex flex-col h-full', chartsTall && 'h-[340px]')}>
+                <PanelHeader
+                  icon={<BarChart3 />}
+                  title="Where the runs land"
+                  meta="all audits in window"
+                />
+                <PanelBody className="flex-1 min-h-0">
+                  <VitalsSplitChart vitals={data.charts.vitals} />
+                </PanelBody>
+              </Panel>
+            </motion.div>
 
             {/* Full width, and short: thirty daily bars in half a row compress into noise,
                 but the bars themselves carry one number each and need no more height. */}
-            <Panel className={cn('col-span-12 flex flex-col max-[1100px]:col-span-1', hasActivityData(data.charts.activity) && 'h-[228px]')}>
-              <PanelHeader
-                icon={<CalendarDays />}
-                title="Audit activity"
-                meta={`last ${data.charts.days} days`}
-              />
-              <PanelBody className="flex-1 min-h-0 flex flex-col">
-                <ActivityChart activity={data.charts.activity} days={data.charts.days} />
-              </PanelBody>
-            </Panel>
+            <motion.div {...fadeUp(0.2)} className="col-span-12 max-[1100px]:col-span-1">
+              <Panel className={cn('flex flex-col', hasActivityData(data.charts.activity) && 'h-[228px]')}>
+                <PanelHeader
+                  icon={<CalendarDays />}
+                  title="Audit activity"
+                  meta={`last ${data.charts.days} days`}
+                />
+                <PanelBody className="flex-1 min-h-0 flex flex-col">
+                  <ActivityChart activity={data.charts.activity} days={data.charts.days} />
+                </PanelBody>
+              </Panel>
+            </motion.div>
 
             {/* The four cards hold wildly different row counts. Each pair shares a row
                 height and the longer list scrolls inside its panel, so neither a hole nor
                 a page that scrolls for a screen and a half. The cap only binds when there
                 is enough to fill it — an empty account still gets short cards. */}
-            <IncidentsCard incidents={data.incidents} className="col-span-6 max-h-[420px] max-[1100px]:col-span-1" />
-            <AttentionCard  rows={data.attention}     className="col-span-6 max-h-[420px] max-[1100px]:col-span-1" />
+            <motion.div {...fadeUp(0.25)} className="col-span-6 max-[1100px]:col-span-1">
+              <IncidentsCard incidents={data.incidents} className="h-full max-h-[420px]" />
+            </motion.div>
+            <motion.div {...fadeUp(0.3)} className="col-span-6 max-[1100px]:col-span-1">
+              <AttentionCard rows={data.attention} className="h-full max-h-[420px]" />
+            </motion.div>
 
-            <RecentAuditsCard audits={data.recentAudits} className="col-span-6 max-h-[380px] max-[1100px]:col-span-1" />
-            <RumPulseCard     rum={data.rum}            className="col-span-6 max-h-[380px] max-[1100px]:col-span-1" />
+            <motion.div {...fadeUp(0.35)} className="col-span-6 max-[1100px]:col-span-1">
+              <RecentAuditsCard audits={data.recentAudits} className="h-full max-h-[380px]" />
+            </motion.div>
+            <motion.div {...fadeUp(0.4)} className="col-span-6 max-[1100px]:col-span-1">
+              <RumPulseCard rum={data.rum} className="h-full max-h-[380px]" />
+            </motion.div>
           </div>
         </div>
       )}
