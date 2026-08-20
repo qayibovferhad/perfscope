@@ -173,31 +173,25 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="mt-auto flex items-center gap-2.5 px-1 pt-4 border-t border-ld-border">
-        {user?.picture
-          ? <img
-              src={user.picture}
-              alt={user.name ?? ''}
-              className="w-8 h-8 rounded-[9px] shrink-0 object-cover"
-              referrerPolicy="no-referrer"
-            />
-          : <span className="w-8 h-8 rounded-[9px] grid place-items-center bg-ld-grad text-[#04130d] font-extrabold text-[14px] shrink-0">
-              {user?.name?.[0]?.toUpperCase() ?? 'U'}
-            </span>
-        }
-        <span className="min-w-0 flex-1">
-          <b className="block text-[13px] font-semibold text-ld-text truncate">{user?.name}</b>
-          <span className="block text-[11px] text-ld-text-3 font-mono truncate">{user?.email}</span>
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setLogoutOpen(true)}
-          aria-label="Sign out"
-          className="hover:text-ld-rose"
-        >
-          <LogOut />
-        </Button>
+      <div className="mt-4 pt-4 border-t border-ld-border">
+        <div className="group flex items-center gap-3 p-2.5 rounded-[13px] border border-ld-border bg-ld-surface-2 transition-colors duration-200 hover:border-ld-accent-line">
+          <span className="w-9 h-9 rounded-[11px] grid place-items-center bg-ld-grad shadow-ld-glow text-[#04130d] font-extrabold text-[14px] shrink-0">
+            {user?.name?.[0]?.toUpperCase() ?? 'U'}
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[13px] font-semibold text-ld-text truncate">{user?.name}</b>
+            <span className="block text-[11px] text-ld-text-3 font-mono truncate">{user?.email}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setLogoutOpen(true)}
+            aria-label="Sign out"
+            className="shrink-0 text-ld-text-3 hover:text-ld-rose"
+          >
+            <LogOut />
+          </Button>
+        </div>
       </div>
 
       <ConfirmModal
@@ -210,12 +204,9 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
         onConfirm={handleLogout}
       >
         <div className="flex items-center gap-[12px] p-4 rounded-[13px] border border-ld-border bg-ld-surface-2">
-          {user?.picture
-            ? <img src={user.picture} alt="" className="w-9 h-9 rounded-[10px] shrink-0 object-cover" referrerPolicy="no-referrer" />
-            : <span className="w-9 h-9 rounded-[10px] grid place-items-center bg-ld-grad text-[#04130d] font-extrabold text-[15px] shrink-0">
-                {user?.name?.[0]?.toUpperCase() ?? 'U'}
-              </span>
-          }
+          <span className="w-9 h-9 rounded-[11px] grid place-items-center bg-ld-grad shadow-ld-glow text-[#04130d] font-extrabold text-[15px] shrink-0">
+            {user?.name?.[0]?.toUpperCase() ?? 'U'}
+          </span>
           <span className="min-w-0">
             <b className="block text-[13.5px] font-semibold text-ld-text truncate">{user?.name}</b>
             <span className="block font-mono text-[12px] text-ld-text-3 truncate">{user?.email}</span>
