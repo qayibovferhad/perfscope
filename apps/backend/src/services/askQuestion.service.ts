@@ -5,6 +5,7 @@ import { getPreviousRun } from './previousRun.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { getRumSummaryForUrl } from './rum.service.js';
+import { getLatestCompetitorComparison } from './competitorContext.service.js';
 import { HistoryModel } from '../models/History.model.js';
 
 /** "Sonsuz sual = sonsuz xərc" — a soft cap, not billing-critical, so a small race on the
@@ -45,7 +46,9 @@ export async function askAboutAudit(
 
   const rumData = await getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null);
 
-  const answer = await AiService.answerQuestion(result, question, previous, history, fieldData, otherRoutesVendors, rumData)
+  const competitor = await getLatestCompetitorComparison(userId, result.url).catch(() => null);
+
+  const answer = await AiService.answerQuestion(result, question, previous, history, fieldData, otherRoutesVendors, rumData, competitor)
     .catch(() => null);
   if (!answer) return { status: 'no_answer' };
 

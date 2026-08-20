@@ -9,6 +9,7 @@ import { checkRegressions } from './regression.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { getRumSummaryForUrl } from './rum.service.js';
+import { getLatestCompetitorComparison } from './competitorContext.service.js';
 import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
@@ -115,12 +116,18 @@ export async function enrichWithAi(
     ? await getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null)
     : null;
 
+  // This user's most recent Compare run against this page's host, when there is one —
+  // what lets the diagnosis and the ask box talk about a competitor instead of declining.
+  const competitor = depth === 'deep' && userId
+    ? await getLatestCompetitorComparison(userId, result.url).catch(() => null)
+    : null;
+
   // One Promise.all, so the deep work costs the same wall time as the standard path — and
   // each carries its own catch, so a failing prompt cannot take the others (or the audit)
   // with it.
   const [analysis, adviceMap] = await Promise.all([
     depth === 'deep'
-      ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors, rumData).catch((err: unknown) => {
+      ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors, rumData, competitor).catch((err: unknown) => {
           console.error('[AI] Page analysis failed:', err);
           return null;
         })

@@ -9,6 +9,7 @@ import type {
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
 import { extractIdentifiers } from './aiRecommendation.service.js';
 import type { PreviousRun } from './previousRun.service.js';
+import type { CompetitorComparison } from './competitorContext.service.js';
 import { diffResources, resourceDiffHasChanges } from '../lib/resourceDiff.js';
 import { attributeLongTasks } from '../lib/longTaskAttribution.js';
 import { compareLabAndField, rumAsFieldData } from '../lib/labFieldComparison.js';
@@ -149,6 +150,7 @@ export class AiService {
     fieldData?: CruxData | null,
     otherRoutesVendors?: OtherRouteVendors[] | null,
     rumData?: RumSummary | null,
+    competitor?: CompetitorComparison | null,
   ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[]; hasSitewideVendors: boolean } {
     const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
       .filter(k => k in result.metrics);
@@ -315,8 +317,22 @@ export class AiService {
         })()
       : '';
 
+    // From the Compare page, when this user has run one against this page's host —
+    // reoriented to "you" vs "them" regardless of which side was `source` in that run.
+    // Metrics/scores are a point-in-time snapshot from when Compare last ran, not this
+    // audit's own numbers, so it's labelled with its own date rather than folded into
+    // the numbers above as if they were fresh.
+    const competitorComparison = competitor
+      ? (() => {
+          const fmtSide = (side: { scores: Record<string, number>; metrics: Record<string, number> }) =>
+            `perf ${side.scores['performance'] ?? '?'}, LCP ${fmtMs(side.metrics['lcp'] ?? 0)}, TBT ${fmtMs(side.metrics['tbt'] ?? 0)}, CLS ${(side.metrics['cls'] ?? 0).toFixed(3)}`;
+          const verdictLine = competitor.aiVerdict ? `\n  ${competitor.aiVerdict}` : '';
+          return `\nCompetitor comparison (vs ${competitor.competitorHostname}, compared ${competitor.comparedAt}, ${competitor.winner === 'tie' ? 'roughly tied' : competitor.winner === 'mine' ? 'you were faster' : 'they were faster'}):\n  You: ${fmtSide(competitor.mine)}\n  Them: ${fmtSide(competitor.theirs)}${verdictLine}\n`;
+        })()
+      : '';
+
     const context = `URL: ${result.url}
-${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}${rumComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
+${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}${rumComparison}${competitorComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
 ${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
 ${libraries ? `Libraries on the page: ${libraries}` : ''}
@@ -473,9 +489,12 @@ Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).j
      *  for this page (or the site, as a fallback) — independent of, and may disagree
      *  with, CrUX's public sample. */
     rumData?: RumSummary | null,
+    /** This user's most recent Compare run against this page's host, when there is one —
+     *  reoriented "you" vs "them" regardless of which side was `source` in that run. */
+    competitor?: CompetitorComparison | null,
   ): Promise<AiPageAnalysis | null> {
     const { context, failing, poor, hasSitewideVendors } =
-      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData);
+      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
     const s = result.scores;
     const weakCategories = [
       s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
@@ -489,7 +508,7 @@ ${VOICE}
 
 Work out what is actually wrong with this page FIRST, then make everything else agree with it. Do not offer competing explanations for the same slow metric.
 
-${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).${!result.measurement || result.measurement.runs <= 1 ? ` This run was a single sample (Fast mode, see the note at the top of the context) — hedge the movement claim accordingly ("dropped to X — though this is a single run and could partly be noise") rather than stating it as a settled fact, and suggest a Precise-mode re-audit when the movement is the main point of the diagnosis.` : ` This run is the median of ${result.measurement.runs} runs (Precise mode, see the note at the top of the context) — that already IS the noise-resistant reading, so state the movement plainly, with no "single run", "could be noise" or similar hedge; that caveat belongs only to a Fast-mode single sample, not this one.`}\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}${fieldData ? ` If "Real users" below shows a real gap from this lab run, mention it — a lab number that looks fine while real users see it worse is itself the finding, and probably means their actual devices or networks are weaker than this run's simulated conditions, not that this run is wrong.` : ''}${rumData ? ` "Your own visitors" below is a second, independent field reading — this site's own traffic, not the public Chrome sample "Real users" is. Weigh it at least as heavily as CrUX, since it is the account's own data; if the two disagree, say so plainly rather than picking one silently, and if only "Your own visitors" is present, treat it exactly as you would a CrUX gap.` : ''}${hasSitewideVendors ? ` If "Also weighing down other pages you track" below lists a vendor, say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once rather than optimizing this one page.` : ''}
+${previous ? `Something has changed or it has not, and that is the first thing the reader wants: open the diagnosis with the movement since the previous run, naming the metric that moved most. If nothing moved meaningfully, say so plainly rather than inventing a change. If "What changed since that run" below names a file, vendor or library, that is WHY the metric moved — say so by name, not just that the metric moved. If nothing there explains the movement, don't invent a cause; the movement can be real without a clean explanation on this page (a slow day on the network, a third party's own release).${!result.measurement || result.measurement.runs <= 1 ? ` This run was a single sample (Fast mode, see the note at the top of the context) — hedge the movement claim accordingly ("dropped to X — though this is a single run and could partly be noise") rather than stating it as a settled fact, and suggest a Precise-mode re-audit when the movement is the main point of the diagnosis.` : ` This run is the median of ${result.measurement.runs} runs (Precise mode, see the note at the top of the context) — that already IS the noise-resistant reading, so state the movement plainly, with no "single run", "could be noise" or similar hedge; that caveat belongs only to a Fast-mode single sample, not this one.`}\n` : ''}Be specific to the evidence below. Name the function, the file, the element or the vendor when the data gives you one — advice that would fit any website is worth nothing here. When a failing audit lists a selector or a filename, quote it exactly as given (e.g. "img.Image-styles__ImageStyled-sc-8c99a12b-0", "pubads_impl.js") rather than describing the element in your own words — a developer searches their codebase for that literal string, not a paraphrase of it. A long task marked "likely" a script is a timing overlap, not a proven cause — you may still name the file (it is the best evidence available), but don't claim certainty the data doesn't have; a task with no file at all just say what kind of work it was.${weakCategories.length ? ` This page is also weak on ${weakCategories.join(' and ')}; cover that too, not only speed.` : ''}${fieldData ? ` If "Real users" below shows a real gap from this lab run, mention it — a lab number that looks fine while real users see it worse is itself the finding, and probably means their actual devices or networks are weaker than this run's simulated conditions, not that this run is wrong.` : ''}${rumData ? ` "Your own visitors" below is a second, independent field reading — this site's own traffic, not the public Chrome sample "Real users" is. Weigh it at least as heavily as CrUX, since it is the account's own data; if the two disagree, say so plainly rather than picking one silently, and if only "Your own visitors" is present, treat it exactly as you would a CrUX gap.` : ''}${hasSitewideVendors ? ` If "Also weighing down other pages you track" below lists a vendor, say plainly that it is not just this page's problem — name the other routes it costs too, and frame the fix as removing or governing that vendor once rather than optimizing this one page.` : ''}${competitor ? ` If "Competitor comparison" below is present, it is fair evidence about this page too — you may reference who's ahead and by how much where it's relevant to the diagnosis or a fix, using the exact numbers given; it's a snapshot from when Compare last ran, so don't present it as this run's own measurement.` : ''}
 ${history && history.length > 0 ? `\nSome of the fixes below may repeat what you told this reader before — see "Recommendations given before" below. If one you flagged is no longer needed, lead a fix with that: say plainly that it's fixed now. If a fix you are about to give matches one already given, do not present it as new — say plainly that this is a repeat ("again", "still open", "as before") rather than writing the sentence as if for the first time. If it says "given a few times" or "given many times", go further: explain it a different way, say why it matters more than they may think, or say plainly that it is a hard change to make. Never count or name how many times it's been given — no "for the Nth time", no ordinals, no numbers at all; the reader wants to know it's still open, not be scolded with a tally. And if more than one fix in this response is a repeat, don't open every one of them the same way — vary which word carries it ("again" for one, "still open" for another, folded into the sentence for a third) so the list doesn't read like a form letter.\n` : ''}
 
 Answer ONLY with JSON:
@@ -572,8 +591,9 @@ ${context}`;
     fieldData?: CruxData | null,
     otherRoutesVendors?: OtherRouteVendors[] | null,
     rumData?: RumSummary | null,
+    competitor?: CompetitorComparison | null,
   ): Promise<string | null> {
-    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData);
+    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
 
     const prompt = `You are a web performance expert. Someone is looking at this Lighthouse result and has asked a question about it.
 
@@ -589,6 +609,7 @@ This tool, PerfScope, is also fair game for the first bullet above — a questio
 - "Targets" are goals set per site on the Targets tab (a floor for the performance score, a ceiling for LCP/TBT/CLS) — meeting them is what the advisor plans toward.
 - A "Real users" / CrUX comparison, when present in the context below, is actual Chrome users over the trailing 28 days — different from, and not more or less "correct" than, this one lab run.
 - A "Your own visitors" comparison, when present, is this account's own RUM data — a snippet installed on their own site, their own recent traffic, distinct from CrUX's public sample. If someone asks the difference: CrUX is the public, 28-day Chrome-wide number for pages popular enough to qualify; RUM is only this site's own visitors, any window, and can see pages CrUX cannot (low-traffic pages, pages behind a login).
+- A "Competitor comparison" below, when present, is real evidence about this page from this user's own Compare feature — answer competitor questions from it plainly, with the exact numbers and site given, instead of declining. It's a snapshot from whenever Compare last ran (the date is given), not this run's own measurement, so say so if the question implies it should be current. If this block is absent, this audit genuinely has no competitor data — say so rather than guessing, the same as any other missing evidence.
 
 Answer in 1 to 3 sentences. Plain text — no JSON, no markdown, no headings.
 
