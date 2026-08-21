@@ -8,7 +8,7 @@
  * the context directly: this is pure string assembly, no Gemini, no I/O.
  */
 import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
-import type { AnalysisResult, CoreWebVitals, CruxData, RumSummary } from '@perfscope/shared';
+import type { AnalysisResult, ComparisonSide, CoreWebVitals, CruxData, RumSummary } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from '../aiRecommendation.service.js';
 import type { PreviousRun } from '../previousRun.service.js';
 import type { CompetitorComparison } from '../competitorContext.service.js';
@@ -221,7 +221,7 @@ export function buildPageContext(
   // the numbers above as if they were fresh.
   const competitorComparison = competitor
     ? (() => {
-        const fmtSide = (side: { scores: Record<string, number>; metrics: Record<string, number> }) =>
+        const fmtSide = (side: ComparisonSide) =>
           `perf ${side.scores['performance'] ?? '?'}, LCP ${fmtMs(side.metrics['lcp'] ?? 0)}, TBT ${fmtMs(side.metrics['tbt'] ?? 0)}, CLS ${(side.metrics['cls'] ?? 0).toFixed(3)}`;
         const verdictLine = competitor.aiVerdict ? `\n  ${competitor.aiVerdict}` : '';
         return `\nCompetitor comparison (vs ${competitor.competitorHostname}, compared ${competitor.comparedAt}, ${competitor.winner === 'tie' ? 'roughly tied' : competitor.winner === 'mine' ? 'you were faster' : 'they were faster'}):\n  You: ${fmtSide(competitor.mine)}\n  Them: ${fmtSide(competitor.theirs)}${verdictLine}\n`;

@@ -1,14 +1,13 @@
 import mongoose, { type Document, Schema } from 'mongoose';
+import type { ComparisonSide } from '@perfscope/shared';
+import { makeScoresSchema, makeMetricsSchema } from './metrics.schema.js';
 
-const MetricsSchema = new Schema(
-  { fcp: Number, lcp: Number, tbt: Number, cls: Number, si: Number, tti: Number },
+// Lenient: a side can arrive from an uploaded or preloaded report, not only this
+// backend's own runs — see metrics.schema.ts.
+const SideSchema = new Schema(
+  { scores: makeScoresSchema(false), metrics: makeMetricsSchema(false) },
   { _id: false },
 );
-const ScoresSchema = new Schema(
-  { performance: Number, accessibility: Number, bestPractices: Number, seo: Number },
-  { _id: false },
-);
-const SideSchema = new Schema({ scores: ScoresSchema, metrics: MetricsSchema }, { _id: false });
 
 export interface ICompareHistory extends Document {
   /** Owner. Stored as a string of the user's ObjectId, like History does. */
@@ -18,8 +17,8 @@ export interface ICompareHistory extends Document {
   targetUrl:      string;
   sourceHostname: string;
   targetHostname: string;
-  source:         { scores: Record<string, number>; metrics: Record<string, number> };
-  competitor:     { scores: Record<string, number>; metrics: Record<string, number> };
+  source:         ComparisonSide;
+  competitor:     ComparisonSide;
   winner:         'source' | 'competitor' | 'tie';
   /** Gemini's read on the matchup, written once when the comparison is saved. */
   aiVerdict?:     string;

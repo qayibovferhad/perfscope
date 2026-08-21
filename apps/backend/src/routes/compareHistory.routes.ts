@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { ComparisonSide } from '@perfscope/shared';
 import { ok } from '../lib/respond.js';
 import { CompareHistoryService } from '../services/compareHistory.service.js';
 import { emptyOnNoStorage, requireStorageForWrites } from '../middleware/storage.middleware.js';
@@ -45,8 +46,8 @@ compareHistoryRouter.post(
   asyncHandler<AuthedRequest>(async (req, res) => {
     const { sourceUrl, targetUrl, source, competitor, sourceAnalysisId, competitorAnalysisId } = req.body as {
       sourceUrl: string; targetUrl: string;
-      source: { scores: Record<string, number>; metrics: Record<string, number> };
-      competitor: { scores: Record<string, number>; metrics: Record<string, number> };
+      source: ComparisonSide;
+      competitor: ComparisonSide;
       /** Optional: lets the verdict cite this side's actual failing audits/resources/
        *  vendors instead of only the eight numbers below. Omitted for an uploaded or
        *  preloaded side, which may not be a `History` row this user owns. */

@@ -28,7 +28,14 @@ export interface AutomationSlot {
  */
 export type AutomationScheduleMode = 'single' | 'slots' | 'spread'
 
-export interface WebsiteAutomation {
+/**
+ * Generic in the date because these types are the single definition for both ends of the
+ * wire: the backend's Mongoose documents hold real `Date`s, the client holds what JSON
+ * made of them. The backend aliases (`IWebsiteAutomation` etc. in Website.model.ts) bind
+ * `D = Date`; everything else defaults to the string the client sees. Before this the
+ * backend kept hand-written mirrors, and they had already drifted.
+ */
+export interface WebsiteAutomation<D = string> {
   enabled:      boolean
   /** Every route the site audits. Stays the canonical list in all three modes. */
   routes:       string[]
@@ -39,7 +46,7 @@ export interface WebsiteAutomation {
   slots?:         AutomationSlot[]
   /** Window length in minutes for `spread`; 60 means "all of them within an hour". */
   spreadMinutes?: number
-  lastRunAt:    string | null
+  lastRunAt:    D | null
 }
 
 /** Per-site performance budgets; a metric is checked only when its threshold is set. */
@@ -75,19 +82,22 @@ export interface BudgetFailure {
 }
 
 /** Set when the latest audit broke the site's budgets; cleared once the same URL passes. */
-export interface BudgetBreach {
+export interface BudgetBreach<D = string> {
   analysisId: string
   url:        string
-  formFactor?: AuditFormFactor
+  /** `null` on stored breaches (the schema defaults it), absent on documents from before
+   *  the field existed. This used to be typed `AuditFormFactor` here and `string | null`
+   *  on the backend — the client type didn't describe what the backend actually writes. */
+  formFactor?: AuditFormFactor | null
   failures:   BudgetFailure[]
-  at:         string
+  at:         D
 }
 
 /** Set when an audit was redirected to a login screen; cleared once that same URL audits cleanly. */
-export interface WebsiteLoginWall {
+export interface WebsiteLoginWall<D = string> {
   url:        string
   loginUrl:   string
-  detectedAt: string
+  detectedAt: D
 }
 
 export interface WebsiteDoc {
@@ -99,6 +109,9 @@ export interface WebsiteDoc {
   requiresLogin?: WebsiteLoginWall | null
   automation?:    WebsiteAutomation
   budgets?:       WebsiteBudgets | null
+  /** Public key embedded in the RUM snippet — visible in page source by design. Served by
+   *  the website routes but absent until the user asks for a snippet. */
+  rumKey?:        string | null
   lastBudgetBreach?: BudgetBreach | null
   createdAt:      string
 }

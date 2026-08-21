@@ -40,8 +40,8 @@ export async function getPreviousRun(
   }).fullResult;
 
   return {
-    scores:  doc.scores  as unknown as PerformanceScores,
-    metrics: doc.metrics as unknown as CoreWebVitals,
+    scores:  doc.scores,
+    metrics: doc.metrics,
     at:      new Date(doc.createdAt as unknown as string).toISOString().slice(0, 10),
     resources: {
       requests: (fr?.resources?.requests ?? [])

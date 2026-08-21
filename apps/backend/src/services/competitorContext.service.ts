@@ -1,11 +1,12 @@
+import type { ComparisonSide } from '@perfscope/shared';
 import { CompareHistoryModel } from '../models/CompareHistory.model.js';
 import { hostOf } from '../lib/url.js';
 
 export interface CompetitorComparison {
   competitorUrl:      string;
   competitorHostname: string;
-  mine:    { scores: Record<string, number>; metrics: Record<string, number> };
-  theirs:  { scores: Record<string, number>; metrics: Record<string, number> };
+  mine:    ComparisonSide;
+  theirs:  ComparisonSide;
   winner:  'mine' | 'competitor' | 'tie';
   comparedAt: string;
   /** Gemini's read on the matchup, written once when the Compare run was saved. */

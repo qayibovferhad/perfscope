@@ -1,6 +1,8 @@
 import { Schema, model, type Types } from 'mongoose';
 import { sessionSchema, redactSession, type ISessionData } from './session.schema.js';
-import type { AutomationScheduleMode, BudgetFailure } from '@perfscope/shared';
+import type {
+  AutomationSlot, WebsiteAutomation, WebsiteBudgets, BudgetBreach, WebsiteLoginWall,
+} from '@perfscope/shared';
 
 /** One group of routes and the time of day they run. */
 const automationSlotSchema = new Schema(
@@ -89,44 +91,16 @@ websiteSchema.index({ userId: 1, url: 1 }, { unique: true });
 /** @deprecated name kept for existing importers — the definition lives in session.schema.ts. */
 export type IWebsiteSession = ISessionData;
 
-export interface IWebsiteAutomationSlot {
-  time:   string;
-  routes: string[];
-}
-
-export interface IWebsiteAutomation {
-  enabled:        boolean;
-  routes:         string[];
-  scheduleTime:   string;
-  scheduleMode:   AutomationScheduleMode;
-  slots:          IWebsiteAutomationSlot[];
-  spreadMinutes:  number;
-  lastRunAt:      Date | null;
-}
-
-export interface IWebsiteBudgets {
-  performance: number | null;
-  lcp:         number | null;
-  tbt:         number | null;
-  cls:         number | null;
-  inp:         number | null;
-  webhookUrl:  string | null;
-  alertEmail:  string | null;
-}
-
-export interface IBudgetBreach {
-  analysisId: string;
-  url:        string;
-  formFactor: string | null;
-  failures:   BudgetFailure[];
-  at:         Date;
-}
-
-export interface IRequiresLogin {
-  url:        string;
-  loginUrl:   string;
-  detectedAt: Date;
-}
+// Derived from the shared wire types rather than mirrored by hand — the mirrors had
+// already drifted (`IBudgetBreach.formFactor` said `string | null` while the client type
+// said `AuditFormFactor | undefined`, for the same stored field). `Date` binds the
+// generic; `Required<>` reflects that the schemas above default every field, so a
+// hydrated document always carries them even where the wire shape is optional.
+export type IWebsiteAutomationSlot = AutomationSlot;
+export type IWebsiteAutomation     = Required<WebsiteAutomation<Date>>;
+export type IWebsiteBudgets        = Required<WebsiteBudgets>;
+export type IBudgetBreach          = Required<BudgetBreach<Date>>;
+export type IRequiresLogin         = WebsiteLoginWall<Date>;
 
 export interface IWebsite {
   _id:              Types.ObjectId;

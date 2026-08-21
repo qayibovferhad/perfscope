@@ -1,28 +1,11 @@
 import mongoose, { type Document, Schema } from 'mongoose';
+import type { PerformanceScores, CoreWebVitals } from '@perfscope/shared';
+import { makeScoresSchema, makeMetricsSchema } from './metrics.schema.js';
 
-// ─── Nested schemas ───────────────────────────────────────────────────────────
-
-const MetricsSchema = new Schema(
-  {
-    fcp: { type: Number, required: true },
-    lcp: { type: Number, required: true },
-    tbt: { type: Number, required: true },
-    cls: { type: Number, required: true },
-    si:  { type: Number, required: true },
-    tti: { type: Number, required: true },
-  },
-  { _id: false },
-);
-
-const ScoresSchema = new Schema(
-  {
-    performance:   { type: Number, required: true },
-    accessibility: { type: Number, required: true },
-    bestPractices: { type: Number, required: true },
-    seo:           { type: Number, required: true },
-  },
-  { _id: false },
-);
+// Required: these rows are this backend's own runs, which always carry every field —
+// a missing one is a pipeline bug and should fail the save, not store a hole.
+const ScoresSchema  = makeScoresSchema(true);
+const MetricsSchema = makeMetricsSchema(true);
 
 // ─── Main schema ──────────────────────────────────────────────────────────────
 
@@ -34,8 +17,8 @@ export interface IHistory extends Document {
   routePath:     string;
   userId?:       string;
   projectId?:    string;
-  scores:        { performance: number; accessibility: number; bestPractices: number; seo: number };
-  metrics:       { fcp: number; lcp: number; tbt: number; cls: number; si: number; tti: number };
+  scores:        PerformanceScores;
+  metrics:       CoreWebVitals;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fullResult?:   Record<string, any>;
   shareToken?:   string | null;

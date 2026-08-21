@@ -6,7 +6,7 @@
  */
 import type {
   AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
-  CruxData, RumSummary,
+  ComparisonSide, CruxData, RumSummary,
 } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
 import type { PreviousRun } from './previousRun.service.js';
@@ -396,12 +396,12 @@ ${input.lines.join('\n')}`;
    */
   static async getCompareVerdict(entry: {
     sourceUrl: string; targetUrl: string;
-    source:     { scores: Record<string, number>; metrics: Record<string, number> };
-    competitor: { scores: Record<string, number>; metrics: Record<string, number> };
+    source:     ComparisonSide;
+    competitor: ComparisonSide;
     sourceFacts?: string[] | null;
     competitorFacts?: string[] | null;
   }): Promise<string | null> {
-    const side = (s: { scores: Record<string, number>; metrics: Record<string, number> }) =>
+    const side = (s: ComparisonSide) =>
       `perf ${s.scores['performance'] ?? '?'} lcp ${Math.round(s.metrics['lcp'] ?? 0)}ms tbt ${Math.round(s.metrics['tbt'] ?? 0)}ms cls ${s.metrics['cls'] ?? 0}`;
 
     const sourceScore     = entry.source.scores['performance']     ?? 0;
