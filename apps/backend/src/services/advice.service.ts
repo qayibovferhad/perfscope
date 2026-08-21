@@ -5,13 +5,13 @@ import { findWebsiteByHost } from './websiteLookup.js';
 import { getActionOutcome } from './adviceAction.service.js';
 import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
-import { findSitewideVendors } from '../lib/crossPageVendors.js';
-import { compareLabAndField, rumAsFieldData } from '../lib/labFieldComparison.js';
+import { findSitewideVendors, describeSitewideVendor } from '../lib/crossPageVendors.js';
+import { compareLabAndField, formatGapLines, rumAsFieldData } from '../lib/labFieldComparison.js';
 import { getRumSummaryForUrl } from './rum.service.js';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import {
-  fmtMs, fmtCls, targetProgress, readTargetValue, TARGET_DIRECTION, forecastMetric,
+  fmtMs, fmtMetric, targetProgress, readTargetValue, TARGET_DIRECTION, forecastMetric,
   type TargetMetric, type TargetProgress, type ForecastMetric,
 } from '@perfscope/shared';
 
@@ -22,7 +22,7 @@ const FORECAST_METRICS: ForecastMetric[] = ['performance', 'lcp', 'tbt', 'cls'];
  *  pace without inventing a number that isn't here. */
 function describeForecastLine(metric: ForecastMetric, budget: number | null, forecast: ReturnType<typeof forecastMetric>): string | null {
   if (!forecast || forecast.confidence === 'low') return null;
-  const unit = (v: number) => metric === 'performance' ? String(Math.round(v)) : metric === 'cls' ? fmtCls(v) : fmtMs(v);
+  const unit = (v: number) => fmtMetric(metric, v);
   const label = metric.toUpperCase();
 
   if (forecast.direction === 'flat') return `${label} holding steady around ${unit(forecast.current)}.`;
@@ -37,10 +37,7 @@ function describeForecastLine(metric: ForecastMetric, budget: number | null, for
 
 /** One target, in the units and direction a person reads it in. */
 function describeTarget(p: TargetProgress): string {
-  const unit = (v: number) =>
-    p.metric === 'performance' ? String(Math.round(v))
-    : p.metric === 'cls'       ? fmtCls(v)
-    : fmtMs(v);
+  const unit = (v: number) => fmtMetric(p.metric, v);
 
   const comparator = TARGET_DIRECTION[p.metric] === 'floor' ? 'at least' : 'at most';
   const state = p.met
@@ -234,7 +231,7 @@ async function buildSiteContext(
       if (sitewide.length > 0) {
         lines.push('Also weighing down other pages on this site:');
         for (const v of sitewide) {
-          lines.push(`- ${v.name}: ${v.hereMs}ms here, and ${v.otherRoutes.length} other route${v.otherRoutes.length === 1 ? '' : 's'} (${v.otherRoutes.map(r => `${r.routePath} ${r.blockingMs}ms`).join(', ')})`);
+          lines.push(`- ${describeSitewideVendor(v)}`);
         }
       }
     }
@@ -248,11 +245,8 @@ async function buildSiteContext(
       fieldData,
     );
     if (gaps.length > 0) {
-      const fmtVal = (m: string, v: number) => m === 'cls' ? v.toFixed(3) : fmtMs(v);
       lines.push(`Real users (CrUX, ${fieldData.collectedFrom} to ${fieldData.collectedTo}) vs this lab run:`);
-      for (const g of gaps) {
-        lines.push(`- ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, real p75 ${fmtVal(g.metric, g.fieldP75)} — ${g.gap > 0 ? 'worse' : 'better'} for real users`);
-      }
+      lines.push(...formatGapLines(gaps, { subject: "real users'", audience: 'real users', prefix: '- ' }));
     }
   }
 
@@ -264,11 +258,8 @@ async function buildSiteContext(
       rumAsFieldData(rumData, url),
     );
     if (gaps.length > 0) {
-      const fmtVal = (m: string, v: number) => m === 'cls' ? v.toFixed(3) : fmtMs(v);
       lines.push(`Your own visitors (RUM, last 7 days, ${rumData.pageViews} page views) vs this lab run:`);
-      for (const g of gaps) {
-        lines.push(`- ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, your visitors' p75 ${fmtVal(g.metric, g.fieldP75)} — ${g.gap > 0 ? 'worse' : 'better'} for them`);
-      }
+      lines.push(...formatGapLines(gaps, { subject: "your own visitors'", audience: 'them', prefix: '- ' }));
     }
   }
 

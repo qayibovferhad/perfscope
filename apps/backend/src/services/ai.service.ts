@@ -1,132 +1,28 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createHash } from 'node:crypto';
-import { config } from '../config/index.js';
-import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
+/**
+ * Every Gemini prompt PerfScope asks, one method per surface. The plumbing lives in
+ * services/ai/: `client.ts` (transport, cache, VOICE), `pageContext.ts` (the evidence
+ * block `analysePage` and `answerQuestion` share), `grounding.ts` (the hallucination
+ * guard). This file is only the prompts and the validation of what comes back.
+ */
 import type {
   AnalysisResult, NetworkRequest, AiAdvice, AiAdviceAction, AiMetricNotes, AiPageAnalysis,
-  CoreWebVitals, CruxData, RumSummary,
+  CruxData, RumSummary,
 } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from './aiRecommendation.service.js';
-import { extractIdentifiers } from './aiRecommendation.service.js';
 import type { PreviousRun } from './previousRun.service.js';
 import type { CompetitorComparison } from './competitorContext.service.js';
-import { diffResources, resourceDiffHasChanges } from '../lib/resourceDiff.js';
-import { attributeLongTasks } from '../lib/longTaskAttribution.js';
-import { compareLabAndField, rumAsFieldData } from '../lib/labFieldComparison.js';
-import { findSitewideVendors, type OtherRouteVendors } from '../lib/crossPageVendors.js';
-
-/** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
-const CACHE_TTL_MS = 6 * 60 * 60_000;
-const CACHE_MAX    = 300;
-
-/**
- * Bounds the calls a person is actually waiting behind (analyzer diagnosis, the advisor,
- * an asked question) so a hung Gemini request can't leave a skeleton up forever — measured
- * once at ~10 minutes with no timeout at all. NOT a tight SLA: `analysePage`'s own heaviest
- * measured fixture (15 failing audits, full details + resource diff + cross-page vendors)
- * took 22.5s legitimately — a tighter bound killed that real, successful answer as if it
- * were a hang. This only needs to catch an actual stall, so it stays well above real latency.
- */
-const DEEP_CALL_TIMEOUT_MS = 45_000;
-
-/**
- * How every prompt in this file is told to write.
- *
- * Six prompts grew independently and ended up in six registers — a numbered command list,
- * subjectless fragments ("Delayed by heavy script execution"), flowing prose, semicolon
- * instructions — so the product read as six tools rather than one assistant. This is the
- * single answer to "what does PerfScope sound like".
- */
-const VOICE = `Write as one consistent assistant:
-- Address the reader as "you" and their site as "your". Plain sentences, no markdown, no numbered lists, no headings.
-- Durations in seconds above 1000ms ("3.79s"), otherwise milliseconds ("240ms"). Never write a raw millisecond figure like "3787 milliseconds".
-- Never restate what a metric or an audit means. Say what it means for THIS page.
-- One idea per sentence. No filler, no "consider", no "it is recommended".`;
-
-/**
- * How often a fix has come up before, in words rather than a number.
- *
- * The exact count used to go straight into the prompt ("given 21x"), and on a page a user
- * re-audits often the model started echoing it back verbatim — "for the twenty-first time,
- * still open" — on every recurring fix in the list, which reads as a scold rather than a
- * report the more a page gets re-audited. A bucket still tells the model this is old news
- * (and, past the "third audit or later" threshold, that it should escalate how it says so)
- * without handing it a number to turn into an ordinal.
- */
-function repeatTier(timesGiven: number): string {
-  if (timesGiven >= 5) return 'given many times before';
-  if (timesGiven >= 2) return 'given a few times before';
-  return 'given once before';
-}
+import type { OtherRouteVendors } from '../lib/crossPageVendors.js';
+import { pathOf } from '../lib/url.js';
+import { generate, parseJson, isAiAvailable, VOICE, DEEP_CALL_TIMEOUT_MS } from './ai/client.js';
+import { buildPageContext } from './ai/pageContext.js';
+import { buildEvidenceSet, findUngroundedTexts, critiqueTexts } from './ai/grounding.js';
 
 export class AiService {
   static isAvailable(): boolean {
-    return !!config.geminiApiKey;
+    return isAiAvailable();
   }
 
   /**
-   * Google's rolling alias, not a pinned version. `gemini-2.0-flash-lite` was retired and
-   * every audit logged a 404 for weeks with nobody noticing; when this was fixed,
-   * `gemini-2.5-flash-lite` was *listed* by the models endpoint and already 404ing too.
-   * The alias moves with them. If Google ever drops it, ListModels is the place to look.
-   */
-  private static readonly MODEL = 'gemini-flash-lite-latest';
-
-  private static getModel() {
-    if (!config.geminiApiKey) throw new Error('GEMINI_API_KEY is not configured');
-    const client = new GoogleGenerativeAI(config.geminiApiKey);
-    return client.getGenerativeModel({ model: this.MODEL });
-  }
-
-  private static readonly cache = new Map<string, { text: string; expiresAt: number }>();
-
-  /**
-   * The single door to Gemini. Every prompt goes through here so the fence-stripping,
-   * the cache and the deadline are written once rather than per method.
-   *
-   * `timeoutMs` matters for the callers a person is waiting behind — an alert must go out
-   * whether or not the model has anything to say about it.
-   */
-  private static async generate(prompt: string, opts: { timeoutMs?: number } = {}): Promise<string> {
-    const key = createHash('sha256').update(this.MODEL).update('\0').update(prompt).digest('hex');
-    const hit = this.cache.get(key);
-    if (hit && hit.expiresAt > Date.now()) return hit.text;
-
-    const model = this.getModel();
-    // The SDK's own `timeout` option aborts the underlying fetch; a `Promise.race` around an
-    // un-cancelled call only abandons the wait while the request keeps running server-side.
-    const requestOptions = opts.timeoutMs === undefined ? undefined : { timeout: opts.timeoutMs };
-    const result = await model.generateContent(prompt, requestOptions);
-    const raw = result.response.text();
-
-    // Models fence JSON even when told not to; strip it once, here, for everyone.
-    const text = raw.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-
-    // An empty answer is not an answer worth remembering. Caching one would turn a single
-    // blank or refused response into six hours of silence for that exact prompt, and every
-    // caller treats empty as "nothing to say" rather than "ask again".
-    if (!text) return text;
-
-    if (this.cache.size >= CACHE_MAX) {
-      const now = Date.now();
-      for (const [k, v] of this.cache) if (v.expiresAt <= now) this.cache.delete(k);
-      if (this.cache.size >= CACHE_MAX) this.cache.delete(this.cache.keys().next().value!);
-    }
-    this.cache.set(key, { text, expiresAt: Date.now() + CACHE_TTL_MS });
-    return text;
-  }
-
-  /** Parse a fenced-or-bare JSON reply; `null` rather than a throw when the model rambles. */
-  private static parseJson<T>(text: string, label: string): T | null {
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      console.error(`[AI] Failed to parse ${label} JSON:`, text.slice(0, 200));
-      return null;
-    }
-  }
-
-/**
    * One pass over an audit, producing everything the analyzer shows.
    *
    * Replaces `getInsights`, `getPageNarrative` and `getAuditExplanations`, which each made
@@ -135,332 +31,6 @@ export class AiService {
    * `diagnosis` makes agreement structural rather than lucky, and costs one call where
    * there were three.
    */
-  /**
-   * The exact evidence `analysePage` reasons over, as one block of text: scores, vitals,
-   * longest tasks, heaviest resources, layout shifts, vendors, libraries, recommendation
-   * history, and every failing audit with the details phase 1 taught `lhr-transform` to
-   * keep. Split out so `answerQuestion` can put the identical context in front of the
-   * model — the point of the question box is that it sees exactly what the analysis saw,
-   * not a fresh, cheaper summary of the same page.
-   */
-  private static buildPageContext(
-    result: AnalysisResult,
-    previous?: PreviousRun | null,
-    history?: RecommendationHistoryEntry[] | null,
-    fieldData?: CruxData | null,
-    otherRoutesVendors?: OtherRouteVendors[] | null,
-    rumData?: RumSummary | null,
-    competitor?: CompetitorComparison | null,
-  ): { context: string; failing: AnalysisResult['audits']; poor: (keyof CoreWebVitals)[]; hasSitewideVendors: boolean } {
-    const vitals = (Object.keys(VITAL_THRESHOLDS) as (keyof CoreWebVitals)[])
-      .filter(k => k in result.metrics);
-    const poor = vitals.filter(k => rateVital(k, result.metrics[k]) !== 'good');
-
-    const failing = result.audits
-      .filter(a => (a.score ?? 1) < 1)
-      .slice(0, this.AUDIT_LIMIT);
-
-    const short = (url?: string) => {
-      if (!url) return '';
-      try { return ' ' + new URL(url).pathname; } catch { return ' ' + url; }
-    };
-
-    const heaviest = [...(result.resources?.requests ?? [])]
-      .sort((a, b) => b.transferSize - a.transferSize)
-      .slice(0, 8)
-      .map(r => `  ${r.resourceType}${short(r.url)} ${Math.round(r.transferSize / 1024)}KB starts ${Math.round(r.startTime)}ms ttfb ${Math.round(r.ttfb)}ms`)
-      .join('\n');
-
-    // The specifics that make advice about *this* page rather than about web performance:
-    // which function blocked the thread, which element moved, which library is on board.
-    // All of it is already in the result and none of it used to reach the model, which is
-    // why every audit came back with the same few sentences about third-party scripts.
-    //
-    // A long task and a resource used to be two unrelated lists — attributeLongTasks
-    // chains them: which script was this task actually running, directly (the trace
-    // named it) or inferred (a script's download/execute window overlapped it). The
-    // model gets to cite a specific file instead of a bare "250ms scripting task".
-    const attributedTasks = attributeLongTasks(
-      [...(result.flameChartData?.events ?? [])]
-        .filter(e => e.isLongTask)
-        .sort((a, b) => b.durationMs - a.durationMs)
-        .slice(0, 6)
-        .map(e => ({ name: e.name, startMs: e.startMs, durationMs: e.durationMs, ...(e.url ? { url: e.url } : {}) })),
-      (result.resources?.requests ?? []).map(r => ({
-        url: r.url, resourceType: r.resourceType, transferSize: r.transferSize,
-        startTime: r.startTime, endTime: r.endTime,
-      })),
-    );
-
-    const longTasks = attributedTasks.map(t => {
-      const base = `  ${Math.round(t.durationMs)}ms ${t.name} at ${Math.round(t.startMs)}ms`;
-      if (!t.resource) return base;
-      const size = `${Math.round(t.resource.transferSize / 1024)}KB`;
-      return t.resource.direct
-        ? `${base} —${short(t.resource.url)} (${size})`
-        : `${base} — likely ${t.resource.resourceType}${short(t.resource.url)} (${size}), downloading/executing at this time`;
-    }).join('\n');
-
-    const shifts = (result.clsData?.elements ?? [])
-      .filter(e => e.score > 0)
-      .slice(0, 4)
-      .map(e => `  ${e.score.toFixed(3)} ${e.selector}${e.rootCause ? ` (${e.rootCause})` : ''}`)
-      .join('\n');
-
-    const vendors = (result.thirdParty ?? [])
-      .slice(0, 5)
-      .map(t => `  ${t.name}: ${Math.round(t.blockingTime)}ms blocking, ${Math.round(t.transferSize / 1024)}KB over ${t.requestCount} requests`)
-      .join('\n');
-
-    // A vendor that costs this page something and also costs several of the user's OTHER
-    // pages the same thing is not this page's problem — it's a tag-manager/governance
-    // problem, and the fix is different (remove or replace the vendor once, not chase it
-    // route by route).
-    const sitewideVendors = otherRoutesVendors && otherRoutesVendors.length > 0
-      ? findSitewideVendors(
-          (result.thirdParty ?? []).map(t => ({ name: t.name, blockingTime: t.blockingTime })),
-          otherRoutesVendors,
-        )
-      : [];
-    const sitewideLines = sitewideVendors.length > 0
-      ? `\nAlso weighing down other pages you track:\n${sitewideVendors.map(v =>
-          `  ${v.name}: ${v.hereMs}ms here, and ${v.otherRoutes.length} other route${v.otherRoutes.length === 1 ? '' : 's'} (${v.otherRoutes.map(r => `${r.routePath} ${r.blockingMs}ms`).join(', ')})`
-        ).join('\n')}\n`
-      : '';
-
-    const libraries = (result.resources?.detectedLibraries ?? []).map(l => l.name).join(', ');
-    const s = result.scores;
-
-    // A single Lighthouse run swings ±10+ points on the same page — CPU scheduling,
-    // network jitter, ad-auction timing — a fact the model needs before it treats one
-    // run's numbers, or a movement since a previous run, as settled rather than possibly
-    // noise. Precise-mode audits (runs > 1) report the median and carry their own spread;
-    // a Fast-mode audit is one sample and has to be described as one.
-    const measurementNote = result.measurement && result.measurement.runs > 1
-      ? (result.measurement.spread >= 15
-          ? `\nThis is the median of ${result.measurement.runs} runs (Precise mode); those runs disagreed by ${Math.round(result.measurement.spread)} points — this page's own load behavior is genuinely unstable, not just measurement noise.\n`
-          : `\nThis is the median of ${result.measurement.runs} runs (Precise mode, spread ${Math.round(result.measurement.spread)} points) — a reliable reading.\n`)
-      : `\nThis was a single run (Fast mode) — Lighthouse scores can swing significantly run to run on the same page. Treat this as one sample, not a precise measurement; a Precise-mode audit (several runs, median reported) would confirm whether a number here is real movement or just this run's noise.\n`;
-
-    // Not just "the score moved" but "moved because you shipped this" — the same
-    // instinct as phase 1's audit details, applied to the comparison instead of the
-    // single audit. Only computed when both sides actually have a resource list to
-    // diff (an old stored run from before phase 1's fields existed still compares on
-    // scores/metrics alone, same as before this existed).
-    const changeSince = previous?.resources && result.resources
-      ? (() => {
-          const diff = diffResources(
-            {
-              requests: result.resources!.requests,
-              detectedLibraries: result.resources!.detectedLibraries,
-              thirdParty: result.thirdParty ?? [],
-            },
-            previous.resources,
-          );
-          if (!resourceDiffHasChanges(diff)) return '';
-
-          const fmtKB = (b: number) => `${Math.round(b / 1024)}KB`;
-          const name  = (url: string) => short(url).trim() || url;
-          const lines: string[] = [];
-          if (diff.added.length)   lines.push(`  Added: ${diff.added.map(r => `${name(r.url)} (${fmtKB(r.transferSize)})`).join(', ')}`);
-          if (diff.removed.length) lines.push(`  Removed: ${diff.removed.map(r => name(r.url)).join(', ')}`);
-          if (diff.grown.length)   lines.push(`  Grew: ${diff.grown.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
-          if (diff.shrunk.length)  lines.push(`  Shrunk: ${diff.shrunk.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
-          if (diff.librariesAdded.length)   lines.push(`  New libraries: ${diff.librariesAdded.join(', ')}`);
-          if (diff.librariesRemoved.length) lines.push(`  Removed libraries: ${diff.librariesRemoved.join(', ')}`);
-          if (diff.vendorsAdded.length)     lines.push(`  New vendors: ${diff.vendorsAdded.join(', ')}`);
-          if (diff.vendorsRemoved.length)   lines.push(`  Removed vendors: ${diff.vendorsRemoved.join(', ')}`);
-          return `\nWhat changed since that run:\n${lines.join('\n')}\n`;
-        })()
-      : '';
-
-    // Lab (this Lighthouse run) vs field (real Chrome users, CrUX's trailing 28 days) —
-    // sat next to each other on screen without either surface comparing them. A gap
-    // usually means the audience's real devices/networks differ from Lighthouse's
-    // throttling profile, not that either number is wrong.
-    const fieldComparison = fieldData
-      ? (() => {
-          const gaps = compareLabAndField(
-            { lcp: result.metrics.lcp, cls: result.metrics.cls, fcp: result.metrics.fcp },
-            fieldData,
-          );
-          if (gaps.length === 0) return '';
-          const fmtVal = (metric: string, v: number) => metric === 'cls' ? v.toFixed(3) : fmtMs(v);
-          const lines = gaps.map(g => {
-            const dir = g.gap > 0 ? 'worse' : 'better';
-            return `  ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, real users' p75 ${fmtVal(g.metric, g.fieldP75)} — ${dir} for real users, ${Math.round(g.poorShare * 100)}% of them in the "poor" bucket`;
-          });
-          return `\nReal users (CrUX, ${fieldData.collectedFrom} to ${fieldData.collectedTo}, ${fieldData.scope} scope) vs this lab run:\n${lines.join('\n')}\n`;
-        })()
-      : '';
-
-    // Your own visitors, not the public Chrome sample — a second, independent field
-    // reading, when this site has its own RUM snippet installed. `RumMetricSummary`
-    // deliberately carries the same p75/bucket shape `CruxMetric` does (see
-    // packages/shared/src/types/rum.ts), so the exact comparison logic CrUX uses above
-    // runs unmodified here; only the label and the sample count differ.
-    const rumComparison = rumData
-      ? (() => {
-          const asField = rumAsFieldData(rumData, result.url);
-          const gaps = compareLabAndField(
-            { lcp: result.metrics.lcp, cls: result.metrics.cls, fcp: result.metrics.fcp },
-            asField,
-          );
-          if (gaps.length === 0) return '';
-          const fmtVal = (metric: string, v: number) => metric === 'cls' ? v.toFixed(3) : fmtMs(v);
-          const lines = gaps.map(g => {
-            const dir = g.gap > 0 ? 'worse' : 'better';
-            const samples = rumData.metrics[g.metric]?.samples ?? 0;
-            return `  ${g.metric.toUpperCase()}: lab ${fmtVal(g.metric, g.labValue)}, your own visitors' p75 ${fmtVal(g.metric, g.fieldP75)} (${samples} samples) — ${dir} for them`;
-          });
-          return `\nYour own visitors (RUM, ${rumData.scope === 'path' ? 'this page' : 'site-wide'}, last 7 days, ${rumData.pageViews} page views) vs this lab run:\n${lines.join('\n')}\n`;
-        })()
-      : '';
-
-    // From the Compare page, when this user has run one against this page's host —
-    // reoriented to "you" vs "them" regardless of which side was `source` in that run.
-    // Metrics/scores are a point-in-time snapshot from when Compare last ran, not this
-    // audit's own numbers, so it's labelled with its own date rather than folded into
-    // the numbers above as if they were fresh.
-    const competitorComparison = competitor
-      ? (() => {
-          const fmtSide = (side: { scores: Record<string, number>; metrics: Record<string, number> }) =>
-            `perf ${side.scores['performance'] ?? '?'}, LCP ${fmtMs(side.metrics['lcp'] ?? 0)}, TBT ${fmtMs(side.metrics['tbt'] ?? 0)}, CLS ${(side.metrics['cls'] ?? 0).toFixed(3)}`;
-          const verdictLine = competitor.aiVerdict ? `\n  ${competitor.aiVerdict}` : '';
-          return `\nCompetitor comparison (vs ${competitor.competitorHostname}, compared ${competitor.comparedAt}, ${competitor.winner === 'tie' ? 'roughly tied' : competitor.winner === 'mine' ? 'you were faster' : 'they were faster'}):\n  You: ${fmtSide(competitor.mine)}\n  Them: ${fmtSide(competitor.theirs)}${verdictLine}\n`;
-        })()
-      : '';
-
-    const context = `URL: ${result.url}
-${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}${rumComparison}${competitorComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
-LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
-${result.resources ? `${result.resources.requests.length} requests, ${result.resources.thirdPartyRequests.length} of them third-party` : ''}
-${libraries ? `Libraries on the page: ${libraries}` : ''}
-${history && history.length > 0 ? `\nRecommendations given before on this page:\n${history.map(h => `  ${h.resolved ? '[now fixed] ' : `[${repeatTier(h.timesGiven)}, still open] `}${h.fix}`).join('\n')}\n` : ''}
-
-Longest main-thread tasks:
-${longTasks || '  (none over the long-task threshold)'}
-
-Heaviest resources:
-${heaviest || '  (none recorded)'}
-
-Layout shifts:
-${shifts || '  (none)'}
-
-Third-party vendors:
-${vendors || '  (none)'}
-${sitewideLines}
-Failing audits:
-${failing.map(a => {
-  const savings = [
-    a.savingsMs    ? `~${a.savingsMs}ms`                              : null,
-    a.savingsBytes ? `~${Math.round(a.savingsBytes / 1024)}KB` : null,
-  ].filter(Boolean).join(', ');
-  const head = `  ${a.id} — ${a.title}${a.displayValue ? ` (${a.displayValue})` : ''}${savings ? ` [potential savings: ${savings}]` : ''}`;
-  const items = (a.details ?? []).map(d => {
-    const bits = [
-      d.selector,
-      d.snippet && d.snippet !== d.selector ? d.snippet : undefined,
-      d.url,
-      d.value,
-    ].filter(Boolean);
-    return bits.length ? `    ${bits.join('  ')}` : null;
-  }).filter((l): l is string => l !== null);
-  return items.length ? `${head}\n${items.join('\n')}` : head;
-}).join('\n') || '  (none)'}`;
-
-    return { context, failing, poor, hasSitewideVendors: sitewideVendors.length > 0 };
-  }
-
-  /**
-   * Everything a fix could legitimately cite by name — filenames, libraries, CLS
-   * selectors, long-task functions, vendors, audit-detail selectors. The same evidence
-   * `probes/ai-quality.probe.mts` builds to *score* concreteness after the fact; here it
-   * gates `findUngroundedTexts` *before* a claim ever reaches the reader.
-   */
-  private static buildEvidenceSet(result: AnalysisResult): Set<string> {
-    const tail = (s: string) => (s.split('/').pop()?.split('?')[0] ?? '').toLowerCase();
-    const evidence = new Set<string>();
-    for (const q of result.resources?.requests ?? [])   { try { evidence.add(tail(new URL(q.url).pathname)); } catch { /* skip */ } }
-    for (const l of result.resources?.detectedLibraries ?? []) evidence.add(l.name.toLowerCase());
-    for (const e of result.clsData?.elements ?? [])      evidence.add((e.selector.split(' > ').pop() ?? '').toLowerCase());
-    for (const e of result.flameChartData?.events ?? []) if (e.isLongTask && e.url) evidence.add(tail(e.url));
-    for (const t of result.thirdParty ?? [])             evidence.add(t.name.toLowerCase());
-    for (const a of result.audits) for (const d of a.details ?? [])
-      if (d.selector) evidence.add((d.selector.split(' > ').pop() ?? '').toLowerCase());
-    return evidence;
-  }
-
-  /**
-   * A fix "cites" something specific when it contains a filename or a generated-class
-   * style identifier (the same extractor phase 2's recommendation fingerprinting uses —
-   * `extractIdentifiers`). Flagged when NONE of a fix's identifiers appear anywhere in
-   * the evidence this audit actually contains: a plausible-sounding filename or selector
-   * that was never in the data is a hallucination, not a paraphrase.
-   *
-   * A fix with no specific-looking claim at all is never flagged — "improve your heading
-   * hierarchy" isn't citing anything, so there's nothing to verify, and generic-but-true
-   * advice shouldn't be punished for being generic.
-   */
-  /**
-   * One piece of free text this pass might need to check, keyed so a correction can be
-   * mapped back to exactly where it came from — <code>diagnosis</code>, <code>fix:2</code>,
-   * <code>audit:unused-javascript</code>. Generalised from the fixes-only version this
-   * replaced: a hallucinated filename is exactly as misleading sitting in the diagnosis
-   * sentence or a per-audit explanation as it is in a fix, and there is no reason those two
-   * fields got a pass the first time this was built.
-   */
-  private static findUngroundedTexts(
-    items: { key: string; text: string }[], evidence: Set<string>,
-  ): { key: string; text: string }[] {
-    return items.filter(({ text }) => {
-      const identifiers = extractIdentifiers(text);
-      if (identifiers.length === 0) return false;
-      return !identifiers.some(id => [...evidence].some(e => e.includes(id) || id.includes(e)));
-    });
-  }
-
-  /**
-   * The escalation path — one extra Gemini call covering every flagged item together
-   * (the diagnosis, any fixes, any per-audit explanations), and only when
-   * `findUngroundedTexts` actually found something to check. Most audits never trigger
-   * this: it costs nothing on the common path, and is the thing that catches an invented
-   * filename before a reader does. Never throws; a failed critique just leaves the
-   * original text in place — a plausible-but-unverified claim reaching the reader is the
-   * existing risk, not a new one this introduces.
-   */
-  private static async critiqueTexts(
-    flagged: { key: string; text: string }[], evidence: Set<string>,
-  ): Promise<Map<string, string>> {
-    const corrections = new Map<string, string>();
-    if (flagged.length === 0) return corrections;
-
-    const prompt = `You wrote this analysis of a Lighthouse audit. Each keyed line below cites a file, class or element name that does not appear anywhere in this audit's actual evidence — check each and correct it.
-
-${VOICE}
-
-Evidence this audit actually contains (filenames, selectors, vendor and library names):
-${[...evidence].slice(0, 60).join(', ') || '(none)'}
-
-Lines to check:
-${flagged.map(f => `${f.key}: ${f.text}`).join('\n')}
-
-For each: if the name it cites is not in the evidence above, either rewrite it to cite something that IS there, or drop the specific claim and describe it in general terms instead. Do not invent a replacement name that also isn't in the evidence, and do not add any other specific number or detail that isn't already in the original sentence or the evidence above — fix only what was wrong, don't embellish the rest.
-
-Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).join(', ')}}}`;
-
-    const parsed = await this.generate(prompt)
-      .then(raw => this.parseJson<{ corrected?: Record<string, unknown> }>(raw, 'text critique'))
-      .catch((err: unknown) => { console.error('[AI] Text critique failed:', err); return null; });
-    if (!parsed?.corrected) return corrections;
-
-    for (const f of flagged) {
-      const fixed = parsed.corrected[f.key];
-      if (typeof fixed === 'string' && fixed.trim()) corrections.set(f.key, fixed.trim().slice(0, 300));
-    }
-    return corrections;
-  }
-
   static async analysePage(
     result: AnalysisResult,
     /**
@@ -494,7 +64,7 @@ Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).j
     competitor?: CompetitorComparison | null,
   ): Promise<AiPageAnalysis | null> {
     const { context, failing, poor, hasSitewideVendors } =
-      this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
+      buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
     const s = result.scores;
     const weakCategories = [
       s.accessibility < 90 ? `accessibility ${s.accessibility}` : null,
@@ -522,9 +92,9 @@ Answer ONLY with JSON:
 ${poor.length === 0 ? '- Every vital is already good, so "metrics" is {}.\n' : ''}${failing.length === 0 ? '- Nothing is failing, so "audits" is {}.\n' : ''}
 ${context}`;
 
-    const parsed = this.parseJson<{
+    const parsed = parseJson<{
       diagnosis?: unknown; fixes?: unknown; metrics?: unknown; waterfall?: unknown; audits?: unknown;
-    }>(await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS }), 'page analysis');
+    }>(await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS }), 'page analysis');
 
     if (!parsed || typeof parsed.diagnosis !== 'string' || !parsed.diagnosis.trim()) return null;
 
@@ -548,14 +118,14 @@ ${context}`;
     // diagnosis, each fix, each per-audit explanation — and only one correction call, only
     // when something actually cites evidence that isn't there. A hallucinated filename is
     // exactly as misleading in the opening sentence as it is in fix #3.
-    const evidence = this.buildEvidenceSet(result);
+    const evidence = buildEvidenceSet(result);
     const items: { key: string; text: string }[] = [
       { key: 'diagnosis', text: diagnosis },
       ...rawFixes.map((text, i) => ({ key: `fix:${i}`, text })),
       ...Object.entries(rawAudits).map(([id, text]) => ({ key: `audit:${id}`, text })),
     ];
-    const flagged = this.findUngroundedTexts(items, evidence);
-    const corrections = await this.critiqueTexts(flagged, evidence);
+    const flagged = findUngroundedTexts(items, evidence);
+    const corrections = await critiqueTexts(flagged, evidence);
 
     const fixes = rawFixes.map((text, i) => corrections.get(`fix:${i}`) ?? text);
     const audits: Record<string, string> = {};
@@ -593,7 +163,7 @@ ${context}`;
     rumData?: RumSummary | null,
     competitor?: CompetitorComparison | null,
   ): Promise<string | null> {
-    const { context } = this.buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
+    const { context } = buildPageContext(result, previous, history, fieldData, otherRoutesVendors, rumData, competitor);
 
     const prompt = `You are a web performance expert. Someone is looking at this Lighthouse result and has asked a question about it.
 
@@ -617,7 +187,7 @@ ${context}
 
 Question: ${question}`;
 
-    const raw = await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
+    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
     const answer = raw.trim();
     return answer ? answer.slice(0, 600) : null;
   }
@@ -633,7 +203,7 @@ Question: ${question}`;
 Performance:${result.scores.performance} LCP:${(result.metrics.lcp / 1000).toFixed(1)}s TBT:${Math.round(result.metrics.tbt)}ms CLS:${result.metrics.cls.toFixed(2)}
 Issues: ${failingAudits || 'none'}`;
 
-    return this.generate(prompt);
+    return generate(prompt);
   }
 
   /**
@@ -648,9 +218,7 @@ Issues: ${failingAudits || 'none'}`;
     const list = resources
       .map((r, i) => {
         const kb = Math.round(r.transferSize / 1024);
-        let pathname = r.url;
-        try { pathname = new URL(r.url).pathname; } catch { /* keep full url */ }
-        return `${i + 1}. [${r.resourceType}] ${pathname} (${kb} KB)`;
+        return `${i + 1}. [${r.resourceType}] ${pathOf(r.url, r.url)} (${kb} KB)`;
       })
       .join('\n');
 
@@ -659,8 +227,8 @@ Issues: ${failingAudits || 'none'}`;
 Resources:
 ${list}`;
 
-    const parsed = this.parseJson<Array<{ index: number; advice: string }>>(
-      await this.generate(prompt), 'resource advice');
+    const parsed = parseJson<Array<{ index: number; advice: string }>>(
+      await generate(prompt), 'resource advice');
     if (!Array.isArray(parsed)) return new Map();
 
     return new Map(
@@ -669,12 +237,6 @@ ${list}`;
         .map(({ index, advice }) => [resources[index - 1]!.url, advice.slice(0, 200)]),
     );
   }
-  // ─── Deepening one audit ────────────────────────────────────────────────────
-
-  /** Explaining a passing audit costs a token and says nothing. */
-  /** Failing audits explained per run. Fourteen covers a genuinely bad page without
-   *  turning the response into a wall the reader skims past. */
-  private static readonly AUDIT_LIMIT = 14;
 
   /**
    * One or two sentences to go out with an alert.
@@ -697,7 +259,7 @@ Page: ${alert.url} (${alert.formFactor ?? 'desktop'})
 Findings:
 ${alert.lines.map(l => `- ${l}`).join('\n')}`;
 
-    const text = (await this.generate(prompt, opts)).trim();
+    const text = (await generate(prompt, opts)).trim();
     return text || null;
   }
 
@@ -719,10 +281,9 @@ Regressions: ${data.regressions}, targets missed: ${data.breaches}
 Slowest pages:
 ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`).join('\n') || '- (none)'}`;
 
-    const text = (await this.generate(prompt)).trim();
+    const text = (await generate(prompt)).trim();
     return text || null;
   }
-
 
   /**
    * The advisor's answer to "what should I do next?".
@@ -766,8 +327,8 @@ Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail"
 Context:
 ${input.lines.join('\n')}`;
 
-    const raw = await this.generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
-    const parsed = this.parseJson<{ headline?: unknown; steps?: unknown }>(raw, 'advice');
+    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
+    const parsed = parseJson<{ headline?: unknown; steps?: unknown }>(raw, 'advice');
     if (!parsed || typeof parsed.headline !== 'string' || !parsed.headline.trim()) return null;
 
     const steps = Array.isArray(parsed.steps) ? parsed.steps : [];
@@ -826,8 +387,8 @@ ${input.lines.join('\n')}`;
    * was tried first and measured to fail live, repeatedly: given the exact same facts, the
    * model still wrote "your site should attack LCP, likely due to a missing charset
    * declaration" — a plausible-sounding but entirely fictional cause not present in the
-   * facts at all. `extractIdentifiers`'s filename/selector check (used elsewhere in this
-   * file) doesn't catch this shape of hallucination either: "charset declaration" isn't a
+   * facts at all. `extractIdentifiers`'s filename/selector check (used in ai/grounding.ts)
+   * doesn't catch this shape of hallucination either: "charset declaration" isn't a
    * filename or a generated class, it's an invented *concept*, so nothing about it looks
    * ungrounded to a pattern-based check. A closed-set field the caller validates is the
    * only version of this that can't invent — the same reason `getAdvice`'s `action.url`
@@ -859,7 +420,7 @@ Yours (${entry.sourceUrl}): ${side(entry.source)}
 Rival (${entry.targetUrl}): ${side(entry.competitor)}
 Slower site's facts: ${loserFacts.length ? loserFacts.map(f => `"${f}"`).join(', ') : '(none)'}`;
 
-    const parsed = this.parseJson<{ text?: unknown; cause?: unknown }>(await this.generate(prompt), 'compare verdict');
+    const parsed = parseJson<{ text?: unknown; cause?: unknown }>(await generate(prompt), 'compare verdict');
     if (!parsed || typeof parsed.text !== 'string' || !parsed.text.trim()) return null;
 
     const text  = parsed.text.trim();

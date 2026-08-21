@@ -31,6 +31,12 @@ const NOTABLE_BLOCKING_MS = 50;
 const MIN_OTHER_ROUTES = 2;
 const TOP_N = 5;
 
+/** One sitewide vendor as a line of prose — the exact string was duplicated between the
+ *  analyzer's page context and the advisor's site context. */
+export function describeSitewideVendor(v: SitewideVendor): string {
+  return `${v.name}: ${v.hereMs}ms here, and ${v.otherRoutes.length} other route${v.otherRoutes.length === 1 ? '' : 's'} (${v.otherRoutes.map(r => `${r.routePath} ${r.blockingMs}ms`).join(', ')})`;
+}
+
 export function findSitewideVendors(
   currentVendors: DiffableVendorCost[],
   otherRoutes: OtherRouteVendors[],

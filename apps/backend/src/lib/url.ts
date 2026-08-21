@@ -14,6 +14,12 @@ export function hostOf(url: string): string {
   try { return new URL(url).hostname; } catch { return ''; }
 }
 
+/** Pathname of a URL; `fallback` when unparseable. hostOf's missing twin — this exact
+ *  try/catch was hand-rolled in five services. */
+export function pathOf(url: string, fallback = ''): string {
+  try { return new URL(url).pathname; } catch { return fallback; }
+}
+
 /**
  * Strict scheme+host+port equality. The security boundary for saved-session
  * injection: a prefix match would let `https://example.com.evil.test` receive

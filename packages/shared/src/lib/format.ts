@@ -18,6 +18,14 @@ export const fmtSec2 = (ms: number): string => `${(ms / 1000).toFixed(2)}s`
 
 export const fmtCls = (v: number): string => v.toFixed(3)
 
+/** Metric-aware dispatch over the formatters above: scores plain, CLS three decimals,
+ *  anything else a duration. The ternary this replaces was retyped in four places on the
+ *  backend alone, each free to drift on CLS precision. */
+export const fmtMetric = (metric: string, v: number): string =>
+  metric === 'performance' ? String(Math.round(v))
+  : metric === 'cls'       ? fmtCls(v)
+  : fmtMs(v)
+
 export function fmtBytes(b: number): string {
   if (b < 1024) return `${b} B`
   if (b < 1_048_576) return `${(b / 1024).toFixed(1)} KB`
