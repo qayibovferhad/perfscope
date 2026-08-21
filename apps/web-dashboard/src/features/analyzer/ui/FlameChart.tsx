@@ -2,6 +2,7 @@ import { useEffect, useRef, memo } from 'react';
 import * as d3 from 'd3';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { FlameChartData, FlameChartEvent } from '@/entities/analysis';
+import { resourceFilename } from '../lib/waterfall';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -31,23 +32,13 @@ function buildTooltipHtml(d: FlameChartEvent): string {
     ? `<span style="color:#ef4444;font-weight:600"> ⚠ Long Task</span>`
     : '';
   const urlPart = d.url
-    ? `<div style="opacity:0.55;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${d.url}">${shortUrl(d.url)}</div>`
+    ? `<div style="opacity:0.55;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px" title="${d.url}">${resourceFilename(d.url)}</div>`
     : '';
   return `
     <div style="font-weight:600;margin-bottom:2px">${d.name}${longTaskBadge}</div>
     <div style="opacity:0.75">${CATEGORY_LABELS[d.category]} · ${dur}</div>
     ${urlPart}
   `;
-}
-
-function shortUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const file = u.pathname.split('/').pop() ?? '';
-    return file || u.hostname;
-  } catch {
-    return url.split('/').pop() ?? url;
-  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

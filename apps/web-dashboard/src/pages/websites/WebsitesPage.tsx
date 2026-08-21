@@ -1,4 +1,5 @@
 import { useState, useEffect }      from 'react';
+import { useDebounced }             from '@/shared/lib/useDebounced';
 import {
   Globe, Plus, Loader2,
   LayoutGrid, List, Search,
@@ -9,6 +10,7 @@ import { Input }                     from '@/shared/ui/input';
 import { Segmented }                 from '@/shared/ui/segmented';
 import { Page, PageHeader }          from '@/shared/ui/page';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
+import { StatCard }                  from '@/shared/ui/stat-card';
 import { useWebsites }              from '@/entities/website';
 import { BAND_TILE, BAND_TEXT }     from '@/entities/analysis';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites';
@@ -23,6 +25,9 @@ import type { Website }             from '@/entities/website';
 const PAGE_SIZE = 12;
 
 // ── Local summary tile ────────────────────────────────────────────────────────
+// A thin adapter over the shared StatCard — this page had re-implemented the whole
+// tile with its own (slightly drifted) padding and type scale. Only the variant→band
+// class mapping is local; the markup is the shared one.
 
 type SumVariant = 'default' | 'good' | 'warn';
 
@@ -32,29 +37,13 @@ function SumCard({ icon, value, label, variant = 'default' }: {
   label:    string;
   variant?: SumVariant;
 }) {
-  const iconCls: Record<SumVariant, string> = {
-    default: 'bg-ld-surface-2 border-ld-border text-ld-accent',
-    good:    BAND_TILE.good,
-    warn:    BAND_TILE.warn,
-  };
-  const valueCls: Record<SumVariant, string> = {
-    default: 'text-ld-text',
-    good:    BAND_TEXT.good,
-    warn:    BAND_TEXT.warn,
-  };
   return (
-    <div className="flex items-center gap-[13px] px-[18px] py-4 rounded-[15px] border border-ld-border bg-ld-surface
-                    transition-[border-color,transform] duration-[250ms] hover:border-ld-accent-line hover:-translate-y-[2px]">
-      <div className={`w-10 h-10 rounded-[11px] grid place-items-center shrink-0 border ${iconCls[variant]}`}>
-        {icon}
-      </div>
-      <div>
-        <b className={`font-mono text-[22px] font-semibold tracking-[-0.02em] leading-none block ${valueCls[variant]}`}>
-          {value}
-        </b>
-        <span className="text-[12.5px] text-ld-text-3 mt-[5px] block">{label}</span>
-      </div>
-    </div>
+    <StatCard
+      icon={icon}
+      value={value}
+      label={label}
+      {...(variant !== 'default' ? { iconClassName: BAND_TILE[variant], valueClassName: BAND_TEXT[variant] } : {})}
+    />
   );
 }
 
@@ -68,17 +57,13 @@ export function WebsitesPage() {
   const [modalOpen,     setModalOpen]     = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Website | null>(null);
   const [search,        setSearch]        = useState('');
-  const [debouncedQ,    setDebouncedQ]    = useState('');
   const [page,          setPage]          = useState(1);
   const [view,          setView]          = useState<'grid' | 'list'>(() =>
     (localStorage.getItem('ps-websites-view') as 'grid' | 'list') ?? 'grid'
   );
 
-  // Debounce so typing doesn't fire a request per keystroke.
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(search.trim()), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  // Debounced so typing doesn't fire a request per keystroke.
+  const debouncedQ = useDebounced(search.trim());
 
   // A new filter invalidates the current page number.
   useEffect(() => { setPage(1); }, [debouncedQ]);

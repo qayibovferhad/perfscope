@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { DigestPreference } from '@perfscope/shared';
 import { useForm } from 'react-hook-form';
-import { CheckCircle2, KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { useSaveState, SaveError, SavedChip } from './ui/saveState';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { Toggle } from '@/shared/ui/toggle';
@@ -17,10 +18,6 @@ import { apiClient, fetchJson } from '@/shared/api/client';
 
 interface ProfileForm  { name: string }
 interface PasswordForm { currentPassword: string; newPassword: string; confirmPassword: string }
-
-function errorMessage(err: unknown, fallback: string) {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
-}
 
 export function SettingsPage() {
   const { user, setAuth } = useAuthStore();
@@ -49,9 +46,8 @@ function DigestSection() {
   const [enabled, setEnabled] = useState(false);
   const [day,     setDay]     = useState(1);
   const [time,    setTime]    = useState('09:00');
-  const [saved,   setSaved]   = useState(false);
-  const [serverErr, setServerErr] = useState('');
   const [loaded,  setLoaded]  = useState(false);
+  const { saved, error, run } = useSaveState('Could not save your digest settings');
 
   // The digest preference lives on the user document, which the auth store does not carry.
   useEffect(() => {
@@ -64,14 +60,7 @@ function DigestSection() {
   }, []);
 
   async function save(next: { enabled?: boolean; day?: number; time?: string }) {
-    setServerErr('');
-    setSaved(false);
-    try {
-      await apiClient.patch('/auth/digest', next);
-      setSaved(true);
-    } catch (err) {
-      setServerErr(errorMessage(err, 'Could not save your digest settings'));
-    }
+    await run(async () => { await apiClient.patch('/auth/digest', next); });
   }
 
   return (
@@ -126,12 +115,8 @@ function DigestSection() {
           </div>
         )}
 
-        {serverErr && <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>}
-        {saved && !serverErr && (
-          <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
-            <CheckCircle2 className="w-4 h-4" /> Saved
-          </span>
-        )}
+        {error && <SaveError>{error}</SaveError>}
+        {saved && !error && <SavedChip />}
       </div>
     </Panel>
   );
@@ -145,25 +130,19 @@ interface ProfileSectionProps {
 }
 
 function ProfileSection({ user, setAuth }: ProfileSectionProps) {
-  const [saved, setSaved]         = useState(false);
-  const [serverErr, setServerErr] = useState('');
+  const { saved, error, run } = useSaveState('Could not update your profile');
 
   const {
     register, handleSubmit, reset, formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileForm>({ defaultValues: { name: user?.name ?? '' } });
 
   async function onSubmit({ name }: ProfileForm) {
-    setServerErr('');
-    setSaved(false);
-    try {
+    await run(async () => {
       const res = await apiClient.patch<{ token: string; user: AuthUser }>('/auth/profile', { name });
       // The name lives in the JWT too, so swap in the re-signed token alongside the user.
       setAuth(res.data.user, res.data.token);
       reset({ name: res.data.user.name }); // clears isDirty so the Save button settles
-      setSaved(true);
-    } catch (err) {
-      setServerErr(errorMessage(err, 'Could not update your profile'));
-    }
+    });
   }
 
   return (
@@ -195,20 +174,13 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
           </span>
         </div>
 
-        {serverErr && (
-          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>
-        )}
+        {error && <SaveError>{error}</SaveError>}
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="md" disabled={isSubmitting || !isDirty}>
             {isSubmitting ? <Loader2 className="animate-spin" /> : 'Save changes'}
           </Button>
-          {saved && !isDirty && (
-            <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Saved
-            </span>
-          )}
+          {saved && !isDirty && <SavedChip />}
         </div>
       </form>
     </Panel>
@@ -218,8 +190,7 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
 /* ── Password ─────────────────────────────────────────────────────────────── */
 
 function PasswordSection() {
-  const [saved, setSaved]         = useState(false);
-  const [serverErr, setServerErr] = useState('');
+  const { saved, error, run } = useSaveState('Could not change your password');
 
   const {
     register, handleSubmit, reset, watch, formState: { errors, isSubmitting },
@@ -230,15 +201,10 @@ function PasswordSection() {
   const newPassword = watch('newPassword');
 
   async function onSubmit({ currentPassword, newPassword: next }: PasswordForm) {
-    setServerErr('');
-    setSaved(false);
-    try {
+    await run(async () => {
       await apiClient.patch('/auth/password', { currentPassword, newPassword: next });
       reset();
-      setSaved(true);
-    } catch (err) {
-      setServerErr(errorMessage(err, 'Could not change your password'));
-    }
+    });
   }
 
   return (
@@ -296,20 +262,13 @@ function PasswordSection() {
           )}
         </div>
 
-        {serverErr && (
-          <p className="text-xs font-semibold px-3 py-2 rounded-lg text-ld-rose border border-ld-rose-line bg-ld-rose-wash">{serverErr}</p>
-        )}
+        {error && <SaveError>{error}</SaveError>}
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="md" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="animate-spin" /> : 'Change password'}
           </Button>
-          {saved && (
-            <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ld-accent-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Password updated
-            </span>
-          )}
+          {saved && <SavedChip label="Password updated" />}
         </div>
       </form>
     </Panel>

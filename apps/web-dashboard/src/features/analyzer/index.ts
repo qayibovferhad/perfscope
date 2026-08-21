@@ -24,3 +24,5 @@ export { StreamingScores } from './ui/StreamingScores';
 export { ThirdPartyPanel } from './ui/ThirdPartyPanel';
 export { TimelineWaterfall } from './ui/TimelineWaterfall';
 export { TimelineWaterfallSkeleton } from './ui/TimelineWaterfallSkeleton';
+/** The canonical "filename from URL" — the compare page labels resources with it too. */
+export { resourceFilename } from './lib/waterfall';

@@ -8,20 +8,12 @@ import { InfoTip } from '@/shared/ui/info-tip';
 import { cn } from '@/shared/lib/utils';
 import type { ParsedResources, ResourceType, NetworkRequest } from '@/entities/analysis';
 import { fmtBytes } from '@/shared/lib/format';
+import { resourceFilename } from '../lib/waterfall';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function pct(part: number, total: number): number {
   return total === 0 ? 0 : Math.min(100, Math.round((part / total) * 100));
-}
-
-function filename(url: string): string {
-  try {
-    const path = new URL(url).pathname;
-    return path.split('/').pop() || path;
-  } catch {
-    return url;
-  }
 }
 
 // ─── Size colour indicator ────────────────────────────────────────────────────
@@ -189,7 +181,7 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
           <tbody>
             {criticals.map((req, i) => {
               const { dot, text } = sizeColor(req);
-              const name = filename(req.url);
+              const name = resourceFilename(req.url);
               return (
                 <tr
                   // Index-suffixed: a URL is not unique in a request list. Real pages fetch

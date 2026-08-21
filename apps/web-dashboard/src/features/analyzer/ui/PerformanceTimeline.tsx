@@ -3,7 +3,7 @@ import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { useTimelineContext } from '../model/TimelineContext';
 import { METRIC_MARKERS, findClosestFrameIndex, type TimelineData, type TimelineFrame } from '@/entities/analysis';
-import { fmtSec2 } from '@/shared/lib/format';
+import { fmtSec, fmtSec2 } from '@/shared/lib/format';
 import { useTimelinePlayback, type PlaySpeed } from '@/shared/lib/useTimelinePlayback';
 import { Button } from '@/shared/ui/button';
 import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
@@ -203,7 +203,7 @@ const FilmstripItem = memo(
         <span className={`text-xs font-mono tabular-nums transition-colors duration-75 ${
           isActive ? 'text-ld-text font-semibold' : 'text-ld-text-3 group-hover:text-ld-text-2'
         }`}>
-          {(frame.timing / 1000).toFixed(1)}s
+          {fmtSec(frame.timing)}
         </span>
       </div>
     );

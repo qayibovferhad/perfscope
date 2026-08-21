@@ -1,13 +1,6 @@
 import type { HistoryEntry } from '@/entities/history';
 import { getHostname } from '@/entities/website';
-
-function downloadBlob(blob: Blob, filename: string): void {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+import { downloadBlob } from '@/shared/lib/download';
 
 const hostnameOf = (url: string): string => getHostname(url, 'history');
 

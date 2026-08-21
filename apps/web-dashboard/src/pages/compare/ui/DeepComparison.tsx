@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Layers, Cpu, AlertTriangle, ExternalLink } from 'lucide-react';
 import type { AnalysisResult, FlameChartData } from '@/entities/analysis';
 import { fmtMs, fmtBytes } from '@/shared/lib/format';
+import { resourceFilename } from '@/features/analyzer';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,11 +26,6 @@ function computeCpu(data?: FlameChartData | null): Record<string, number> {
     totals[e.category] = (totals[e.category] ?? 0) + e.durationMs;
   }
   return totals;
-}
-
-function fileName(url: string): string {
-  try { return new URL(url).pathname.split('/').pop() || url; }
-  catch { return url.split('/').pop() || url; }
 }
 
 // ─── Sub-section label ────────────────────────────────────────────────────────
@@ -274,7 +270,7 @@ function OversizedResources({
       <div className="space-y-[3px]">
         {items.map((req, i) => {
           const isTarget = req.side === 'target';
-          const name     = fileName(req.url);
+          const name     = resourceFilename(req.url);
 
           return (
             <motion.div

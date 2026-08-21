@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import {
   Filter, BarChart2, Clock, GitCommit, AlertTriangle, CheckCircle2,
-  ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Lightbulb, Minus,
+  ChevronUp, ChevronDown, ChevronsUpDown, ExternalLink, Loader2, Minus,
 } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
+import { InsightCard } from '@/shared/ui/insight-card';
 import { Button } from '@/shared/ui/button';
 import { Panel } from '@/shared/ui/panel';
 import { VITAL_THRESHOLDS, scoreBand, type VitalKey } from '@/entities/analysis';
@@ -68,21 +69,11 @@ function SeniorInsight({ rows }: { rows: RowData[] }) {
   if (!insight) return null;
 
   return (
-    <div className="flex gap-[12px] px-[18px] py-[16px] rounded-[16px] bg-ld-surface-2 border border-ld-border">
-      <span className="text-ld-accent shrink-0 mt-[1px]">
-        <Lightbulb className="w-[19px] h-[19px]" />
-      </span>
-      <div>
-        <div className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-accent font-semibold mb-[6px]">
-          Senior Insight
-        </div>
-        <p className="text-[14px] text-ld-text-2 leading-[1.55]">
-          The latest regression is primarily driven by a{' '}
-          <b className="text-ld-amber font-bold">{insight.label}</b>
-          {' '}— {insight.message}
-        </p>
-      </div>
-    </div>
+    <InsightCard>
+      The latest regression is primarily driven by a{' '}
+      <b className="text-ld-amber font-bold">{insight.label}</b>
+      {' '}— {insight.message}
+    </InsightCard>
   );
 }
 
@@ -182,10 +173,12 @@ function StatusBadge({ status }: { status: RowStatus }) {
 
 // "up" = metric got worse (rose delta); "down" = got better (emerald delta)
 function MetricCell({
-  value, prev, fmt, lowerIsBetter = true, isBad = false,
+  value, prev, fmt, lowerIsBetter = true, isBad = false, size = 'md',
 }: {
   value: number; prev: number | null; fmt: (v: number) => string;
   lowerIsBetter?: boolean; isBad?: boolean;
+  /** 'lg' is the score column's headline weight. */
+  size?: 'md' | 'lg';
 }) {
   const pct = prev !== null ? deltaPct(value, prev) : null;
 
@@ -200,7 +193,7 @@ function MetricCell({
 
   return (
     <div className="font-mono flex flex-col items-end gap-[2px]">
-      <span className={`text-[13.5px] font-semibold ${isBad ? 'text-ld-rose' : 'text-ld-text'}`}>
+      <span className={`${size === 'lg' ? 'text-[16px] font-bold' : 'text-[13.5px] font-semibold'} ${isBad ? 'text-ld-rose' : 'text-ld-text'}`}>
         {fmt(value)}
       </span>
       {pct !== null ? (
@@ -214,30 +207,18 @@ function MetricCell({
   );
 }
 
-function ScoreCell({
-  value, prev,
-}: {
-  value: number; prev: number | null;
-}) {
-  const pct  = prev !== null ? deltaPct(value, prev) : null;
-  const isBad = scoreBand(value) === 'poor';
-  let dir: 'up' | 'down' | null = null;
-  if (pct !== null && Math.abs(pct) >= 0.05) {
-    dir = pct > 0 ? 'down' : 'up'; // score increase = good = down(emerald)
-  }
-  const deltaCls = dir === 'up' ? 'text-ld-rose' : dir === 'down' ? 'text-ld-accent-2' : 'text-ld-text-3';
-
+/** MetricCell with the score's direction inverted — it was a full second copy of the
+ *  markup differing only in size, formatter and which way "worse" points. */
+function ScoreCell({ value, prev }: { value: number; prev: number | null }) {
   return (
-    <div className="font-mono flex flex-col items-end gap-[2px]">
-      <span className={`text-[16px] font-bold ${isBad ? 'text-ld-rose' : 'text-ld-text'}`}>
-        {Math.round(value)}
-      </span>
-      {pct !== null ? (
-        <span className={`text-[10.5px] ${deltaCls}`}>{fmtPct(pct)}</span>
-      ) : (
-        <span className="text-[10.5px] text-ld-text-3">—</span>
-      )}
-    </div>
+    <MetricCell
+      value={value}
+      prev={prev}
+      fmt={v => String(Math.round(v))}
+      lowerIsBetter={false}
+      isBad={scoreBand(value) === 'poor'}
+      size="lg"
+    />
   );
 }
 

@@ -8,7 +8,7 @@ import { Scrubber } from '@/shared/ui/scrubber';
 import { cn } from '@/shared/lib/utils';
 import { vitalBand, findFrameAt, BAND_TILE, BAND_LABEL } from '@/entities/analysis';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
-import { fmtSec2, fmtCls } from '@/shared/lib/format';
+import { fmtSec, fmtSec2, fmtCls } from '@/shared/lib/format';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Steps of the rose scale, named for what this chart uses them as. A previous comment
@@ -362,7 +362,7 @@ function ShiftScrubber({
                 className="absolute bottom-0 inset-x-0 text-center font-mono text-[7px] bg-[rgba(0,0,0,.72)] py-[1px]"
                 style={{ color: isActive ? ROSE : 'rgba(255,255,255,.35)' }}
               >
-                {(frame.timing / 1000).toFixed(1)}s
+                {fmtSec(frame.timing)}
               </div>
             </button>
           );
@@ -373,7 +373,7 @@ function ShiftScrubber({
       <div className="flex justify-between">
         {Array.from({ length: 5 }).map((_, i) => (
           <span key={i} className="font-mono text-[8px] tabular-nums text-ld-text-3 opacity-50">
-            {((i / 4) * totalMs / 1000).toFixed(1)}s
+            {fmtSec((i / 4) * totalMs)}
           </span>
         ))}
       </div>

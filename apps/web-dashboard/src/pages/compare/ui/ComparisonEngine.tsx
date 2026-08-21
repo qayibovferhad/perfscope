@@ -44,9 +44,6 @@ function metricRatio(tVal: number, cVal: number): { ratio: number; winner: 'targ
   return { ratio: better < 1 ? 1 : +(worse / better).toFixed(2), winner };
 }
 
-// ─── Section head helper ──────────────────────────────────────────────────────
-
-
 // ─── Efficiency section (spec-exact) ─────────────────────────────────────────
 
 function EfficiencySection({ target, competitor }: { target: AnalysisResult; competitor: AnalysisResult }) {

@@ -1,10 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
+import { useDebounced } from '@/shared/lib/useDebounced';
+import { InsightCard } from '@/shared/ui/insight-card';
+import { exportComparePdf } from '../lib/exportPdf';
+import { PairChart } from './PairChart';
+import { perf } from './pairMetrics';
 import { Spinner } from '@/shared/ui/spinner';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, GitCompareArrows, ChevronDown, Trophy,
-  TrendingUp, TrendingDown, Minus, Zap, Lightbulb, FileText,
+  TrendingUp, TrendingDown, Minus, Zap, FileText,
 } from 'lucide-react';
 import { useCompareHistoryList, useCompareHistoryPair, type CompareEntry } from '../model/useCompareHistory';
 import { Button } from '@/shared/ui/button';
@@ -203,9 +208,6 @@ function CompareRow({
   );
 }
 
-import { PairChart } from './PairChart';
-import { perf } from './pairMetrics';
-
 // ─── Pair Detail ─────────────────────────────────────────────────────────────
 
 function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) {
@@ -227,28 +229,7 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
     if (!reportRef.current) return;
     setExporting(true);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ]);
-      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2, backgroundColor: isDark ? '#0e1712' : '#ffffff', useCORS: true, logging: false,
-      });
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pW  = pdf.internal.pageSize.getWidth();
-      const pH  = pdf.internal.pageSize.getHeight();
-      pdf.setFillColor(14, 23, 18); pdf.rect(0, 0, pW, pH, 'F');
-      pdf.setTextColor(20, 192, 138); pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
-      pdf.text('PerfScope', 12, 14);
-      pdf.setTextColor(174, 188, 180); pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
-      pdf.text(`${last.sourceHostname} vs ${last.targetHostname}`, 12, 28);
-      pdf.text(`Generated: ${new Date().toLocaleString()}`, 12, 34);
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      const imgW    = pW - 24;
-      const imgH    = Math.min((canvas.height / canvas.width) * imgW, pH - 50);
-      pdf.addImage(imgData, 'JPEG', 12, 42, imgW, imgH);
-      pdf.save(`perfscope-${last.sourceHostname}-vs-${last.targetHostname}-${Date.now()}.pdf`);
+      await exportComparePdf(reportRef.current, last);
     } finally {
       setExporting(false);
     }
@@ -330,19 +311,9 @@ function PairDetail({ pairId, entry }: { pairId: string; entry: CompareEntry }) 
           </div>
 
           {/* Senior insight */}
-          <div className="flex gap-[12px] mt-[12px] px-[16px] py-[16px] rounded-[12px] bg-ld-surface-2 border border-ld-border">
-            <span className="text-ld-accent shrink-0 mt-[1px]">
-              <Lightbulb className="w-[18px] h-[18px]" />
-            </span>
-            <div>
-              <div className="font-mono text-[10px] tracking-[.12em] uppercase text-ld-accent font-semibold mb-[6px]">
-                Senior Insight
-              </div>
-              <p className="text-[13.5px] text-ld-text-2 leading-[1.55]">
-                <Highlight text={insight} />
-              </p>
-            </div>
-          </div>
+          <InsightCard className="mt-[12px]">
+            <Highlight text={insight} />
+          </InsightCard>
 
           {/* Score cards */}
           <div className="grid grid-cols-2 max-[760px]:grid-cols-1 gap-[14px] mt-[14px]">
@@ -437,15 +408,10 @@ function EmptyState() {
 
 export function CompareHistoryPanel() {
   const [localSearch, setLocalSearch] = useState('');
-  const [apiSearch,   setApiSearch]   = useState('');
   const [selected, setSelected]       = useState<{ pairId: string; entry: CompareEntry } | null>(null);
 
+  const apiSearch = useDebounced(localSearch);
   const { data: pairs = [], isLoading } = useCompareHistoryList(apiSearch);
-
-  useEffect(() => {
-    const t = setTimeout(() => setApiSearch(localSearch), 300);
-    return () => clearTimeout(t);
-  }, [localSearch]);
 
   function handleSearch(v: string) {
     setLocalSearch(v);

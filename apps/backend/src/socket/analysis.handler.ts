@@ -77,7 +77,6 @@ interface RunAuditParams {
   socket:    TypedSocket;
   url:       string;
   userId:    string | undefined;
-  projectId: string | undefined;
   /** Performs the measurement. Gets the id-scoped partial callback and the analysisId. */
   measure:   (onPartial: PartialCallback, analysisId: string) => Promise<AnalysisResult>;
   /** What an expired session should say on this entry path. */
@@ -94,7 +93,7 @@ interface RunAuditParams {
  * every later audit of that origin.
  */
 async function runAudit({
-  socket, url, userId, projectId, measure, expiredMessage,
+  socket, url, userId, measure, expiredMessage,
 }: RunAuditParams): Promise<void> {
   // Own the id up front so this socket only forwards its own audit's progress —
   // concurrent audits share the service's event emitter.
@@ -174,7 +173,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
     const userId = userIdFromToken((socket.handshake.auth as { token?: string }).token);
 
     socket.on('analysis:start', async (payload) => {
-      const { url, projectId } = payload;
+      const { url } = payload;
       const formFactor = parseFormFactor(payload.formFactor);
 
       if (rejectInvalidUrl(socket, url)) return;
@@ -193,7 +192,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
       }
 
       await runAudit({
-        socket, url, userId, projectId,
+        socket, url, userId,
         measure: (onPartial, analysisId) => savedSession
           ? lighthouseService.analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, runs, analysisId })
           : lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId }),
@@ -206,7 +205,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('auth-audit:start', async (payload) => {
-      const { sessionId, url, projectId, context } = payload;
+      const { sessionId, url, context } = payload;
       const formFactor = parseFormFactor(payload.formFactor);
 
       if (rejectInvalidUrl(socket, url)) return;
@@ -228,7 +227,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
       }
 
       await runAudit({
-        socket, url, userId, projectId,
+        socket, url, userId,
         measure: (onPartial, analysisId) =>
           lighthouseService.analyzeWithInjectedSession(url, sessionData, onPartial, { formFactor, analysisId }),
         expiredMessage: () =>

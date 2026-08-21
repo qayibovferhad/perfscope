@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils'
 import { fmtMs, fmtBytes } from '@/shared/lib/format'
 import { RESOURCE_TYPES } from '@/entities/analysis'
 import type { DependencyGraph, DependencyNode, ResourceType, NetworkRequest } from '@/entities/analysis'
+import { resourceFilename } from '../lib/waterfall';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -39,18 +40,6 @@ interface FlatRow {
   lineFlags:  boolean[]
   isCritical: boolean
   isRoot:     boolean
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function shortLabel(url: string): string {
-  try {
-    const u    = new URL(url)
-    const file = u.pathname.split('/').pop()?.replace(/\?.*$/, '') ?? ''
-    return file || u.hostname
-  } catch {
-    return url.split('/').pop()?.replace(/\?.*$/, '') ?? url
-  }
 }
 
 // ─── Tree building ────────────────────────────────────────────────────────────
@@ -112,7 +101,7 @@ function buildTree(graph: DependencyGraph, reqMap: Map<string, NetworkRequest>):
 
     return {
       url,
-      label:        n?.label ?? shortLabel(url),
+      label:        n?.label ?? resourceFilename(url),
       resourceType: n?.resourceType ?? 'other',
       transferSize: n?.transferSize ?? req?.transferSize ?? 0,
       duration:     dur,
@@ -253,7 +242,7 @@ function DepRow({ row, maxTransfer, isFirst }: { row: FlatRow; maxTransfer: numb
           )}
           title={node.url}
         >
-          {node.label || shortLabel(node.url)}
+          {node.label || resourceFilename(node.url)}
         </span>
 
         {/* Root suffix */}

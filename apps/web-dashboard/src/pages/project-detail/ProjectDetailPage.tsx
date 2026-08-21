@@ -81,23 +81,22 @@ export function ProjectDetailPage() {
     [data?.groups],
   );
 
-  // Newest audit that actually produced numbers — the lab side of the field comparison.
-  const latestLab = useMemo(() => {
-    const scored = allAudits
-      .filter(hasResult)
-      .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
-    const last = scored.at(-1);
-    return last ? { lcp: last.metrics.lcp, cls: last.metrics.cls, fcp: last.metrics.fcp } : null;
-  }, [allAudits]);
-
-  // The newest scored run, whole — the targets panel compares every metric against it,
-  // not only the three the field comparison needs.
+  // The newest audit that actually produced numbers — the targets panel compares every
+  // metric against it, and the field comparison reads its three vitals off the same run.
+  // One memo: this used to filter+sort allAudits twice for the same answer.
   const latestRun = useMemo(() => {
     const scored = allAudits
       .filter(hasResult)
       .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
     return scored.at(-1) ?? null;
   }, [allAudits]);
+
+  const latestLab = useMemo(
+    () => latestRun
+      ? { lcp: latestRun.metrics.lcp, cls: latestRun.metrics.cls, fcp: latestRun.metrics.fcp }
+      : null,
+    [latestRun],
+  );
 
   const selectedAudits = useMemo(
     () => allAudits.filter((a) => selectedIds.has(a.id)),

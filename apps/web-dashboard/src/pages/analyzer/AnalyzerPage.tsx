@@ -8,6 +8,7 @@ import { Page } from '@/shared/ui/page';
 import { useAdviceContext } from '@/features/advisor';
 import { getHostname } from '@/entities/website';
 import { apiClient } from '@/shared/api/client';
+import { downloadBlob } from '@/shared/lib/download';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer';
 import { TimelineWaterfallSkeleton } from '@/features/analyzer';
@@ -108,14 +109,9 @@ export function AnalyzerPage() {
   function handleExport() {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const href = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = href;
     // getHostname, not a bare `new URL()` — a malformed stored URL would throw here and
     // turn the export button into a silent no-op.
-    a.download = `perfscope-${getHostname(data.url)}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(href);
+    downloadBlob(blob, `perfscope-${getHostname(data.url)}-${Date.now()}.json`);
   }
 
   // Once a result is on screen the analyzer is about that page. Before that it is a form,

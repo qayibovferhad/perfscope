@@ -6,7 +6,7 @@
  * the first time either was touched.
  */
 export function StatCard({
-  label, value, icon, sub, tone = 'default', compact = false,
+  label, value, icon, sub, tone = 'default', compact = false, iconClassName, valueClassName,
 }: {
   label: string;
   value: string | number;
@@ -16,19 +16,23 @@ export function StatCard({
   sub?: React.ReactNode;
   tone?: 'default' | 'danger';
   compact?: boolean;
+  /** Tint overrides — shared/ui cannot import the entity band maps (FSD flows down),
+   *  so a caller that colours by band passes BAND_TILE/BAND_TEXT classes in. */
+  iconClassName?: string;
+  valueClassName?: string;
 }) {
   return (
     <div
       className="flex items-center gap-[14px] px-[20px] py-[18px] rounded-[16px] border border-ld-border bg-ld-surface transition-[border-color,transform] duration-[250ms] hover:border-ld-accent-line hover:-translate-y-[2px]"
     >
       {icon && (
-        <div className="w-[42px] h-[42px] rounded-[12px] shrink-0 grid place-items-center bg-ld-surface-2 border border-ld-border text-ld-accent">
+        <div className={`w-[42px] h-[42px] rounded-[12px] shrink-0 grid place-items-center border ${iconClassName ?? 'bg-ld-surface-2 border-ld-border text-ld-accent'}`}>
           {icon}
         </div>
       )}
       <div>
         <b
-          className={`font-mono font-semibold tracking-[-0.02em] block leading-none whitespace-nowrap ${compact ? 'text-[18px]' : 'text-[24px]'} ${tone === 'danger' ? 'text-ld-rose' : ''}`}
+          className={`font-mono font-semibold tracking-[-0.02em] block leading-none whitespace-nowrap ${compact ? 'text-[18px]' : 'text-[24px]'} ${valueClassName ?? (tone === 'danger' ? 'text-ld-rose' : '')}`}
         >
           {value}
         </b>

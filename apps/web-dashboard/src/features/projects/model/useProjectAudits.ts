@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '@/shared/api/client';
 import type {
   ProjectAuditEntry,
@@ -14,9 +14,4 @@ export function useProjectAudits(projectId: string) {
     queryFn:  () => fetchJson<ProjectAuditsData>(`/projects/${projectId}/audits`),
     enabled: !!projectId,
   });
-}
-
-export function useInvalidateProjectAudits() {
-  const qc = useQueryClient();
-  return (projectId: string) => qc.invalidateQueries({ queryKey: ['project-audits', projectId] });
 }
