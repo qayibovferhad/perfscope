@@ -6,6 +6,7 @@
  *   - Script-initiated (JS fetch/import): first non-empty stack frame URL → request.url
  */
 import type { NetworkRequest, DependencyNode, DependencyLink, DependencyGraph, ResourceType } from '@perfscope/shared';
+import { parseFailed } from '../lib/parse.js';
 
 // ─── Compact event shape passed from the worker ───────────────────────────────
 
@@ -146,8 +147,8 @@ export function parseDependencies(
     });
 
     return { nodes, links };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('dependencies', err);
   }
 }
 

@@ -53,18 +53,18 @@ type PartialCallback = (data: CategoryPartial) => void;
  * rule everywhere else — but the analyzer is the one place someone deliberately runs a
  * one-off check on a URL they do *not* own or want tracked (a competitor's page, a client's
  * site, anything typed in just to see a number), and silently adding it to their Websites
- * list on read is not what "check this URL" means. `provided` is never trusted either — an
- * untracked URL's audit is simply untracked (`projectId: undefined`), same as it always
- * was for a URL with no matching site. Explicit tracking stays exactly that: the Websites
- * page, the CLI's own "Save website?" prompt before it ever emits `analysis:start`, or a
- * project-scoped audit whose URL still matches that project.
+ * list on read is not what "check this URL" means. The client's own projectId is never
+ * consulted at all — an untracked URL's audit is simply untracked (`projectId:
+ * undefined`), same as it always was for a URL with no matching site, and an anonymous
+ * audit has no owner to file anything under. Explicit tracking stays exactly that: the
+ * Websites page, the CLI's own "Save website?" prompt before it ever emits
+ * `analysis:start`, or a project-scoped audit whose URL still matches that project.
  */
 async function resolveProjectId(
   userId: string | undefined,
   url: string,
-  provided: string | undefined,
 ): Promise<string | undefined> {
-  if (!userId) return provided;
+  if (!userId) return undefined;
   try {
     const site = await findWebsiteByHost(userId, url);
     return site ? String(site._id) : undefined;
@@ -119,7 +119,7 @@ async function runAudit({
 
     // Derived from the audited URL — see resolveProjectId for why the client's value
     // cannot be trusted on its own.
-    const ownerProjectId = await resolveProjectId(userId, result.url, projectId);
+    const ownerProjectId = await resolveProjectId(userId, result.url);
 
     recordLoginWall(userId, result.url, result.authRedirectDetected)
       .catch(err => console.warn('[Website] Login-wall flag failed:', err));

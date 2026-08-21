@@ -1,6 +1,7 @@
 import { isValidTime, MINUTES_PER_DAY, type AutomationScheduleMode } from '@perfscope/shared';
 import { AppError } from '../lib/errors.js';
 import { EMAIL_RE } from '../lib/validate.js';
+import { isValidUrl } from '../lib/url.js';
 
 /**
  * Parsing and validating the settings bodies for a Website.
@@ -115,13 +116,9 @@ function inRange(value: unknown, [min, max]: readonly [number, number]): number 
 export function parseBudgets(body: BudgetsBody): { budgets: null } | { budgets: object } {
   let webhookUrl: string | null = null;
   if (typeof body.webhookUrl === 'string' && body.webhookUrl.trim()) {
-    try {
-      const parsed = new URL(body.webhookUrl.trim());
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('bad protocol');
-      webhookUrl = parsed.toString();
-    } catch {
-      throw new AppError(400, 'webhookUrl must be a valid http(s) URL');
-    }
+    const trimmed = body.webhookUrl.trim();
+    if (!isValidUrl(trimmed)) throw new AppError(400, 'webhookUrl must be a valid http(s) URL');
+    webhookUrl = new URL(trimmed).toString();
   }
 
   let alertEmail: string | null = null;

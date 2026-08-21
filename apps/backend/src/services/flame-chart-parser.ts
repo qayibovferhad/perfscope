@@ -13,6 +13,7 @@ import type { FlameChartData, FlameChartEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
 } from '../lib/trace.js';
+import { parseFailed } from '../lib/parse.js';
 
 // ─── Category sets ────────────────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ export function parseFlameChart(
     const durationMs = events.reduce((m, e) => Math.max(m, e.startMs + e.durationMs), 0);
 
     return { events, maxDepth, durationMs };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('flame-chart', err);
   }
 }

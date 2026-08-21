@@ -1,7 +1,7 @@
 import { fmtMs, fmtCls, type RumMetricKey } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { getRumSummary } from './rum.service.js';
-import { dispatchAlert } from './alerts.service.js';
+import { dispatchAlert, hasAlertChannel, ALERT_CHANNEL_FILTER } from './alerts.service.js';
 
 /**
  * Budgets, evaluated against what real visitors got rather than against a lab run.
@@ -68,7 +68,7 @@ async function evaluate(site: IWebsite): Promise<FieldFailure[]> {
  * different times and mean different things.
  */
 async function checkFieldBudgets(site: IWebsite): Promise<void> {
-  if (!site.budgets?.webhookUrl && !site.budgets?.alertEmail) return;
+  if (!hasAlertChannel(site)) return;
 
   const failures = await evaluate(site);
 
@@ -105,7 +105,7 @@ export async function checkAllFieldBudgets(): Promise<void> {
   const sites = await Website.find({
     budgets: { $ne: null },
     rumKey:  { $ne: null },
-    $or: [{ 'budgets.webhookUrl': { $ne: null } }, { 'budgets.alertEmail': { $ne: null } }],
+    ...ALERT_CHANNEL_FILTER,
   });
 
   for (const site of sites) {

@@ -17,6 +17,7 @@ import type { InteractionData, InteractionEvent } from '@perfscope/shared';
 import {
   resolveTraceEvents, findNavigationStart, findMainThreadTid, mainThreadEvents,
 } from '../lib/trace.js';
+import { parseFailed } from '../lib/parse.js';
 
 const USER_INPUT_TYPES = new Set([
   'click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup',
@@ -199,7 +200,7 @@ export function parseInteractions(traces: unknown): InteractionData | null {
     });
 
     return { events: interactions, longTasks: longTaskSegments, inpMs, avgInputDelayMs, totalBlockingTimeMs };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('interactions', err);
   }
 }

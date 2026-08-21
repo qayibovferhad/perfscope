@@ -1,6 +1,6 @@
 import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding, type AnalysisResult } from '@perfscope/shared';
 import { HistoryModel } from '../models/History.model.js';
-import { dispatchAlert } from './alerts.service.js';
+import { dispatchAlert, hasAlertChannel } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
 
 /**
@@ -52,7 +52,7 @@ export async function checkRegressions(
   if (!hasResult(result)) return;
 
   // Channels live on `budgets`; with nowhere to send, there is nothing to compute.
-  if (!site?.budgets?.webhookUrl && !site?.budgets?.alertEmail) return;
+  if (!hasAlertChannel(site)) return;
 
   const previous = await findPreviousRun(result, userId);
   if (!previous) return;  // first audit of this URL — nothing to regress against

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
+import { AppError } from '../lib/errors.js';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -44,10 +45,13 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
   next();
 }
 
-export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
+// Failures flow through `next(new AppError(...))` rather than hand-built
+// `res.status().json()` envelopes — this middleware predates the errorMiddleware
+// convention and was the last place still assembling the response shape by hand.
+export function requireAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: 'Unauthorized', code: 'NO_TOKEN' });
+    return next(new AppError(401, 'Unauthorized', 'NO_TOKEN'));
   }
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as { sub: string };
@@ -57,8 +61,8 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     // Expired is the common case (30d tokens) — the client shows a "session expired"
     // message for it, so keep it distinguishable from a tampered/malformed token.
     if (err instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ success: false, error: 'Token expired', code: 'TOKEN_EXPIRED' });
+      return next(new AppError(401, 'Token expired', 'TOKEN_EXPIRED'));
     }
-    return res.status(401).json({ success: false, error: 'Invalid token', code: 'INVALID_TOKEN' });
+    return next(new AppError(401, 'Invalid token', 'INVALID_TOKEN'));
   }
 }

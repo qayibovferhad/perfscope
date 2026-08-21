@@ -128,9 +128,26 @@ async function shouldSend(site: IWebsite, alert: Alert): Promise<boolean> {
  *
  * @returns whether anything was sent — false means policy suppressed it.
  */
+/**
+ * Whether this site has anywhere to send an alert. One definition — the predicate was
+ * written three ways across the alert services (differing only in optional-chain
+ * placement), and `ALERT_CHANNEL_FILTER` below is its query form: the two must answer
+ * the same question, so they live side by side.
+ */
+export function hasAlertChannel(
+  site: { budgets?: { webhookUrl?: string | null; alertEmail?: string | null } | null } | null | undefined,
+): boolean {
+  return !!(site?.budgets?.webhookUrl || site?.budgets?.alertEmail);
+}
+
+/** `hasAlertChannel` as a Mongo filter, for finding every such site in one pass. */
+export const ALERT_CHANNEL_FILTER = {
+  $or: [{ 'budgets.webhookUrl': { $ne: null } }, { 'budgets.alertEmail': { $ne: null } }],
+};
+
 export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boolean> {
   const channels = site.budgets;
-  if (!channels?.webhookUrl && !channels?.alertEmail) return false;
+  if (!channels || !hasAlertChannel(site)) return false;
 
   if (!(await shouldSend(site, alert))) {
     console.log(`[Alerts] Suppressed ${alert.event} for ${alert.url} (already notified)`);

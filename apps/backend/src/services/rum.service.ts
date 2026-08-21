@@ -5,6 +5,8 @@ import {
 } from '@perfscope/shared';
 import { RumEvent } from '../models/RumEvent.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
+import { intParam } from '../lib/params.js';
+import { pathOf } from '../lib/url.js';
 import type { PipelineStage, Types } from 'mongoose';
 
 /**
@@ -74,22 +76,31 @@ function metricAccumulators(): Record<string, unknown> {
   return acc;
 }
 
+/** $percentile answers with an array, one entry per requested percentile — this unwrap
+ *  was copied at every read site. Null when the value isn't a finite number. */
+function p75Of(raw: unknown): number | null {
+  const v = Array.isArray(raw) ? Number(raw[0]) : Number(raw);
+  return Number.isFinite(v) ? v : null;
+}
+
+/** CLS is a ratio and needs its decimals; the timings are milliseconds. */
+function roundMetric(key: RumMetricKey, v: number): number {
+  return key === 'cls' ? Math.round(v * 1000) / 1000 : Math.round(v);
+}
+
 function readMetric(row: Record<string, unknown>, key: RumMetricKey): RumMetricSummary | null {
   const samples = Number(row[`${key}_samples`] ?? 0);
   if (samples === 0) return null;
 
-  // $percentile answers with an array, one entry per requested percentile.
-  const p75raw = row[`${key}_p75`];
-  const p75 = Array.isArray(p75raw) ? Number(p75raw[0]) : Number(p75raw);
-  if (!Number.isFinite(p75)) return null;
+  const p75 = p75Of(row[`${key}_p75`]);
+  if (p75 === null) return null;
 
   const good = Number(row[`${key}_good`] ?? 0);
   const ni   = Number(row[`${key}_ni`]   ?? 0);
   const poor = Number(row[`${key}_poor`] ?? 0);
 
   return {
-    // CLS is a ratio and needs its decimals; the timings are milliseconds.
-    p75: key === 'cls' ? Math.round(p75 * 1000) / 1000 : Math.round(p75),
+    p75: roundMetric(key, p75),
     good:             good / samples,
     needsImprovement: ni   / samples,
     poor:             poor / samples,
@@ -98,7 +109,7 @@ function readMetric(row: Record<string, unknown>, key: RumMetricKey): RumMetricS
 }
 
 export async function getRumSummary(query: RumQuery): Promise<RumSummary> {
-  const days = Math.min(Math.max(query.days ?? 7, 1), MAX_DAYS);
+  const days = intParam(query.days, { def: 7, max: MAX_DAYS });
   const from = windowStart(days);
   const to   = new Date();
 
@@ -140,7 +151,7 @@ export async function getRumSummaryForUrl(
   const site = await findWebsiteByHost(userId, url);
   if (!site) return null;
 
-  const path = (() => { try { return new URL(url).pathname; } catch { return undefined; } })();
+  const path = pathOf(url) || undefined;
 
   if (path) {
     const scoped = await getRumSummary({ websiteId: site._id, path, device: formFactor, days: 7 });
@@ -153,7 +164,7 @@ export async function getRumSummaryForUrl(
 
 /** Busiest paths in the window, so the dashboard can point at where the traffic is. */
 export async function getRumPaths(query: RumQuery): Promise<RumPathRow[]> {
-  const days = Math.min(Math.max(query.days ?? 7, 1), MAX_DAYS);
+  const days = intParam(query.days, { def: 7, max: MAX_DAYS });
   const from = windowStart(days);
 
   const rows = await RumEvent.aggregate([
@@ -170,12 +181,11 @@ export async function getRumPaths(query: RumQuery): Promise<RumPathRow[]> {
   ]);
 
   return rows.map((r: Record<string, unknown>) => {
-    const lcpRaw = Array.isArray(r['lcp']) ? r['lcp'][0] : r['lcp'];
-    const lcp = Number(lcpRaw);
+    const lcp = p75Of(r['lcp']);
     return {
       path:      String(r['_id']),
       pageViews: Number(r['pageViews'] ?? 0),
-      lcp:       Number.isFinite(lcp) ? Math.round(lcp) : null,
+      lcp:       lcp !== null ? Math.round(lcp) : null,
     };
   });
 }
@@ -190,7 +200,7 @@ export async function getRumPaths(query: RumQuery): Promise<RumPathRow[]> {
 export async function getRumTrend(
   query: RumQuery & { metric: RumMetricKey },
 ): Promise<RumTrend> {
-  const days = Math.min(Math.max(query.days ?? 30, 1), MAX_DAYS);
+  const days = intParam(query.days, { def: 30, max: MAX_DAYS });
   const from = windowStart(days);
   const field = `$${query.metric}`;
 
@@ -210,13 +220,10 @@ export async function getRumTrend(
   const byDay = new Map<string, RumTrendPoint>();
   for (const row of rows as Array<Record<string, unknown>>) {
     const day = new Date(row['_id'] as Date).toISOString().slice(0, 10);
-    const raw = Array.isArray(row['p75']) ? row['p75'][0] : row['p75'];
-    const p75 = Number(raw);
+    const p75 = p75Of(row['p75']);
     byDay.set(day, {
       day,
-      p75: Number.isFinite(p75)
-        ? (query.metric === 'cls' ? Math.round(p75 * 1000) / 1000 : Math.round(p75))
-        : null,
+      p75: p75 !== null ? roundMetric(query.metric, p75) : null,
       pageViews: Number(row['pageViews'] ?? 0),
     });
   }

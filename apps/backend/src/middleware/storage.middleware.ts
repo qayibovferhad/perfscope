@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { isDbReady } from '../config/database.js';
+import { AppError } from '../lib/errors.js';
+import { ok } from '../lib/respond.js';
 
 /**
  * Set on every response while the database is down.
@@ -20,16 +22,16 @@ export function markStorageState(_req: Request, res: Response, next: NextFunctio
  * Refuse the request outright. For writes only: reads degrade to empty, but accepting a
  * write that cannot be stored would report success for data that was never saved.
  */
-export function requireStorage(_req: Request, res: Response, next: NextFunction): void {
+export function requireStorage(_req: Request, _res: Response, next: NextFunction): void {
   if (isDbReady()) {
     next();
     return;
   }
-  res.status(503).json({
-    success: false,
-    error:   'Storage is unavailable — the database is not connected, so nothing can be saved right now.',
-    code:    'DB_UNAVAILABLE',
-  });
+  next(new AppError(
+    503,
+    'Storage is unavailable — the database is not connected, so nothing can be saved right now.',
+    'DB_UNAVAILABLE',
+  ));
 }
 
 /** Router-level form of the above: reads fall through to their own empty-shape guard. */
@@ -56,6 +58,6 @@ export function emptyOnNoStorage<T>(shape: () => T) {
       next();
       return;
     }
-    res.json({ success: true, data: shape() });
+    ok(res, shape());
   };
 }

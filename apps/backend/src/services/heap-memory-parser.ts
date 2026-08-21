@@ -12,6 +12,7 @@
 
 import type { HeapMemoryData, HeapMemoryPoint } from '@perfscope/shared';
 import { resolveTraceEvents, type RawTraceEvent } from '../lib/trace.js';
+import { parseFailed } from '../lib/parse.js';
 
 const GC_DROP_MB  = 2;    // absolute drop threshold in MB
 const GC_DROP_PCT = 0.10; // relative drop threshold (10 %)
@@ -83,7 +84,7 @@ export function parseHeapMemory(traces: unknown): HeapMemoryData | null {
     const averageMb = heapValues.reduce((s, v) => s + v, 0) / heapValues.length;
 
     return { points, averageMb, peakMb };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('heap-memory', err);
   }
 }

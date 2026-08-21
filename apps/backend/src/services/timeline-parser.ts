@@ -1,5 +1,6 @@
 import type { RunnerResult } from 'lighthouse';
 import type { TimelineData, TimelineFrame } from '@perfscope/shared';
+import { parseFailed } from '../lib/parse.js';
 
 /** Filmstrip frames + key metric timings from a performance LHR. */
 export function parseTimeline(lhr: RunnerResult['lhr']): TimelineData | null {
@@ -57,7 +58,7 @@ export function parseTimeline(lhr: RunnerResult['lhr']): TimelineData | null {
       },
       networkOffsetMs,
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('timeline', err);
   }
 }

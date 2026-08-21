@@ -27,14 +27,3 @@ export function postJson(
     signal:  AbortSignal.timeout(timeoutMs),
   });
 }
-
-/** GET, aborting after `timeoutMs`. */
-export function getWithTimeout(
-  url: string,
-  { timeoutMs, headers }: { timeoutMs: number; headers?: Record<string, string> },
-): Promise<Response> {
-  return fetch(url, {
-    ...(headers ? { headers } : {}),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-}

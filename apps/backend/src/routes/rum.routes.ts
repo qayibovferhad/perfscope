@@ -82,7 +82,9 @@ const beaconBody = express.text({ type: ['text/plain', 'application/json'], limi
 
 // POST /api/rum — one page view. Answers 204 whatever happens: the browser is on its way
 // out and cannot act on an error, and a detailed rejection would only help someone
-// probing for valid site keys.
+// probing for valid site keys. The hand-rolled try/catch (this file is the one router
+// with no asyncHandler) is that policy, not an oversight — asyncHandler's job is to
+// surface errors, and this endpoint must bury them.
 rumRouter.post('/api/rum', publicCors, beaconBody, async (req: Request, res: Response) => {
   res.status(204);
 

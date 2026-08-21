@@ -6,11 +6,9 @@
  * plain string-building over data the caller already has.
  */
 import type { AnalysisResult } from '@perfscope/shared';
+import { pathOf } from './url.js';
 
-const short = (url?: string): string => {
-  if (!url) return '';
-  try { return new URL(url).pathname; } catch { return url; }
-};
+const short = (url?: string): string => url ? pathOf(url, url) : '';
 
 /**
  * Up to three short, concrete facts, ranked so a real performance cause outranks a merely
@@ -51,8 +49,4 @@ export function citableFacts(result: AnalysisResult): string[] {
   if (topVendor && topVendor.blockingTime > 0) facts.push(`top vendor: ${topVendor.name} (${Math.round(topVendor.blockingTime)}ms blocking)`);
 
   return facts;
-}
-
-export function summarizeForVerdict(result: AnalysisResult): string {
-  return citableFacts(result).join('; ');
 }

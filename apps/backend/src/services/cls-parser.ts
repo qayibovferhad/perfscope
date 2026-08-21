@@ -1,5 +1,6 @@
 import type { RunnerResult } from 'lighthouse';
 import type { CLSData, CLSShiftElement } from '@perfscope/shared';
+import { parseFailed } from '../lib/parse.js';
 
 /** Layout-shift elements with viewport-relative rects from a performance LHR. */
 export function parseCLSData(lhr: RunnerResult['lhr']): CLSData | null {
@@ -69,7 +70,7 @@ export function parseCLSData(lhr: RunnerResult['lhr']): CLSData | null {
 
     if (elements.length === 0) return null;
     return { totalScore, elements, viewportWidth: vw, viewportHeight: vh };
-  } catch {
-    return null;
+  } catch (err) {
+    return parseFailed('cls', err);
   }
 }

@@ -1,6 +1,7 @@
 import { Website } from '../models/Website.model.js';
 import { CompetitorSession } from '../models/CompetitorSession.model.js';
-import { hostOf, hostPrefixRegex, sameOrigin } from '../lib/url.js';
+import { sameOrigin } from '../lib/url.js';
+import { siteHostFilter } from './websiteLookup.js';
 import type { AuthSessionData } from './authAuditSession.js';
 
 /**
@@ -11,22 +12,12 @@ import type { AuthSessionData } from './authAuditSession.js';
  * session for this URL?" belong together rather than inline in the socket handler.
  */
 
-/**
- * Narrows a lookup to documents that could plausibly be the same origin.
- *
- * Both functions below used to load *every* website and competitor session for the user —
- * unprojected, so every stored session blob — and filter in JS. This is the same question
- * asked of Mongo, on the indexed `userId` plus an anchored host match. `sameOrigin` still
- * makes the actual decision on the survivors: the regex matches either scheme and any
- * port, so it narrows but never authorises.
- *
- * Null when the URL has no parseable host — nothing can match, so do not query at all.
- */
-function sameHostFilter(userId: string, url: string) {
-  const host = hostOf(url);
-  if (!host) return null;
-  return { userId, url: { $regex: hostPrefixRegex(host).source, $options: 'i' } };
-}
+// Narrows a lookup to documents that could plausibly be the same origin. The functions
+// below used to load *every* website and competitor session for the user — unprojected,
+// so every stored session blob — and filter in JS; siteHostFilter is the same question
+// asked of Mongo. `sameOrigin` still makes the actual decision on the survivors.
+// One definition, shared with websiteLookup: this filter is the access boundary for
+// injecting saved credentials, and it briefly existed as two copies.
 
 /**
  * A saved session for this exact origin, or null.
@@ -40,7 +31,7 @@ export async function findSessionFor(
   userId: string,
   url: string,
 ): Promise<AuthSessionData | null> {
-  const onHost = sameHostFilter(userId, url);
+  const onHost = siteHostFilter(userId, url);
   if (!onHost) return null;
 
   const [websites, competitorSessions] = await Promise.all([
@@ -90,7 +81,7 @@ export async function persistCapturedSession(
 
   // Match an existing site by origin first: upserting on `url` alone would create a
   // second document for a site already tracked under a different path.
-  const onHost = sameHostFilter(userId, url);
+  const onHost = siteHostFilter(userId, url);
   const sites  = onHost ? await Website.find(onHost).select('url').lean() : [];
   const match  = sites.find(w => sameOrigin(url, w.url as string));
 

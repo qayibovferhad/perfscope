@@ -4,7 +4,7 @@ import { MANUAL_ONLY_FILTER, SCHEDULED_ONLY_FILTER } from '../lib/history.js';
 import { pruneToLimit } from '../lib/mongo.js';
 import { hasResult, scoreVerdict } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
-import { hostOf, normalizedUrlHostRegex } from '../lib/url.js';
+import { hostOf, pathOf, normalizedUrlHostRegex } from '../lib/url.js';
 import type { AuditSource, ScheduledSiteReport } from '@perfscope/shared';
 import type {
   HistoryEntry,
@@ -43,14 +43,6 @@ function auditKey(url: string): string {
   }
 }
 
-function extractRoutePath(url: string): string {
-  try {
-    return new URL(url).pathname || '/';
-  } catch {
-    return '/';
-  }
-}
-
 
 /**
  * Where a route's score ended up against where it started.
@@ -84,7 +76,7 @@ function toEntry(d: any): HistoryEntry {
 function toProjectEntry(d: any): ProjectAuditEntry {
   return {
     ...toEntry(d),
-    routePath: (d.routePath as string | undefined) ?? extractRoutePath(d.url as string),
+    routePath: (d.routePath as string | undefined) ?? (pathOf(d.url as string, '/') || '/'),
   };
 }
 
@@ -153,7 +145,7 @@ export const HistoryService = {
     source: AuditSource = 'manual',
   ): Promise<void> {
     const normalizedUrl = auditKey(entry.url);
-    const routePath     = extractRoutePath(entry.url);
+    const routePath     = pathOf(entry.url, '/') || '/';
 
     await HistoryModel.create({
       analysisId:    entry.id,
