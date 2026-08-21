@@ -11,6 +11,10 @@ import { RequestDetailPanel } from './RequestDetailPanel';
 import { RESOURCE_TYPES, resourceBadgeStyle, METRIC_MARKERS } from '@/entities/analysis';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
 
+/** Label-column width. Wider than TimelineWaterfall's 280 on purpose (the type badge and
+ *  size ride in this column) — but every width below must come from this constant: the
+ *  header, gridline and playhead offsets used to hardcode `320px` classes beside it, so
+ *  changing it silently sheared the layout. */
 const LEFT_W = 320;
 
 const FILTER_CHIPS: { key: ResourceType | 'all'; label: string }[] = [
@@ -72,7 +76,8 @@ const WaterfallRow = memo(function WaterfallRow({
         )}
       >
         <div
-          className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-r border-ld-border w-[320px]"
+          className="flex items-center gap-2 px-3 py-1.5 shrink-0 border-r border-ld-border"
+          style={{ width: LEFT_W }}
         >
           <Icon className="w-3 h-3 shrink-0 text-ld-text-3" />
           <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
@@ -321,7 +326,7 @@ export function ResourceWaterfall({
       )}
 
       <div className="flex border-b border-ld-border bg-ld-bg text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
-        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border w-[320px]">
+        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border" style={{ width: LEFT_W }}>
           <span>Resource</span>
           <span className="ml-auto">Type</span>
           <span className="w-11 text-right">Size</span>
@@ -333,7 +338,7 @@ export function ResourceWaterfall({
 
       <div className="relative">
         <div className="max-h-[420px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:var(--ld-border-strong)_transparent]">
-          <div className="absolute top-0 bottom-0 left-[320px] right-0 pointer-events-none">
+          <div className="absolute top-0 bottom-0 right-0 pointer-events-none" style={{ left: LEFT_W }}>
             {Array.from({ length: TICK_COUNT - 1 }, (_, i) => (
               <div
                 key={i}

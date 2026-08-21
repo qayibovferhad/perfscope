@@ -13,6 +13,10 @@ import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { fmtMs } from '@/shared/lib/format';
+// Tokens flow through as `var(--ld-*)` strings — resolving them to hex via
+// getComputedStyle froze the palette at render time, so the chart kept its old
+// colours across a light/dark toggle until the data happened to change.
+import { CHART } from '@/shared/ui/chart';
 import { useTimelineContext } from '../model/TimelineContext';
 import {
   vitalBand, BAND_TEXT, BAND_TILE, BAND_BORDER, BAND_LABEL,
@@ -123,18 +127,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
     const tip  = tooltipRef.current;
     if (!wrap || !svg || !tip) return;
 
-    // Read CSS design tokens at render time so chart respects theme
-    const cs = getComputedStyle(document.documentElement);
-    const C = {
-      accent:       cs.getPropertyValue('--ld-accent').trim()        || '#14c08a',
-      amber:        cs.getPropertyValue('--ld-amber').trim()         || '#e6a23c',
-      rose:         cs.getPropertyValue('--ld-rose').trim()          || '#f2647a',
-      text3:        cs.getPropertyValue('--ld-text-3').trim()        || '#6f8278',
-      border:       cs.getPropertyValue('--ld-border').trim()        || 'rgba(180,230,205,0.09)',
-      borderStrong: cs.getPropertyValue('--ld-border-strong').trim() || 'rgba(180,230,205,0.16)',
-    };
-
-    const BAND_C: Record<ScoreBand, string> = { good: C.accent, warn: C.amber, poor: C.rose };
+    const BAND_C: Record<ScoreBand, string> = { good: CHART.accent, warn: CHART.amber, poor: CHART.rose };
     const intColor = (ms: number) => BAND_C[vitalBand('inp', ms)];
 
     const totalW = wrap.clientWidth;
@@ -157,7 +150,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
       g.append('line')
         .attr('x1', xScale(tick)).attr('x2', xScale(tick))
         .attr('y1', 0).attr('y2', innerH)
-        .attr('stroke', C.border)
+        .attr('stroke', CHART.grid)
         .attr('stroke-dasharray', '3,4');
     });
 
@@ -180,7 +173,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
     zoneG.filter(lt => xScale(lt.startMs + lt.durationMs) - xScale(lt.startMs) > 46)
       .append('text')
       .attr('x', lt => xScale(lt.startMs) + 4).attr('y', 9)
-      .attr('fill', C.rose).attr('fill-opacity', 0.55)
+      .attr('fill', CHART.rose).attr('fill-opacity', 0.55)
       .attr('font-size', '8px').text('Long Task');
 
     zoneG
@@ -192,13 +185,13 @@ export const InteractionTimeline = memo(function InteractionTimeline({
         tip.style.left    = `${Math.min(event.clientX + 14, window.innerWidth - 220)}px`;
         tip.style.top     = `${Math.max(event.clientY - 70, 4)}px`;
         tip.innerHTML = `
-          <div style="font-size:11px;font-weight:700;color:${C.rose};margin-bottom:4px">
+          <div style="font-size:11px;font-weight:700;color:${CHART.rose};margin-bottom:4px">
             Long Task: ${fmtMs(lt.durationMs)}
           </div>
-          <div style="font-size:10px;color:${C.text3};line-height:1.8">
+          <div style="font-size:10px;color:${CHART.axis};line-height:1.8">
             Start: ${fmtMs(lt.startMs)}<br/>
             ${lt.topFunctionName
-              ? `Top fn: <span style="color:${C.amber};font-family:monospace">${lt.topFunctionName}</span>`
+              ? `Top fn: <span style="color:${CHART.amber};font-family:monospace">${lt.topFunctionName}</span>`
               : `Top fn: <span style="opacity:0.5">not identified</span>`}
           </div>
         `;
@@ -222,20 +215,20 @@ export const InteractionTimeline = memo(function InteractionTimeline({
     g.append('g')
       .attr('transform', `translate(0, ${innerH})`)
       .call(d3.axisBottom(xScale).ticks(6).tickFormat(d => fmtMs(Number(d))))
-      .call(ax => ax.select('.domain').attr('stroke', C.borderStrong))
-      .call(ax => ax.selectAll('text').attr('fill', C.text3).attr('font-size', '10px'))
-      .call(ax => ax.selectAll('.tick line').attr('stroke', C.border));
+      .call(ax => ax.select('.domain').attr('stroke', CHART.gridStrong))
+      .call(ax => ax.selectAll('text').attr('fill', CHART.axis).attr('font-size', '10px'))
+      .call(ax => ax.selectAll('.tick line').attr('stroke', CHART.grid));
 
     g.append('text')
       .attr('x', innerW / 2).attr('y', innerH + 36)
       .attr('text-anchor', 'middle')
-      .attr('fill', C.text3).attr('fill-opacity', 0.6).attr('font-size', '9px')
+      .attr('fill', CHART.axis).attr('fill-opacity', 0.6).attr('font-size', '9px')
       .text('Time from navigation start');
 
     g.append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', innerH).attr('y2', innerH)
-      .attr('stroke', C.borderStrong);
+      .attr('stroke', CHART.gridStrong);
 
     // ── Interaction pins ──────────────────────────────────────────────────────
 
@@ -273,7 +266,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
         .attr('y', circleY - CIRCLE_R - 6)
         .attr('text-anchor', 'middle')
         .attr('font-size', '8px').attr('font-weight', '700')
-        .attr('fill', C.rose).text('INP');
+        .attr('fill', CHART.rose).text('INP');
 
       pinG.append('circle')
         .attr('class', 'selected-ring')
@@ -295,7 +288,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
       pinG.append('text')
         .attr('y', labelBaseY + 20)
         .attr('text-anchor', 'middle')
-        .attr('font-size', '7.5px').attr('fill', C.text3)
+        .attr('font-size', '7.5px').attr('fill', CHART.axis)
         .text(ev => truncate(ev.targetElement.toLowerCase(), 14));
 
       pinG
@@ -306,14 +299,14 @@ export const InteractionTimeline = memo(function InteractionTimeline({
           tip.style.left    = `${Math.min(event.clientX + 14, window.innerWidth - 200)}px`;
           tip.style.top     = `${Math.max(event.clientY - 90, 4)}px`;
           tip.innerHTML = `
-            <div style="font-size:10px;color:${C.text3};margin-bottom:4px">
+            <div style="font-size:10px;color:${CHART.axis};margin-bottom:4px">
               ${capitalize(ev.type)} · ${fmtMs(ev.startMs)}
             </div>
             <div style="font-size:13px;font-weight:700;color:${col};margin-bottom:6px">
               ${fmtMs(ev.totalDurationMs)} <span style="font-size:10px;font-weight:400">${BAND_LABEL[vitalBand('inp', ev.totalDurationMs)]}</span>
             </div>
-            <div style="font-size:10px;color:${C.text3};line-height:1.7">
-              <span style="color:${C.amber}">■</span> Input Delay&nbsp;&nbsp;&nbsp;${fmtMs(ev.inputDelayMs)}<br/>
+            <div style="font-size:10px;color:${CHART.axis};line-height:1.7">
+              <span style="color:${CHART.amber}">■</span> Input Delay&nbsp;&nbsp;&nbsp;${fmtMs(ev.inputDelayMs)}<br/>
               <span style="color:#a855f7">■</span> Processing&nbsp;&nbsp;&nbsp;&nbsp;${fmtMs(ev.processingTimeMs)}<br/>
               <span style="color:#3b82f6">■</span> Presentation&nbsp;&nbsp;${fmtMs(ev.presentationDelayMs)}
             </div>

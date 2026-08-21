@@ -10,6 +10,10 @@ import { MemoryStick, Activity, AlertTriangle } from 'lucide-react';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
 import { fmtMs } from '@/shared/lib/format';
+// Tokens flow through as `var(--ld-*)` strings — resolving them to hex via
+// getComputedStyle froze the palette at render time, so the chart kept its old
+// colours across a light/dark toggle until the data happened to change.
+import { CHART } from '@/shared/ui/chart';
 import { useTimelineContext } from '../model/TimelineContext';
 import type { HeapMemoryData, HeapMemoryPoint } from '@/entities/analysis';
 
@@ -122,18 +126,6 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
     const tip   = tooltipRef.current;
     if (!wrap || !svgEl || !tip || data.points.length === 0) return;
 
-    const cs = getComputedStyle(document.documentElement);
-    const C = {
-      accent:       cs.getPropertyValue('--ld-accent').trim()        || '#14c08a',
-      accentLine:   cs.getPropertyValue('--ld-accent-line').trim()   || 'rgba(20,192,138,0.30)',
-      accentSoft:   cs.getPropertyValue('--ld-accent-soft').trim()   || 'rgba(20,192,138,0.12)',
-      rose:         cs.getPropertyValue('--ld-rose').trim()          || '#f2647a',
-      text3:        cs.getPropertyValue('--ld-text-3').trim()        || '#6f8278',
-      border:       cs.getPropertyValue('--ld-border').trim()        || 'rgba(180,230,205,0.09)',
-      borderStrong: cs.getPropertyValue('--ld-border-strong').trim() || 'rgba(180,230,205,0.16)',
-      surface:      cs.getPropertyValue('--ld-surface').trim()       || '#0e1712',
-    };
-
     // Downsample to ≤ 300 points, preserving GC events
     const pts = (() => {
       if (data.points.length <= 300) return data.points;
@@ -171,9 +163,9 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       .attr('x1', 0).attr('y1', MARGIN.top)
       .attr('x2', 0).attr('y2', MARGIN.top + innerH);
     grad.append('stop').attr('offset', '0%')
-      .attr('stop-color', C.accent).attr('stop-opacity', 0.22);
+      .attr('stop-color', CHART.accent).attr('stop-opacity', 0.22);
     grad.append('stop').attr('offset', '100%')
-      .attr('stop-color', C.accent).attr('stop-opacity', 0);
+      .attr('stop-color', CHART.accent).attr('stop-opacity', 0);
 
     const clipId = 'hm-clip';
     defs.append('clipPath').attr('id', clipId)
@@ -189,7 +181,7 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       .enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', d => yScale(d)).attr('y2', d => yScale(d))
-      .attr('stroke', C.border).attr('stroke-width', 1)
+      .attr('stroke', CHART.grid).attr('stroke-width', 1)
       .attr('stroke-dasharray', '4 4');
 
     // ── Target Baseline line ──────────────────────────────────────────────────
@@ -199,7 +191,7 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       g.append('line')
         .attr('x1', 0).attr('x2', innerW)
         .attr('y1', baseY).attr('y2', baseY)
-        .attr('stroke', C.accentLine).attr('stroke-width', 1.5)
+        .attr('stroke', CHART.accentLine).attr('stroke-width', 1.5)
         .attr('stroke-dasharray', '6 4');
     }
 
@@ -222,7 +214,7 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
     g.append('path').datum(pts)
       .attr('clip-path', `url(#${clipId})`)
       .attr('fill', 'none')
-      .attr('stroke', C.accent).attr('stroke-width', 2)
+      .attr('stroke', CHART.accent).attr('stroke-width', 2)
       .attr('d', lineGen);
 
     // ── Peak marker ───────────────────────────────────────────────────────────
@@ -233,10 +225,10 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
       const px = xScale(peak.timeMs);
       const py = yScale(peak.heapMb);
       g.append('circle').attr('cx', px).attr('cy', py).attr('r', 7)
-        .attr('fill', C.rose).attr('opacity', 0.15)
+        .attr('fill', CHART.rose).attr('opacity', 0.15)
         .attr('clip-path', `url(#${clipId})`);
       g.append('circle').attr('cx', px).attr('cy', py).attr('r', 4)
-        .attr('fill', C.rose).attr('opacity', 0.9)
+        .attr('fill', CHART.rose).attr('opacity', 0.9)
         .attr('clip-path', `url(#${clipId})`);
     }
 
@@ -248,13 +240,13 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
     gcGroup.selectAll<SVGCircleElement, HeapMemoryPoint>('circle.gc-glow')
       .data(gcPoints).enter().append('circle').attr('class', 'gc-glow')
       .attr('cx', p => xScale(p.timeMs)).attr('cy', p => yScale(p.heapMb))
-      .attr('r', GC_R + 3).attr('fill', C.accent).attr('opacity', 0.15);
+      .attr('r', GC_R + 3).attr('fill', CHART.accent).attr('opacity', 0.15);
 
     gcGroup.selectAll<SVGCircleElement, HeapMemoryPoint>('circle.gc-dot')
       .data(gcPoints).enter().append('circle').attr('class', 'gc-dot')
       .attr('cx', p => xScale(p.timeMs)).attr('cy', p => yScale(p.heapMb))
-      .attr('r', GC_R).attr('fill', C.accent)
-      .attr('stroke', C.accent).attr('stroke-opacity', 0.5).attr('stroke-width', 1)
+      .attr('r', GC_R).attr('fill', CHART.accent)
+      .attr('stroke', CHART.accent).attr('stroke-opacity', 0.5).attr('stroke-width', 1)
       .attr('opacity', 0.9);
 
     // ── Crosshair + hover dot ─────────────────────────────────────────────────
@@ -263,11 +255,11 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
 
     const crosshair = g.append('line')
       .attr('y1', 0).attr('y2', innerH)
-      .attr('stroke', C.accent).attr('stroke-width', 1)
+      .attr('stroke', CHART.accent).attr('stroke-width', 1)
       .attr('opacity', 0).attr('pointer-events', 'none');
 
     const hoverDot = g.append('circle').attr('r', 4)
-      .attr('fill', C.accent).attr('stroke', C.surface).attr('stroke-width', 2)
+      .attr('fill', CHART.accent).attr('stroke', CHART.surface).attr('stroke-width', 2)
       .attr('opacity', 0).attr('pointer-events', 'none');
 
     // ── Overlay ───────────────────────────────────────────────────────────────
@@ -292,14 +284,14 @@ export const HeapMemoryChart = memo(function HeapMemoryChart({ data }: Props) {
         let pctLine = '';
         if (prev) {
           const pct   = ((pt.heapMb - prev.heapMb) / prev.heapMb) * 100;
-          const color = pct >= 0 ? C.rose : C.accent;
+          const color = pct >= 0 ? CHART.rose : CHART.accent;
           pctLine = `<div style="color:${color};font-size:10px;margin-top:2px">${fmtPct(pct)} vs prev</div>`;
         }
         const domLine = pt.domNodes != null
           ? `<div style="opacity:0.6;font-size:10px;margin-top:2px">DOM nodes: ${pt.domNodes.toLocaleString()}</div>`
           : '';
         const gcLine  = pt.isGC
-          ? `<div style="color:${C.accent};font-size:10px;margin-top:3px">⬤ GC event</div>`
+          ? `<div style="color:${CHART.accent};font-size:10px;margin-top:3px">⬤ GC event</div>`
           : '';
 
         tip.style.display = 'block';

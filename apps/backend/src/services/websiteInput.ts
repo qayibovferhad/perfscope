@@ -1,5 +1,6 @@
 import { isValidTime, MINUTES_PER_DAY, type AutomationScheduleMode } from '@perfscope/shared';
 import { AppError } from '../lib/errors.js';
+import { EMAIL_RE } from '../lib/validate.js';
 
 /**
  * Parsing and validating the settings bodies for a Website.
@@ -21,8 +22,6 @@ const BUDGET_RANGE = {
   cls:         [0.01, 5],
   inp:         [10, 60_000],
 } as const;
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface AutomationBody {
   enabled?:       boolean;

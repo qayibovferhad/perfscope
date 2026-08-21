@@ -60,6 +60,7 @@ export { AuditList } from './ui/AuditList'
 export { ProgressStepper } from './ui/ProgressStepper'
 export { ScoreRing } from './ui/ScoreRing'
 export { FormFactorToggle, DEVICE_MODES } from './ui/FormFactorToggle'
+export { AvgBadge } from './ui/AvgBadge'
 export { PrecisionToggle, PRECISION_MODES } from './ui/PrecisionToggle'
 
 export { startAnalysis, joinAnalysis, emitAuthAuditStart, attachAnalysisListeners } from './api/analysisSocket'

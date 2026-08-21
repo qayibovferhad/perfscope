@@ -22,8 +22,14 @@ export const METRIC_MARKERS: {
   label: string;
   color: string;
   glow:  string;
+  /** Tinted badge background. A step token, never `color` with an alpha suffix — the
+   *  colours are `var(--ld-*)` strings, so `` `${color}18` `` is invalid CSS that fails
+   *  silently (which is exactly how the filmstrip's badges lost their backgrounds). */
+  soft:  string;
+  /** 1px border for the same badge. */
+  line:  string;
 }[] = [
-  { key: 'fcp', label: 'FCP', color: 'var(--ld-teal)',   glow: 'var(--ld-teal-strong)'   },
-  { key: 'lcp', label: 'LCP', color: 'var(--ld-accent)', glow: 'var(--ld-accent-strong)' },
-  { key: 'tti', label: 'TTI', color: 'var(--ld-amber)',  glow: 'var(--ld-amber-strong)'  },
+  { key: 'fcp', label: 'FCP', color: 'var(--ld-teal)',   glow: 'var(--ld-teal-strong)',   soft: 'var(--ld-teal-soft)',   line: 'var(--ld-teal-line)'   },
+  { key: 'lcp', label: 'LCP', color: 'var(--ld-accent)', glow: 'var(--ld-accent-strong)', soft: 'var(--ld-accent-soft)', line: 'var(--ld-accent-line)' },
+  { key: 'tti', label: 'TTI', color: 'var(--ld-amber)',  glow: 'var(--ld-amber-strong)',  soft: 'var(--ld-amber-soft)',  line: 'var(--ld-amber-line)'  },
 ];

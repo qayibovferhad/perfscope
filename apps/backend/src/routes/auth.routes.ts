@@ -9,6 +9,7 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.j
 import { requireStorage } from '../middleware/storage.middleware.js';
 import { GoogleAuthError, verifyGoogleAccessToken } from '../services/googleAuth.service.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
+import { EMAIL_RE } from '../lib/validate.js';
 import type { HydratedDocument } from 'mongoose';
 
 export const authRouter: Router = Router();
@@ -51,10 +52,16 @@ authRouter.post('/auth/register', asyncHandler(async (req, res) => {
   if (!name || !email || !password) {
     throw new AppError(400, 'name, email and password are required');
   }
+  // The same floor /auth/password enforces — without it a 1-character password could be
+  // registered here that the change-password form would then refuse to set.
+  if (password.length < MIN_PASSWORD) {
+    throw new AppError(400, `Password must be at least ${MIN_PASSWORD} characters`);
+  }
 
   // Emails are stored lowercase; comparing the raw input would let the same address be
   // registered twice in different cases, each with its own websites and history.
   const address = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(address)) throw new AppError(400, 'Enter a valid email address');
 
   const existing = await User.findOne({ email: address });
   if (existing) {

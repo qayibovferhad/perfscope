@@ -82,45 +82,49 @@ export async function enrichWithAi(
     .sort((a, b) => b.transferSize - a.transferSize)
     .slice(0, AI_ADVICE_LIMIT);
 
-  // What this page measured last time, so the analysis can lead with what moved — and,
-  // via diffResources inside buildPageContext, name the actual file responsible for the
-  // movement. Best effort: no owner, no storage or no earlier run all mean the same thing
-  // here — compare against nothing — and none of them is worth failing an audit over.
-  const previous = depth === 'deep' && userId
-    ? await getPreviousRun(userId, result.url, new Date(result.timestamp)).catch(() => null)
-    : null;
+  // The deep-mode context set, gathered in one Promise.all: five Mongo lookups and one
+  // external HTTP call (CrUX) that are mutually independent — run serially they stack
+  // their latencies onto `analysis:insights`, the one event a user actually waits on.
+  // Each carries its own catch: no owner, no storage, no data or a failed request all
+  // mean the same thing here — compare against nothing — and none is worth failing over.
+  const [previous, recommendationHistory, fieldData, otherRoutesVendors, rumData, competitor] = await Promise.all([
+    // What this page measured last time, so the analysis can lead with what moved — and,
+    // via diffResources inside buildPageContext, name the actual file responsible.
+    depth === 'deep' && userId
+      ? getPreviousRun(userId, result.url, new Date(result.timestamp)).catch(() => null)
+      : null,
 
-  // What the AI has already told this user about this page, so it can notice a repeat
-  // instead of restating itself for the sixth audit in a row — or notice that something
-  // it flagged before is no longer in the fixes and say so.
-  const recommendationHistory = depth === 'deep' && userId
-    ? await getRecommendationHistory(userId, result.url).catch(() => [])
-    : [];
+    // What the AI has already told this user about this page, so it can notice a repeat
+    // instead of restating itself for the sixth audit in a row — or notice that something
+    // it flagged before is no longer in the fixes and say so.
+    depth === 'deep' && userId
+      ? getRecommendationHistory(userId, result.url).catch(() => [])
+      : [],
 
-  // Real users, not just this one lab run — CruxService.get already sat next to the lab
-  // numbers on screen without either surface comparing them. Null (no key, no data for
-  // this page, a failed request) is a normal outcome, same as no earlier audit.
-  const fieldData = depth === 'deep'
-    ? await CruxService.get(result.url, result.formFactor ?? 'desktop').catch(() => null)
-    : null;
+    // Real users, not just this one lab run — CruxService.get already sat next to the lab
+    // numbers on screen without either surface comparing them.
+    depth === 'deep'
+      ? CruxService.get(result.url, result.formFactor ?? 'desktop').catch(() => null)
+      : null,
 
-  // Same vendor, several of this user's other pages — not this page's problem alone.
-  const otherRoutesVendors = depth === 'deep' && userId
-    ? await getOtherRoutesVendors(userId, result.url).catch(() => [])
-    : [];
+    // Same vendor, several of this user's other pages — not this page's problem alone.
+    depth === 'deep' && userId
+      ? getOtherRoutesVendors(userId, result.url).catch(() => [])
+      : [],
 
-  // This site's own visitors, when it has a RUM snippet installed — a second, independent
-  // field reading next to CrUX's public one. Scoped to the owner's own tracked site, so
-  // (unlike CrUX) it needs a userId, not just a URL.
-  const rumData = depth === 'deep' && userId
-    ? await getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null)
-    : null;
+    // This site's own visitors, when it has a RUM snippet installed — a second, independent
+    // field reading next to CrUX's public one. Scoped to the owner's own tracked site, so
+    // (unlike CrUX) it needs a userId, not just a URL.
+    depth === 'deep' && userId
+      ? getRumSummaryForUrl(userId, result.url, result.formFactor).catch(() => null)
+      : null,
 
-  // This user's most recent Compare run against this page's host, when there is one —
-  // what lets the diagnosis and the ask box talk about a competitor instead of declining.
-  const competitor = depth === 'deep' && userId
-    ? await getLatestCompetitorComparison(userId, result.url).catch(() => null)
-    : null;
+    // This user's most recent Compare run against this page's host, when there is one —
+    // what lets the diagnosis and the ask box talk about a competitor instead of declining.
+    depth === 'deep' && userId
+      ? getLatestCompetitorComparison(userId, result.url).catch(() => null)
+      : null,
+  ]);
 
   // One Promise.all, so the deep work costs the same wall time as the standard path — and
   // each carries its own catch, so a failing prompt cannot take the others (or the audit)

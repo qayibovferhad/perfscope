@@ -117,7 +117,7 @@ const Thumb = memo(function Thumb({
               <span
                 key={m.key}
                 className="text-[7px] font-black px-1 py-0 rounded leading-tight text-white"
-                style={{ background: `${m.color}dd`, boxShadow: `0 0 6px ${m.glow}` }}
+                style={{ background: m.color, boxShadow: `0 0 6px ${m.glow}` }}
               >
                 {m.label}
               </span>
@@ -191,7 +191,7 @@ function FilmstripRow({
               key={m.key}
               onClick={() => onSeek(val)}
               className="flex items-center gap-1 px-[7px] py-[3px] rounded-[6px] text-[9px] font-bold hover:opacity-80 transition-opacity"
-              style={{ background: `${m.color}18`, border: `1px solid ${m.color}50`, color: m.color }}
+              style={{ background: m.soft, border: `1px solid ${m.line}`, color: m.color }}
               title={`Seek to ${m.label}: ${fmtSec2(val)}`}
             >
               <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: m.color }} />

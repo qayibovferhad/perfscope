@@ -28,6 +28,8 @@
 
   --ld-teal-rgb:      22, 200, 200;
   --ld-teal:          #16c8c8;
+  --ld-teal-soft:     rgba(var(--ld-teal-rgb), 0.12);
+  --ld-teal-line:     rgba(var(--ld-teal-rgb), 0.30);
   --ld-teal-strong:   rgba(var(--ld-teal-rgb), 0.45);
   --ld-amber:         #e6a23c;
   /*
@@ -95,6 +97,8 @@
 
   --ld-teal-rgb:      14, 156, 156;
   --ld-teal:          #0e9c9c;
+  --ld-teal-soft:     rgba(var(--ld-teal-rgb), 0.12);
+  --ld-teal-line:     rgba(var(--ld-teal-rgb), 0.28);
   --ld-teal-strong:   rgba(var(--ld-teal-rgb), 0.42);
   --ld-amber:         #b9791a;
   --ld-amber-rgb:     185, 121, 26;

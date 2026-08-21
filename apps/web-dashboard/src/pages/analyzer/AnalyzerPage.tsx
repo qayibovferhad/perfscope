@@ -111,7 +111,9 @@ export function AnalyzerPage() {
     const href = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = href;
-    a.download = `perfscope-${new URL(data.url).hostname}-${Date.now()}.json`;
+    // getHostname, not a bare `new URL()` — a malformed stored URL would throw here and
+    // turn the export button into a silent no-op.
+    a.download = `perfscope-${getHostname(data.url)}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(href);
   }

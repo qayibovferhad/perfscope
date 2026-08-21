@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { Scrubber } from '@/shared/ui/scrubber';
 import { cn } from '@/shared/lib/utils';
-import { vitalBand, findFrameAt } from '@/entities/analysis';
+import { vitalBand, findFrameAt, BAND_TILE, BAND_LABEL } from '@/entities/analysis';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec2, fmtCls } from '@/shared/lib/format';
 
@@ -67,11 +67,15 @@ function shiftFix(selector: string, snippet: string, score: number, rootCause?: 
 // ─── CLS score chip ───────────────────────────────────────────────────────────
 
 function CLSChip({ score }: { score: number }) {
-  if (score < 0.1)
-    return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-[var(--ld-accent-2)] border-ld-accent-line bg-ld-accent-soft">GOOD</span>;
-  if (score < 0.25)
-    return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-amber border-ld-amber-line bg-ld-amber-soft">NEEDS WORK</span>;
-  return <span className="font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border text-ld-rose border-ld-rose-line bg-ld-rose-soft">POOR</span>;
+  const band = vitalBand('cls', score);
+  return (
+    <span className={cn(
+      'font-mono text-[11px] font-semibold px-[9px] py-[4px] rounded-[7px] border uppercase',
+      BAND_TILE[band],
+    )}>
+      {BAND_LABEL[band]}
+    </span>
+  );
 }
 
 // ─── Culprit issue card ───────────────────────────────────────────────────────

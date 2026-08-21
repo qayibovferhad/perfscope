@@ -124,23 +124,26 @@ async function buildOverviewContext(
 async function buildSiteContext(
   userId: string, url: string,
 ): Promise<{ scope: string; lines: string[]; knownUrls: string[] }> {
-  const site = await findWebsiteByHost(userId, url);
-  const runs = await HistoryModel
-    .find({ userId, url, ...HAS_RESULT_FILTER })
-    .sort({ createdAt: -1 })
-    .limit(HISTORY_RUNS)
-    // fullResult.thirdParty/formFactor ride along on all six rows returned (Mongo has no
-    // per-document projection), but only `latest`'s copy — the newest run — is ever read,
-    // for the sitewide-vendor and lab-vs-field checks below.
-    .select('scores metrics createdAt fullResult.thirdParty fullResult.formFactor')
-    .lean();
+  // Site, history and the outcome check are mutually independent — one round trip, not
+  // three, on the request path of GET /api/advice.
+  const [site, runs, outcome] = await Promise.all([
+    findWebsiteByHost(userId, url),
+    HistoryModel
+      .find({ userId, url, ...HAS_RESULT_FILTER })
+      .sort({ createdAt: -1 })
+      .limit(HISTORY_RUNS)
+      // fullResult.thirdParty/formFactor ride along on all six rows returned (Mongo has no
+      // per-document projection), but only `latest`'s copy — the newest run — is ever read,
+      // for the sitewide-vendor and lab-vs-field checks below.
+      .select('scores metrics createdAt fullResult.thirdParty fullResult.formFactor')
+      .lean(),
+    // Closing the loop: if they acted on a past "audit this" suggestion and the result is
+    // still fresh news (see getActionOutcome's own gating), that is the most important
+    // thing on the page right now — ahead of anything else in the context.
+    getActionOutcome(userId, url).catch(() => null),
+  ]);
 
   const lines: string[] = [`Page: ${url}`];
-
-  // Closing the loop: if they acted on a past "audit this" suggestion and the result is
-  // still fresh news (see getActionOutcome's own gating), that is the most important
-  // thing on the page right now — ahead of anything else in the context.
-  const outcome = await getActionOutcome(userId, url).catch(() => null);
   if (outcome) lines.push(outcome);
 
   const latest = runs[0];
@@ -208,12 +211,20 @@ async function buildSiteContext(
   const latestFull = (latest as unknown as {
     fullResult?: { thirdParty?: { name?: string; blockingTime?: number }[]; formFactor?: 'mobile' | 'desktop' };
   } | undefined)?.fullResult;
+  const siteVendors = latestFull?.thirdParty ?? [];
+
+  // The vendor lookup, CrUX (an external HTTP round trip) and RUM are independent of one
+  // another — fetched together so the advisor's latency is the slowest of the three, not
+  // their sum. The lines they produce keep their order below.
+  const [otherRoutes, fieldData, rumData] = await Promise.all([
+    siteVendors.length > 0 ? getOtherRoutesVendors(userId, url).catch(() => []) : [],
+    CruxService.get(url, latestFull?.formFactor ?? 'desktop').catch(() => null),
+    getRumSummaryForUrl(userId, url, latestFull?.formFactor).catch(() => null),
+  ]);
 
   // The same "not just this page's problem" check analysePage runs per audit, now at the
   // scope the advisor actually coaches at: the whole site.
-  const siteVendors = latestFull?.thirdParty ?? [];
   if (siteVendors.length > 0) {
-    const otherRoutes = await getOtherRoutesVendors(userId, url).catch(() => []);
     if (otherRoutes.length > 0) {
       const sitewide = findSitewideVendors(
         siteVendors.filter((t): t is { name: string; blockingTime: number } => typeof t.name === 'string')
@@ -231,7 +242,6 @@ async function buildSiteContext(
 
   // Real users, same lab-vs-field comparison analysePage makes per audit — at the site
   // scope this reads as "is this page's lab score representative of who actually visits it".
-  const fieldData = await CruxService.get(url, latestFull?.formFactor ?? 'desktop').catch(() => null);
   if (fieldData && latest?.metrics) {
     const gaps = compareLabAndField(
       { lcp: latest.metrics.lcp ?? 0, cls: latest.metrics.cls ?? 0, fcp: latest.metrics.fcp ?? 0 },
@@ -248,7 +258,6 @@ async function buildSiteContext(
 
   // A second, independent field reading — this account's own visitors, when they have a
   // RUM snippet installed. Same comparison as CrUX above, just against a different source.
-  const rumData = await getRumSummaryForUrl(userId, url, latestFull?.formFactor).catch(() => null);
   if (rumData && latest?.metrics) {
     const gaps = compareLabAndField(
       { lcp: latest.metrics.lcp ?? 0, cls: latest.metrics.cls ?? 0, fcp: latest.metrics.fcp ?? 0 },

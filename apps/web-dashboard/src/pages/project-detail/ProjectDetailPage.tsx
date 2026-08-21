@@ -26,7 +26,7 @@ import { hasResult }            from '@perfscope/shared';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects';
-import { scoreBand, type AnalysisResult } from '@/entities/analysis';
+import { AvgBadge, type AnalysisResult } from '@/entities/analysis';
 
 type ProjectTab = 'audits' | 'field' | 'targets';
 
@@ -248,22 +248,7 @@ export function ProjectDetailPage() {
 
           {/* Actions */}
           <div className="flex items-center gap-[11px] flex-wrap">
-            {/* Avg performance badge */}
-            {stats.totalAudits > 0 && (() => {
-              const s = stats.avgPerformance;
-              const band = scoreBand(s);
-              const cls = band === 'good'
-                ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft [data-theme=light]_:text-ld-accent'
-                : band === 'warn'
-                ? 'text-ld-amber border-ld-amber-line bg-ld-amber-soft'
-                : 'text-ld-rose border-ld-rose-line bg-ld-rose-soft';
-              return (
-                <span className={`inline-flex items-center gap-[8px] text-[13px] font-semibold px-[14px] py-[8px] rounded-full border ${cls}`}>
-                  <b className="font-mono font-bold">{s}</b>
-                  Avg performance
-                </span>
-              );
-            })()}
+            {stats.totalAudits > 0 && <AvgBadge score={stats.avgPerformance} />}
 
             {/* Compare toggle */}
             {stats.totalAudits >= 2 && (

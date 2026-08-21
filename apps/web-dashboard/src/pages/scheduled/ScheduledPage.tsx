@@ -9,28 +9,11 @@ import type { ProjectAuditEntry } from '@/entities/history';
 import { useAnalysisStore } from '@/features/analyzer';
 import { RouteGroupCard } from '@/features/projects';
 import { timeAgo } from '@/features/projects';
-import { scoreBand } from '@/entities/analysis';
+import { AvgBadge } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';
 import { Button } from '@/shared/ui/button';
 import { StatCard } from '@/shared/ui/stat-card';
 import { QueryErrorPanel, StatePanel } from '@/shared/ui/state-panel';
-
-/** The badge the project header carries, so a site reads the same on both pages. */
-function AvgBadge({ score }: { score: number }) {
-  const band = scoreBand(score);
-  const cls = band === 'good'
-    ? 'text-ld-accent-2 border-ld-accent-line bg-ld-accent-soft'
-    : band === 'warn'
-    ? 'text-ld-amber border-ld-amber-line bg-ld-amber-soft'
-    : 'text-ld-rose border-ld-rose-line bg-ld-rose-soft';
-
-  return (
-    <span className={`inline-flex items-center gap-[8px] text-[13px] font-semibold px-[14px] py-[8px] rounded-full border ${cls}`}>
-      <b className="font-mono font-bold">{score}</b>
-      Avg performance
-    </span>
-  );
-}
 
 /**
  * Everything the automation ran, kept out of the audit lists.

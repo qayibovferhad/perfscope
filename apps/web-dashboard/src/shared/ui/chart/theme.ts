@@ -10,10 +10,12 @@
 export const CHART = {
   accent: 'var(--ld-accent)',
   accent2: 'var(--ld-accent-2)',
+  accentLine: 'var(--ld-accent-line)',
   amber:  'var(--ld-amber)',
   rose:   'var(--ld-rose)',
   teal:   'var(--ld-teal)',
   grid:   'var(--ld-border)',
+  gridStrong: 'var(--ld-border-strong)',
   axis:   'var(--ld-text-3)',
   surface: 'var(--ld-surface)',
 } as const;

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo, forwardRef } f
 import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { useTimelineContext } from '../model/TimelineContext';
-import type { TimelineData, TimelineFrame } from '@/entities/analysis';
+import { METRIC_MARKERS, type TimelineData, type TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/button';
 import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
@@ -14,13 +14,10 @@ const SPEED_OPTIONS: SegmentOption<string>[] = [
   { value: '1',   label: '1x'   },
 ];
 
-const METRICS = [
-  { key: 'fcp' as const, label: 'FCP', bg: 'bg-blue-500',    text: 'text-blue-400',    border: 'border-blue-500',    hex: '#3b82f6' },
-  { key: 'lcp' as const, label: 'LCP', bg: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500', hex: '#10b981' },
-  { key: 'tti' as const, label: 'TTI', bg: 'bg-orange-500',  text: 'text-orange-400',  border: 'border-orange-500',  hex: '#f97316' },
-];
-
-type MetricEntry = (typeof METRICS)[number];
+// The shared marker table, not a local palette: this component held the exact copy
+// METRIC_MARKERS' docstring describes as the bug — FCP was blue here and teal on the
+// waterfall rendered by the same results panel.
+type MetricEntry = (typeof METRIC_MARKERS)[number];
 
 const THUMB_W = 148;
 const THUMB_H = 108;
@@ -66,13 +63,13 @@ const TimelineHeader = memo(function TimelineHeader({
       <LiveTime value={motionMs} className="ml-1 font-mono text-sm font-bold text-ld-text tabular-nums" />
       <span className="text-ld-text-3 text-xs font-mono">/ {fmtSec2(maxTiming)}</span>
       <div className="ml-auto flex items-center gap-2 flex-wrap">
-        {METRICS.map(m => {
+        {METRIC_MARKERS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
           return (
             <div key={m.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-ld-surface-2 border border-ld-border">
-              <span className={`w-2 h-2 rounded-full ${m.bg} flex-shrink-0`} />
-              <span className={`text-[11px] font-bold ${m.text}`}>{m.label}</span>
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: m.color }} />
+              <span className="text-[11px] font-bold" style={{ color: m.color }}>{m.label}</span>
               <span className="text-[11px] text-ld-text-3 font-mono tabular-nums">{fmtSec2(val)}</span>
             </div>
           );
@@ -101,7 +98,7 @@ const MainViewer = memo(function MainViewer({ frame, activeMetrics }: { frame: T
       {activeMetrics.length > 0 && (
         <div className="absolute top-3 left-3 flex gap-1.5">
           {activeMetrics.map(m => (
-            <div key={m.key} className={`flex items-center gap-1 px-2 py-1 rounded-md ${m.bg} shadow-lg`}>
+            <div key={m.key} className="flex items-center gap-1 px-2 py-1 rounded-md shadow-lg" style={{ background: m.color }}>
               <span className="text-white text-[11px] font-bold tracking-wide">{m.label}</span>
             </div>
           ))}
@@ -129,7 +126,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
   return (
     <div className="space-y-1">
       <div className="relative h-7">
-        {METRICS.map(m => {
+        {METRIC_MARKERS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
           const pct = (val / maxTiming) * 100;
@@ -139,11 +136,14 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
               className="absolute bottom-0 flex flex-col items-center gap-0.5 -translate-x-1/2 pointer-events-none"
               style={{ left: `${pct}%` }}
             >
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${m.bg}/20 border ${m.border}/40`}>
-                <span className={`text-[10px] font-bold ${m.text} leading-none`}>{m.label}</span>
-                <span className={`text-[10px] font-mono ${m.text} leading-none opacity-80`}>{fmtSec2(val)}</span>
+              <div
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded"
+                style={{ background: m.soft, border: `1px solid ${m.line}` }}
+              >
+                <span className="text-[10px] font-bold leading-none" style={{ color: m.color }}>{m.label}</span>
+                <span className="text-[10px] font-mono leading-none opacity-80" style={{ color: m.color }}>{fmtSec2(val)}</span>
               </div>
-              <div className="w-px h-1.5 opacity-50" style={{ background: m.hex }} />
+              <div className="w-px h-1.5 opacity-50" style={{ background: m.color }} />
             </div>
           );
         })}
@@ -152,14 +152,14 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
       <div className="relative h-5 flex items-center">
         <div className="absolute inset-x-0 h-1.5 rounded-full bg-ld-border" />
         <motion.div className="absolute left-0 h-1.5 rounded-full bg-ld-text-3" style={{ width: progressWidth }} />
-        {METRICS.map(m => {
+        {METRIC_MARKERS.map(m => {
           const val = metrics[m.key];
           if (!val) return null;
           return (
             <div
               key={m.key}
               className="absolute w-0.5 h-3.5 rounded-full -translate-x-1/2 pointer-events-none z-10"
-              style={{ left: `${(val / maxTiming) * 100}%`, background: m.hex }}
+              style={{ left: `${(val / maxTiming) * 100}%`, background: m.color }}
             />
           );
         })}
@@ -210,7 +210,7 @@ const FilmstripItem = memo(
           {metricDots.length > 0 && (
             <div className="absolute top-1.5 right-1.5 flex gap-1">
               {metricDots.map(m => (
-                <div key={m.key} className={`w-2.5 h-2.5 rounded-full ${m.bg} ring-1 ring-black/40`} />
+                <div key={m.key} className="w-2.5 h-2.5 rounded-full ring-1 ring-black/40" style={{ background: m.color }} />
               ))}
             </div>
           )}
@@ -255,7 +255,7 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
 
   const frameMetricDots = useMemo<MetricEntry[][]>(() => {
     const map = new Map<number, MetricEntry[]>();
-    for (const m of METRICS) {
+    for (const m of METRIC_MARKERS) {
       const val = metrics[m.key];
       if (!val) continue;
       const idx = findClosestFrameIndex(frames, val);
