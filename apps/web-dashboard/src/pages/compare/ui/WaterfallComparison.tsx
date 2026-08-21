@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { CompareSection } from './CompareSection';
 import { useMotionValue } from 'framer-motion';
 import { Activity, Zap } from 'lucide-react';
@@ -6,13 +6,10 @@ import type { AnalysisResult } from '@/entities/analysis';
 import { TimelineProvider } from '@/features/analyzer';
 import { ResourceWaterfall } from '@/features/analyzer';
 import { fmtMs } from '@/shared/lib/format';
+import { useTimelinePlayback } from '@/shared/lib/useTimelinePlayback';
 import { TransportBar } from './TransportBar';
 import { sideOf } from './sides';
 import { SideBadge } from './SideBadge';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TICK_MS = 50;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,45 +172,15 @@ export function WaterfallComparison({
   // ── Playback state ─────────────────────────────────────────────────────────
   const sharedMotionMs = useMotionValue(0);
   const [currentMs, setCurrentMs] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playTimeRef = useRef(0);
-
-  const stopPlayback = useCallback(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    setIsPlaying(false);
-  }, []);
-
-  const startPlayback = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (playTimeRef.current >= totalMs) playTimeRef.current = 0;
-    setIsPlaying(true);
-    intervalRef.current = setInterval(() => {
-      playTimeRef.current = Math.min(playTimeRef.current + TICK_MS, totalMs);
-      sharedMotionMs.set(playTimeRef.current);
-      setCurrentMs(playTimeRef.current);
-      if (playTimeRef.current >= totalMs) {
-        clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-        setIsPlaying(false);
-      }
-    }, TICK_MS);
-  }, [totalMs, sharedMotionMs]);
-
-  useEffect(() => () => stopPlayback(), [stopPlayback]);
-
-  const seek = useCallback((ms: number) => {
-    stopPlayback();
-    playTimeRef.current = ms;
+  // One tick feeds both surfaces: the MotionValue drives the two waterfalls
+  // imperatively, the state drives the TransportBar.
+  const onTick = useCallback((ms: number) => {
     sharedMotionMs.set(ms);
     setCurrentMs(ms);
-  }, [stopPlayback, sharedMotionMs]);
+  }, [sharedMotionMs]);
 
-  const togglePlay = useCallback(() => {
-    if (isPlaying) stopPlayback();
-    else startPlayback();
-  }, [isPlaying, stopPlayback, startPlayback]);
+  const { isPlaying, toggle: togglePlay, seek } = useTimelinePlayback({ totalMs, onTick });
 
   // ── Guard — after all hooks ────────────────────────────────────────────────
   if (tReqs.length === 0 && cReqs.length === 0) return null;

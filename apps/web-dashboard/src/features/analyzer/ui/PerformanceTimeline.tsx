@@ -2,12 +2,11 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo, forwardRef } f
 import { Play, Pause, Film } from 'lucide-react';
 import { useMotionValue, useTransform, motion, type MotionValue } from 'framer-motion';
 import { useTimelineContext } from '../model/TimelineContext';
-import { METRIC_MARKERS, type TimelineData, type TimelineFrame } from '@/entities/analysis';
+import { METRIC_MARKERS, findClosestFrameIndex, type TimelineData, type TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
+import { useTimelinePlayback, type PlaySpeed } from '@/shared/lib/useTimelinePlayback';
 import { Button } from '@/shared/ui/button';
 import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
-
-type PlaySpeed = 0.5 | 1;
 
 const SPEED_OPTIONS: SegmentOption<string>[] = [
   { value: '0.5', label: '0.5x' },
@@ -21,21 +20,7 @@ type MetricEntry = (typeof METRIC_MARKERS)[number];
 
 const THUMB_W = 148;
 const THUMB_H = 108;
-const TICK_MS = 50;
 const EMPTY_DOTS: MetricEntry[] = [];
-
-function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): number {
-  let lo = 0, hi = frames.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (frames[mid].timing < targetMs) lo = mid + 1;
-    else hi = mid;
-  }
-  if (lo > 0 && Math.abs(frames[lo - 1].timing - targetMs) < Math.abs(frames[lo].timing - targetMs)) {
-    return lo - 1;
-  }
-  return lo;
-}
 
 const LiveTime = memo(function LiveTime({ value, className }: { value: MotionValue<number>; className?: string }) {
   const [display, setDisplay] = useState(() => fmtSec2(value.get()));
@@ -230,8 +215,6 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
   const maxTiming = frames.at(-1)!.timing;
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPlaying,   setIsPlaying]   = useState(false);
-  const [playSpeed,   setPlaySpeed]   = useState<0.5 | 1>(1);
 
   const timelineCtx = useTimelineContext();
 
@@ -244,14 +227,9 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
 
   const motionMs = useMotionValue(0);
 
-  const rangeRef     = useRef<HTMLInputElement>(null);
-  const thumbRefs    = useRef<(HTMLDivElement | null)[]>([]);
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playTimeRef  = useRef(0);
-  const playSpeedRef = useRef(playSpeed);
-  const prevIdxRef   = useRef(0);
-
-  useEffect(() => { playSpeedRef.current = playSpeed; }, [playSpeed]);
+  const rangeRef   = useRef<HTMLInputElement>(null);
+  const thumbRefs  = useRef<(HTMLDivElement | null)[]>([]);
+  const prevIdxRef = useRef(0);
 
   const frameMetricDots = useMemo<MetricEntry[][]>(() => {
     const map = new Map<number, MetricEntry[]>();
@@ -289,41 +267,10 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
     thumbRefs.current[activeIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, [activeIndex]);
 
-  const stopPlayback = useCallback(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    setIsPlaying(false);
-  }, []);
-
-  const startPlayback = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (playTimeRef.current >= maxTiming) {
-      playTimeRef.current = 0;
-      handleScrubInternal(0);
-    }
-    setIsPlaying(true);
-    intervalRef.current = setInterval(() => {
-      playTimeRef.current = Math.min(playTimeRef.current + TICK_MS * playSpeedRef.current, maxTiming);
-      handleScrubInternal(playTimeRef.current);
-      if (playTimeRef.current >= maxTiming) {
-        clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-        setIsPlaying(false);
-      }
-    }, TICK_MS);
-  }, [maxTiming, handleScrubInternal]);
-
-  useEffect(() => () => stopPlayback(), [stopPlayback]);
-
-  const togglePlay = useCallback(() => {
-    if (isPlaying) stopPlayback();
-    else startPlayback();
-  }, [isPlaying, startPlayback, stopPlayback]);
-
-  const handleScrub = useCallback((ms: number) => {
-    stopPlayback();
-    playTimeRef.current = ms;
-    handleScrubInternal(ms);
-  }, [stopPlayback, handleScrubInternal]);
+  const {
+    isPlaying, speed: playSpeed, setSpeed: setPlaySpeed,
+    toggle: togglePlay, seek: handleScrub,
+  } = useTimelinePlayback({ totalMs: maxTiming, onTick: handleScrubInternal });
 
   return (
     <div className="rounded-xl border border-ld-border bg-ld-surface overflow-hidden select-none">

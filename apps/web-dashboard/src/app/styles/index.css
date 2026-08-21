@@ -464,3 +464,23 @@
     }
   }
 }
+
+/* ── Waterfall loading shimmer ───────────────────────────────────────────────
+   One definition for both waterfall variants — each used to inject an identical
+   <style> block, so the keyframes landed in the DOM twice when both rendered.
+   Rows toggle .wf-shim-active while the playhead is inside their request window
+   (see useWaterfallPlayhead). Accent comes from the theme channels, not a
+   hardcoded rgba, so the sweep follows light mode. */
+@keyframes wf-shimmer {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateX(250%); opacity: 0; }
+}
+.wf-shim-active { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.wf-shim-active::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(var(--ld-accent-rgb), 0.22) 50%, transparent 100%);
+  animation: wf-shimmer 1.3s ease-in-out infinite;
+}

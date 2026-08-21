@@ -1,142 +1,19 @@
-import {
-  useRef, useEffect, useMemo, memo, useState, useLayoutEffect, useCallback,
-} from 'react';
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { Network, Play, Pause } from 'lucide-react';
 import { useMotionValue, useTransform, motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
-import { fmtMsOrDash as fmtMs, fmtBytesOrDash as fmtBytes, fmtSec2 } from '@/shared/lib/format';
+import { fmtMsOrDash as fmtMs, fmtSec2 } from '@/shared/lib/format';
+import { useTimelinePlayback } from '@/shared/lib/useTimelinePlayback';
 import { useTimelineContext } from '../model/TimelineContext';
-import { LEFT_W, AXIS_ROW_H, TICK_MS, METRICS_CFG } from '../lib/timelineWaterfall';
-import { MAX_ROWS, TICK_COUNT, resourceFilename } from '../lib/waterfall';
-import { RequestDetailPanel } from './RequestDetailPanel';
+import { useWaterfallPlayhead } from '../model/useWaterfallPlayhead';
+import { LEFT_W, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { MAX_ROWS, TICK_COUNT } from '../lib/waterfall';
+import { WaterfallRow } from './WaterfallRow';
 import { FlameChart } from './FlameChart';
-import { RESOURCE_TYPES, resourceBadgeStyle } from '@/entities/analysis';
+import { findClosestFrameIndex } from '@/entities/analysis';
 import type {
-  ParsedResources, NetworkRequest, ResourceType, TimelineData, TimelineFrame,
-  FlameChartData,
+  ParsedResources, NetworkRequest, TimelineData, FlameChartData,
 } from '@/entities/analysis';
-
-/**
- * The waiting (TTFB) segment stays type-agnostic here on purpose: this waterfall is read
- * against the filmstrip, where a second tinted hue per row competes with the metric
- * markers. Colour that carries meaning — the badge, the download bar — comes from
- * RESOURCE_TYPES.
- */
-const BAR_WAIT_CLS: Record<ResourceType, string> = {
-  script:     'bg-ld-border-strong',
-  stylesheet: 'bg-ld-border-strong',
-  image:      'bg-ld-accent-soft',
-  font:       'bg-ld-border-strong',
-  document:   'bg-ld-accent-line',
-  media:      'bg-ld-border-strong',
-  other:      'bg-ld-border',
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-
-function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): number {
-  let lo = 0, hi = frames.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (frames[mid].timing < targetMs) lo = mid + 1;
-    else hi = mid;
-  }
-  if (lo > 0 && Math.abs(frames[lo - 1].timing - targetMs) < Math.abs(frames[lo].timing - targetMs)) {
-    return lo - 1;
-  }
-  return lo;
-}
-
-// ─── DetailPanel ──────────────────────────────────────────────────────────────
-
-
-// ─── WaterfallRow ─────────────────────────────────────────────────────────────
-
-interface RowProps {
-  req:        NetworkRequest;
-  index:      number;
-  axisMs:     number;
-  isSelected: boolean;
-  onSelect:   () => void;
-  onDeselect: () => void;
-  rowRef:  (el: HTMLDivElement | null) => void;
-  ttfbRef: (el: HTMLDivElement | null) => void;
-  dlRef:   (el: HTMLDivElement | null) => void;
-  shimRef: (el: HTMLDivElement | null) => void;
-}
-
-const WaterfallRow = memo(function WaterfallRow({
-  req, index, axisMs, isSelected, onSelect, onDeselect,
-  rowRef, ttfbRef, dlRef, shimRef,
-}: RowProps) {
-  const ctx  = useTimelineContext();
-  const cfg  = RESOURCE_TYPES[req.resourceType];
-  const Icon = cfg.icon;
-  const name = resourceFilename(req.url);
-
-  const duration = req.endTime - req.startTime;
-  const barLeft  = axisMs > 0 ? (req.startTime / axisMs) * 100 : 0;
-  const barWidth = axisMs > 0 ? Math.max((duration / axisMs) * 100, 0.3) : 0;
-  const ttfbPct  = duration > 0 ? Math.min((req.ttfb / duration) * 100, 100) : 0;
-
-  return (
-    <div className="relative">
-      <div
-        ref={rowRef}
-        data-state="loaded"
-        onClick={onSelect}
-        onMouseEnter={() => ctx?.hoveredUrl.set(req.url)}
-        onMouseLeave={() => ctx?.hoveredUrl.set('')}
-        className={cn(
-          'flex items-center border-b border-ld-border cursor-pointer select-none',
-          'transition-[opacity,filter] duration-200 ease-in-out [will-change:opacity,filter]',
-          'data-[state=pending]:opacity-20 data-[state=pending]:grayscale',
-          index % 2 === 0 ? 'bg-ld-surface' : 'bg-ld-bg',
-          isSelected && 'ring-1 ring-inset ring-ld-accent-line bg-ld-accent-soft',
-        )}
-      >
-        {/* Name column */}
-        <div className="flex items-center gap-2 px-3 py-1 shrink-0 border-r border-ld-border" style={{ width: LEFT_W }}>
-          <Icon className="w-3 h-3 shrink-0 text-ld-text-3" />
-          <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
-            {name}
-          </span>
-          <span
-            className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] border shrink-0"
-            style={resourceBadgeStyle(req.resourceType)}
-          >
-            {cfg.label}
-          </span>
-          <span className="text-[10px] text-ld-text-3 tabular-nums shrink-0 w-11 text-right font-mono">
-            {fmtBytes(req.transferSize)}
-          </span>
-        </div>
-
-        {/* Lane */}
-        <div className="flex-1 relative h-5 flex items-center">
-          <div className="absolute inset-x-0 h-px bg-ld-border" />
-          {barWidth > 0 && (
-            <div
-              className="absolute h-2.5 rounded-sm flex overflow-hidden"
-              style={{ left: `${barLeft}%`, width: `${barWidth}%` }}
-            >
-              <div
-                ref={ttfbRef}
-                className={cn('h-full transition-opacity duration-150', BAR_WAIT_CLS[req.resourceType])}
-                style={{ width: `${ttfbPct}%` }}
-              />
-              <div ref={dlRef} className="h-full flex-1 transition-opacity duration-150 bg-ld-accent" />
-              <div ref={shimRef} className="wf-shim absolute inset-0 rounded-sm pointer-events-none" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isSelected && <RequestDetailPanel req={req} onClose={onDeselect} />}
-    </div>
-  );
-});
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -162,14 +39,10 @@ export function TimelineWaterfall({
       .slice(0, MAX_ROWS),
   [resources.requests]);
 
-  const wfMs    = useMemo(() => rows.reduce((mx, r) => Math.max(mx, r.endTime), 0), [rows]);
-  const axisMs  = maxTiming > 0 ? maxTiming : wfMs;
-  const axisMsRef = useRef(axisMs);
-  axisMsRef.current = axisMs;
+  const wfMs   = useMemo(() => rows.reduce((mx, r) => Math.max(mx, r.endTime), 0), [rows]);
+  const axisMs = maxTiming > 0 ? maxTiming : wfMs;
 
   // ── UI state
-  const [isPlaying,      setIsPlaying]      = useState(false);
-  const [playSpeed,      setPlaySpeed]      = useState<0.5 | 1>(1);
   const [activeFrameIdx, setActiveFrameIdx] = useState(0);
   const [selectedIdx,    setSelectedIdx]    = useState<number | null>(null);
 
@@ -181,30 +54,16 @@ export function TimelineWaterfall({
   const progressWidth = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
   const playheadLeft  = useTransform(motionMs, [0, maxTiming], ['0%', '100%']);
 
-  // ── DOM refs
-  const rootRef     = useRef<HTMLDivElement>(null);
-  const rangeRef    = useRef<HTMLInputElement>(null);
-  const rowsLineRef = useRef<HTMLDivElement>(null);
-  const axisLineRef = useRef<HTMLDivElement>(null);
-  const curLabelRef = useRef<HTMLSpanElement>(null);
-  const chartWRef   = useRef(0);
-
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playTimeRef  = useRef(0);
-  const playSpeedRef = useRef(playSpeed);
+  const rangeRef     = useRef<HTMLInputElement>(null);
   const prevFrIdxRef = useRef(0);
 
-  const rowRefs  = useRef<(HTMLDivElement | null)[]>([]);
-  const ttfbRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const dlRefs   = useRef<(HTMLDivElement | null)[]>([]);
-  const shimRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  rowRefs.current.length  = rows.length;
-  ttfbRefs.current.length = rows.length;
-  dlRefs.current.length   = rows.length;
-  shimRefs.current.length = rows.length;
-
-  useEffect(() => { playSpeedRef.current = playSpeed; }, [playSpeed]);
+  // Ghost lines, live label and per-row load states — all imperative, zero re-renders.
+  const {
+    rootRef, rowsLineRef, axisLineRef, labelRef: curLabelRef,
+    rowRefs, ttfbRefs, dlRefs, shimRefs,
+  } = useWaterfallPlayhead({
+    rows, axisMs, leftW: LEFT_W, motionMs, networkOffset: ctx?.networkOffset,
+  });
 
   useEffect(() => {
     if (ctx) {
@@ -212,15 +71,6 @@ export function TimelineWaterfall({
       ctx.networkOffset.current = networkOffsetMs;
     }
   }, [ctx, maxTiming, networkOffsetMs]);
-
-  useLayoutEffect(() => {
-    if (!rootRef.current) return;
-    const update = () => { chartWRef.current = (rootRef.current?.clientWidth ?? 0) - LEFT_W; };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(rootRef.current);
-    return () => ro.disconnect();
-  }, []);
 
   const handleScrubInternal = useCallback((ms: number) => {
     motionMs.set(ms);
@@ -233,77 +83,10 @@ export function TimelineWaterfall({
     }
   }, [frames, motionMs, ctx]);
 
-  const stopPlayback = useCallback(() => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    setIsPlaying(false);
-  }, []);
-
-  const startPlayback = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (playTimeRef.current >= maxTiming) { playTimeRef.current = 0; handleScrubInternal(0); }
-    setIsPlaying(true);
-    intervalRef.current = setInterval(() => {
-      playTimeRef.current = Math.min(playTimeRef.current + TICK_MS * playSpeedRef.current, maxTiming);
-      handleScrubInternal(playTimeRef.current);
-      if (playTimeRef.current >= maxTiming) {
-        clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-        setIsPlaying(false);
-      }
-    }, TICK_MS);
-  }, [maxTiming, handleScrubInternal]);
-
-  useEffect(() => () => stopPlayback(), [stopPlayback]);
-
-  const togglePlay  = useCallback(() => isPlaying ? stopPlayback() : startPlayback(), [isPlaying, startPlayback, stopPlayback]);
-  const handleScrub = useCallback((ms: number) => {
-    stopPlayback();
-    playTimeRef.current = ms;
-    handleScrubInternal(ms);
-  }, [stopPlayback, handleScrubInternal]);
-
-  // ── MotionValue subscriber → imperatively update ghost lines + row states
-  useEffect(() => {
-    const unsub = motionMs.on('change', (sliderMs) => {
-      const axMs   = axisMsRef.current;
-      const netOff = ctx?.networkOffset.current ?? 0;
-      const pct    = Math.min(Math.max(sliderMs / axMs, 0), 1);
-      const chartW = chartWRef.current;
-
-      if (rowsLineRef.current) {
-        rowsLineRef.current.style.transform = `translateX(${(LEFT_W + chartW * pct).toFixed(1)}px)`;
-      }
-      if (axisLineRef.current) {
-        axisLineRef.current.style.transform = `translateX(${(chartW * pct).toFixed(1)}px)`;
-      }
-      if (curLabelRef.current) {
-        curLabelRef.current.textContent = fmtMs(sliderMs);
-      }
-
-      for (let i = 0; i < rows.length; i++) {
-        const rowEl = rowRefs.current[i];
-        if (!rowEl) continue;
-        const { startTime, endTime, ttfb } = rows[i];
-        const fStart = startTime + netOff;
-        const fEnd   = endTime   + netOff;
-        const state  = sliderMs < fStart ? 'pending' : sliderMs >= fEnd ? 'loaded' : 'loading';
-        if (rowEl.dataset.state !== state) {
-          rowEl.dataset.state = state;
-          shimRefs.current[i]?.classList.toggle('wf-shim-active', state === 'loading');
-        }
-        const ttfbEl = ttfbRefs.current[i];
-        const dlEl   = dlRefs.current[i];
-        if (state === 'loading') {
-          if (ttfbEl) ttfbEl.style.opacity = '1';
-          if (dlEl)   dlEl.style.opacity   = sliderMs >= fStart + ttfb ? '1' : '0.3';
-        } else {
-          if (ttfbEl) ttfbEl.style.opacity = '1';
-          if (dlEl)   dlEl.style.opacity   = '1';
-        }
-      }
-    });
-    return unsub;
-  }, [ctx, rows, motionMs]);
+  const {
+    isPlaying, speed: playSpeed, setSpeed: setPlaySpeed,
+    toggle: togglePlay, seek: handleScrub,
+  } = useTimelinePlayback({ totalMs: maxTiming, onTick: handleScrubInternal });
 
   useEffect(() => {
     for (const f of frames) { const img = new Image(); img.src = f.data; }
@@ -329,22 +112,6 @@ export function TimelineWaterfall({
 
   return (
     <div ref={rootRef} className="rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card overflow-hidden">
-      <style>{`
-        @keyframes wf-shimmer {
-          0%   { transform: translateX(-100%); opacity: 0; }
-          15%  { opacity: 1; }
-          85%  { opacity: 1; }
-          100% { transform: translateX(250%); opacity: 0; }
-        }
-        .wf-shim-active { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
-        .wf-shim-active::after {
-          content: '';
-          position: absolute; inset: 0;
-          background: linear-gradient(90deg, transparent 0%, rgba(20,192,138,0.22) 50%, transparent 100%);
-          animation: wf-shimmer 1.3s ease-in-out infinite;
-        }
-      `}</style>
-
       {/* ══════════ STICKY HEADER ══════════════════════════════════════════ */}
       <div className="sticky top-0 z-50 bg-ld-surface rounded-t-[18px] border-b border-ld-border">
 
@@ -568,6 +335,10 @@ export function TimelineWaterfall({
               req={req}
               index={i}
               axisMs={axisMs}
+              leftW={LEFT_W}
+              barStyle="agnostic"
+              dense
+              trackHover
               isSelected={selectedIdx === i}
               onSelect={() => handleSelect(i)}
               onDeselect={handleDeselect}

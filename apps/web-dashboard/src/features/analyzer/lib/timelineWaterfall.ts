@@ -14,9 +14,6 @@ export const LEFT_W = 280;
  *  top-pad(8) + thumb(45) + tick-line(6) + label(16) + bottom-pad(8). */
 export const AXIS_ROW_H = 83;
 
-/** Scrubber granularity. */
-export const TICK_MS = 50;
-
 // chipCls   — metric chip in the panel head
 // labelCls  — small label above the scrubber track
 // lineCls   — vertical tick on the scrubber track + row markers

@@ -78,6 +78,25 @@ export function findFrameAt(frames: TimelineFrame[], ms: number): TimelineFrame 
   return best;
 }
 
+/**
+ * Index of the frame closest to `ms` — for pinning a metric marker to a thumbnail,
+ * where "at or before" (findFrameAt) would pick a stale frame when the next one is
+ * nearer. Binary search: the waterfall calls this per axis tick and per scrub event.
+ * Was copied verbatim into three components before it lived here.
+ */
+export function findClosestFrameIndex(frames: TimelineFrame[], targetMs: number): number {
+  let lo = 0, hi = frames.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (frames[mid].timing < targetMs) lo = mid + 1;
+    else hi = mid;
+  }
+  if (lo > 0 && Math.abs(frames[lo - 1].timing - targetMs) < Math.abs(frames[lo].timing - targetMs)) {
+    return lo - 1;
+  }
+  return lo;
+}
+
 // ─── Band → Tailwind class maps ───────────────────────────────────────────────
 // The single source for colouring anything by band. Before these existed the same
 // triple was re-typed in 13 components and had already drifted (text-ld-accent vs

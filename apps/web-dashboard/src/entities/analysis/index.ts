@@ -42,7 +42,7 @@ export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS, SCOR
 export type { ScoreRating, VitalKey, AuditFormFactor, AuditPrecision } from '@perfscope/shared'
 
 export {
-  scoreColor, scoreBand, vitalBand, findFrameAt, mergeAnalysisInsights, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
+  scoreColor, scoreBand, vitalBand, findFrameAt, findClosestFrameIndex, mergeAnalysisInsights, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
   BAND_TEXT, BAND_STROKE, BAND_TILE, BAND_BORDER, BAND_BAR, BAND_LABEL,
 } from './lib'
 export { FIELD_METRICS, FIELD_METRIC_ORDER, RATING_TEXT, RATING_LABEL } from './fieldMetrics'

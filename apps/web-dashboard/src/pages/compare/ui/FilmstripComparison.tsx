@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, SIDE_DOT, SIDE_VAR, sideOf } from './sides';
 import { Film } from 'lucide-react';
 import { findFrameAt, METRIC_MARKERS } from '@/entities/analysis';
 import type { AnalysisResult, TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec2 } from '@/shared/lib/format';
+import { useTimelinePlayback } from '@/shared/lib/useTimelinePlayback';
 import { TransportBar } from './TransportBar';
 
 // ─── Metric defs (timeline marker colors — not you/rival) ─────────────────────
@@ -388,7 +389,6 @@ export function FilmstripComparison({
   );
 
   const [currentMs, setCurrentMs] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const nearbyMetricColor = useMemo(() => {
     for (const m of METRIC_DEFS) {
@@ -402,43 +402,10 @@ export function FilmstripComparison({
     return undefined;
   }, [currentMs, tData, cData]);
 
-  const rafRef     = useRef<number | null>(null);
-  const startRef   = useRef<number>(0);
-  const startMsRef = useRef<number>(0);
-
-  const stopPlay = useCallback(() => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    setIsPlaying(false);
-  }, []);
-
-  const startPlay = useCallback((fromMs: number) => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    startRef.current   = performance.now();
-    startMsRef.current = fromMs;
-    setIsPlaying(true);
-    function tick(now: number) {
-      const ms = startMsRef.current + (now - startRef.current);
-      if (ms >= totalMs) { setCurrentMs(totalMs); setIsPlaying(false); return; }
-      setCurrentMs(ms);
-      rafRef.current = requestAnimationFrame(tick);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, [totalMs]);
-
-  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
-
-  const seek = useCallback((ms: number) => {
-    stopPlay();
-    setCurrentMs(Math.max(0, Math.min(ms, totalMs)));
-  }, [totalMs, stopPlay]);
-
-  const togglePlay = useCallback(() => {
-    if (isPlaying) { stopPlay(); return; }
-    const from = currentMs >= totalMs ? 0 : currentMs;
-    if (from === 0) setCurrentMs(0);
-    startPlay(from);
-  }, [isPlaying, currentMs, totalMs, stopPlay, startPlay]);
+  // The shared interval clock, not a hand-rolled requestAnimationFrame loop — this was
+  // the one playback that silently ran at a different cadence than the other three.
+  const { isPlaying, toggle: togglePlay, seek } =
+    useTimelinePlayback({ totalMs, onTick: setCurrentMs });
 
   // After the hooks — an early return above them breaks hook order once a side loads.
   if (!tData && !cData) return null;
