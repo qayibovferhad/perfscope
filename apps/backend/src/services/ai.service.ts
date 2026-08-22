@@ -94,7 +94,7 @@ ${context}`;
 
     const parsed = parseJson<{
       diagnosis?: unknown; fixes?: unknown; metrics?: unknown; waterfall?: unknown; audits?: unknown;
-    }>(await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS }), 'page analysis');
+    }>(await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS, json: true, label: 'page analysis' }), 'page analysis');
 
     if (!parsed || typeof parsed.diagnosis !== 'string' || !parsed.diagnosis.trim()) return null;
 
@@ -187,7 +187,7 @@ ${context}
 
 Question: ${question}`;
 
-    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
+    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS, label: 'question' });
     const answer = raw.trim();
     return answer ? answer.slice(0, 600) : null;
   }
@@ -203,7 +203,7 @@ Question: ${question}`;
 Performance:${result.scores.performance} LCP:${(result.metrics.lcp / 1000).toFixed(1)}s TBT:${Math.round(result.metrics.tbt)}ms CLS:${result.metrics.cls.toFixed(2)}
 Issues: ${failingAudits || 'none'}`;
 
-    return generate(prompt);
+    return generate(prompt, { label: 'insights' });
   }
 
   /**
@@ -228,7 +228,7 @@ Resources:
 ${list}`;
 
     const parsed = parseJson<Array<{ index: number; advice: string }>>(
-      await generate(prompt), 'resource advice');
+      await generate(prompt, { json: true, label: 'resource advice' }), 'resource advice');
     if (!Array.isArray(parsed)) return new Map();
 
     return new Map(
@@ -259,7 +259,7 @@ Page: ${alert.url} (${alert.formFactor ?? 'desktop'})
 Findings:
 ${alert.lines.map(l => `- ${l}`).join('\n')}`;
 
-    const text = (await generate(prompt, opts)).trim();
+    const text = (await generate(prompt, { ...opts, label: 'alert note' })).trim();
     return text || null;
   }
 
@@ -281,7 +281,7 @@ Regressions: ${data.regressions}, targets missed: ${data.breaches}
 Slowest pages:
 ${data.slowest.map(r => `- ${r.url} score ${r.score} lcp ${Math.round(r.lcp)}ms`).join('\n') || '- (none)'}`;
 
-    const text = (await generate(prompt)).trim();
+    const text = (await generate(prompt, { label: 'digest' })).trim();
     return text || null;
   }
 
@@ -327,7 +327,7 @@ Answer ONLY with JSON: {"headline": string, "steps": [{"title": string, "detail"
 Context:
 ${input.lines.join('\n')}`;
 
-    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS });
+    const raw = await generate(prompt, { timeoutMs: DEEP_CALL_TIMEOUT_MS, json: true, label: 'advice' });
     const parsed = parseJson<{ headline?: unknown; steps?: unknown }>(raw, 'advice');
     if (!parsed || typeof parsed.headline !== 'string' || !parsed.headline.trim()) return null;
 
@@ -420,7 +420,7 @@ Yours (${entry.sourceUrl}): ${side(entry.source)}
 Rival (${entry.targetUrl}): ${side(entry.competitor)}
 Slower site's facts: ${loserFacts.length ? loserFacts.map(f => `"${f}"`).join(', ') : '(none)'}`;
 
-    const parsed = parseJson<{ text?: unknown; cause?: unknown }>(await generate(prompt), 'compare verdict');
+    const parsed = parseJson<{ text?: unknown; cause?: unknown }>(await generate(prompt, { json: true, label: 'compare verdict' }), 'compare verdict');
     if (!parsed || typeof parsed.text !== 'string' || !parsed.text.trim()) return null;
 
     const text  = parsed.text.trim();

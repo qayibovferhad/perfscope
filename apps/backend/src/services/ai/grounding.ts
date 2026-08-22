@@ -80,7 +80,7 @@ For each: if the name it cites is not in the evidence above, either rewrite it t
 
 Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).join(', ')}}}`;
 
-  const parsed = await generate(prompt)
+  const parsed = await generate(prompt, { json: true, label: 'text critique' })
     .then(raw => parseJson<{ corrected?: Record<string, unknown> }>(raw, 'text critique'))
     .catch((err: unknown) => { console.error('[AI] Text critique failed:', err); return null; });
   if (!parsed?.corrected) return corrections;
