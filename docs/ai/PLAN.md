@@ -242,3 +242,38 @@ eyni prosesdə təkrar eyni mətni qaytarardı), nəticə orta + diapazon kimi v
 yazır ("DOM ağacını kiçildin", "png-ni next-gen formata çevirin"). Düzgün davranış yəqin ki
 "burada əhəmiyyətli düzəliş yoxdur" deməkdir — amma bu, prompt dəyişikliyidir və öz ölçüsü
 ilə gəlməlidir; indi ən azı görünür.
+
+## Təmiz səhifədə susmaq (2026-08-22)
+
+Yuxarıdakı "açıq qalan sual" bağlandı, çünki artıq ölçüləndi.
+
+Səbəb prompt-da idi: `fixes` üçün şərt qoyulmadan **"between 3 and 6"** yazılırdı, yəni dörd
+kateqoriyada 100 alan səhifə də üç fix almalı idi. `analysePage` indi deterministik
+`nothingMaterial` hesablayır — bütün kateqoriyalar ≥90, pis vital yoxdur, və heç bir uğursuz
+auditin qazancı 150ms / 100KB-ı keçmir — və bu halda prompt "boş siyahı doğru cavabdır,
+sayı doldurmaq susmaqdan pisdir" deyir. Qayda modelin mühakiməsinə buraxılmadı, çünki
+"nə vaxt susmalı" sualını modelə vermək elə həmin problemi bir addım geri sürüşdürməkdir.
+
+Fixture dəsti üzərində yoxlanıldı: qayda **yalnız** wikipedia üçün işə düşür, vite.dev üçün
+yox — o, performansda 100 alsa da 346KB `uses-responsive-images` fürsəti daşıyır.
+
+`reconcileRecommendations` artıq boş siyahı ilə də çağırılır (əvvəl `fixes.length > 0`
+şərti vardı): təmizlənmiş səhifə köhnə tövsiyələri "həll olundu" kimi bağlamalıdır — növbəti
+audit "düzəltdiyin şey düzəlib" deyə bilsin.
+
+Probe susmağı **sıfır bal kimi saymır** — bunu istədiyimiz davranışı cəzalandırmaq olardı;
+ayrıca "silent" sütunu var ki, hər yerdə susan model dərhal görünsün.
+
+Öncə / sonra, 3 çalışma, eyni fixture-lar, eyni model:
+```
+                        əvvəl                sonra
+  landau                100%                 100%
+  vite.dev-guide        100%                 100%
+  www.bbc.com-news       93%  (80–100%)       93%  (80–100%)
+  www.wikipedia.org      69%  (67–75%)        silent, 3 of 3 runs
+  ─────────────────────────────────────────────────────────────
+  all fixtures           93%  (90–95%)        98%  (94–100%)
+```
+Diaqnoz: *"Your page has nothing material left to fix since every vital is already
+performing at absolute peak efficiency."* Risk — modelin digər səhifələrdə də susması —
+ölçüldü və baş vermədi.

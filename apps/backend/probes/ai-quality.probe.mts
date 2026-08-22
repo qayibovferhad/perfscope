@@ -72,11 +72,18 @@ if (RUNS > 1 && !AS_JSON) {
   console.log('  ' + '─'.repeat(64));
   for (const name of names) {
     const mine = runs.flatMap(r => (r.rows ?? []).filter(x => x.name === name));
-    const rate = stats(mine.map(x => x.concrete / Math.max(1, x.fixes)));
+    const scoredRuns = mine.filter(x => x.fixes > 0);
+    const quiet = mine.length - scoredRuns.length;
+    if (scoredRuns.length === 0) {
+      console.log(`  ${name.padEnd(30)}${String(mine[0]?.citable ?? 0).padStart(8)}${'silent'.padStart(14)}   ${quiet} of ${mine.length} runs`);
+      continue;
+    }
+    const rate = stats(scoredRuns.map(x => x.concrete / x.fixes));
     console.log(`  ${name.padEnd(30)}${String(mine[0]?.citable ?? 0).padStart(8)}` +
-      `${`${(rate.mean * 100).toFixed(0)}%`.padStart(14)}   ${(rate.min * 100).toFixed(0)}–${(rate.max * 100).toFixed(0)}%`);
+      `${`${(rate.mean * 100).toFixed(0)}%`.padStart(14)}   ${(rate.min * 100).toFixed(0)}–${(rate.max * 100).toFixed(0)}%` +
+      `${quiet ? `  (silent in ${quiet} of ${mine.length})` : ''}`);
   }
-  const overall = stats(runs.map(r => r.concrete / Math.max(1, r.fixes)));
+  const overall = stats(runs.filter(r => r.fixes > 0).map(r => r.concrete / r.fixes));
   console.log('  ' + '─'.repeat(64));
   console.log(`  ${'all fixtures'.padEnd(38)}${`${(overall.mean * 100).toFixed(0)}%`.padStart(14)}   ${(overall.min * 100).toFixed(0)}–${(overall.max * 100).toFixed(0)}%`);
   console.log(`  ${'mean latency per fixture'.padEnd(38)}${`${(mean(runs.map(r => r.elapsedMs)) / 1000).toFixed(1)}s`.padStart(14)}`);
@@ -158,8 +165,13 @@ for (const { name, result } of fixtures) {
 
   const auditsConcrete = Object.values(analysis.audits)
     .filter(t => usable.some(e => t.toLowerCase().includes(e.toLowerCase()))).length;
-  console.log(`  → ${concrete} of ${analysis.fixes.length} fixes concrete, ` +
-    `${auditsConcrete} of ${Object.keys(analysis.audits).length} audit notes, ${(elapsedMs / 1000).toFixed(1)}s\n`);
+  console.log(analysis.fixes.length === 0
+    // Not a zero score: a page with nothing material left is supposed to get no fixes, and
+    // scoring that as 0% concrete would punish exactly the behaviour we asked for. It is
+    // counted and shown instead, so a model that goes quiet everywhere is visible at once.
+    ? `  → no fixes offered — the page had nothing material to fix, ${(elapsedMs / 1000).toFixed(1)}s\n`
+    : `  → ${concrete} of ${analysis.fixes.length} fixes concrete, ` +
+      `${auditsConcrete} of ${Object.keys(analysis.audits).length} audit notes, ${(elapsedMs / 1000).toFixed(1)}s\n`);
 
   scored.push({
     name, url: result.url, fixes: analysis.fixes.length, concrete, citable: usable.length, auditsConcrete,
@@ -176,14 +188,19 @@ const fixes = sum(s => s.fixes);
 const concrete = sum(s => s.concrete);
 const usage = aiUsageSnapshot()['page analysis'] ?? { calls: 0, cacheHits: 0, inTokens: 0, outTokens: 0, retries: 0, failures: 0 };
 
+const silent = scored.filter(s => s.fixes === 0);
+
 console.log('  ' + '─'.repeat(58));
 for (const s of scored) {
-  console.log(`  ${s.name.padEnd(34)}${String(s.concrete).padStart(2)} of ${String(s.fixes).padEnd(3)} ` +
-    `${((s.concrete / Math.max(1, s.fixes)) * 100).toFixed(0).padStart(4)}%`);
+  console.log(s.fixes === 0
+    ? `  ${s.name.padEnd(34)}    silent — nothing material to fix`
+    : `  ${s.name.padEnd(34)}${String(s.concrete).padStart(2)} of ${String(s.fixes).padEnd(3)} ` +
+      `${((s.concrete / Math.max(1, s.fixes)) * 100).toFixed(0).padStart(4)}%`);
 }
 console.log('  ' + '─'.repeat(58));
-console.log(`  ${`${scored.length} fixture(s)`.padEnd(34)}${String(concrete).padStart(2)} of ${String(fixes).padEnd(3)} ` +
+console.log(`  ${`${scored.length - silent.length} scored fixture(s)`.padEnd(34)}${String(concrete).padStart(2)} of ${String(fixes).padEnd(3)} ` +
   `${((concrete / Math.max(1, fixes)) * 100).toFixed(0).padStart(4)}%`);
+if (silent.length) console.log(`  ${'silent'.padEnd(34)}${String(silent.length).padStart(2)} of ${scored.length} fixture(s)`);
 console.log(`  ${'audit notes'.padEnd(34)}${String(sum(s => s.auditsConcrete)).padStart(2)} of ${String(sum(s => s.auditsTotal)).padEnd(3)}`);
 console.log(`  ${'tokens'.padEnd(34)}${usage.inTokens} in / ${usage.outTokens} out` +
   `${usage.retries || usage.failures ? `, ${usage.retries} retried / ${usage.failures} failed` : ''}`);
@@ -198,6 +215,7 @@ if (AS_JSON) {
     model: activeModel(),
     url: scored.length === 1 ? scored[0]!.url : `${scored.length} fixtures`,
     fixtures: scored.length,
+    silent: silent.length,
     fixes,
     concrete,
     auditsConcrete: sum(s => s.auditsConcrete),

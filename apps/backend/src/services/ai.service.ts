@@ -72,6 +72,28 @@ export class AiService {
       s.seo < 90 ? `SEO ${s.seo}` : null,
     ].filter(Boolean);
 
+    /**
+     * A page with nothing material left to fix.
+     *
+     * The fixes instruction below used to demand "between 3 and 6" unconditionally, so a
+     * page scoring 100 across all four categories still got three — measured on
+     * wikipedia.org: "trim your DOM tree", "convert your png to a next-gen format" (9KB).
+     * Padding a list on a page that is already fine is how a measurement tool loses the
+     * reader's trust everywhere else: if it manufactures work here, why believe it there.
+     *
+     * Deterministic rather than left to the model's judgement, and deliberately strict —
+     * every category good, no poor vital, and not one failing audit worth more than a
+     * rounding error. Checked against the fixture set: it fires for wikipedia.org and for
+     * none of the other three, including vite.dev, which scores 100 on performance but
+     * still has a 346KB responsive-images opportunity.
+     */
+    const TRIVIAL_MS = 150;
+    const TRIVIAL_BYTES = 100 * 1024;
+    const nothingMaterial = poor.length === 0
+      && weakCategories.length === 0
+      && s.performance >= 90
+      && failing.every(a => (a.savingsMs ?? 0) < TRIVIAL_MS && (a.savingsBytes ?? 0) < TRIVIAL_BYTES);
+
     const prompt = `You are a web performance expert reading one Lighthouse result.
 
 ${VOICE}
@@ -85,7 +107,9 @@ Answer ONLY with JSON:
 {"diagnosis": string, "fixes": [string], "metrics": {${poor.map(k => `"${k}": string`).join(', ')}}, "waterfall": string, "audits": {${failing.map(a => `"${a.id}": string`).join(', ')}}}
 
 - diagnosis: one sentence naming the single root problem on this page.
-- fixes: between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric. When a failing audit below states a potential savings in ms or KB, weigh that real number over your own sense of what looks worse — a 900ms opportunity outranks a 40ms one even if the smaller one sounds scarier described in words.
+- fixes: ${nothingMaterial
+  ? `this page has nothing material left to fix — every remaining opportunity below is worth a few KB or a few milliseconds. Say that plainly in the diagnosis, as good news rather than as a warning. Return ONLY fixes worth a developer's time on a page already in this shape; an empty list is the correct answer here, and padding the list to reach a count is worse than saying nothing.`
+  : `between 3 and 6, ordered by impact, one sentence each. Cover every weak area, not just the slowest metric. When a failing audit below states a potential savings in ms or KB, weigh that real number over your own sense of what looks worse — a 900ms opportunity outranks a 40ms one even if the smaller one sounds scarier described in words.`}
 - metrics: one sentence per key, saying what made THAT metric what it is here — consistent with the diagnosis.
 - waterfall: two or three sentences on how this load actually went, in order.
 - audits: one sentence per key: why it fails on this page and the first thing to change. Never define the audit.

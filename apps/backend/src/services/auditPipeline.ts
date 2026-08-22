@@ -156,7 +156,10 @@ export async function enrichWithAi(
   // Fold this run's fixes into the recommendation history — bumps repeats, resolves
   // whatever dropped out of the list. Deep-only: 'standard' fixes are one collapsed
   // string (see the getInsights branch above), not discrete recommendations to track.
-  if (depth === 'deep' && userId && analysis && analysis.fixes.length > 0) {
+  // An empty fix list is a real deep-mode outcome now (a page with nothing material left),
+  // and reconciling it is the point: it resolves whatever was outstanding, which is how the
+  // next audit gets to open with "the thing you fixed is fixed".
+  if (depth === 'deep' && userId && analysis) {
     await reconcileRecommendations(userId, result, analysis.fixes);
   }
 
