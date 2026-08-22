@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  A page that fails on purpose, so the audit-list filters have something to filter.
+
+  Every failure here is one Lighthouse detects automatically and files under a *different*
+  accessibility group, which is what makes the grouped view worth asserting: contrast,
+  names and labels, internationalization, and ARIA. It also fails a couple of SEO audits,
+  so the category filter has more than one category to switch between.
+
+  Deliberately no <html lang> — that is one of the findings.
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Deliberately inaccessible fixture</title>
+  <style>
+    body { background: #ffffff; font-family: system-ui, sans-serif; padding: 40px; }
+    /* Contrast ratio ~1.6:1 — fails WCAG AA, and fails it measurably. */
+    .faint { color: #d8d8d8; background: #ffffff; font-size: 16px; }
+    .also-faint { color: #e2e2e2; background: #f5f5f5; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1 class="faint">Barely visible heading</h1>
+  <p class="also-faint">This paragraph does not have enough contrast against its background either.</p>
+
+  <!-- Names and labels: an image with no alt text, a button with no accessible name. -->
+  <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" width="120" height="80">
+  <button></button>
+
+  <!-- Names and labels: a form field with nothing naming it. -->
+  <form>
+    <input type="text" name="email">
+    <input type="submit" value="">
+  </form>
+
+  <!-- ARIA: a role that requires children it does not have, and an invalid attribute value. -->
+  <div role="list"></div>
+  <div role="button" aria-expanded="not-a-boolean" tabindex="0">Toggle</div>
+
+  <!-- Navigation: a link whose text says nothing about where it goes. -->
+  <a href="/somewhere">click here</a>
+
+  <p class="faint">
+    No meta description, no lang attribute, and a viewport that is never declared — the SEO
+    and best-practices categories have something to report too.
+  </p>
+</body>
+</html>

@@ -2,7 +2,7 @@ import {
   rateScore, rateVital, RATING_COLOR,
   scoreVerdict, deltaPct, METRIC_NOISE, REGRESSION_PCT,
   type ScoreRating, type VitalKey, type TimelineFrame, type AnalysisResult, type AnalysisInsightsPayload,
-  type AnalysisCategory, type CategoryPartial,
+  type AnalysisCategory, type CategoryPartial, type AuditItem,
 } from '@perfscope/shared';
 
 /** One category's live result, keyed by category, as they stream in before the full
@@ -197,4 +197,102 @@ export function deltaOf(kind: DeltaKind, curr: number, prev: number | undefined 
   const meaningful = pctClears && Math.abs(diff) >= floor;
 
   return { diff, direction, meaningful };
+}
+
+// ─── Audit list filtering ─────────────────────────────────────────────────────
+
+/** Display names for the four categories, in the order the score cards use. */
+export const AUDIT_CATEGORY_LABEL: Record<AnalysisCategory, string> = {
+  performance:      'Performance',
+  accessibility:    'Accessibility',
+  'best-practices': 'Best practices',
+  seo:              'SEO',
+};
+
+export const AUDIT_CATEGORY_ORDER: AnalysisCategory[] = [
+  'performance', 'accessibility', 'best-practices', 'seo',
+];
+
+/**
+ * Does this audit match what the reader typed?
+ *
+ * Searches the evidence as well as the prose. Someone who arrives from a code review knows
+ * the filename or the class that is failing, not Lighthouse's wording for it — typing
+ * `hero.jpg` or `AnchorInlineLink` has to find the audit that names it, which means the
+ * `details` have to be searchable even though they are collapsed.
+ *
+ * Case-insensitive substring, deliberately: a fuzzy matcher would answer a precise query
+ * (a selector) with near-misses, and precision is the whole reason someone types one.
+ */
+export function matchesAuditQuery(audit: AuditItem, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+
+  if (audit.title.toLowerCase().includes(q)) return true;
+  if (audit.description.toLowerCase().includes(q)) return true;
+  if (audit.displayValue?.toLowerCase().includes(q)) return true;
+  if (audit.group?.toLowerCase().includes(q)) return true;
+
+  return (audit.details ?? []).some(d =>
+    d.selector?.toLowerCase().includes(q) ||
+    d.url?.toLowerCase().includes(q) ||
+    d.snippet?.toLowerCase().includes(q) ||
+    d.value?.toLowerCase().includes(q));
+}
+
+/**
+ * Rows under their Lighthouse group, groups in the order their worst row appears.
+ *
+ * Only worth doing where a category is wide: forty accessibility findings sorted by
+ * severity alone are a list, the same forty under "Contrast", "Names and labels" and
+ * "Tables and lists" are a to-do list a person can hand to someone. A performance list is
+ * already grouped by what a fix costs, so it stays flat.
+ *
+ * Order comes from the input, which arrives severity-sorted — so the group holding the
+ * worst finding leads, rather than whichever name sorts first alphabetically.
+ */
+export function groupAudits(audits: AuditItem[]): { group: string; items: AuditItem[] }[] {
+  const groups = new Map<string, AuditItem[]>();
+  for (const a of audits) {
+    const key = a.group ?? 'Other';
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(a);
+    else groups.set(key, [a]);
+  }
+  return [...groups].map(([group, items]) => ({ group, items }));
+}
+
+// ─── Audit descriptions ───────────────────────────────────────────────────────
+
+/** One run of an audit description: plain prose, or a link Lighthouse embedded in it. */
+export type DescriptionPart = { text: string; href?: string };
+
+/** `[label](https://…)`, which is how every Lighthouse description carries its "learn
+ *  more" link. Bounded to http(s) so nothing in a description can produce a javascript: URL. */
+const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+
+/**
+ * Lighthouse writes its descriptions in Markdown and every one of them ends with a link:
+ * "Low-contrast text is difficult to read. [Learn how to provide sufficient color
+ * contrast](https://dequeuniversity.com/…)". Rendered as plain text — which is how the
+ * audit list rendered them until the details work put the description in front of people —
+ * that tail is a URL in brackets sitting in the middle of a sentence.
+ *
+ * Returns the description as parts so the component can render anchors without
+ * `dangerouslySetInnerHTML`: the strings come from Lighthouse, but they describe the
+ * audited page, and some of them quote its markup.
+ */
+export function parseAuditDescription(description: string): DescriptionPart[] {
+  const parts: DescriptionPart[] = [];
+  let last = 0;
+
+  for (const match of description.matchAll(MD_LINK)) {
+    const start = match.index ?? 0;
+    if (start > last) parts.push({ text: description.slice(last, start) });
+    parts.push({ text: match[1] ?? '', href: match[2] ?? '' });
+    last = start + match[0].length;
+  }
+  if (last < description.length) parts.push({ text: description.slice(last) });
+
+  return parts;
 }

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle, Timer, History as HistoryIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
@@ -66,6 +66,10 @@ interface Props {
 
 export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }: Props) {
   const measurement = data.measurement;
+  // `?audit=<id>` opens one finding and scrolls to it. Read here rather than in the entity:
+  // routing is a page concern, and AuditList is also rendered by the public report.
+  const [searchParams] = useSearchParams();
+  const openAuditId = searchParams.get('audit') ?? undefined;
   // Field data for the same URL/device — renders nothing when Chrome has no
   // real-user sample for this page (or the server has no CrUX key).
   const { data: crux, isLoading: cruxLoading } = useCruxData(data.url, data.formFactor ?? 'desktop');
@@ -269,7 +273,7 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
 
       {data.audits.length > 0 && (
         <section>
-          <AuditList audits={data.audits} previous={data.previous} aiPending={aiPending} />
+          <AuditList audits={data.audits} previous={data.previous} aiPending={aiPending} openAuditId={openAuditId} />
         </section>
       )}
 

@@ -14,6 +14,17 @@ import type { AnalysisResult, AuditItem, AuditDetail, AuditImpact, AnalysisCateg
  *  same reason. */
 const AUDIT_DETAIL_LIMIT = 5;
 
+/**
+ * Failing audits kept per category.
+ *
+ * Fifteen is what the whole LHR used to get. Per category it is the same budget for
+ * performance (its LHR reports nothing else) and a real widening for accessibility, which
+ * was sharing fifteen rows with seo and best-practices and routinely showed six. The cost
+ * is bounded: four categories, and a page bad enough to fill all four is a page whose
+ * report should be long.
+ */
+const AUDITS_PER_CATEGORY = 15;
+
 /** Keeps the start — right for snippets, where the tag name and key attributes lead. */
 const truncateHead = (s: string, max = 120): string => (s.length > max ? s.slice(0, max - 1) + '…' : s);
 
@@ -94,16 +105,69 @@ function extractSavings(details: unknown): { savingsMs?: number; savingsBytes?: 
   return out;
 }
 
+/** Where an audit sits: which category reported it, and Lighthouse's own grouping inside it. */
+export interface AuditPlacement {
+  category: AnalysisCategory
+  group?:   string
+}
+
+/**
+ * `auditId → { category, group }`, read off the LHR's own category definitions.
+ *
+ * Nothing else in the pipeline knows which category an audit came from: `lhr.audits` is one
+ * flat map, and the two LHRs we merge each carry all the audits their categories needed. The
+ * answer is already in `categories[*].auditRefs`, with the group's display title one hop away
+ * in `categoryGroups` — so this reads it rather than hard-coding a list that Lighthouse would
+ * outgrow at the next release.
+ *
+ * First category wins for an audit referenced by two (a handful are), because the analyzer
+ * shows each audit once and the first reference is the one whose score it counts toward.
+ */
+export function buildAuditPlacements(lhr: RunnerResult['lhr']): Map<string, AuditPlacement> {
+  const placements = new Map<string, AuditPlacement>();
+  const groups = (lhr as unknown as { categoryGroups?: Record<string, { title?: string }> }).categoryGroups ?? {};
+
+  for (const key of ['performance', 'accessibility', 'best-practices', 'seo'] as const) {
+    const refs = lhr.categories[key]?.auditRefs ?? [];
+    for (const ref of refs) {
+      if (placements.has(ref.id)) continue;
+      const title = ref.group ? groups[ref.group]?.title : undefined;
+      placements.set(ref.id, { category: key, ...(title ? { group: title } : {}) });
+    }
+  }
+  return placements;
+}
+
+/**
+ * Failing audits, capped **per category** rather than per LHR.
+ *
+ * One cap across the whole LHR is what made the accessibility list look short: the static
+ * run reports seo, best-practices and accessibility together, so fifteen rows had to be
+ * shared between three categories and whichever scored worst took nearly all of them. A
+ * category is what a person filters by, so it is also the right thing to budget by.
+ */
 export function extractFailingAudits(
   audits: Record<string, { score?: number | null; title?: string; description?: string; displayValue?: string; details?: unknown }>,
+  placements?: Map<string, AuditPlacement>,
 ): AuditItem[] {
+  const perCategory = new Map<string, number>();
+
   return Object.entries(audits)
     .filter(([, a]) => a.score !== null && (a.score ?? 1) < 0.9)
     .sort(([, a], [, b]) => (a.score ?? 1) - (b.score ?? 1))
-    .slice(0, 15)
+    .filter(([id]) => {
+      // An audit with no placement (an older LHR shape, or one no category references)
+      // still counts against a bucket of its own rather than slipping past the cap.
+      const key = placements?.get(id)?.category ?? 'unplaced';
+      const used = perCategory.get(key) ?? 0;
+      if (used >= AUDITS_PER_CATEGORY) return false;
+      perCategory.set(key, used + 1);
+      return true;
+    })
     .map(([id, a]): AuditItem => {
       const details = extractAuditDetails(a.details);
       const savings = extractSavings(a.details);
+      const placement = placements?.get(id);
       return {
         id,
         title: a.title ?? id,
@@ -111,6 +175,8 @@ export function extractFailingAudits(
         score: a.score ?? null,
         displayValue: a.displayValue,
         impact: scoreToImpact(a.score ?? null),
+        ...(placement ? { category: placement.category } : {}),
+        ...(placement?.group ? { group: placement.group } : {}),
         ...(details ? { details } : {}),
         ...savings,
       };
@@ -144,7 +210,7 @@ export function buildPartial(
 ): CategoryPartial {
   const categoryKey = category === 'best-practices' ? 'best-practices' : category;
   const score = toScore(lhr.categories[categoryKey]?.score);
-  const audits = extractFailingAudits(lhr.audits);
+  const audits = extractFailingAudits(lhr.audits, buildAuditPlacements(lhr));
 
   const partial: CategoryPartial = { analysisId, category, score, audits };
 
@@ -193,14 +259,20 @@ export function buildFullResult(
       performanceLhr = lhr;
     }
 
-    allAudits.push(...extractFailingAudits(lhr.audits));
+    allAudits.push(...extractFailingAudits(lhr.audits, buildAuditPlacements(lhr)));
   }
 
-  // Deduplicate audits by id
+  // Deduplicate audits by id, then order the merged list by how badly it scored.
+  //
+  // Concatenation order used to decide this, which meant the static run's seo and
+  // best-practices findings came ahead of every performance opportunity no matter how bad
+  // it was — visible to the reader as an odd default ordering, and to the AI as the first
+  // fourteen it is given (`AUDIT_LIMIT` in pageContext). Worst first is the honest order
+  // for both.
   const seen = new Set<string>();
-  const uniqueAudits = allAudits.filter(({ id: auditId }) =>
-    seen.has(auditId) ? false : (seen.add(auditId), true),
-  );
+  const uniqueAudits = allAudits
+    .filter(({ id: auditId }) => (seen.has(auditId) ? false : (seen.add(auditId), true)))
+    .sort((a, b) => (a.score ?? 1) - (b.score ?? 1));
 
   // Parse resources and timeline from the performance LHR
   const result: AnalysisResult = { id, url, timestamp: new Date().toISOString(), scores, metrics, audits: uniqueAudits };

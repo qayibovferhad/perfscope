@@ -286,6 +286,64 @@ visible rows, switch category, assert sub-headers, screenshot both themes); lint
 (FSD: `entities` must not import from `features` — `CopySnippet` and `Input` are
 `shared/ui`, fine). Stop; report; wait.
 
+
+### B5. DONE — 2026-08-22
+
+**Shipped as designed**, plus two things the plan did not anticipate:
+
+- **Placements are read from the LHR, not hard-coded.** `buildAuditPlacements(lhr)` walks
+  `categories[*].auditRefs` and resolves each `group` id through `categoryGroups[*].title`,
+  so the analyzer shows Lighthouse's own group names ("Contrast", "Names and labels",
+  "Internationalization and localization") and gains new ones for free at the next
+  Lighthouse release. First category wins for an audit two categories reference.
+- **The cap is per category (15), and audits with no placement share one bucket of 15** so
+  an unrecognised audit cannot slip past the budget. Verified: the static run used to share
+  fifteen rows between seo, best-practices and accessibility, and whichever scored worst
+  took nearly all of them.
+- **Ordering changed, deliberately.** `buildFullResult` now sorts the merged list worst
+  first. It was concatenation order, which put every seo and best-practices finding ahead
+  of every performance opportunity however bad — visible to the reader as an odd default
+  order, and to the AI as the first fourteen it is handed (`AUDIT_LIMIT` in pageContext,
+  which still caps at 14, so the prompt did not grow).
+- **`AuditItem.details` is rendered for the first time** (`ui/AuditDetails.tsx`): selector
+  and URL with a copy button, snippet in its own scrolling block, value inline. The backend
+  has collected this since AI phase 1 and only the model ever saw it. `CopySnippet` gained
+  a `size="sm"` variant rather than the codebase gaining a fourth hand-rolled copy button.
+- **Unplanned fix, found by looking at the result**: Lighthouse writes its descriptions in
+  Markdown and every one ends with `[Learn more](https://…)`. Rendered as plain text — which
+  is what the audit list did — that tail is a bare URL in brackets in the middle of a
+  sentence, and putting the description in front of people made it obvious.
+  `parseAuditDescription` splits it into parts and the row renders real anchors (http(s)
+  only, so nothing in a description can produce a `javascript:` URL, and no
+  `dangerouslySetInnerHTML`).
+- Grouping shows only when it splits the view (`groups.length > 1`); `groupAudits` and
+  `matchesAuditQuery` live in `entities/analysis/lib.ts` as pure, unit-tested functions.
+  Search covers title, description, displayValue, group **and every detail field** — someone
+  arriving from a code review knows the filename or the class, not Lighthouse's wording.
+- `?audit=<id>` opens and scrolls to one finding. `useSearchParams` is read in the *widget*
+  and passed down, because `entities/**` may not import routing (the FSD rule) and the same
+  list renders inside the public report.
+
+**Verified**
+- `probes/audit-categories.probe.mts` — **13/13 PASS**. A synthetic LHR proves the
+  per-category budgeting (20 failing a11y + 20 failing perf → 15 + 15, not 15 total),
+  that a passing audit is still never reported, and that unplaced audits get their own
+  bucket. Then a live audit asserts every audit carries a category and a11y audits carry a
+  group title. Run against wikipedia.org, bbc.com/news and the W3C "before" demo; all three
+  report far fewer accessibility failures than expected, which is Lighthouse's automated
+  coverage, not a bug here — `--no-live` skips the run, `PROBE_URL` overrides the target.
+- `e2e/audit-filters.probe.mjs` — **24/24 PASS** against `e2e/fixtures/inaccessible.html`,
+  served by the probe itself on port 3397. That fixture fails on purpose in five
+  accessibility groups plus SEO and best-practices, which is the only way to assert
+  grouping and category filtering without depending on someone else's site staying broken.
+  Live result: `All 14 | Accessibility 8 | Best practices 3 | SEO 3`, five group headers,
+  search narrowing to the contrast finding, the empty state quoting the query, three copy
+  buttons on the expanded evidence, the deep link opening its row, both themes, zero
+  console errors.
+- Unit tests: `matchesAuditQuery` (5), `groupAudits` (4), `parseAuditDescription` (5) —
+  33 web-dashboard tests in total.
+- Gates: build, typecheck (6 workspaces), test (113), lint **0 errors**, `pnpm e2e` 21/21.
+
 ---
 
 ## Phase C — Element screenshots on failing audits (~1 day)

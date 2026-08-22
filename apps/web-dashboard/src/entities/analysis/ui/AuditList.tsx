@@ -1,13 +1,17 @@
-import { useState, useRef, useId, useLayoutEffect } from 'react';
-import { TriangleAlert, Zap, ChevronDown, Check } from 'lucide-react';
+import { useState, useRef, useId, useLayoutEffect, useEffect } from 'react';
+import { TriangleAlert, Zap, ChevronDown, Check, Search, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Segmented } from '@/shared/ui/segmented';
+import { Input } from '@/shared/ui/input';
 import { AiNote } from '@/shared/ui/ai-card';
-import type { AuditItem, PreviousRunSummary } from '@/entities/analysis';
+import { matchesAuditQuery, groupAudits, parseAuditDescription, AUDIT_CATEGORY_LABEL, AUDIT_CATEGORY_ORDER } from '../lib';
+import { AuditDetails } from './AuditDetails';
+import type { AuditItem, AnalysisCategory, PreviousRunSummary } from '@/entities/analysis';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FilterKey = 'all' | 'critical' | 'high' | 'other';
+type CategoryKey = 'all' | AnalysisCategory;
 
 const FILTERS: { value: FilterKey; label: string }[] = [
   { value: 'all',      label: 'All'      },
@@ -39,7 +43,7 @@ function sevTier(impact: AuditItem['impact']): 'high' | 'warn' | 'low' {
 // ─── Issue row ────────────────────────────────────────────────────────────────
 
 function IssueRow({
-  audit, isOpen, bodyId, onToggle, aiPending, isNew,
+  audit, isOpen, bodyId, onToggle, aiPending, isNew, rowRef,
 }: {
   audit: AuditItem;
   isOpen: boolean;
@@ -48,8 +52,9 @@ function IssueRow({
   aiPending?: boolean;
   /** Not reported by the previous run of this page. */
   isNew?: boolean;
+  rowRef?: (el: HTMLDivElement | null) => void;
 }) {
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyEl = useRef<HTMLDivElement>(null);
   const tier = sevTier(audit.impact);
 
   // The body animates to a measured pixel height, so it has to be re-measured whenever its
@@ -58,11 +63,11 @@ function IssueRow({
   // the description alone and clip the new line.
   const [bodyHeight, setBodyHeight] = useState(0);
   useLayoutEffect(() => {
-    setBodyHeight(bodyRef.current?.scrollHeight ?? 0);
-  }, [isOpen, audit.description, audit.aiExplanation, aiPending]);
+    setBodyHeight(bodyEl.current?.scrollHeight ?? 0);
+  }, [isOpen, audit.description, audit.aiExplanation, audit.details, aiPending]);
 
   return (
-    <div className={cn(
+    <div ref={rowRef} className={cn(
       'rounded-[12px] border bg-ld-surface overflow-hidden transition-[border-color] duration-200',
       isOpen ? 'border-ld-accent-line' : 'border-ld-border',
     )}>
@@ -123,14 +128,26 @@ function IssueRow({
       {/* Animated body */}
       <div
         id={bodyId}
-        ref={bodyRef}
+        ref={bodyEl}
         className="overflow-hidden transition-[max-height] duration-[350ms] ease-out"
         style={{ maxHeight: isOpen ? `${bodyHeight}px` : '0px' }}
       >
         <div className="px-[18px] pb-[18px] pl-[61px] max-[760px]:pl-[18px]">
           {audit.description && (
             <p className="text-[13.5px] text-ld-text-2 leading-[1.55] max-w-[70ch]">
-              {audit.description}
+              {parseAuditDescription(audit.description).map((part, i) => part.href
+                ? (
+                  <a
+                    key={i}
+                    href={part.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-ld-accent underline underline-offset-2 hover:text-ld-accent-2"
+                  >
+                    {part.text}
+                  </a>
+                )
+                : <span key={i}>{part.text}</span>)}
             </p>
           )}
           {/* Lighthouse's description above is the same sentence on every site; this is the
@@ -140,6 +157,7 @@ function IssueRow({
             pending={aiPending && !audit.aiExplanation}
             className="mt-[10px] max-w-[70ch]"
           />
+          <AuditDetails details={audit.details} />
         </div>
       </div>
     </div>
@@ -148,16 +166,28 @@ function IssueRow({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function AuditList({ audits, previous, aiPending }: {
+export function AuditList({ audits, previous, aiPending, openAuditId }: {
   audits: AuditItem[];
   /** The run this one is compared against — drives the "new" pills and the fixed list. */
   previous?: PreviousRunSummary | undefined;
   aiPending?: boolean;
+  /** Open and scroll to this audit on mount — the `?audit=` deep link. */
+  openAuditId?: string | undefined;
 }) {
-  const uid                     = useId();
-  const [openId, setOpenId]     = useState<string | null>(null);
-  const [filter, setFilter]     = useState<FilterKey>('all');
+  const uid                       = useId();
+  const [openId, setOpenId]       = useState<string | null>(openAuditId ?? null);
+  const [filter, setFilter]       = useState<FilterKey>('all');
+  const [category, setCategory]   = useState<CategoryKey>('all');
+  const [query, setQuery]         = useState('');
   const [showFixed, setShowFixed] = useState(false);
+  const deepLinked = useRef<HTMLDivElement | null>(null);
+
+  // A link to one finding has to land on it, not near it. Runs once: after that the
+  // reader owns the scroll position.
+  useEffect(() => {
+    if (!openAuditId) return;
+    deepLinked.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [openAuditId]);
 
   if (audits.length === 0) return null;
 
@@ -166,24 +196,69 @@ export function AuditList({ audits, previous, aiPending }: {
 
   const sorted    = sortAudits(audits);
   const critCount = sorted.filter(a => a.impact === 'critical').length;
-  const visible   = sorted.filter(a => matchFilter(a.impact, filter));
+
+  // Audits stored before the category field existed have none; a filter that silently
+  // hid every one of them would be worse than no filter.
+  const categorised   = sorted.filter(a => a.category);
+  const hasCategories = categorised.length > 0;
+  const categoryCounts = AUDIT_CATEGORY_ORDER.map(key => ({
+    key, count: sorted.filter(a => a.category === key).length,
+  })).filter(c => c.count > 0);
+
+  const visible = sorted
+    .filter(a => category === 'all' || a.category === category)
+    .filter(a => matchFilter(a.impact, filter))
+    .filter(a => matchesAuditQuery(a, query));
+
+  // Grouping earns its space only when the view is one wide category and the groups
+  // actually split it — a single group under a header is a header for nothing.
+  const groups = category === 'accessibility' ? groupAudits(visible) : [];
+  const grouped = groups.length > 1 ? groups : null;
+
+  const filtered = category !== 'all' || filter !== 'all' || query.trim() !== '';
 
   function toggle(id: string) {
     setOpenId(prev => (prev === id ? null : id));
   }
 
-  function applyFilter(key: FilterKey) {
-    setFilter(key);
-    // Collapse open item if it becomes hidden
-    if (openId !== null) {
-      const open = sorted.find(a => a.id === openId);
-      if (open && !matchFilter(open.impact, key)) setOpenId(null);
+  /** Keep an open row from being hidden by a filter the reader just changed. */
+  function closeIfHidden(next: { filter?: FilterKey; category?: CategoryKey; query?: string }) {
+    if (openId === null) return;
+    const open = sorted.find(a => a.id === openId);
+    if (!open) return;
+    const stillVisible =
+      (next.category ?? category) === 'all' || open.category === (next.category ?? category);
+    if (!stillVisible
+      || !matchFilter(open.impact, next.filter ?? filter)
+      || !matchesAuditQuery(open, next.query ?? query)) {
+      setOpenId(null);
     }
+  }
+
+  function clearFilters() {
+    setFilter('all');
+    setCategory('all');
+    setQuery('');
+  }
+
+  function renderRow(auditItem: AuditItem) {
+    return (
+      <IssueRow
+        key={auditItem.id}
+        audit={auditItem}
+        isOpen={openId === auditItem.id}
+        bodyId={`${uid}-body-${auditItem.id}`}
+        onToggle={() => toggle(auditItem.id)}
+        aiPending={aiPending}
+        isNew={newIds.has(auditItem.id)}
+        {...(auditItem.id === openAuditId ? { rowRef: (el: HTMLDivElement | null) => { deepLinked.current = el; } } : {})}
+      />
+    );
   }
 
   return (
     <div>
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-[12px] mb-[14px] flex-wrap">
         <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 m-0">
           Opportunities &amp; diagnostics
@@ -191,46 +266,103 @@ export function AuditList({ audits, previous, aiPending }: {
 
         {/* Critical count pill */}
         {critCount > 0 ? (
-          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-ld-rose border border-ld-rose-line bg-ld-rose-wash">
+          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-ld-rose bg-ld-rose-soft border border-ld-rose-line">
             <TriangleAlert className="w-[13px] h-[13px]" />
             {critCount} critical
           </span>
         ) : (
-          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-[var(--ld-accent-2)] border border-ld-accent-line bg-ld-accent-soft">
+          <span className="inline-flex items-center gap-[7px] font-mono text-[11.5px] font-semibold px-[10px] py-[4px] rounded-full text-[var(--ld-accent)] bg-ld-accent-soft border border-ld-accent-line">
             No critical issues
           </span>
         )}
 
-        {/* Segmented filter */}
+        {/* Severity filter */}
         <Segmented
           size="sm"
           ariaLabel="Severity filter"
           className="ml-auto max-[760px]:w-full"
           options={FILTERS}
           value={filter}
-          onChange={applyFilter}
+          onChange={(key) => { closeIfHidden({ filter: key }); setFilter(key); }}
         />
       </div>
 
-      {/* ── Issue list ──────────────────────────────────────────────────── */}
-      <div className="grid gap-[8px]">
-        {visible.map(audit => (
-          <IssueRow
-            key={audit.id}
-            audit={audit}
-            isOpen={openId === audit.id}
-            bodyId={`${uid}-body-${audit.id}`}
-            onToggle={() => toggle(audit.id)}
-            aiPending={aiPending}
-            isNew={newIds.has(audit.id)}
+      {/* ── Category + search ─────────────────────────────────────────────── */}
+      {hasCategories && (
+        <div className="flex items-center gap-[10px] mb-[14px] flex-wrap">
+          <Segmented
+            size="sm"
+            ariaLabel="Category filter"
+            className="max-[760px]:w-full"
+            options={[
+              { value: 'all' as CategoryKey, label: `All ${sorted.length}` },
+              ...categoryCounts.map(c => ({
+                value: c.key as CategoryKey,
+                label: `${AUDIT_CATEGORY_LABEL[c.key]} ${c.count}`,
+              })),
+            ]}
+            value={category}
+            onChange={(key) => { closeIfHidden({ category: key }); setCategory(key); }}
           />
-        ))}
-        {visible.length === 0 && (
-          <p className="font-mono text-[12px] text-ld-text-3 text-center py-[24px]">
-            No issues in this category.
+          <Input
+            icon={<Search />}
+            mono
+            value={query}
+            onChange={(e) => { closeIfHidden({ query: e.target.value }); setQuery(e.target.value); }}
+            placeholder="Search audits, selectors, files"
+            aria-label="Search audits"
+            wrapperClassName="ml-auto max-w-[320px] max-[760px]:max-w-none max-[760px]:w-full"
+            className="text-[13px] py-[7px]"
+            {...(query
+              ? { trailing: (
+                  <button
+                    type="button"
+                    onClick={() => { closeIfHidden({ query: '' }); setQuery(''); }}
+                    aria-label="Clear search"
+                    className="grid place-items-center bg-transparent border-0 cursor-pointer text-ld-text-3 hover:text-ld-text p-0"
+                  >
+                    <X className="w-[14px] h-[14px]" />
+                  </button>
+                ) }
+              : {})}
+          />
+        </div>
+      )}
+
+      {/* ── Issue list ────────────────────────────────────────────────────── */}
+      {grouped ? (
+        <div className="grid gap-[18px]">
+          {grouped.map(({ group, items }) => (
+            <div key={group}>
+              <p className="font-mono text-[10.5px] tracking-[.12em] uppercase text-ld-text-3 mb-[8px] m-0">
+                {group} <span className="text-ld-text-3/70">· {items.length}</span>
+              </p>
+              <div className="grid gap-[8px]">{items.map(renderRow)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-[8px]">{visible.map(renderRow)}</div>
+      )}
+
+      {visible.length === 0 && (
+        <div className="text-center py-[24px]">
+          <p className="font-mono text-[12px] text-ld-text-3 m-0">
+            {query.trim()
+              ? <>No audits match “{query.trim()}”{category !== 'all' ? ` in ${AUDIT_CATEGORY_LABEL[category]}` : ''}.</>
+              : 'No issues in this category.'}
           </p>
-        )}
-      </div>
+          {filtered && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-[8px] font-mono text-[12px] font-semibold text-ld-accent bg-transparent border-0 cursor-pointer p-0"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Progress is as much a result as the remaining problems are, and it is the half
           this list never showed. Collapsed, and worded as "no longer reported" rather than

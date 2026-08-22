@@ -40,6 +40,20 @@ export interface AuditItem {
   displayValue: string | undefined
   impact:       AuditImpact
   /**
+   * Which Lighthouse category reported this audit — the four the analyzer scores.
+   *
+   * Optional because audits stored before this field existed have none, and the filter UI
+   * hides itself rather than showing a control that would silently drop every older row.
+   */
+  category?:    AnalysisCategory
+  /**
+   * Lighthouse's own grouping *inside* that category, as its display title — "Contrast",
+   * "Names and labels", "Diagnostics". Accessibility is the category where it earns its
+   * keep: forty findings sorted by severity alone are a list, the same forty under their
+   * groups are a to-do list. Not every audit belongs to a group.
+   */
+  group?:       string
+  /**
    * What this failure means *on this page*, and the first thing to do about it.
    *
    * Absent when Gemini is not configured, when the call failed, or when the audit passed
