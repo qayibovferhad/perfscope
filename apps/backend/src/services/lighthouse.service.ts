@@ -29,6 +29,8 @@ interface WorkerRunResult {
   heapMemoryData?:  HeapMemoryData;
   interactionData?: InteractionData;
   networkEvents?:   CompactNetworkEvent[];
+  /** Cropped pictures of failing elements, keyed by Lighthouse node id. Static group only. */
+  elementShots?:    Record<string, string>;
 }
 
 /**
@@ -138,6 +140,15 @@ export interface AnalyzeOptions {
   /** Supply an id to correlate progress events with this specific audit. */
   analysisId?: string | undefined;
   priority?:   AuditPriority | undefined;
+  /**
+   * Crop a picture of each failing element out of the page.
+   *
+   * Costs the full-page screenshot Lighthouse otherwise skips (~1-2s), and adds the crops
+   * to the stored result — so it is asked for only where someone is looking at the page
+   * they decorate. The nightly cron and the REST path leave it off: their results feed
+   * trends and alerts, and nobody opens a 03:00 audit to look at a picture of a button.
+   */
+  captureElements?: boolean | undefined;
 }
 
 /** Global admission control — see AuditQueue for why this is a correctness feature. */
@@ -241,7 +252,7 @@ export class LighthouseService extends EventEmitter {
     onPartial: (partial: CategoryPartial) => void,
     opts: AnalyzeOptions,
   ): Promise<AnalysisResult> {
-    const { formFactor } = opts;
+    const { formFactor, captureElements = false } = opts;
     const runs = Math.max(1, Math.min(Math.floor(opts.runs ?? 1), MAX_RUNS));
     const workers: Worker[] = [];
 
@@ -267,7 +278,7 @@ export class LighthouseService extends EventEmitter {
           this.emitProgress(analysisId, 'auditing', progress, msg);
         };
 
-        const staticRun = this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate')
+        const staticRun = this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate', captureElements)
           .then((res): WorkerRunResult => {
             emitFor(STATIC_CATEGORIES, res.lhr);
             advance(27, 'SEO, Best Practices & Accessibility complete');
@@ -288,7 +299,7 @@ export class LighthouseService extends EventEmitter {
         // page. Static categories go first (they cannot be perturbed), then each
         // timed iteration runs alone.
         this.emitProgress(analysisId, 'auditing', PCT.preparing, 'Auditing SEO, Best Practices & Accessibility...');
-        staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate');
+        staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate', captureElements);
         emitFor(STATIC_CATEGORIES, staticRes.lhr);
 
         // `runs` is a target, not a count. A page whose first two runs agree has already
@@ -332,7 +343,10 @@ export class LighthouseService extends EventEmitter {
 
       const full = buildFullResult(
         analysisId, url, [staticRes.lhr, medianRun.lhr],
-        flameData, heapData, interactionData, networkEvents,
+        flameData, heapData, interactionData, networkEvents, undefined,
+        // Only the static run captures — the accessibility audits whose elements are worth
+        // a picture are all in that group.
+        staticRes.elementShots,
       );
       full.formFactor  = formFactor ?? 'desktop';
       full.measurement = measurement;
@@ -511,10 +525,13 @@ export class LighthouseService extends EventEmitter {
     /** Only the timed group needs Lighthouse to observe the load for real — see
      *  STATIC_CATEGORIES for why the other group does not, and what it buys. */
     throttlingMethod: 'provided' | 'simulate' = 'provided',
+    /** Never pass this for a timed run: the capture it turns back on is exactly what was
+     *  removed to make those runs faster, and a timed run is the one whose numbers matter. */
+    captureElements = false,
   ): Promise<WorkerRunResult> {
     return new Promise((resolve, reject) => {
       const worker = new Worker(WORKER_URL, {
-        workerData: { url, categories, formFactor, throttlingMethod },
+        workerData: { url, categories, formFactor, throttlingMethod, captureElements },
         execArgv: process.execArgv, // inherit tsx loader in dev
       });
 
@@ -558,6 +575,7 @@ export class LighthouseService extends EventEmitter {
       worker.on('message', (msg: {
         type: string; pid?: number; lhr?: RunnerResult['lhr']; compactTrace?: unknown;
         traceMaxMs?: number; networkEvents?: CompactNetworkEvent[]; message?: string;
+        elementShots?: Record<string, string>;
       }) => {
         if (msg.type === 'browser') {
           chromePid     = msg.pid;
@@ -584,6 +602,7 @@ export class LighthouseService extends EventEmitter {
             if (id) r.interactionData = id;
           }
           if (msg.networkEvents) r.networkEvents = msg.networkEvents;
+          if (msg.elementShots)  r.elementShots  = msg.elementShots;
           clearTimeout(runTimer);
           closeTimer = setTimeout(() => shutdown(false), CLOSE_GRACE_MS);
           // Resolve now; the browser teardown above continues in the background.

@@ -406,6 +406,53 @@ them; `e2e/element-shots.probe.mjs` — thumbnails visible, lightbox opens, both
 Also assert `analysis:partial` for the static group did not get slower by more than 2 s
 (log before/after). Stop; report; wait.
 
+
+### C6. DONE — 2026-08-22
+
+**Shipped as designed.** What the plan got right: cropping in the worker with the Chrome
+that just ran the audit (no native image dependency, no second process), the static group
+only, the socket path only, and deleting the whole-page capture before `postMessage`.
+
+**What it did not anticipate:**
+- **Lighthouse reports the screenshot size in fractional CSS pixels** (`728.7179565429688`).
+  Puppeteer's viewport and clip both demand integers and *throw* on a fraction — so the
+  first working version produced exactly zero crops on every page, and the `.catch` around
+  the capture turned that into silence. Floored now, and the catch logs instead of
+  swallowing. Worth remembering as a shape of bug: a feature that "produces nothing" and a
+  feature that is switched off look identical from the outside.
+- **A second cap was needed, in the transform.** The worker bounds what it *takes* (3 per
+  audit, 24 per run), but one node can be blamed by several audits — a button that fails
+  both contrast and accessible-name — and every detail row carries its own copy of the data
+  URI. `extractAuditDetails` now spends a shared budget (`SHOTS_PER_RESULT = 24`, 3 per
+  audit), so a crop taken once cannot be stored a dozen times.
+- **The auth-audit path has no crops.** `analyzeWithInjectedSession` measures through a
+  live browser rather than the worker, so it never reaches the cropping step. Left alone:
+  duplicating the crop logic outside the worker to serve the login-walled path is a poor
+  trade, and that path's users are looking at a page they can already see.
+
+**Measured**
+- `e2e/fixtures/inaccessible.html` (the fixture from phase B, served by the probe):
+  **+0.2 s, +27 KB**, 13 crops, largest 7 KB, mean 2 KB, 9 distinct.
+- `bbc.com/news`: **+0.1 s, +11 KB**, zero crops — its failures are all network-level, so
+  there is nothing to photograph. The capture is still taken and thrown away, and even on a
+  page that heavy it does not show up in the wall time, because the static group runs in
+  parallel with the timed one in Fast mode. That is the whole reason only that group captures.
+
+**Verified**
+- `probes/element-shots.probe.mts` — **11/11 PASS** on the fixture, **9/11 + 2 honest SKIPs**
+  on bbc.com/news. Runs the same page with and without the flag and prints both costs;
+  asserts the per-audit and per-run caps, that every crop is a JPEG data URI under 40 KB,
+  that the crops differ from one another (identical pictures would mean the rect was
+  ignored), that each sits on a row that also names the element in words, and that
+  `fullPageScreenshot` is not shipped.
+- `e2e/element-shots.probe.mjs` — **16/16 PASS**: 13 thumbnails, all inline JPEGs, all
+  decoded (`naturalWidth > 0` — a broken crop would be 0×0), none over the cap, each with
+  an alt naming its selector, lazily loaded, 9 distinct; the lightbox opens at full size and
+  closes on Escape; both themes; zero console errors.
+- `trimForAi` strips `screenshot` from the AI fixture set, and `pageContext` prints detail
+  fields by name (selector, snippet, url, value) — a data URI cannot reach a prompt.
+- Gates: build, typecheck (6 workspaces), test (113), lint 0 errors, `pnpm e2e` 21/21.
+
 ---
 
 ## Phase D — JavaScript bundle treemap (~1–1.5 days)

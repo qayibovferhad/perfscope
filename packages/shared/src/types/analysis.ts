@@ -82,6 +82,14 @@ export interface AuditDetail {
   snippet?:  string
   url?:      string
   value?:    string
+  /**
+   * A cropped picture of the failing element, as a `data:image/jpeg` URI.
+   *
+   * Cropped out of Lighthouse's full-page capture during the audit, so it costs no request
+   * at read time and a stored audit keeps it. Present only where a run captured elements
+   * (the socket path, where a person is watching) and only for details that named a node.
+   */
+  screenshot?: string
 }
 
 /**

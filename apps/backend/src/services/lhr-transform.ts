@@ -25,6 +25,20 @@ const AUDIT_DETAIL_LIMIT = 5;
  */
 const AUDITS_PER_CATEGORY = 15;
 
+/**
+ * Element crops attached across the whole result, and per audit.
+ *
+ * The worker caps how many pictures it *takes* (24 per run, 3 per audit), but a node can be
+ * blamed by more than one audit — a button that fails both contrast and accessible-name —
+ * and every detail row carries its own copy of the data URI. Without a second cap here,
+ * one crop taken once could be stored a dozen times.
+ *
+ * Three per audit matches what the worker captures; twenty-four in total matches what it
+ * took, so nothing is stored that was not worth taking.
+ */
+const SHOTS_PER_AUDIT = 3;
+const SHOTS_PER_RESULT = 24;
+
 /** Keeps the start — right for snippets, where the tag name and key attributes lead. */
 const truncateHead = (s: string, max = 120): string => (s.length > max ? s.slice(0, max - 1) + '…' : s);
 
@@ -44,17 +58,31 @@ const truncateSelector = (selector: string, max = 120): string => {
   return truncateTail(last, max);
 };
 
-export function extractAuditDetails(details: unknown): AuditDetail[] | undefined {
+export function extractAuditDetails(
+  details: unknown,
+  /** Cropped element pictures from the worker, keyed by Lighthouse node id. */
+  shots?: Record<string, string>,
+  /** Shared, mutable attachment budget — see SHOTS_PER_RESULT. */
+  budget?: { left: number },
+): AuditDetail[] | undefined {
   if (!details || typeof details !== 'object') return undefined;
   const items = (details as { items?: unknown[] }).items;
   if (!Array.isArray(items) || items.length === 0) return undefined;
 
   const out: AuditDetail[] = [];
+  let attached = 0;
   for (const raw of items) {
     if (out.length >= AUDIT_DETAIL_LIMIT) break;
     if (!raw || typeof raw !== 'object') continue;
     const item = raw as Record<string, unknown>;
     const node = item['node'] as Record<string, unknown> | undefined;
+    const lhId = typeof node?.['lhId'] === 'string' ? node['lhId'] as string : undefined;
+    const canAttach = attached < SHOTS_PER_AUDIT && (!budget || budget.left > 0);
+    const screenshot = lhId && canAttach ? shots?.[lhId] : undefined;
+    if (screenshot) {
+      attached++;
+      if (budget) budget.left--;
+    }
 
     const selector = typeof node?.['selector'] === 'string' ? truncateSelector(node['selector'] as string) : undefined;
     const snippet  = typeof node?.['snippet']  === 'string' ? truncateHead(node['snippet']  as string) : undefined;
@@ -72,6 +100,7 @@ export function extractAuditDetails(details: unknown): AuditDetail[] | undefined
       ...(snippet  ? { snippet }  : {}),
       ...(url      ? { url }      : {}),
       ...(value    ? { value }    : {}),
+      ...(screenshot ? { screenshot } : {}),
     });
   }
   return out.length > 0 ? out : undefined;
@@ -149,8 +178,11 @@ export function buildAuditPlacements(lhr: RunnerResult['lhr']): Map<string, Audi
 export function extractFailingAudits(
   audits: Record<string, { score?: number | null; title?: string; description?: string; displayValue?: string; details?: unknown }>,
   placements?: Map<string, AuditPlacement>,
+  /** Cropped element pictures from the worker, keyed by Lighthouse node id. */
+  shots?: Record<string, string>,
 ): AuditItem[] {
   const perCategory = new Map<string, number>();
+  const shotBudget = { left: SHOTS_PER_RESULT };
 
   return Object.entries(audits)
     .filter(([, a]) => a.score !== null && (a.score ?? 1) < 0.9)
@@ -165,7 +197,7 @@ export function extractFailingAudits(
       return true;
     })
     .map(([id, a]): AuditItem => {
-      const details = extractAuditDetails(a.details);
+      const details = extractAuditDetails(a.details, shots, shotBudget);
       const savings = extractSavings(a.details);
       const placement = placements?.get(id);
       return {
@@ -242,6 +274,9 @@ export function buildFullResult(
   interactionData?: InteractionData,
   networkEvents?: CompactNetworkEvent[],
   artifacts?: unknown,
+  /** Cropped element pictures, keyed by Lighthouse node id — only the static run produces
+   *  them, and only when the caller asked for elements to be captured. */
+  elementShots?: Record<string, string>,
 ): AnalysisResult {
   const scores = { performance: 0, accessibility: 0, bestPractices: 0, seo: 0 };
   let metrics = { fcp: 0, lcp: 0, tbt: 0, cls: 0, si: 0, tti: 0 };
@@ -259,7 +294,7 @@ export function buildFullResult(
       performanceLhr = lhr;
     }
 
-    allAudits.push(...extractFailingAudits(lhr.audits, buildAuditPlacements(lhr)));
+    allAudits.push(...extractFailingAudits(lhr.audits, buildAuditPlacements(lhr), elementShots));
   }
 
   // Deduplicate audits by id, then order the merged list by how badly it scored.

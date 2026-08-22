@@ -49,7 +49,12 @@ export function trimForAi(result: AnalysisResult): AnalysisResult {
     scores:     result.scores,
     metrics:    result.metrics,
     measurement: result.measurement,
-    audits:     result.audits,
+    // The element thumbnails are stripped: they are ~20KB of base64 each, the prompt is
+    // given the selector and the snippet rather than the picture, and a fixture set that
+    // carried them would grow by megabytes to feed the scorer nothing.
+    audits: result.audits.map(a => a.details
+      ? { ...a, details: a.details.map(({ screenshot: _screenshot, ...d }) => d) }
+      : a),
     resources:  result.resources
       ? {
           ...result.resources,

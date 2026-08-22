@@ -26,6 +26,130 @@ interface WorkerInput {
    *  only safe for categories that report no timings. The caller decides — see
    *  STATIC_CATEGORIES in lighthouse.service.ts. */
   throttlingMethod?: 'provided' | 'simulate';
+  /** Crop a picture of each failing element out of the page. Costs the full-page
+   *  screenshot Lighthouse otherwise skips, so only the static group is ever asked. */
+  captureElements?: boolean;
+}
+
+// ─── Element screenshots ──────────────────────────────────────────────────────
+
+/** Details rows cropped per audit. Three is what a person needs to recognise the pattern;
+ *  the fourth failing image tells them nothing the third did not. Matches the first three
+ *  of the five details `extractAuditDetails` keeps, so every shot has a row to sit on. */
+const SHOTS_PER_AUDIT = 3;
+
+/** Whole-run ceiling. A page can fail twenty audits with five nodes each; at ~20KB a crop
+ *  that is a megabyte on a document that also carries a trace and a filmstrip. */
+const SHOTS_PER_RUN = 24;
+
+/** Beyond this a "crop" is a screenshot of the page with the element somewhere in it. A
+ *  wide banner becomes its middle slice, which the selector beside it already names. */
+const MAX_CROP = { width: 480, height: 320 };
+const MIN_CROP = { width: 48, height: 32 };
+/** Context around the element, so a button is a button and not a coloured rectangle. */
+const CROP_PADDING = 12;
+
+interface Rect { left: number; top: number; width: number; height: number }
+
+/**
+ * Crop each failing element out of Lighthouse's full-page screenshot.
+ *
+ * Lighthouse already knows where every failing node is — `lhr.fullPageScreenshot` holds one
+ * capture of the whole document plus a rect per node id — and the analyzer showed the
+ * reader a selector and left them to find it. This turns that selector into a picture.
+ *
+ * Cropping runs here, in the worker, using the Chrome that just did the audit: the image is
+ * painted into a blank page at its natural size and screenshotted back with a clip, which
+ * costs no native image dependency and no second process. Nothing about the audited page is
+ * loaded again — the pixels all come from the capture Lighthouse already took.
+ *
+ * Returns `{}` on any failure. A missing thumbnail is a smaller loss than a failed audit.
+ */
+async function cropElementShots(
+  browser: import('puppeteer').Browser,
+  lhr: RunnerResult['lhr'],
+): Promise<Record<string, string>> {
+  const fps = (lhr as unknown as {
+    fullPageScreenshot?: { screenshot?: { data?: string; width?: number; height?: number }; nodes?: Record<string, Rect> };
+  }).fullPageScreenshot;
+
+  const data = fps?.screenshot?.data;
+  // Lighthouse reports these as CSS pixels and they come back fractional (728.7179…).
+  // Puppeteer's viewport and clip both demand integers, and a fractional one throws —
+  // which, before this rounding, meant every crop silently failed and the feature looked
+  // like it had simply produced nothing.
+  const width  = Math.floor(fps?.screenshot?.width  ?? 0);
+  const height = Math.floor(fps?.screenshot?.height ?? 0);
+  if (!data || width < 1 || height < 1 || !fps?.nodes) return {};
+
+  // Which nodes are worth a picture: the ones attached to a *failing* audit, in the same
+  // order and the same first-N slice the details themselves use.
+  const wanted: string[] = [];
+  for (const audit of Object.values(lhr.audits ?? {})) {
+    const a = audit as { score?: number | null; details?: { items?: unknown[] } };
+    if (a.score === null || (a.score ?? 1) >= 0.9) continue;
+    let taken = 0;
+    for (const raw of a.details?.items ?? []) {
+      if (taken >= SHOTS_PER_AUDIT || wanted.length >= SHOTS_PER_RUN) break;
+      const lhId = (raw as { node?: { lhId?: string } })?.node?.lhId;
+      if (!lhId || wanted.includes(lhId)) continue;
+      const rect = fps.nodes[lhId];
+      // A zero-sized or off-canvas node has nothing to show; a full-page-sized rect is the
+      // document, not an element.
+      if (!rect || rect.width < 1 || rect.height < 1) continue;
+      if (rect.top >= height || rect.left >= width) continue;
+      wanted.push(lhId);
+      taken++;
+    }
+    if (wanted.length >= SHOTS_PER_RUN) break;
+  }
+  if (wanted.length === 0) return {};
+
+  const page = await browser.newPage();
+  const shots: Record<string, string> = {};
+  try {
+    // Lighthouse captures at DPR 1, so a node rect is in the same pixel space as the
+    // image — the viewport is set to match so the two cannot drift.
+    await page.setViewport({ width, height: Math.min(height, 8000), deviceScaleFactor: 1 });
+    await page.setContent(
+      `<body style="margin:0"><img id="s" src="${data}" style="display:block;width:${width}px;height:${height}px"></body>`,
+      { waitUntil: 'load' },
+    );
+    // `waitUntil: 'load'` already waits for the image, but a decode that has not finished
+    // yields blank crops — this asserts the pixels are there. Passed as a string so the
+    // browser-context code needs no DOM lib in the backend's tsconfig.
+    await page.waitForFunction('document.getElementById("s")?.complete === true', { timeout: 10_000 })
+      .catch(() => void 0);
+
+    for (const lhId of wanted) {
+      const rect = fps.nodes[lhId]!;
+      const padded = {
+        x: Math.max(0, Math.round(rect.left - CROP_PADDING)),
+        y: Math.max(0, Math.round(rect.top - CROP_PADDING)),
+        width:  Math.round(rect.width  + CROP_PADDING * 2),
+        height: Math.round(rect.height + CROP_PADDING * 2),
+      };
+      const clip = {
+        x: padded.x,
+        y: padded.y,
+        width:  Math.min(Math.max(padded.width,  MIN_CROP.width),  MAX_CROP.width,  width  - padded.x),
+        height: Math.min(Math.max(padded.height, MIN_CROP.height), MAX_CROP.height, height - padded.y),
+      };
+      if (clip.width < 1 || clip.height < 1) continue;
+
+      try {
+        const shot = await page.screenshot({ type: 'jpeg', quality: 70, encoding: 'base64', clip, captureBeyondViewport: true });
+        shots[lhId] = `data:image/jpeg;base64,${shot}`;
+      } catch (err) {
+        // One crop failing is not worth losing the rest — but it is worth saying, or a
+        // silent zero looks like "this page had nothing to show".
+        console.warn(`[Worker] Element crop failed for ${lhId}:`, (err as Error).message);
+      }
+    }
+  } finally {
+    await page.close().catch(() => void 0);
+  }
+  return shots;
 }
 
 // Compact trace sent back to the service so parseFlameChart can run there
@@ -39,6 +163,8 @@ type WorkerMessage =
       compactTrace?: CompactTrace;
       traceMaxMs?: number;
       networkEvents?: CompactNetworkEvent[];
+      /** Cropped pictures of failing elements, keyed by Lighthouse node id. */
+      elementShots?: Record<string, string>;
     }
   | { type: 'error'; message: string }
   /** Sent right after launch so the parent can kill the browser if it has to terminate us. */
@@ -143,7 +269,7 @@ function extractCompactNetworkEvents(artifacts: unknown): CompactNetworkEvent[] 
 }
 
 async function run(): Promise<void> {
-  const { url, categories, formFactor, throttlingMethod = 'provided' } = workerData as WorkerInput;
+  const { url, categories, formFactor, throttlingMethod = 'provided', captureElements = false } = workerData as WorkerInput;
   const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
   // Hand the pid to the parent immediately: if this thread is ever terminated
   // (cancel, timeout) its `finally` never runs, and only the parent can then
@@ -162,11 +288,15 @@ async function run(): Promise<void> {
             screenEmulation: { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false } }
         : { screenEmulation: { disabled: true } }),
       throttlingMethod,
-      // The full-page screenshot is a second capture of the whole document that nothing
-      // downstream reads — the filmstrip comes from the trace (`screenshot-thumbnails`,
-      // verified unaffected). about:blank exists to reset state between navigations, and
-      // every run here already gets a freshly launched Chrome. Together ~2-3s per run.
-      disableFullPageScreenshot: true,
+      // The full-page screenshot is a second capture of the whole document. It used to be
+      // dead weight — the filmstrip comes from the trace (`screenshot-thumbnails`, verified
+      // unaffected) — and turning it off saved ~2-3s per run alongside skipAboutBlank.
+      //
+      // It is now what the element thumbnails are cropped out of, so the caller can ask for
+      // it back. Only the *static* group ever does: that group reports no timings, so the
+      // extra capture cannot distort a number, and in Fast mode it runs in parallel with the
+      // timed group anyway.
+      disableFullPageScreenshot: !captureElements,
       skipAboutBlank: true,
     });
 
@@ -191,6 +321,18 @@ async function run(): Promise<void> {
     // Extract compact devtools network events for dependency graph (all categories)
     const networkEvents = extractCompactNetworkEvents(arts);
 
+    // Crop before the LHR is posted, because the crops come out of a field that is then
+    // deleted: the whole-page capture is megabytes, nothing downstream reads it, and
+    // structured-cloning it to the parent would cost more than every thumbnail together.
+    let elementShots: Record<string, string> | undefined;
+    if (captureElements) {
+      elementShots = await cropElementShots(browser, result.lhr).catch((err: unknown) => {
+        console.warn('[Worker] Element capture failed:', (err as Error).message);
+        return {};
+      });
+    }
+    delete (result.lhr as { fullPageScreenshot?: unknown }).fullPageScreenshot;
+
     // Lighthouse does not throw when the page fails to load — it returns an LHR whose
     // runtimeError is set and whose category scores are all null. Left alone, toScore()
     // turns those nulls into 0 and the failure gets stored as a legitimate 0-score audit.
@@ -208,6 +350,7 @@ async function run(): Promise<void> {
       lhr: result.lhr,
       ...(compactTrace && traceMaxMs != null ? { compactTrace, traceMaxMs } : {}),
       ...(networkEvents ? { networkEvents } : {}),
+      ...(elementShots && Object.keys(elementShots).length > 0 ? { elementShots } : {}),
     };
     parentPort!.postMessage(msg);
   } finally {

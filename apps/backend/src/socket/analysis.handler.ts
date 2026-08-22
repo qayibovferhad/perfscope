@@ -200,7 +200,11 @@ export function registerAnalysisSocket(io: TypedServer): void {
         socket, url, userId,
         measure: (onPartial, analysisId) => savedSession
           ? lighthouseService.analyzeWithInjectedSession(url, savedSession, onPartial, { formFactor, runs, analysisId })
-          : lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId }),
+          // `captureElements` only here, and only on this branch: a person is watching this
+          // page, and the crops it produces are what turn a selector in the audit list into
+          // something they can recognise. The session path measures through a live browser
+          // rather than the worker and has no cropping step.
+          : lighthouseService.analyzeStreaming(url, onPartial, { formFactor, runs, analysisId, captureElements: true }),
         expiredMessage: err => err.message,
       });
     });
