@@ -13,6 +13,17 @@ interface AuditModeStore {
   setFormFactor: (f: AuditFormFactor) => void;
   precision:     AuditPrecision;
   setPrecision:  (p: AuditPrecision) => void;
+  /**
+   * Whether a report shows how it moved since the previous run of the same page.
+   *
+   * A reading preference, not an audit setting: the comparison is computed server-side and
+   * stored on the result either way, so this only decides whether the report is read as
+   * "where this page stands" or as "what changed". Kept beside the other two because it
+   * belongs to the same question — how the user wants their audits presented — and because
+   * a preference that resets every session is one nobody bothers to set.
+   */
+  compareWithPrevious:    boolean;
+  setCompareWithPrevious: (on: boolean) => void;
 }
 
 export const useAuditModeStore = create<AuditModeStore>()(
@@ -22,6 +33,10 @@ export const useAuditModeStore = create<AuditModeStore>()(
       setFormFactor: (formFactor) => set({ formFactor }),
       precision:     'single',
       setPrecision:  (precision) => set({ precision }),
+      // On by default: a delta beside a number is the difference between a measurement and
+      // a trend, and a feature nobody knows to switch on is a feature nobody has.
+      compareWithPrevious:    true,
+      setCompareWithPrevious: (compareWithPrevious) => set({ compareWithPrevious }),
     }),
     { name: 'perfscope-audit-mode' },
   ),

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle, Timer, History as HistoryIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { NOISY_SPREAD } from '@perfscope/shared';
-import { ScoreCard, MetricsGrid, AuditList, formatElapsed, type ScoreLabel } from '@/entities/analysis';
+import { ScoreCard, MetricsGrid, AuditList, formatElapsed, useAuditModeStore, type ScoreLabel } from '@/entities/analysis';
 import { ResourceBreakdown } from '@/features/analyzer';
 import { ResourceWaterfall } from '@/features/analyzer';
 import { PerformanceTimeline } from '@/features/analyzer';
@@ -21,6 +21,7 @@ import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer';
 import { AiCard } from '@/shared/ui/ai-card';
 import { fmtDateTime } from '@/shared/lib/time';
+import { Toggle } from '@/shared/ui/toggle';
 import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────
@@ -71,6 +72,16 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
   // routing is a page concern, and AuditList is also rendered by the public report.
   const [searchParams] = useSearchParams();
   const openAuditId = searchParams.get('audit') ?? undefined;
+
+  // One switch for the whole comparison layer.
+  //
+  // The deltas, the resource strip, the waterfall tags and the new/fixed audit lists are
+  // one feature seen from four places, so they are turned on and off in one place: every
+  // one of them already renders nothing without a previous run, so withholding it here is
+  // all it takes. The stored result keeps the comparison either way — this decides how the
+  // report is read, not what was measured.
+  const { compareWithPrevious, setCompareWithPrevious } = useAuditModeStore();
+  const previous = compareWithPrevious ? data.previous : undefined;
   // Field data for the same URL/device — renders nothing when Chrome has no
   // real-user sample for this page (or the server has no CrUX key).
   const { data: crux, isLoading: cruxLoading } = useCruxData(data.url, data.formFactor ?? 'desktop');
@@ -147,25 +158,45 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
       )}
 
       <section>
-        <SectionTitle>Scores</SectionTitle>
+        {/* The switch lives beside the scores because that is where the arrows are, and it
+            appears only when there *is* an earlier run — a control that can do nothing is
+            worse than no control. */}
+        <div className="flex items-center justify-between gap-[12px] flex-wrap">
+          <SectionTitle>Scores</SectionTitle>
+          {data.previous && (
+            // Not a <label>: the switch is a button, and a button is not a labelable
+            // element — the text would look clickable and do nothing. The switch carries
+            // its own accessible name.
+            <div className="flex items-center gap-[9px] mt-[30px] mb-[14px]">
+              <span className="font-mono text-[11px] tracking-[.06em] uppercase text-ld-text-3">
+                Compare with last audit
+              </span>
+              <Toggle
+                enabled={compareWithPrevious}
+                onChange={setCompareWithPrevious}
+                label="Compare with last audit"
+              />
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-[14px]">
           {SCORE_ITEMS.map(({ label, scoreKey }) => (
             <ScoreCard
               key={label}
               label={label}
               score={data.scores[scoreKey]}
-              previous={data.previous?.scores[scoreKey]}
-              since={data.previous?.at}
+              previous={previous?.scores[scoreKey]}
+              since={previous?.at}
             />
           ))}
         </div>
         {/* Names the run every arrow on this page is measured against. Without it the
             deltas are movement from an unstated baseline, which is unreadable the moment
             a person audits the same URL twice in an afternoon. */}
-        {data.previous && (
+        {previous && (
           <p className="flex items-center gap-[6px] mt-[12px] font-mono text-[11px] text-ld-text-3 m-0">
             <HistoryIcon className="w-[12px] h-[12px]" aria-hidden />
-            Compared with the run from {fmtDateTime(data.previous.at)}
+            Compared with the run from {fmtDateTime(previous.at)}
           </p>
         )}
       </section>
@@ -179,8 +210,8 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
         <SectionTitle>Core Web Vitals</SectionTitle>
         <MetricsGrid
           metrics={data.metrics}
-          previous={data.previous?.metrics}
-          since={data.previous?.at}
+          previous={previous?.metrics}
+          since={previous?.at}
           notes={data.aiMetricNotes}
           aiPending={aiPending}
         />
@@ -202,13 +233,13 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
                 timelineData={data.timelineData}
                 resources={data.resources}
                 flameChartData={data.flameChartData}
-                changes={data.previous?.resourceDiff}
+                changes={previous?.resourceDiff}
               />
               {/* This branch is the one almost every audit takes — a run with a timeline
                   and resources — and it was the only one without the oversized-resource
                   warning, so in practice that warning never appeared. */}
               <div className="mt-3 space-y-3">
-                <SinceLastRun previous={data.previous} />
+                <SinceLastRun previous={previous} />
                 <ResourcesAlert resources={data.resources} />
                 <ResourceBreakdown resources={data.resources} />
                 {/* After the breakdown, which answers "how much JavaScript"; this one
@@ -227,10 +258,10 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
               {data.resources && (
                 <section className="space-y-3">
                   <SectionTitle>Resources</SectionTitle>
-                  <SinceLastRun previous={data.previous} />
+                  <SinceLastRun previous={previous} />
                   <ResourcesAlert resources={data.resources} />
                   <AiCard title="How this page loaded" text={data.aiWaterfallNarrative} pending={aiPending} />
-                  <ResourceWaterfall resources={data.resources} changes={data.previous?.resourceDiff} />
+                  <ResourceWaterfall resources={data.resources} changes={previous?.resourceDiff} />
                   <ResourceBreakdown resources={data.resources} />
                   <BundleTreemap bundles={data.bundles} />
                 </section>
@@ -278,7 +309,7 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
 
       {data.audits.length > 0 && (
         <section>
-          <AuditList audits={data.audits} previous={data.previous} aiPending={aiPending} openAuditId={openAuditId} />
+          <AuditList audits={data.audits} previous={previous} aiPending={aiPending} openAuditId={openAuditId} />
         </section>
       )}
 

@@ -237,6 +237,37 @@ stay in backend). The frontend needs the shape, not the algorithm.
 unrelated AI work, by a parallel session committing the shared working tree. Nothing was
 lost; the history is simply mislabelled for this change.
 
+
+### A6. The comparison became opt-in — 2026-08-23
+
+At the user's request the whole comparison layer sits behind one switch,
+**"Compare with last audit"**, beside the Scores heading.
+
+- One switch, four surfaces: score deltas, vital deltas, the waterfall change tags, the
+  "since last run" strip and the new/no-longer-reported audit lists. The panel resolves
+  `const previous = compareWithPrevious ? data.previous : undefined` once and passes that
+  everywhere — every component already renders nothing without a previous run, so
+  withholding it at the top is the entire implementation.
+- **Defaults to on**, persisted in `useAuditModeStore` beside formFactor and precision (all
+  three answer the same question: how this user wants their audits presented). A delta
+  beside a number is the difference between a measurement and a trend, and a feature nobody
+  knows to switch on is a feature nobody has — so it is offered switched on and made
+  dismissible, rather than hidden behind a control nobody finds.
+- **Rendered only when `data.previous` exists.** A switch that can do nothing is worse than
+  no switch: on a first-ever audit there is nothing to compare against and the row is absent.
+- Not a `<label>`: the shared `Toggle` is a `<button role="switch">`, and a button is not a
+  labelable element — wrapping it would render text that looks clickable and does nothing.
+  The switch carries its own accessible name.
+- Nothing changes server-side. The comparison is computed and stored either way, so the
+  switch decides how a report is *read*, not what was measured — which is also why an
+  audit shared or reopened later still carries it.
+
+**Verified** — `e2e/compare-toggle.probe.mjs`, **22/22 PASS**: the switch is present and on
+by default, all four surfaces show; switched off, all four vanish together (0 delta badges)
+while the vitals and the audit list stay whole; the preference survives a reload and a fresh
+audit honours it; switching back on brings the comparison straight back. Screenshots of both
+states. Gates: build, typecheck, test (121), lint 0 errors, `pnpm e2e` 21/21.
+
 ---
 
 ## Phase B — Audit list: category, search, a11y groups, and the details themselves (~1 day)
