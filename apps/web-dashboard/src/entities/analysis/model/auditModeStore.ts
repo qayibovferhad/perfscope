@@ -33,9 +33,10 @@ export const useAuditModeStore = create<AuditModeStore>()(
       setFormFactor: (formFactor) => set({ formFactor }),
       precision:     'single',
       setPrecision:  (precision) => set({ precision }),
-      // On by default: a delta beside a number is the difference between a measurement and
-      // a trend, and a feature nobody knows to switch on is a feature nobody has.
-      compareWithPrevious:    true,
+      // Off by default, at the user's request: a report should first say where the page
+      // stands, and only say what changed when someone asks it to. The switch sits beside
+      // the scores where the arrows would appear, so asking is one click.
+      compareWithPrevious:    false,
       setCompareWithPrevious: (compareWithPrevious) => set({ compareWithPrevious }),
     }),
     { name: 'perfscope-audit-mode' },

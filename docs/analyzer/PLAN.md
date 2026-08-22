@@ -248,11 +248,12 @@ At the user's request the whole comparison layer sits behind one switch,
   `const previous = compareWithPrevious ? data.previous : undefined` once and passes that
   everywhere — every component already renders nothing without a previous run, so
   withholding it at the top is the entire implementation.
-- **Defaults to on**, persisted in `useAuditModeStore` beside formFactor and precision (all
-  three answer the same question: how this user wants their audits presented). A delta
-  beside a number is the difference between a measurement and a trend, and a feature nobody
-  knows to switch on is a feature nobody has — so it is offered switched on and made
-  dismissible, rather than hidden behind a control nobody finds.
+- **Defaults to off**, persisted in `useAuditModeStore` beside formFactor and precision (all
+  three answer the same question: how this user wants their audits presented). Off was the
+  user's call, made after seeing it on: a report should first say where the page stands and
+  only say what changed when someone asks. The switch sits beside the Scores heading —
+  exactly where the arrows appear — so asking costs one click, and the choice is remembered
+  from then on.
 - **Rendered only when `data.previous` exists.** A switch that can do nothing is worse than
   no switch: on a first-ever audit there is nothing to compare against and the row is absent.
 - Not a `<label>`: the shared `Toggle` is a `<button role="switch">`, and a button is not a
@@ -262,11 +263,11 @@ At the user's request the whole comparison layer sits behind one switch,
   switch decides how a report is *read*, not what was measured — which is also why an
   audit shared or reopened later still carries it.
 
-**Verified** — `e2e/compare-toggle.probe.mjs`, **22/22 PASS**: the switch is present and on
-by default, all four surfaces show; switched off, all four vanish together (0 delta badges)
-while the vitals and the audit list stay whole; the preference survives a reload and a fresh
-audit honours it; switching back on brings the comparison straight back. Screenshots of both
-states. Gates: build, typecheck, test (121), lint 0 errors, `pnpm e2e` 21/21.
+**Verified** — `e2e/compare-toggle.probe.mjs`, **22/22 PASS**: the switch is present and off
+by default with no delta anywhere; switched on, all four surfaces appear together (10 delta
+badges, caption, strip, no-longer-reported list) and the rest of the report is untouched
+either way; the preference survives a reload and a fresh audit honours it; switching back
+off clears it again. Screenshots of both states. Gates: build, typecheck, test (121), lint 0 errors, `pnpm e2e` 21/21.
 
 ---
 

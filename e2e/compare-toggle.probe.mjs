@@ -2,8 +2,11 @@
  * The comparison layer is one feature seen from four places — score and vital deltas, the
  * resource strip, the waterfall tags, the new/fixed audit lists — and one switch turns all
  * of it on and off. This proves that: that the switch appears only when there *is* an
- * earlier run, that every one of the four surfaces obeys it, and that the choice survives
- * a reload, because a preference that resets every session is one nobody sets.
+ * earlier run, that every one of the four surfaces obeys it, that a report with the switch
+ * off is otherwise whole, and that the choice survives a reload — a preference that resets
+ * every session is one nobody sets.
+ *
+ * It ships **off**: a report says where the page stands first, and what changed when asked.
  *
  * A previous run is seeded straight into Mongo rather than audited twice — the point under
  * test is the switch, not the measurement.
@@ -91,64 +94,64 @@ try {
   console.log(`auditing ${TARGET} with a seeded previous run …`);
   await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle0' });
   for (let i = 0; i < 240; i++) {
-    if (/compared with the run from/i.test(await bodyText(page))) break;
+    if (/opportunities & diagnostics/i.test(await bodyText(page))) break;
     await sleep(500);
   }
   await sleep(1200);
 
-  // ─── On by default ─────────────────────────────────────────────────────────
+  // ─── Off by default ────────────────────────────────────────────────────────
   const sw = await page.$('[role="switch"][aria-label="Compare with last audit"]');
   check(!!sw, 'the switch is on the page when an earlier run exists');
-  check(await page.$eval('[role="switch"][aria-label="Compare with last audit"]', (e) => e.getAttribute('aria-checked')) === 'true',
-    'it starts on — the comparison is the point of having run twice');
+  check(await page.$eval('[role="switch"][aria-label="Compare with last audit"]', (e) => e.getAttribute('aria-checked')) === 'false',
+    'it starts off — a report says where the page stands before it says what changed');
   check(/compare with last audit/i.test(await bodyText(page)), 'and it is labelled in words, not only for screen readers');
 
-  const on = await comparisonSignals(page);
-  console.log(`  on:  ${JSON.stringify(on)}`);
-  check(on.badges >= 8, `every score and vital carries a delta (${on.badges})`);
-  check(on.caption, 'the caption names the run being compared against');
-  check(on.strip, 'the "since last run" strip is present');
-  check(on.fixedList, 'the audit list offers what is no longer reported');
-  await page.screenshot({ path: `${OUT}/on.png` });
-
-  // ─── Switched off ──────────────────────────────────────────────────────────
-  check(await setToggle(page, false), 'the switch can be turned off');
-  await sleep(500);
   const off = await comparisonSignals(page);
   console.log(`  off: ${JSON.stringify(off)}`);
-  check(off.badges === 0, `no deltas remain (${off.badges})`);
-  check(!off.caption, 'no caption');
+  check(off.badges === 0, `no deltas anywhere (${off.badges})`);
+  check(!off.caption, 'no caption naming an earlier run');
   check(!off.strip, 'no resource strip');
   check(!off.fixedList, 'no "no longer reported" list');
+
+  // The report must be whole with the comparison off — this is a reading preference, not
+  // half the page.
+  const plain = await bodyText(page);
+  check(/opportunities & diagnostics/i.test(plain), 'the audit list is there');
+  check(/core web vitals/i.test(plain), 'the vitals are there');
   await page.screenshot({ path: `${OUT}/off.png` });
 
-  // The report itself must still be whole — turning the comparison off is not turning
-  // half the page off.
-  const stillThere = await bodyText(page);
-  check(/opportunities & diagnostics/i.test(stillThere), 'the audit list is still there');
-  check(/core web vitals/i.test(stillThere), 'the vitals are still there');
+  // ─── Switched on ───────────────────────────────────────────────────────────
+  check(await setToggle(page, true), 'the switch can be turned on');
+  await sleep(600);
+  const on = await comparisonSignals(page);
+  console.log(`  on:  ${JSON.stringify(on)}`);
+  check(on.badges >= 8, `every score and vital gains a delta (${on.badges})`);
+  check(on.caption, 'the caption names the run being compared against');
+  check(on.strip, 'the "since last run" strip appears');
+  check(on.fixedList, 'the audit list offers what is no longer reported');
+  await page.screenshot({ path: `${OUT}/on.png` });
 
   // ─── The choice sticks ─────────────────────────────────────────────────────
   await page.reload({ waitUntil: 'networkidle0' });
   await sleep(1500);
   const persisted = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('perfscope-audit-mode') ?? '{}')?.state?.compareWithPrevious);
-  check(persisted === false, `the preference survives a reload (${persisted})`);
+  check(persisted === true, `the preference survives a reload (${persisted})`);
 
-  // ─── And back on ───────────────────────────────────────────────────────────
+  // ─── A fresh audit honours it, and it can be turned back off ───────────────
   await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle0' });
   for (let i = 0; i < 240; i++) {
-    if (/opportunities & diagnostics/i.test(await bodyText(page))) break;
+    if (/compared with the run from/i.test(await bodyText(page))) break;
     await sleep(500);
   }
   await sleep(1200);
-  const stillOff = await comparisonSignals(page);
-  check(stillOff.badges === 0 && !stillOff.caption, 'a fresh audit honours the stored preference');
-  check(await setToggle(page, true), 'the switch is still offered so it can be turned back on');
+  const stillOn = await comparisonSignals(page);
+  check(stillOn.badges >= 8 && stillOn.caption, 'a fresh audit honours the stored preference');
+  check(await setToggle(page, false), 'the switch is still offered so it can be turned back off');
   await sleep(500);
-  const backOn = await comparisonSignals(page);
-  console.log(`  back on: ${JSON.stringify(backOn)}`);
-  check(backOn.badges >= 8 && backOn.caption, 'and the comparison comes straight back');
+  const backOff = await comparisonSignals(page);
+  console.log(`  back off: ${JSON.stringify(backOff)}`);
+  check(backOff.badges === 0 && !backOff.caption, 'and the comparison clears again');
 
   const real = errors.filter((e) => !/favicon|ERR_INTERNET_DISCONNECTED/i.test(e.text));
   check(real.length === 0, `no console errors (${real.map((e) => e.text).join(' | ') || 'none'})`);
