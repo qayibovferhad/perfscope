@@ -9,6 +9,13 @@ export const config = {
   clientUrl:   optionalEnv('CLIENT_URL', 'http://localhost:5173'),
   nodeEnv:     optionalEnv('NODE_ENV', 'development'),
   geminiApiKey: process.env['GEMINI_API_KEY'],
+  /**
+   * Which Gemini model every prompt runs on. An env var rather than a constant because
+   * moving tiers is an operational decision measured with `probes/model-tier.probe.mts`
+   * — see docs/ai/PLAN.md phase 5: no model change ships without that number.
+   * Rolling aliases only; pinned versions get retired and 404 silently.
+   */
+  geminiModel: optionalEnv('GEMINI_MODEL', 'gemini-flash-lite-latest'),
   /** Must match the client id the dashboard signs in with: it is what proves a Google
    *  token was issued for this app and not obtained by some other site. */
   googleClientId: process.env['GOOGLE_CLIENT_ID'],

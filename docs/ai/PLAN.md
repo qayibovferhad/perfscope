@@ -131,3 +131,38 @@ Bunlar 1–5 bitəndən sonra, hər biri kiçik:
 
 Hər mərhələ ayrıca commit, ayrıca probe, ayrıca ölçü. 1-i bitirib rəqəmi göstərmədən
 2-yə keçmirəm.
+
+---
+
+## Mərhələ 5 — ölçüldü (2026-08-22)
+
+`probes/model-tier.probe.mts` (yeni) eyni saxlanmış auditi bir neçə modeldən keçirir və
+`ai-quality.probe.mts`-in öz balını oxuyur — bal bir yerdə yazılıb, iki probe ayrılıqda
+saymır. Model artıq `GEMINI_MODEL` env dəyişəni ilə seçilir (`config.geminiModel`).
+
+Fixture `testlandau.cubicsbms.com`, hər model 2 dəfə (hər dəfə ayrı proses — eyni prosesdə
+prompt cache eyni mətni qaytarardı və heç nə ölçməzdi):
+
+```
+  model                       fixes concrete  audits concrete  latency   tokens (in/out)
+  gemini-flash-lite-latest    5.0 of 5.5      8.0 of 14.0      3.6s      2260 / 900
+  gemini-flash-latest         503 — high demand, 2 cəhddən 2-si
+  gemini-3.5-flash-lite       5.0 of 5.5      8.0 of 14.0      3.2s      2260 / 836
+  gemini-3.5-flash            5.5 of 6.0      8.5 of 14.0      18.4s     2260 / 1003
+```
+
+**Qərar: ucuz tierdə qalırıq.** Mərhələ 1-in sübutu işlədikdən sonra lite artıq fix-lərin
+~91%-ni konkret yazır; ən güclü mövcud tier bunu yarım fix qaldırır və gecikməni 3.6s →
+18.4s edir — analyzer-də adam skeleton-a baxır. `gemini-pro-latest` bu açarda 429
+(kvota), yəni onu sınamaq üçün əvvəlcə billing lazımdır.
+
+**Ölçmənin yan məhsulu — düzəldildi.** `generate()`-də retry yox idi; `gemini-flash-latest`
+ardıcıl iki dəfə 503 ("high demand") verdi. Canlı auditdə bu, həmin promptun çıxışını
+həmişəlik itirir, çünki AI yazı vaxtı yaradılır və sənədə yazılır — bir daha soruşan yoxdur.
+İndi 429/5xx və şəbəkə xətaları üçün bir əlavə cəhd var (1.5s backoff); 400/403/404 təkrar
+edilmir, ikinci dəfə eyni cavabı verəcək. Vaxt hesabı **bütöv çağırışa** aiddir, cəhd başına
+yox: `timeoutMs` adamın gözlədiyi müddətdir, ayrıca 45s verilən retry məhz onu ikiqat edərdi.
+`UsageTally`-yə `retries`/`failures` əlavə olundu — çağıran tərəf xətanı bir sətir yazıb null
+ilə davam etdiyi üçün, sayğac olmasa yük altında əzilən model sadəcə sükut kimi görünür.
+Yoxlama: `probes/ai-retry.probe.mts` (503 → bərpa, 400 → təkrar yoxdur, qısa deadline →
+retry başlamır) — 11/11 PASS, ikinci cəhd real API-yə gedir.

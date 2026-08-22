@@ -42,10 +42,18 @@ Also: the user writes in Azerbaijani; code, comments and commit messages are Eng
 One place generates, one place delivers, one component renders.
 
 **Generation** — `apps/backend/src/services/ai.service.ts`
-- `AiService.generate(prompt, {timeoutMs?})` is the only path to Gemini. sha256 prompt
-  cache, 6 h TTL, 300 entries. **Empty responses are not cached** (a blank reply would
+- `generate(prompt, {timeoutMs?, json?, label?})` in `services/ai/client.ts` is the only
+  path to Gemini (it moved out of ai.service.ts). sha256 prompt cache keyed by model + mode
+  + prompt, 6 h TTL, 300 entries. **Empty responses are not cached** (a blank reply would
   otherwise silence a prompt for six hours). Model: `gemini-flash-lite-latest` — the
-  rolling alias; pinned versions 404.
+  rolling alias; pinned versions 404 — overridable with `GEMINI_MODEL`, which is how
+  `probes/model-tier.probe.mts` compares tiers (PLAN.md phase 5: measured 2026-08-22, the
+  cheap tier stayed).
+- **One retry** on 429/5xx and transport errors, 1.5 s backoff, inside the caller's own
+  deadline rather than a fresh one. Gemini answers 503 "high demand" under load and AI is
+  generated at write time, so an unretried failure leaves that audit permanently without a
+  diagnosis. `retries`/`failures` are tallied per label in `aiUsageSnapshot()`. Probe:
+  `probes/ai-retry.probe.mts`.
 - `VOICE` — one constant every prompt embeds. It is the answer to "what does PerfScope
   sound like". Change it once, every surface changes.
 - `analysePage(result, previous?)` — **the** analyzer call. One pass → `{ diagnosis,

@@ -9,7 +9,11 @@
  * Run it before and after every phase of docs/ai/PLAN.md. If the number does not move,
  * the phase did not work, whatever else it did.
  *
- *     npx tsx probes/ai-quality.probe.mts [url-substring]
+ *     npx tsx probes/ai-quality.probe.mts [url-substring] [--json]
+ *
+ * `--json` prints one machine-readable `##RESULT##{…}` line as well, which is how
+ * `model-tier.probe.mts` scores several models against the identical fixture.
+ * `GEMINI_MODEL=<alias>` picks the model (config default otherwise).
  *
  * Baseline when this was written (landau.cubicsbms.com): 1 of 4.
  */
@@ -17,9 +21,12 @@ import mongoose from 'mongoose';
 import { config } from '../src/config/index.js';
 import { HistoryModel } from '../src/models/History.model.js';
 import { AiService } from '../src/services/ai.service.js';
+import { activeModel, aiUsageSnapshot } from '../src/services/ai/client.js';
 import type { AnalysisResult } from '@perfscope/shared';
 
-const WANT = process.argv[2];
+const args = process.argv.slice(2);
+const AS_JSON = args.includes('--json');
+const WANT = args.find(a => !a.startsWith('--'));
 
 await mongoose.connect(config.mongoUri);
 const rows = await HistoryModel.find({ fullResult: { $ne: null } }).sort({ createdAt: -1 }).limit(40).lean();
@@ -34,8 +41,11 @@ const row = rows.find(x => {
 if (!row) { console.error('No stored audit with >50 requests' + (WANT ? ` matching "${WANT}"` : '')); process.exit(1); }
 const r = row.fullResult as unknown as AnalysisResult;
 
+const startedAt = process.hrtime.bigint();
 const analysis = await AiService.analysePage(r);
+const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
 if (!analysis) { console.error('analysePage returned null'); process.exit(1); }
+const usage = aiUsageSnapshot()['page analysis'] ?? { calls: 0, cacheHits: 0, inTokens: 0, outTokens: 0, retries: 0, failures: 0 };
 
 // ─── What a fix could legitimately cite ─────────────────────────────────────
 const tail = (s: string) => s.split('/').pop()?.split('?')[0] ?? '';
@@ -52,6 +62,7 @@ for (const a of r.audits) for (const d of (a as { details?: { selector?: string 
 const usable = [...evidence].filter(e => e.length > 3);
 
 // ─── Score ──────────────────────────────────────────────────────────────────
+console.log(`model ${activeModel()}  ·  ${(elapsedMs / 1000).toFixed(1)}s  ·  ${usage.inTokens} in / ${usage.outTokens} out tokens`);
 console.log(`${r.url}  ·  perf ${r.scores.performance}  a11y ${r.scores.accessibility}  bp ${r.scores.bestPractices}  seo ${r.scores.seo}`);
 console.log(`${usable.length} pieces of concrete evidence available to cite\n`);
 
@@ -71,3 +82,18 @@ console.log(`  audits concrete  : ${auditsConcrete} of ${Object.keys(analysis.au
 console.log(`\n  ${concrete >= Math.ceil(analysis.fixes.length * 0.75)
   ? 'PASS — three quarters or more of the fixes are about this page.'
   : `BELOW TARGET — plan phase 1 aims for ≥ ${Math.ceil(analysis.fixes.length * 0.75)} of ${analysis.fixes.length}.`}`);
+
+if (AS_JSON) {
+  console.log('##RESULT##' + JSON.stringify({
+    model: activeModel(),
+    url: r.url,
+    fixes: analysis.fixes.length,
+    concrete,
+    auditsConcrete,
+    auditsTotal: Object.keys(analysis.audits).length,
+    diagnosisChars: analysis.diagnosis?.length ?? 0,
+    elapsedMs: Math.round(elapsedMs),
+    inTokens: usage.inTokens,
+    outTokens: usage.outTokens,
+  }));
+}
