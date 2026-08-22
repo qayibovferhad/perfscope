@@ -1,9 +1,9 @@
 import { useState, useRef, useId, useLayoutEffect } from 'react';
-import { TriangleAlert, Zap, ChevronDown } from 'lucide-react';
+import { TriangleAlert, Zap, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Segmented } from '@/shared/ui/segmented';
 import { AiNote } from '@/shared/ui/ai-card';
-import type { AuditItem } from '@/entities/analysis';
+import type { AuditItem, PreviousRunSummary } from '@/entities/analysis';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,13 +39,15 @@ function sevTier(impact: AuditItem['impact']): 'high' | 'warn' | 'low' {
 // ─── Issue row ────────────────────────────────────────────────────────────────
 
 function IssueRow({
-  audit, isOpen, bodyId, onToggle, aiPending,
+  audit, isOpen, bodyId, onToggle, aiPending, isNew,
 }: {
   audit: AuditItem;
   isOpen: boolean;
   bodyId: string;
   onToggle: () => void;
   aiPending?: boolean;
+  /** Not reported by the previous run of this page. */
+  isNew?: boolean;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const tier = sevTier(audit.impact);
@@ -90,6 +92,14 @@ function IssueRow({
         <span className="flex-1 min-w-0">
           <b className="block text-[14.5px] font-semibold text-ld-text leading-snug">
             {audit.title}
+            {isNew && (
+              <span
+                title="This issue was not reported in the previous run of this page"
+                className="ml-[8px] align-middle font-mono text-[9.5px] font-semibold uppercase tracking-[.08em] px-[6px] py-[2px] rounded-[5px] border border-ld-amber-line bg-ld-amber-soft text-ld-amber"
+              >
+                new
+              </span>
+            )}
           </b>
           {audit.displayValue && (
             <span className={cn(
@@ -138,12 +148,21 @@ function IssueRow({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export function AuditList({ audits, aiPending }: { audits: AuditItem[]; aiPending?: boolean }) {
+export function AuditList({ audits, previous, aiPending }: {
+  audits: AuditItem[];
+  /** The run this one is compared against — drives the "new" pills and the fixed list. */
+  previous?: PreviousRunSummary | undefined;
+  aiPending?: boolean;
+}) {
   const uid                     = useId();
   const [openId, setOpenId]     = useState<string | null>(null);
   const [filter, setFilter]     = useState<FilterKey>('all');
+  const [showFixed, setShowFixed] = useState(false);
 
   if (audits.length === 0) return null;
+
+  const newIds = new Set(previous?.newAuditIds ?? []);
+  const fixed  = previous?.fixedAudits ?? [];
 
   const sorted    = sortAudits(audits);
   const critCount = sorted.filter(a => a.impact === 'critical').length;
@@ -203,6 +222,7 @@ export function AuditList({ audits, aiPending }: { audits: AuditItem[]; aiPendin
             bodyId={`${uid}-body-${audit.id}`}
             onToggle={() => toggle(audit.id)}
             aiPending={aiPending}
+            isNew={newIds.has(audit.id)}
           />
         ))}
         {visible.length === 0 && (
@@ -211,6 +231,33 @@ export function AuditList({ audits, aiPending }: { audits: AuditItem[]; aiPendin
           </p>
         )}
       </div>
+
+      {/* Progress is as much a result as the remaining problems are, and it is the half
+          this list never showed. Collapsed, and worded as "no longer reported" rather than
+          "fixed by you": an audit can also drop out because the page changed around it. */}
+      {fixed.length > 0 && (
+        <div className="mt-[12px]">
+          <button
+            type="button"
+            onClick={() => setShowFixed(v => !v)}
+            aria-expanded={showFixed}
+            className="inline-flex items-center gap-[7px] font-mono text-[12px] font-semibold text-ld-score-good bg-transparent border-0 cursor-pointer p-0"
+          >
+            <Check className="w-[13px] h-[13px]" aria-hidden />
+            {fixed.length} no longer reported since last run
+            <ChevronDown className={cn('w-[13px] h-[13px] transition-transform', showFixed && 'rotate-180')} aria-hidden />
+          </button>
+          {showFixed && (
+            <ul className="m-0 mt-[8px] p-0 list-none grid gap-[4px]">
+              {fixed.map(f => (
+                <li key={f.id} className="font-mono text-[12px] text-ld-text-3 truncate">
+                  {f.title}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

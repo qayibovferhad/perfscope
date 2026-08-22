@@ -5,9 +5,10 @@ import { PanelHeader, Chip } from '@/shared/ui/panel';
 import { useTimelineContext } from '../model/TimelineContext';
 import { useWaterfallPlayhead } from '../model/useWaterfallPlayhead';
 import { MAX_ROWS, TICK_COUNT } from '../lib/waterfall';
+import { buildChangeMap } from '../lib/resourceChange';
 import { WaterfallRow } from './WaterfallRow';
 import { METRIC_MARKERS } from '@/entities/analysis';
-import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals } from '@/entities/analysis';
+import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals, ResourceDiff } from '@/entities/analysis';
 
 /** Label-column width. Wider than TimelineWaterfall's 280 on purpose (the type badge and
  *  size ride in this column) — but every width below must come from this constant: the
@@ -79,11 +80,14 @@ export function ResourceWaterfall({
   timelineDuration,
   metrics,
   showHeader = true,
+  changes,
 }: {
   resources:         ParsedResources;
   timelineDuration?: number;
   metrics?:          CoreWebVitals;
   showHeader?:       boolean;
+  /** What moved since the previous run, for the per-row tags. */
+  changes?:          ResourceDiff | undefined;
 }) {
   const ctx = useTimelineContext();
 
@@ -101,6 +105,8 @@ export function ResourceWaterfall({
     if (typeFilter === 'all') return allRows;
     return allRows.filter(r => r.resourceType === typeFilter);
   }, [allRows, typeFilter]);
+
+  const changeMap = useMemo(() => buildChangeMap(changes), [changes]);
 
   const wfMs   = useMemo(() => allRows.reduce((mx, r) => Math.max(mx, r.endTime), 0), [allRows]);
   const axisMs = (timelineDuration && timelineDuration > 0) ? timelineDuration : wfMs;
@@ -195,6 +201,7 @@ export function ResourceWaterfall({
               axisMs={axisMs}
               leftW={LEFT_W}
               barStyle="typed"
+              change={changeMap.get(req.url)}
               isSelected={selectedIdx === i}
               onSelect={() => handleSelect(i)}
               onDeselect={handleDeselect}

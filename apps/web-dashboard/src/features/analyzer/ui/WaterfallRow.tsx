@@ -5,7 +5,21 @@ import { useTimelineContext } from '../model/TimelineContext';
 import { resourceFilename } from '../lib/waterfall';
 import { RequestDetailPanel } from './RequestDetailPanel';
 import { RESOURCE_TYPES, resourceBadgeStyle } from '@/entities/analysis';
+import type { ResourceChange } from '../lib/resourceChange';
 import type { NetworkRequest, ResourceType } from '@/entities/analysis';
+
+/**
+ * The three ways a request can differ from the previous run, as a one-word tag.
+ *
+ * Amber for new and rose for grown — both mean the page got heavier — and emerald for
+ * shrunk. Nothing marks "removed": a request this run never made has no row here, and it
+ * is listed in the SinceLastRun strip instead.
+ */
+const CHANGE_TAG: Record<ResourceChange, { label: string; cls: string }> = {
+  added:  { label: 'new',   cls: 'text-ld-amber border-ld-amber-line bg-ld-amber-soft' },
+  grown:  { label: 'grew',  cls: 'text-ld-rose border-ld-rose-line bg-ld-rose-soft' },
+  shrunk: { label: 'less',  cls: 'text-ld-score-good border-ld-accent-line bg-ld-accent-soft' },
+};
 
 /**
  * The waiting (TTFB) segment of the 'agnostic' bar style stays type-muted on purpose:
@@ -35,6 +49,8 @@ export interface WaterfallRowProps {
   dense?:     boolean;
   /** Mirror hover into TimelineContext.hoveredUrl (flame-chart highlight). */
   trackHover?: boolean;
+  /** How this request differs from the previous run of the page, when it does. */
+  change?:    ResourceChange | undefined;
   isSelected: boolean;
   onSelect:   () => void;
   onDeselect: () => void;
@@ -52,7 +68,7 @@ export interface WaterfallRowProps {
  * see useWaterfallPlayhead.
  */
 export const WaterfallRow = memo(function WaterfallRow({
-  req, index, axisMs, leftW, barStyle, dense, trackHover,
+  req, index, axisMs, leftW, barStyle, dense, trackHover, change,
   isSelected, onSelect, onDeselect,
   rowRef, ttfbRef, dlRef, shimRef,
 }: WaterfallRowProps) {
@@ -91,6 +107,17 @@ export const WaterfallRow = memo(function WaterfallRow({
           <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
             {name}
           </span>
+          {change && (
+            <span
+              title={`This request is ${CHANGE_TAG[change].label === 'new' ? 'new since' : `${CHANGE_TAG[change].label} since`} the previous run`}
+              className={cn(
+                'text-[9.5px] font-semibold font-mono px-[5px] py-[2px] rounded-[5px] border shrink-0',
+                CHANGE_TAG[change].cls,
+              )}
+            >
+              {CHANGE_TAG[change].label}
+            </span>
+          )}
           <span
             className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] border shrink-0"
             style={resourceBadgeStyle(req.resourceType)}

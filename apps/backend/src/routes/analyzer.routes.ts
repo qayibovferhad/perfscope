@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { ok } from '../lib/respond.js';
 import { lighthouseService, RUN_TIMEOUT_MS } from '../services/lighthouse.service.js';
-import { enrichWithAi, persistAudit, resolveOrCreateProject } from '../services/auditPipeline.js';
+import { attachPreviousRun, enrichWithAi, persistAudit, resolveOrCreateProject } from '../services/auditPipeline.js';
 import { optionalAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { isValidUrl } from '../lib/url.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
@@ -41,7 +41,9 @@ analyzerRouter.post('/analyze', optionalAuth, asyncHandler<AuthRequest>(async (r
   req.setTimeout(RUN_TIMEOUT_MS + 60_000);
 
   const result = await lighthouseService.analyze(url);
-  await enrichWithAi(result);
+  // No-op for an anonymous caller — there is no history to compare against.
+  const previous = await attachPreviousRun(result, req.userId);
+  await enrichWithAi(result, { previous });
 
   // Saving is best-effort: an anonymous caller has nowhere to save to, and a storage
   // failure must not throw away an audit the caller already waited minutes for.

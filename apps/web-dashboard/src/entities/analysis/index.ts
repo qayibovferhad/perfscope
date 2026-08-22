@@ -36,13 +36,17 @@ export type {
   MeasurementQuality,
   ThirdPartyEntity,
   AnalysisInsightsPayload,
+  PreviousRunSummary,
+  ResourceDiff,
+  ResourceResize,
+  DiffableResource,
 } from '@perfscope/shared'
 
 export { rateScore, rateVital, rateLcp, rateCls, rateTbt, VITAL_THRESHOLDS, SCORE_BANDS } from '@perfscope/shared'
 export type { ScoreRating, VitalKey, AuditFormFactor, AuditPrecision } from '@perfscope/shared'
 
 export {
-  scoreColor, scoreBand, vitalBand, findFrameAt, findClosestFrameIndex, mergeAnalysisInsights, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
+  scoreColor, scoreBand, vitalBand, deltaOf, findFrameAt, findClosestFrameIndex, mergeAnalysisInsights, SCORE_GOOD, SCORE_WARN, SCORE_BAD,
   BAND_TEXT, BAND_STROKE, BAND_TILE, BAND_BORDER, BAND_BAR, BAND_LABEL,
 } from './lib'
 export { FIELD_METRICS, FIELD_METRIC_ORDER, RATING_TEXT, RATING_LABEL } from './fieldMetrics'
@@ -52,9 +56,10 @@ export { GLOSSARY, thresholdLine, goodThreshold, CATEGORY_BAND_LINE, isVitalKey 
 export type { GlossaryKey, CategoryKey } from './glossary'
 export { GlossaryTip } from './ui/GlossaryTip'
 export type { FieldMetricKey } from './fieldMetrics'
-export type { ScoreBand, PartialMap } from './lib'
+export type { ScoreBand, PartialMap, Delta, DeltaKind } from './lib'
 
 export { ScoreCard, ScoreCardSkeleton, type ScoreLabel } from './ui/ScoreCard'
+export { DeltaBadge } from './ui/DeltaBadge'
 export { MetricsGrid } from './ui/MetricsGrid'
 export { AuditList } from './ui/AuditList'
 export { ProgressStepper } from './ui/ProgressStepper'

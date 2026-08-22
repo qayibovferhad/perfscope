@@ -1,5 +1,6 @@
 // ─── Types ──────────────────────────────────────────────────────────────────
 export * from './types/analysis.js'
+export * from './types/resourceDiff.js'
 export * from './types/history.js'
 export * from './types/website.js'
 export * from './types/user.js'

@@ -1,3 +1,5 @@
+import type { ResourceDiff } from './resourceDiff.js'
+
 /** Which device profile a Lighthouse run emulated. */
 export type AuditFormFactor = 'mobile' | 'desktop'
 
@@ -348,6 +350,32 @@ export interface DependencyGraph {
 
 // ─── Result root + progress ──────────────────────────────────────────────────
 
+/**
+ * The run this one is compared against — what moved, and what shipped that moved it.
+ *
+ * Attached server-side before `analysis:complete` is emitted and stored with the result,
+ * so the live view, a reopened history row, the public report and the CLI all describe the
+ * same comparison. The client never fetches the previous run itself: two clients asking at
+ * different times would compare against different runs and disagree about the same audit.
+ *
+ * Absent when there is no earlier audit of this URL for this owner *at the same form
+ * factor* — a desktop run is not the predecessor of a mobile one.
+ */
+export interface PreviousRunSummary {
+  /** Identifies the compared-against run, so the UI can link straight to it. */
+  analysisId: string
+  /** ISO timestamp of that run. */
+  at:         string
+  scores:     PerformanceScores
+  metrics:    CoreWebVitals
+  /** Resource-level movement. Absent when nothing crossed the noise floors. */
+  resourceDiff?: ResourceDiff
+  /** Ids of audits failing now that were not failing then. */
+  newAuditIds: string[]
+  /** Audits that were failing then and are not in this run's list any more. */
+  fixedAudits: { id: string; title: string }[]
+}
+
 export interface AnalysisResult {
   /** Device profile the audit ran with; absent on results saved before the toggle existed. */
   formFactor?: AuditFormFactor
@@ -376,6 +404,8 @@ export interface AnalysisResult {
   measurement?:          MeasurementQuality
   /** Vendors loaded by the page, heaviest first. */
   thirdParty?:           ThirdPartyEntity[]
+  /** The previous run of this URL, and what changed since it. Absent when there is none. */
+  previous?:             PreviousRunSummary
 }
 
 export interface AnalysisProgress {

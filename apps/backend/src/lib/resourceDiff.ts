@@ -8,38 +8,39 @@
  * no I/O, so it is cheap to unit test — that makes that sentence possible.
  */
 import { pathOf } from './url.js'
+import type {
+  AnalysisResult,
+  DiffableResource,
+  ResourceDiff,
+  ResourceSnapshot,
+} from '@perfscope/shared'
 
-export interface DiffableResource {
-  url:          string
-  transferSize: number
-  resourceType: string
-}
+// The shapes moved to `@perfscope/shared/types/resourceDiff` when the diff stopped being
+// prompt-only evidence and started riding on the result the browser renders. Re-exported
+// here so the existing `from '../lib/resourceDiff.js'` imports keep resolving.
+export type {
+  DiffableResource,
+  DiffableLibrary,
+  DiffableVendor,
+  ResourceSnapshot,
+  ResourceResize,
+  ResourceDiff,
+} from '@perfscope/shared'
 
-export interface DiffableLibrary {
-  name: string
-}
-
-export interface DiffableVendor {
-  name:           string
-  transferSize:   number
-  mainThreadTime: number
-}
-
-export interface ResourceSnapshot {
-  requests:          DiffableResource[]
-  detectedLibraries: DiffableLibrary[]
-  thirdParty:        DiffableVendor[]
-}
-
-export interface ResourceDiff {
-  added:             DiffableResource[]
-  removed:           DiffableResource[]
-  grown:             { url: string; resourceType: string; fromBytes: number; toBytes: number }[]
-  shrunk:            { url: string; resourceType: string; fromBytes: number; toBytes: number }[]
-  librariesAdded:    string[]
-  librariesRemoved:  string[]
-  vendorsAdded:      string[]
-  vendorsRemoved:    string[]
+/**
+ * The current run, in the shape the diff compares.
+ *
+ * Three callers built this same object literal inline — the AI page context, the
+ * regression note, and now the summary attached to the result. They must agree: a diff
+ * that counted third parties in one place and not another would have the alert and the
+ * page describing different changes.
+ */
+export function snapshotOf(result: AnalysisResult): ResourceSnapshot {
+  return {
+    requests:          result.resources?.requests ?? [],
+    detectedLibraries: result.resources?.detectedLibraries ?? [],
+    thirdParty:        result.thirdParty ?? [],
+  }
 }
 
 /** A resize has to clear both an absolute and a relative bar to count — a 2KB→2.3KB blip

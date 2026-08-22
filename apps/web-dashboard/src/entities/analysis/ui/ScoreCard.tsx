@@ -4,6 +4,7 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import { scoreBand, BAND_STROKE, BAND_TEXT, BAND_LABEL } from '../lib';
 import { GlossaryTip } from './GlossaryTip';
+import { DeltaBadge } from './DeltaBadge';
 import type { CategoryKey } from '../glossary';
 
 const ICONS = {
@@ -39,7 +40,14 @@ export function ScoreCardSkeleton({ label }: { label: ScoreLabel }) {
   );
 }
 
-export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }) {
+export function ScoreCard({ label, score, previous, since }: {
+  label: ScoreLabel;
+  score: number;
+  /** The same category's score in the previous run, when there is one. */
+  previous?: number | undefined;
+  /** ISO timestamp of that run, for the badge's tooltip. */
+  since?: string | undefined;
+}) {
   const Icon = ICONS[label];
   const status = scoreBand(score);
   const offset = DASH * (1 - score / 100);
@@ -85,9 +93,10 @@ export function ScoreCard({ label, score }: { label: ScoreLabel; score: number }
         <GlossaryTip term={TERM[label]} />
       </h3>
 
-      {/* Status */}
-      <p className={cn('text-[12.5px] font-semibold mt-1', BAND_TEXT[status])}>
+      {/* Status, and how it moved */}
+      <p className={cn('text-[12.5px] font-semibold mt-1 flex items-center justify-center gap-[8px]', BAND_TEXT[status])}>
         {BAND_LABEL[status]}
+        <DeltaBadge kind="score" curr={score} prev={previous} since={since} />
       </p>
     </motion.div>
   );

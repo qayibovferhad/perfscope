@@ -1,6 +1,7 @@
 import { AiService } from './ai.service.js';
 import { getRecommendationHistory, reconcileRecommendations } from './aiRecommendation.service.js';
-import { getPreviousRun } from './previousRun.service.js';
+import { getPreviousRun, type PreviousRun } from './previousRun.service.js';
+import { diffResources, resourceDiffHasChanges, snapshotOf } from '../lib/resourceDiff.js';
 import { HistoryService } from './history.service.js';
 import { Website } from '../models/Website.model.js';
 import { findWebsiteByHost } from './websiteLookup.js';
@@ -10,7 +11,7 @@ import { CruxService } from './crux.service.js';
 import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { getRumSummaryForUrl } from './rum.service.js';
 import { getLatestCompetitorComparison } from './competitorContext.service.js';
-import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis } from '@perfscope/shared';
+import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis, PreviousRunSummary } from '@perfscope/shared';
 
 /** How many resources get their own AI tip. */
 const AI_ADVICE_LIMIT = 6;
@@ -34,6 +35,61 @@ const AI_ADVICE_TYPES: ReadonlySet<string> = new Set(['script', 'stylesheet', 'i
 
 /** One length everywhere — a 7-char short id must identify the same audit at every entry point. */
 export const SHORT_ID_LEN = 7;
+
+/** A "fixed since last run" list is a reward, not a report — past a handful it stops being
+ *  read, and the rows below the fold are the least significant ones anyway. */
+const FIXED_AUDITS_LIMIT = 8;
+
+/**
+ * Attach "what moved since the last run of this page" to the result, and hand the caller
+ * the full previous run so the AI does not have to look it up a second time.
+ *
+ * Runs *before* `analysis:complete`: a delta that arrived with the AI commentary seconds
+ * later would make every number on the page jump under the reader's eyes. It is one
+ * indexed query with a projection, not a second audit.
+ *
+ * Written onto `result` rather than emitted on its own, because `persistAudit` stores the
+ * result whole — which is what makes a reopened history row, the public report and the CLI
+ * describe the same comparison as the live view, with no further queries anywhere.
+ *
+ * The diff is omitted when nothing crossed the noise floors in `resourceDiff.ts`: "the
+ * page is the same as last time" is a claim worth being able to make, and an empty diff
+ * object rendered as an empty panel would say it far less clearly.
+ */
+export async function attachPreviousRun(
+  result: AnalysisResult,
+  userId: string | undefined,
+): Promise<PreviousRun | null> {
+  if (!userId) return null;
+
+  const previous = await getPreviousRun(
+    userId, result.url, new Date(result.timestamp), result.formFactor,
+  ).catch(() => null);
+  if (!previous) return null;
+
+  const diff = diffResources(snapshotOf(result), previous.resources);
+
+  // Only audits *this* run is reporting can be new, and only audits the previous run
+  // reported can have been fixed. Both lists are what the transform kept (failing, capped),
+  // never the full Lighthouse set — an audit that dropped out because the cap pushed it
+  // out is not a fix, so the fixed list is capped too and labelled as "not in this run's
+  // list" in the UI, not as proof of a repair.
+  const currentIds = new Set(result.audits.map(a => a.id));
+  const previousIds = new Set(previous.audits.map(a => a.id));
+
+  const summary: PreviousRunSummary = {
+    analysisId:  previous.analysisId,
+    at:          previous.atIso,
+    scores:      previous.scores,
+    metrics:     previous.metrics,
+    newAuditIds: result.audits.filter(a => !previousIds.has(a.id)).map(a => a.id),
+    fixedAudits: previous.audits.filter(a => !currentIds.has(a.id)).slice(0, FIXED_AUDITS_LIMIT),
+    ...(resourceDiffHasChanges(diff) ? { resourceDiff: diff } : {}),
+  };
+
+  result.previous = summary;
+  return previous;
+}
 
 /** Everything Gemini had to say — the same values enrichWithAi writes onto the result. */
 export interface AiEnrichment {
@@ -70,7 +126,21 @@ export async function enrichWithAi(
   result: AnalysisResult,
   // `userId` is optional and may be explicitly undefined — an anonymous audit has no
   // history to compare against, which is the same as having no earlier run.
-  { depth = 'standard', userId }: { depth?: AiDepth; userId?: string | undefined } = {},
+  {
+    depth = 'standard',
+    userId,
+    previous: previousFromCaller,
+  }: {
+    depth?: AiDepth;
+    userId?: string | undefined;
+    /**
+     * The previous run, when the caller already has it — `attachPreviousRun` fetches it to
+     * build the deltas, and the two of them asking the same indexed question a second apart
+     * is a wasted round trip on the one event a user is waiting for. `undefined` means "not
+     * looked up"; `null` means "looked up, there is none".
+     */
+    previous?: PreviousRun | null;
+  } = {},
 ): Promise<AiEnrichment> {
   const nothing: AiEnrichment = {
     insights: null, advice: new Map(), auditExplanations: new Map(), metricNotes: {}, waterfall: null,
@@ -90,9 +160,11 @@ export async function enrichWithAi(
   const [previous, recommendationHistory, fieldData, otherRoutesVendors, rumData, competitor] = await Promise.all([
     // What this page measured last time, so the analysis can lead with what moved — and,
     // via diffResources inside buildPageContext, name the actual file responsible.
-    depth === 'deep' && userId
-      ? getPreviousRun(userId, result.url, new Date(result.timestamp)).catch(() => null)
-      : null,
+    previousFromCaller !== undefined
+      ? previousFromCaller
+      : depth === 'deep' && userId
+        ? getPreviousRun(userId, result.url, new Date(result.timestamp), result.formFactor).catch(() => null)
+        : null,
 
     // What the AI has already told this user about this page, so it can notice a repeat
     // instead of restating itself for the sixth audit in a row — or notice that something

@@ -277,3 +277,34 @@ ayrıca "silent" sütunu var ki, hər yerdə susan model dərhal görünsün.
 Diaqnoz: *"Your page has nothing material left to fix since every vital is already
 performing at absolute peak efficiency."* Risk — modelin digər səhifələrdə də susması —
 ölçüldü və baş vermədi.
+
+## Heap və interaction sübutu (2026-08-22)
+
+İstifadəçi analyzer-də "peak heap nə qədərdir" soruşdu və cavab aldı: *"Your audit evidence
+does not contain peak heap memory usage information."* Bu, **düzgün davranış idi, natamam
+sübut üzərində** — `heapMemoryData` və `interactionData` `pageContext.ts`-də sıfır dəfə
+keçirdi, halbuki analyzer hər ikisini qrafik kimi çəkirdi.
+
+İndi kontekstdə iki sətir var (dərinlik fərqi yoxdur, hər iki prompt oxuyur):
+- **Heap**: peak / average / sample sayı, üstəlik run boyu **artım forması** — sonuncu nöqtə
+  ilkinin 1.5 qatından yuxarıdırsa, bu deyilir. Diaqnoz kimi yox, forma kimi: bir səhifə
+  yüklənməsi leak sübut etmir.
+- **Responsiveness**: INP, orta input delay, total blocking, qeyd olunan interaksiya sayı —
+  açıq şəkildə "bu run zamanı", çünki Lighthouse heç nəyə klikləmir.
+
+Nöqtə siyahısı yox, üç rəqəm: heap trace min nöqtədir, cavab isə üç ədəddə yaşayır.
+`trimForAi` artıq hər iki obyekti **bütöv** saxlayır (nöqtələri kəssək, promptun sitat
+gətirdiyi sample sayı dəyişərdi), fixture dəsti yenidən çəkildi — 468KB → 732KB.
+
+**Yoxlama** — hər dörd fixture-a eyni sual, hər biri öz həqiqi rəqəmini dedi:
+```
+landau      peak 76MB  → "The peak heap memory during this run was 76MB."
+vite.dev    peak 12MB  → "Your peak heap memory during this run was 12MB."
+bbc.com     peak 52MB  → "Your peak heap memory during this run was 52MB."
+wikipedia   peak 17MB  → "Your peak heap memory during this run was 17MB."
+```
+
+**Konkretlik ölçüsü:** bloklarla 93% (75–100%, 5 çalışma), bloksuz eyni fixture-larda
+96% (87–100%, 3 çalışma). Bu sample-da fərq **küydən seçilmir** — probe-un öz sənədləşmiş
+səs-küyü bundan böyükdür (bir vite.dev çalışması 20% verdi) — və hər ikisi 75% hədəfindən
+yuxarıdır. Yəni "reqressiya yoxdur" demirəm: ölçü onları ayırd edə bilmir.

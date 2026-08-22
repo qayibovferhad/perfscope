@@ -36,7 +36,9 @@ export async function askAboutAudit(
 
   const result = doc.fullResult as unknown as AnalysisResult;
 
-  const previous = await getPreviousRun(userId, result.url, doc.createdAt).catch(() => null);
+  // Same form factor, same reason as everywhere else: the run before *this* one on the
+  // same device profile is the only honest comparison to answer a question against.
+  const previous = await getPreviousRun(userId, result.url, doc.createdAt, result.formFactor).catch(() => null);
 
   const history = await getRecommendationHistory(userId, result.url).catch(() => []);
 

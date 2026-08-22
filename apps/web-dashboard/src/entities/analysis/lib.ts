@@ -1,5 +1,6 @@
 import {
   rateScore, rateVital, RATING_COLOR,
+  scoreVerdict, deltaPct, METRIC_NOISE, REGRESSION_PCT,
   type ScoreRating, type VitalKey, type TimelineFrame, type AnalysisResult, type AnalysisInsightsPayload,
   type AnalysisCategory, type CategoryPartial,
 } from '@perfscope/shared';
@@ -144,3 +145,56 @@ export const BAND_LABEL: Record<ScoreBand, string> = {
   warn: 'Needs improvement',
   poor: 'Poor',
 };
+
+// ─── Movement against the previous run ────────────────────────────────────────
+
+/** What kind of number is being compared — they disagree about which direction is good. */
+export type DeltaKind = 'score' | VitalKey;
+
+export interface Delta {
+  /** Signed change in the metric's own unit (points, ms, or CLS units). */
+  diff: number;
+  /** Whether the change went the way the user wants, regardless of size. */
+  direction: 'better' | 'worse' | 'same';
+  /**
+   * Whether the change clears the shared noise floor. A movement below it is still shown —
+   * hiding it would make a page look frozen — but muted, because the honest reading of a
+   * 3-point score change is "this is the measurement, not your site".
+   */
+  meaningful: boolean;
+}
+
+/**
+ * The change from `prev` to `curr`, judged with the *same* thresholds the alerts use.
+ *
+ * Nothing here re-derives what counts as a real move: scores go through `scoreVerdict`
+ * (10 points), lcp/tbt/cls through `METRIC_NOISE` + `REGRESSION_PCT` in both directions.
+ * If a badge and a regression alert ever disagreed about the same pair of runs, the badge
+ * would be the reason nobody trusts the alert.
+ *
+ * fcp/si/tti have no absolute floor in the shared table — nothing alerts on them, so none
+ * was ever needed — so they are judged on the percentage alone. That is deliberately
+ * stated here rather than fixed by inventing three more constants in the UI layer.
+ */
+export function deltaOf(kind: DeltaKind, curr: number, prev: number | undefined | null): Delta | null {
+  if (prev === undefined || prev === null || !Number.isFinite(prev) || !Number.isFinite(curr)) return null;
+
+  const diff = curr - prev;
+  if (diff === 0) return { diff: 0, direction: 'same', meaningful: false };
+
+  if (kind === 'score') {
+    return {
+      diff,
+      direction: diff > 0 ? 'better' : 'worse',
+      meaningful: scoreVerdict(curr, prev) !== 'stable',
+    };
+  }
+
+  // Every vital is "worse when bigger".
+  const direction = diff < 0 ? 'better' : 'worse';
+  const pctClears = Math.abs(deltaPct(curr, prev)) > REGRESSION_PCT;
+  const floor = kind in METRIC_NOISE ? METRIC_NOISE[kind as keyof typeof METRIC_NOISE] : 0;
+  const meaningful = pctClears && Math.abs(diff) >= floor;
+
+  return { diff, direction, meaningful };
+}

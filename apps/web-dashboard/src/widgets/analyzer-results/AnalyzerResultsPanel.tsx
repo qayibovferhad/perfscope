@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle, Timer } from 'lucide-react';
+import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle, Timer, History as HistoryIcon } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { NOISY_SPREAD } from '@perfscope/shared';
 import { ScoreCard, MetricsGrid, AuditList, formatElapsed, type ScoreLabel } from '@/entities/analysis';
@@ -14,10 +14,12 @@ import { InteractionTimeline } from '@/features/analyzer';
 import { CLSVisualizer } from '@/features/analyzer';
 import { ResourcesAlert } from '@/features/analyzer';
 import { ThirdPartyPanel } from '@/features/analyzer';
+import { SinceLastRun } from '@/features/analyzer';
 import { AskAboutAudit } from '@/features/analyzer';
 import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer';
 import { AiCard } from '@/shared/ui/ai-card';
+import { fmtDateTime } from '@/shared/lib/time';
 import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────
@@ -143,9 +145,24 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
         <SectionTitle>Scores</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-[14px]">
           {SCORE_ITEMS.map(({ label, scoreKey }) => (
-            <ScoreCard key={label} label={label} score={data.scores[scoreKey]} />
+            <ScoreCard
+              key={label}
+              label={label}
+              score={data.scores[scoreKey]}
+              previous={data.previous?.scores[scoreKey]}
+              since={data.previous?.at}
+            />
           ))}
         </div>
+        {/* Names the run every arrow on this page is measured against. Without it the
+            deltas are movement from an unstated baseline, which is unreadable the moment
+            a person audits the same URL twice in an afternoon. */}
+        {data.previous && (
+          <p className="flex items-center gap-[6px] mt-[12px] font-mono text-[11px] text-ld-text-3 m-0">
+            <HistoryIcon className="w-[12px] h-[12px]" aria-hidden />
+            Compared with the run from {fmtDateTime(data.previous.at)}
+          </p>
+        )}
       </section>
 
       <AiCard text={data.aiInsights} pending={aiPending} />
@@ -155,7 +172,13 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
 
       <section>
         <SectionTitle>Core Web Vitals</SectionTitle>
-        <MetricsGrid metrics={data.metrics} notes={data.aiMetricNotes} aiPending={aiPending} />
+        <MetricsGrid
+          metrics={data.metrics}
+          previous={data.previous?.metrics}
+          since={data.previous?.at}
+          notes={data.aiMetricNotes}
+          aiPending={aiPending}
+        />
       </section>
 
       {(data.timelineData || data.resources || data.dependencyGraph || data.heapMemoryData || data.interactionData) && (
@@ -174,11 +197,13 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
                 timelineData={data.timelineData}
                 resources={data.resources}
                 flameChartData={data.flameChartData}
+                changes={data.previous?.resourceDiff}
               />
               {/* This branch is the one almost every audit takes — a run with a timeline
                   and resources — and it was the only one without the oversized-resource
                   warning, so in practice that warning never appeared. */}
               <div className="mt-3 space-y-3">
+                <SinceLastRun previous={data.previous} />
                 <ResourcesAlert resources={data.resources} />
                 <ResourceBreakdown resources={data.resources} />
               </div>
@@ -194,9 +219,10 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
               {data.resources && (
                 <section className="space-y-3">
                   <SectionTitle>Resources</SectionTitle>
+                  <SinceLastRun previous={data.previous} />
                   <ResourcesAlert resources={data.resources} />
                   <AiCard title="How this page loaded" text={data.aiWaterfallNarrative} pending={aiPending} />
-                  <ResourceWaterfall resources={data.resources} />
+                  <ResourceWaterfall resources={data.resources} changes={data.previous?.resourceDiff} />
                   <ResourceBreakdown resources={data.resources} />
                 </section>
               )}
@@ -243,7 +269,7 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
 
       {data.audits.length > 0 && (
         <section>
-          <AuditList audits={data.audits} aiPending={aiPending} />
+          <AuditList audits={data.audits} previous={data.previous} aiPending={aiPending} />
         </section>
       )}
 

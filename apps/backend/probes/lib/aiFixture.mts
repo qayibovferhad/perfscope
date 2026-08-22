@@ -62,6 +62,12 @@ export function trimForAi(result: AnalysisResult): AnalysisResult {
       : undefined,
     thirdParty:      result.thirdParty,
     clsData:         result.clsData,
+    // Kept whole since the context started summarising them (peak/average/sample count,
+    // INP and input delay): trimming the point list would change the sample count the
+    // prompt quotes, and a fixture that feeds the model something the product does not
+    // is worse than a slightly larger file.
+    heapMemoryData:  result.heapMemoryData,
+    interactionData: result.interactionData,
     // Long tasks only. `buildPageContext` filters to `isLongTask` and takes the six
     // longest, and the scorer looks at nothing else, so the other 3000 trace events on a
     // news site cannot change a single word of the answer — they were just half the file.

@@ -12,7 +12,7 @@ import type { AnalysisResult, ComparisonSide, CoreWebVitals, CruxData, RumSummar
 import type { RecommendationHistoryEntry } from '../aiRecommendation.service.js';
 import type { PreviousRun } from '../previousRun.service.js';
 import type { CompetitorComparison } from '../competitorContext.service.js';
-import { diffResources, resourceDiffHasChanges, formatResourceDiff } from '../../lib/resourceDiff.js';
+import { diffResources, resourceDiffHasChanges, formatResourceDiff, snapshotOf } from '../../lib/resourceDiff.js';
 import { attributeLongTasks } from '../../lib/longTaskAttribution.js';
 import { compareLabAndField, formatGapLines, rumAsFieldData } from '../../lib/labFieldComparison.js';
 import { findSitewideVendors, describeSitewideVendor, type OtherRouteVendors } from '../../lib/crossPageVendors.js';
@@ -147,14 +147,7 @@ export function buildPageContext(
   // scores/metrics alone, same as before this existed).
   const changeSince = previous?.resources && result.resources
     ? (() => {
-        const diff = diffResources(
-          {
-            requests: result.resources!.requests,
-            detectedLibraries: result.resources!.detectedLibraries,
-            thirdParty: result.thirdParty ?? [],
-          },
-          previous.resources,
-        );
+        const diff = diffResources(snapshotOf(result), previous.resources);
         if (!resourceDiffHasChanges(diff)) return '';
 
         const lines = formatResourceDiff(diff).map(l => `  ${l}`);
@@ -218,6 +211,36 @@ export function buildPageContext(
       })()
     : '';
 
+  /**
+   * What the page did to the browser after it finished loading.
+   *
+   * Both of these were charted in the analyzer and never reached the model, so a question
+   * as direct as "what is the peak heap" was answered, correctly, with "your audit evidence
+   * does not contain that" — grounding working over an evidence set that was missing a
+   * piece it already had. Summarised rather than listed: a heap trace is a thousand points
+   * and the answer lives in three numbers.
+   */
+  const heap = result.heapMemoryData
+    ? (() => {
+        const points = result.heapMemoryData.points;
+        const first = points[0]?.heapMb;
+        const last  = points[points.length - 1]?.heapMb;
+        // Ending well above where it started is the shape of a leak — worth saying, but
+        // as a shape, not a diagnosis: one page load cannot prove a leak.
+        const drift = first !== undefined && last !== undefined && last > first * 1.5
+          ? `, ending at ${Math.round(last)}MB from ${Math.round(first)}MB — it grew through the run rather than settling`
+          : '';
+        return `\nJavaScript heap during this run: peak ${Math.round(result.heapMemoryData.peakMb)}MB, average ${Math.round(result.heapMemoryData.averageMb)}MB over ${points.length} samples${drift}.\n`;
+      })()
+    : '';
+
+  // INP and input delay come from the trace of this run. Lighthouse does not click
+  // anything, so these describe the interactions the page made with itself while
+  // loading — real evidence about responsiveness, but not a measurement of a user.
+  const interactions = result.interactionData
+    ? `\nResponsiveness measured during this run: INP ${fmtMs(result.interactionData.inpMs)}, average input delay ${fmtMs(result.interactionData.avgInputDelayMs)}, total blocking ${fmtMs(result.interactionData.totalBlockingTimeMs)} across ${result.interactionData.events.length} recorded interaction${result.interactionData.events.length === 1 ? '' : 's'}.\n`
+    : '';
+
   const context = `URL: ${result.url}
 ${measurementNote}${previous ? `Previous run (${previous.at}): performance ${previous.scores.performance}, LCP ${fmtMs(previous.metrics.lcp)}, TBT ${fmtMs(previous.metrics.tbt)}, CLS ${previous.metrics.cls.toFixed(3)}\n` : 'No earlier audit of this page to compare against.\n'}${changeSince}${fieldComparison}${rumComparison}${competitorComparison}Scores: performance ${s.performance}, accessibility ${s.accessibility}, best practices ${s.bestPractices}, SEO ${s.seo}
 LCP ${fmtMs(result.metrics.lcp)}, TBT ${fmtMs(result.metrics.tbt)}, CLS ${result.metrics.cls.toFixed(3)}, FCP ${fmtMs(result.metrics.fcp)}, TTI ${fmtMs(result.metrics.tti)}
@@ -233,7 +256,7 @@ ${heaviest || '  (none recorded)'}
 
 Layout shifts:
 ${shifts || '  (none)'}
-
+${heap}${interactions}
 Third-party vendors:
 ${vendors || '  (none)'}
 ${sitewideLines}

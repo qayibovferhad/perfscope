@@ -95,8 +95,26 @@ const IMPACT_COLOR = {
 
 // ── Main export ──────────────────────────────────────────
 
+/**
+ * "Δ vs previous" for one number, or an empty string when there is no baseline.
+ *
+ * Deliberately dumber than the dashboard's DeltaBadge: a terminal report is read once,
+ * usually in CI output next to a pass/fail, so it shows the movement and leaves the
+ * "is this noise" judgement to the thresholds that actually gate the build (see
+ * budget.js). Direction is all it has to get right — up is good for a score, bad for a
+ * timing.
+ */
+function deltaText(curr, prev, { higherIsBetter, format }) {
+  if (typeof prev !== 'number' || typeof curr !== 'number') return '';
+  const diff = curr - prev;
+  if (diff === 0) return chalk.dim(' (=)');
+  const better = higherIsBetter ? diff > 0 : diff < 0;
+  const color  = better ? chalk.greenBright : chalk.redBright;
+  return color(` (${diff > 0 ? '+' : '-'}${format(Math.abs(diff))})`);
+}
+
 export function printReport(result, originalUrl) {
-  const { url, scores, metrics, aiInsights, aiMetricNotes, aiWaterfallNarrative, audits, timestamp } = result;
+  const { url, scores, metrics, aiInsights, aiMetricNotes, aiWaterfallNarrative, audits, timestamp, previous } = result;
 
   const date = timestamp
     ? new Date(timestamp).toLocaleString('en-US', {
@@ -130,10 +148,23 @@ export function printReport(result, originalUrl) {
     ['SEO',            scores?.seo            ?? 0],
   ];
 
-  for (const [label, val] of scoreMap) {
+  const prevScores = previous?.scores;
+  const scoreKeys  = ['performance', 'accessibility', 'bestPractices', 'seo'];
+
+  for (const [i, [label, val]] of scoreMap.entries()) {
     const n     = Math.round(val > 1 ? val : val * 100);
     const color = scoreColor(n);
-    console.log(`  ${pad(chalk.dim(label), 22)} ${scoreBar(n)} ${color(pad(String(n), 4))} ${scoreLabel(n)}`);
+    const delta = deltaText(n, prevScores?.[scoreKeys[i]], {
+      higherIsBetter: true, format: (d) => String(Math.round(d)),
+    });
+    console.log(`  ${pad(chalk.dim(label), 22)} ${scoreBar(n)} ${color(pad(String(n), 4))} ${scoreLabel(n)}${delta}`);
+  }
+
+  if (previous?.at) {
+    console.log('');
+    console.log(chalk.dim(`  Compared with the run from ${new Date(previous.at).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    })}`));
   }
 
   console.log('');
@@ -150,7 +181,10 @@ export function printReport(result, originalUrl) {
     const label = BANDS[key]?.label ?? key.toUpperCase();
     const fmt   = fmtMetric(key, raw);
     const { label: statusLabel, color } = metricStatus(key, raw);
-    console.log(`  ${pad(chalk.dim(label), 10)} ${pad(fmt, 15)} ${color(statusLabel)}`);
+    const delta = deltaText(raw, previous?.metrics?.[key], {
+      higherIsBetter: false, format: (d) => fmtMetric(key, d),
+    });
+    console.log(`  ${pad(chalk.dim(label), 10)} ${pad(fmt, 15)} ${color(statusLabel)}${delta}`);
     const note = aiMetricNotes?.[key];
     if (note) for (const line of wrapText(note, W - 14)) console.log(`             ${chalk.dim.italic(line)}`);
   }

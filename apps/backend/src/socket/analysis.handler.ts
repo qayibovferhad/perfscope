@@ -10,7 +10,7 @@ import type {
 } from '@perfscope/shared';
 import type { InterServerEvents, SocketData } from '../types/socket.js';
 import { lighthouseService } from '../services/lighthouse.service.js';
-import { enrichWithAi, persistAudit } from '../services/auditPipeline.js';
+import { attachPreviousRun, enrichWithAi, persistAudit } from '../services/auditPipeline.js';
 import { hasSession, extractSessionData } from '../services/authAuditSession.js';
 import { findWebsiteByHost } from '../services/websiteLookup.js';
 import { recordLoginWall, dropStaleSession } from '../services/loginWall.service.js';
@@ -111,6 +111,11 @@ async function runAudit({
   try {
     const result = await measure(onPartial, analysisId);
 
+    // Before the emit, deliberately. The deltas belong to the numbers they annotate: sent
+    // afterwards, every score and vital on the page would re-render with an arrow seconds
+    // after the reader had already taken the number in. One indexed query buys that.
+    const previous = await attachPreviousRun(result, userId);
+
     // The scores exist now; the user gets them now. Gemini is a second network round
     // trip of 2–4 s that used to sit between the audit finishing and this emit — and
     // for the weeks the model name was dead, that wait bought nothing but a 404.
@@ -128,7 +133,7 @@ async function runAudit({
     // AI failure (it logs and returns nothing), so a dead model costs a log line, not the save.
     // 'deep' only here: this is the one entry path with a person watching the page the
     // extra commentary decorates.
-    const ai = await enrichWithAi(result, { depth: 'deep', userId });
+    const ai = await enrichWithAi(result, { depth: 'deep', userId, previous });
 
     // Emitted unconditionally, even when every field is empty. The client shows a skeleton
     // from `analysis:complete` until this arrives, so a silent AI phase — no key, a dead

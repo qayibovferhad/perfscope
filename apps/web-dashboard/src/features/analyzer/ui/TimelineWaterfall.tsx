@@ -8,11 +8,12 @@ import { useTimelineContext } from '../model/TimelineContext';
 import { useWaterfallPlayhead } from '../model/useWaterfallPlayhead';
 import { LEFT_W, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
 import { MAX_ROWS, TICK_COUNT } from '../lib/waterfall';
+import { buildChangeMap } from '../lib/resourceChange';
 import { WaterfallRow } from './WaterfallRow';
 import { FlameChart } from './FlameChart';
 import { findClosestFrameIndex } from '@/entities/analysis';
 import type {
-  ParsedResources, NetworkRequest, TimelineData, FlameChartData,
+  ParsedResources, NetworkRequest, TimelineData, FlameChartData, ResourceDiff,
 } from '@/entities/analysis';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -21,10 +22,13 @@ export function TimelineWaterfall({
   resources,
   timelineData,
   flameChartData,
+  changes,
 }: {
   resources:       ParsedResources;
   timelineData:    TimelineData;
   flameChartData?: FlameChartData;
+  /** What moved since the previous run, for the per-row tags. */
+  changes?:        ResourceDiff | undefined;
 }) {
   const ctx = useTimelineContext();
   const { frames, metrics, networkOffsetMs } = timelineData;
@@ -38,6 +42,8 @@ export function TimelineWaterfall({
       .sort((a, b) => a.startTime - b.startTime)
       .slice(0, MAX_ROWS),
   [resources.requests]);
+
+  const changeMap = useMemo(() => buildChangeMap(changes), [changes]);
 
   const wfMs   = useMemo(() => rows.reduce((mx, r) => Math.max(mx, r.endTime), 0), [rows]);
   const axisMs = maxTiming > 0 ? maxTiming : wfMs;
@@ -339,6 +345,7 @@ export function TimelineWaterfall({
               barStyle="agnostic"
               dense
               trackHover
+              change={changeMap.get(req.url)}
               isSelected={selectedIdx === i}
               onSelect={() => handleSelect(i)}
               onDeselect={handleDeselect}

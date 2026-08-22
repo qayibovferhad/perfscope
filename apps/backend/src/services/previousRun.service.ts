@@ -1,4 +1,4 @@
-import type { PerformanceScores, CoreWebVitals } from '@perfscope/shared';
+import type { PerformanceScores, CoreWebVitals, AuditFormFactor } from '@perfscope/shared';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
 import type { ResourceSnapshot } from '../lib/resourceDiff.js';
@@ -8,8 +8,24 @@ export interface PreviousRun {
   analysisId: string;
   scores:     PerformanceScores;
   metrics:    CoreWebVitals;
+  /** Date only (YYYY-MM-DD) — what a prompt reads. `atIso` is what the UI formats. */
   at:         string;
+  atIso:      string;
   resources:  ResourceSnapshot;
+  /** The audits that were failing in that run — the other half of "what changed". */
+  audits:     { id: string; title: string }[];
+}
+
+/**
+ * Runs saved before the form-factor toggle existed carry no `formFactor` at all, and
+ * `lighthouse.service.ts` defaults a run without one to `'desktop'` (see `full.formFactor =
+ * formFactor ?? 'desktop'`). Treating a missing field as desktop is therefore not a guess:
+ * it is the same default the run itself would have been given.
+ */
+function formFactorFilter(formFactor: AuditFormFactor): Record<string, unknown> {
+  return formFactor === 'desktop'
+    ? { $or: [{ 'fullResult.formFactor': 'desktop' }, { 'fullResult.formFactor': { $exists: false } }] }
+    : { 'fullResult.formFactor': 'mobile' };
 }
 
 /**
@@ -25,11 +41,22 @@ export interface PreviousRun {
  */
 export async function getPreviousRun(
   userId: string, url: string, before: Date,
+  /**
+   * Compare like with like. A mobile audit next to yesterday's desktop one would report a
+   * 30-point "regression" that is only the emulation changing, and every resource would
+   * look resized. Omitted (an older caller) means no filtering, which is the behaviour
+   * this function had before the deltas needed it.
+   */
+  formFactor?: AuditFormFactor | undefined,
 ): Promise<PreviousRun | null> {
   const doc = await HistoryModel
-    .findOne({ userId, url, createdAt: { $lt: before }, ...HAS_RESULT_FILTER })
+    .findOne({
+      userId, url, createdAt: { $lt: before },
+      ...HAS_RESULT_FILTER,
+      ...(formFactor ? formFactorFilter(formFactor) : {}),
+    })
     .sort({ createdAt: -1 })
-    .select('analysisId scores metrics createdAt fullResult.resources.requests fullResult.resources.detectedLibraries fullResult.thirdParty')
+    .select('analysisId scores metrics createdAt fullResult.resources.requests fullResult.resources.detectedLibraries fullResult.thirdParty fullResult.audits.id fullResult.audits.title')
     .lean()
     .catch(() => null);
   if (!doc) return null;
@@ -38,14 +65,21 @@ export async function getPreviousRun(
     fullResult?: {
       resources?: { requests?: { url?: string; transferSize?: number; resourceType?: string }[]; detectedLibraries?: { name?: string }[] };
       thirdParty?: { name?: string; transferSize?: number; mainThreadTime?: number }[];
+      audits?: { id?: string; title?: string }[];
     };
   }).fullResult;
+
+  const atIso = new Date(doc.createdAt as unknown as string).toISOString();
 
   return {
     analysisId: doc.analysisId,
     scores:  doc.scores,
     metrics: doc.metrics,
-    at:      new Date(doc.createdAt as unknown as string).toISOString().slice(0, 10),
+    at:      atIso.slice(0, 10),
+    atIso,
+    audits: (fr?.audits ?? [])
+      .filter((a): a is { id: string; title?: string } => typeof a.id === 'string')
+      .map(a => ({ id: a.id, title: a.title ?? a.id })),
     resources: {
       requests: (fr?.resources?.requests ?? [])
         .filter((r): r is { url: string; transferSize: number; resourceType: string } => typeof r.url === 'string')

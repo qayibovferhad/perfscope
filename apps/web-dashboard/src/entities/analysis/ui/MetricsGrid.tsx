@@ -6,6 +6,7 @@ import { VITAL_THRESHOLDS, type CoreWebVitals, type AiMetricNotes } from '@perfs
 import { vitalBand, BAND_TEXT, BAND_TILE, BAND_BAR } from '../lib';
 import { goodThreshold } from '../glossary';
 import { GlossaryTip } from './GlossaryTip';
+import { DeltaBadge } from './DeltaBadge';
 import { AiNote } from '@/shared/ui/ai-card';
 
 function clamp(v: number) { return Math.min(100, Math.max(0, v)); }
@@ -21,13 +22,17 @@ const VITALS = [
 
 interface Props {
   metrics: CoreWebVitals;
+  /** The same vitals from the previous run of this page, when there is one. */
+  previous?: CoreWebVitals | undefined;
+  /** ISO timestamp of that run, for the delta tooltips. */
+  since?: string | undefined;
   /** Gemini's line on each vital that is not already good. Absent on stored results with no AI. */
   notes?: AiMetricNotes;
   /** A live audit is still waiting on the commentary. */
   aiPending?: boolean;
 }
 
-export function MetricsGrid({ metrics, notes, aiPending }: Props) {
+export function MetricsGrid({ metrics, previous, since, notes, aiPending }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
       {VITALS.map(({ key, abbr, label, icon: Icon, fmt }) => {
@@ -61,9 +66,13 @@ export function MetricsGrid({ metrics, notes, aiPending }: Props) {
               <span className="font-mono text-[11px] text-ld-text-3">{goodThreshold(key)}</span>
             </div>
 
-            {/* Value */}
-            <p className={cn('font-mono text-[26px] font-semibold tracking-[-0.02em]', BAND_TEXT[status])}>
+            {/* Value, and how it moved since the previous run */}
+            <p className={cn('font-mono text-[26px] font-semibold tracking-[-0.02em] flex items-baseline gap-[10px]', BAND_TEXT[status])}>
               {fmt(value)}
+              {/* Formatted with the tile's own formatter, so a delta reads in the same
+                  unit as the number above it — 0.8s under an LCP in seconds, 40ms under
+                  a TBT in milliseconds. */}
+              <DeltaBadge kind={key} curr={value} prev={previous?.[key]} since={since} format={fmt} />
             </p>
 
             {/* Full name */}

@@ -1,7 +1,7 @@
 import { detectRegressions, hasResult, fmtMs, fmtCls, type RegressionFinding, type AnalysisResult } from '@perfscope/shared';
 import { dispatchAlert, hasAlertChannel } from './alerts.service.js';
 import { getPreviousRun } from './previousRun.service.js';
-import { diffResources, resourceDiffHasChanges, formatResourceDiff } from '../lib/resourceDiff.js';
+import { diffResources, resourceDiffHasChanges, formatResourceDiff, snapshotOf } from '../lib/resourceDiff.js';
 import type { PreviousRun } from './previousRun.service.js';
 import type { OwningSite } from './websiteLookup.js';
 
@@ -38,14 +38,7 @@ function describe(f: RegressionFinding): string {
 function whatChanged(result: AnalysisResult, previous: PreviousRun): string[] {
   if (!result.resources) return [];
 
-  const diff = diffResources(
-    {
-      requests: result.resources.requests,
-      detectedLibraries: result.resources.detectedLibraries,
-      thirdParty: result.thirdParty ?? [],
-    },
-    previous.resources,
-  );
+  const diff = diffResources(snapshotOf(result), previous.resources);
   return resourceDiffHasChanges(diff) ? formatResourceDiff(diff) : [];
 }
 
@@ -65,7 +58,12 @@ export async function checkRegressions(
   // The same lookup `analysePage` uses, rather than a second one beside it: it already
   // excludes failed all-zero runs, which the local copy did not — a regression hidden
   // behind a failed run is still a regression, and comparing against zeros hid it.
-  const previous = await getPreviousRun(userId, result.url, new Date(result.timestamp));
+  //
+  // Matched on form factor as well: a mobile audit measured against yesterday's desktop
+  // one differs by the emulation, not by anything that shipped, and it would fire an alert
+  // naming resources that never changed. Runs saved before the toggle count as desktop,
+  // which is the default they were run with.
+  const previous = await getPreviousRun(userId, result.url, new Date(result.timestamp), result.formFactor);
   if (!previous) return;  // first audit of this URL — nothing to regress against
 
   const findings = detectRegressions(

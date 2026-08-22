@@ -2,7 +2,7 @@ import type { Types } from 'mongoose';
 import { routesDueAt } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { lighthouseService } from './lighthouse.service.js';
-import { enrichWithAi, persistAudit } from './auditPipeline.js';
+import { attachPreviousRun, enrichWithAi, persistAudit } from './auditPipeline.js';
 
 // Milliseconds between each audit within a nightly run — avoids saturating the host.
 const AUDIT_DELAY_MS = 15_000;
@@ -44,7 +44,11 @@ async function runSingleAudit(
       ? await lighthouseService.analyzeWithInjectedSession(fullUrl, sessionData as any, () => {}, { priority: 'background', runs: SCHEDULED_RUNS })
       : await lighthouseService.analyzeStreaming(fullUrl, () => {}, { priority: 'background', runs: SCHEDULED_RUNS });
 
-    await enrichWithAi(result);
+    // Deltas on a scheduled run are the point of scheduling one — this is the audit
+    // nobody watched, so "what moved overnight" has to be readable when it is opened
+    // hours later. Cheap enough for the cron: one indexed query per audit.
+    const previous = await attachPreviousRun(result, userId);
+    await enrichWithAi(result, { previous });
     await persistAudit(result, userId, projectId, 'scheduled');
 
     console.log(`[NightlyAudit] Done — perf score: ${result.scores.performance}`);

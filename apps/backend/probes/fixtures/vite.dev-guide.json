@@ -1,7 +1,7 @@
 {
-  "id": "5ef2f371-d911-4333-90a0-c4a753ee3247",
+  "id": "95e912fc-4b14-4e5a-8813-6cf507e5f424",
   "url": "https://vite.dev/guide/",
-  "timestamp": "2026-08-22T08:59:14.924Z",
+  "timestamp": "2026-08-22T14:17:15.705Z",
   "scores": {
     "performance": 100,
     "accessibility": 99,
@@ -9,12 +9,12 @@
     "seo": 100
   },
   "metrics": {
-    "fcp": 1151.27,
-    "lcp": 1246.447,
-    "tbt": 82.173,
-    "cls": 0.006228,
-    "si": 1221,
-    "tti": 1716.97
+    "fcp": 822.334,
+    "lcp": 884.836,
+    "tbt": 46.495000000000005,
+    "cls": 0.006191,
+    "si": 861,
+    "tti": 1060.808
   },
   "audits": [
     {
@@ -35,24 +35,24 @@
       "title": "Font display",
       "description": "Consider setting [font-display](https://developer.chrome.com/blog/font-display) to swap or optional to ensure text is consistently visible. swap can be further optimized to mitigate layout shifts with [font metric overrides](https://developer.chrome.com/blog/font-fallbacks).",
       "score": 0,
-      "displayValue": "Est savings of 640 ms",
+      "displayValue": "Est savings of 230 ms",
       "impact": "critical",
       "details": [
         {
+          "url": "https://vite.dev/assets/APK-Protocol-Semi-Bold.CC2BASA5.woff2",
+          "value": "230ms wasted"
+        },
+        {
           "url": "https://vite.dev/assets/APK-Protocol-Medium.C7Mq9oGh.woff2",
-          "value": "635ms wasted"
+          "value": "230ms wasted"
         },
         {
           "url": "https://vite.dev/assets/KHTekaMono-Medium.CxAWoJPq.woff2",
-          "value": "575ms wasted"
+          "value": "205ms wasted"
         },
         {
           "url": "https://vite.dev/assets/KHTekaMono-Regular.CiZ9ZkmZ.woff2",
-          "value": "555ms wasted"
-        },
-        {
-          "url": "https://vite.dev/assets/APK-Protocol-Semi-Bold.CC2BASA5.woff2",
-          "value": "515ms wasted"
+          "value": "185ms wasted"
         }
       ]
     },
@@ -79,19 +79,19 @@
       "details": [
         {
           "url": "https://vite.dev/assets/KHTekaMono-Medium.CxAWoJPq.woff2",
-          "value": "578ms wasted"
+          "value": "210ms wasted"
         },
         {
           "url": "https://vite.dev/assets/APK-Protocol-Semi-Bold.CC2BASA5.woff2",
-          "value": "519ms wasted"
+          "value": "234ms wasted"
         },
         {
           "url": "https://vite.dev/assets/APK-Protocol-Medium.C7Mq9oGh.woff2",
-          "value": "636ms wasted"
+          "value": "233ms wasted"
         },
         {
           "url": "https://vite.dev/assets/KHTekaMono-Regular.CiZ9ZkmZ.woff2",
-          "value": "558ms wasted"
+          "value": "189ms wasted"
         }
       ]
     },
@@ -160,7 +160,7 @@
           "value": "2KB wasted"
         }
       ],
-      "savingsBytes": 5141
+      "savingsBytes": 5073
     },
     {
       "id": "modern-image-formats",
@@ -282,7 +282,7 @@
       {
         "url": "https://vite.dev/guide/",
         "resourceType": "document",
-        "transferSize": 12414,
+        "transferSize": 12413,
         "resourceSize": 90314,
         "statusCode": 200,
         "mimeType": "text/html",
@@ -290,189 +290,189 @@
         "detectedLibrary": null,
         "isCritical": false,
         "startTime": 0,
-        "endTime": 829,
-        "ttfb": 2,
-        "contentDownloadTime": 828
+        "endTime": 618,
+        "ttfb": 1,
+        "contentDownloadTime": 617
       },
       {
         "url": "https://vite.dev/assets/style.DYcMwaPo.css",
         "resourceType": "stylesheet",
-        "transferSize": 43801,
+        "transferSize": 43768,
         "resourceSize": 243821,
         "statusCode": 200,
         "mimeType": "text/css",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 846,
-        "endTime": 1029,
-        "ttfb": 6,
-        "contentDownloadTime": 176
+        "startTime": 614,
+        "endTime": 759,
+        "ttfb": 3,
+        "contentDownloadTime": 142
       },
       {
         "url": "https://vite.dev/vp-icons.css",
         "resourceType": "stylesheet",
-        "transferSize": 127,
+        "transferSize": 126,
         "resourceSize": 0,
         "statusCode": 200,
         "mimeType": "text/css",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 945,
-        "ttfb": 6,
-        "contentDownloadTime": 93
+        "startTime": 614,
+        "endTime": 696,
+        "ttfb": 3,
+        "contentDownloadTime": 79
       },
       {
         "url": "https://vite.dev/assets/chunks/metadata.7560197d.js",
         "resourceType": "script",
-        "transferSize": 2979,
+        "transferSize": 2949,
         "resourceSize": 10557,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 947,
-        "ttfb": 6,
-        "contentDownloadTime": 94
+        "startTime": 614,
+        "endTime": 702,
+        "ttfb": 3,
+        "contentDownloadTime": 85
       },
       {
         "url": "https://vite.dev/assets/app.ByX4a5ns.js",
         "resourceType": "script",
-        "transferSize": 824,
+        "transferSize": 796,
         "resourceSize": 1378,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1099,
-        "ttfb": 6,
-        "contentDownloadTime": 246
+        "startTime": 614,
+        "endTime": 759,
+        "ttfb": 3,
+        "contentDownloadTime": 142
       },
       {
         "url": "https://vite.dev/assets/chunks/framework.Cx3qj2MO.js",
         "resourceType": "script",
-        "transferSize": 42586,
+        "transferSize": 42559,
         "resourceSize": 112856,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1097,
-        "ttfb": 6,
-        "contentDownloadTime": 244
+        "startTime": 614,
+        "endTime": 853,
+        "ttfb": 3,
+        "contentDownloadTime": 235
       },
       {
         "url": "https://vite.dev/assets/chunks/theme.B2B3Fj5s.js",
         "resourceType": "script",
-        "transferSize": 42772,
+        "transferSize": 42771,
         "resourceSize": 141249,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1534,
-        "ttfb": 6,
-        "contentDownloadTime": 681
+        "startTime": 614,
+        "endTime": 823,
+        "ttfb": 3,
+        "contentDownloadTime": 205
       },
       {
         "url": "https://vite.dev/assets/chunks/assets.qdzaMdnh.js",
         "resourceType": "script",
-        "transferSize": 5037,
+        "transferSize": 5061,
         "resourceSize": 13638,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1526,
-        "ttfb": 6,
-        "contentDownloadTime": 672
+        "startTime": 614,
+        "endTime": 792,
+        "ttfb": 3,
+        "contentDownloadTime": 174
       },
       {
         "url": "https://vite.dev/assets/guide_index.md.Bff3qJkh.lean.js",
         "resourceType": "script",
-        "transferSize": 915,
+        "transferSize": 914,
         "resourceSize": 1526,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1098,
-        "ttfb": 6,
-        "contentDownloadTime": 245
+        "startTime": 614,
+        "endTime": 964,
+        "ttfb": 3,
+        "contentDownloadTime": 346
       },
       {
         "url": "https://vite.dev/assets/footer-background.BIgtbvhx.jpg",
         "resourceType": "image",
-        "transferSize": 360636,
+        "transferSize": 360603,
         "resourceSize": 360298,
         "statusCode": 200,
         "mimeType": "image/jpeg",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": true,
-        "startTime": 847,
-        "endTime": 1535,
-        "ttfb": 6,
-        "contentDownloadTime": 681
+        "startTime": 614,
+        "endTime": 1011,
+        "ttfb": 3,
+        "contentDownloadTime": 393
       },
       {
         "url": "https://vite.dev/assets/vite-dark.D2ACe7TL.svg",
         "resourceType": "image",
-        "transferSize": 2063,
+        "transferSize": 2048,
         "resourceSize": 11960,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1097,
-        "ttfb": 6,
-        "contentDownloadTime": 244
+        "startTime": 614,
+        "endTime": 963,
+        "ttfb": 3,
+        "contentDownloadTime": 346
       },
       {
         "url": "https://vite.dev/assets/vite-light.t8GCa_VF.svg",
         "resourceType": "image",
-        "transferSize": 2002,
+        "transferSize": 1991,
         "resourceSize": 11954,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 848,
-        "endTime": 1536,
-        "ttfb": 195,
-        "contentDownloadTime": 493
+        "startTime": 614,
+        "endTime": 1013,
+        "ttfb": 151,
+        "contentDownloadTime": 248
       },
       {
         "url": "https://vite.dev/assets/viteconf.Dvk5Ghxu.svg",
         "resourceType": "image",
-        "transferSize": 3078,
+        "transferSize": 3025,
         "resourceSize": 9657,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 848,
-        "endTime": 1536,
-        "ttfb": 195,
-        "contentDownloadTime": 493
+        "startTime": 619,
+        "endTime": 1012,
+        "ttfb": 146,
+        "contentDownloadTime": 247
       },
       {
         "url": "data:image/svg+xml,%3csvg%20viewBox='0%200%2023%2014'%20fill='none'%20xmlns='http://www.w3.org/2000…",
@@ -484,8 +484,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1053,
-        "endTime": 1053,
+        "startTime": 778,
+        "endTime": 778,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -499,115 +499,100 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1060,
-        "endTime": 1060,
+        "startTime": 782,
+        "endTime": 782,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
       {
         "url": "https://vite.dev/assets/KHTekaMono-Medium.CxAWoJPq.woff2",
         "resourceType": "font",
-        "transferSize": 41209,
+        "transferSize": 41187,
         "resourceSize": 41032,
         "statusCode": 200,
         "mimeType": "font/woff2",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1065,
-        "endTime": 1706,
-        "ttfb": 62,
-        "contentDownloadTime": 578
+        "startTime": 784,
+        "endTime": 1023,
+        "ttfb": 30,
+        "contentDownloadTime": 210
       },
       {
         "url": "https://vite.dev/assets/inter-roman-latin.Di8DUHzh.woff2",
         "resourceType": "font",
-        "transferSize": 67925,
+        "transferSize": 67976,
         "resourceSize": 67792,
         "statusCode": 200,
         "mimeType": "font/woff2",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1066,
-        "endTime": 1765,
-        "ttfb": 62,
-        "contentDownloadTime": 637
+        "startTime": 784,
+        "endTime": 1019,
+        "ttfb": 30,
+        "contentDownloadTime": 205
       },
       {
         "url": "https://vite.dev/assets/APK-Protocol-Semi-Bold.CC2BASA5.woff2",
         "resourceType": "font",
-        "transferSize": 38436,
+        "transferSize": 38395,
         "resourceSize": 38280,
         "statusCode": 200,
         "mimeType": "font/woff2",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1066,
-        "endTime": 1648,
-        "ttfb": 63,
-        "contentDownloadTime": 519
+        "startTime": 784,
+        "endTime": 1048,
+        "ttfb": 30,
+        "contentDownloadTime": 234
       },
       {
         "url": "https://vite.dev/assets/APK-Protocol-Medium.C7Mq9oGh.woff2",
         "resourceType": "font",
-        "transferSize": 38255,
+        "transferSize": 38275,
         "resourceSize": 38140,
         "statusCode": 200,
         "mimeType": "font/woff2",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1066,
-        "endTime": 1765,
-        "ttfb": 63,
-        "contentDownloadTime": 636
+        "startTime": 784,
+        "endTime": 1047,
+        "ttfb": 30,
+        "contentDownloadTime": 233
       },
       {
         "url": "https://vite.dev/assets/voice.BpPsJoey.svg",
         "resourceType": "other",
-        "transferSize": 560,
+        "transferSize": 565,
         "resourceSize": 444,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1132,
-        "endTime": 1767,
+        "startTime": 814,
+        "endTime": 1014,
         "ttfb": 1,
-        "contentDownloadTime": 635
-      },
-      {
-        "url": "https://vite.dev/vite.mp3",
-        "resourceType": "media",
-        "transferSize": 3238,
-        "resourceSize": 3072,
-        "statusCode": 206,
-        "mimeType": "audio/mpeg",
-        "isThirdParty": false,
-        "detectedLibrary": null,
-        "isCritical": false,
-        "startTime": 1141,
-        "endTime": 1768,
-        "ttfb": 1,
-        "contentDownloadTime": 627
+        "contentDownloadTime": 199
       },
       {
         "url": "https://vite.dev/assets/KHTekaMono-Regular.CiZ9ZkmZ.woff2",
         "resourceType": "font",
-        "transferSize": 41087,
+        "transferSize": 41053,
         "resourceSize": 40928,
         "statusCode": 200,
         "mimeType": "font/woff2",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1150,
-        "endTime": 1776,
-        "ttfb": 68,
-        "contentDownloadTime": 558
+        "startTime": 820,
+        "endTime": 1065,
+        "ttfb": 56,
+        "contentDownloadTime": 189
       },
       {
         "url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 …",
@@ -619,8 +604,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1156,
-        "endTime": 1156,
+        "startTime": 826,
+        "endTime": 826,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -634,8 +619,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1157,
-        "endTime": 1158,
+        "startTime": 827,
+        "endTime": 827,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -649,8 +634,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1159,
-        "endTime": 1159,
+        "startTime": 828,
+        "endTime": 828,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -664,8 +649,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1160,
-        "endTime": 1160,
+        "startTime": 829,
+        "endTime": 829,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -679,8 +664,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1161,
-        "endTime": 1161,
+        "startTime": 830,
+        "endTime": 830,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -694,8 +679,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1162,
-        "endTime": 1163,
+        "startTime": 831,
+        "endTime": 831,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -709,8 +694,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1173,
-        "endTime": 1173,
+        "startTime": 840,
+        "endTime": 840,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -724,25 +709,40 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1176,
-        "endTime": 1176,
+        "startTime": 842,
+        "endTime": 842,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
       {
+        "url": "https://vite.dev/vite.mp3",
+        "resourceType": "media",
+        "transferSize": 3204,
+        "resourceSize": 3072,
+        "statusCode": 206,
+        "mimeType": "audio/mpeg",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 883,
+        "endTime": 1066,
+        "ttfb": 1,
+        "contentDownloadTime": 182
+      },
+      {
         "url": "https://vite.dev/assets/chunks/Dlg54cen.js",
         "resourceType": "script",
-        "transferSize": 888,
+        "transferSize": 836,
         "resourceSize": 722,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1696,
-        "endTime": 1804,
+        "startTime": 1045,
+        "endTime": 1128,
         "ttfb": 1,
-        "contentDownloadTime": 107
+        "contentDownloadTime": 82
       },
       {
         "url": "https://sponsors.vite.dev/sponsors.json",
@@ -754,10 +754,10 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1710,
-        "endTime": 2048,
+        "startTime": 1055,
+        "endTime": 1403,
         "ttfb": 1,
-        "contentDownloadTime": 337
+        "contentDownloadTime": 347
       },
       {
         "url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='no…",
@@ -769,190 +769,190 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1720,
-        "endTime": 1720,
+        "startTime": 1072,
+        "endTime": 1072,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
       {
         "url": "https://api.iconify.design/lucide.json?icons=languages%2Csearch%2Cx",
         "resourceType": "other",
-        "transferSize": 556,
+        "transferSize": 557,
         "resourceSize": 657,
         "statusCode": 200,
         "mimeType": "application/json",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1752,
-        "endTime": 1859,
+        "startTime": 1106,
+        "endTime": 1152,
         "ttfb": 1,
-        "contentDownloadTime": 106
+        "contentDownloadTime": 45
       },
       {
         "url": "https://api.iconify.design/simple-icons.json?icons=bluesky%2Cdiscord%2Cgithub%2Cmastodon%2Cx",
         "resourceType": "other",
-        "transferSize": 2414,
+        "transferSize": 2410,
         "resourceSize": 3849,
         "statusCode": 200,
         "mimeType": "application/json",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1752,
-        "endTime": 1808,
+        "startTime": 1106,
+        "endTime": 1148,
         "ttfb": 1,
-        "contentDownloadTime": 55
-      },
-      {
-        "url": "https://vite.dev/assets/blog_cloudflare-supports-vite.md.Dt3Z95KV.js",
-        "resourceType": "other",
-        "transferSize": 2226,
-        "resourceSize": 0,
-        "statusCode": 200,
-        "mimeType": "application/javascript",
-        "isThirdParty": false,
-        "detectedLibrary": null,
-        "isCritical": false,
-        "startTime": 1763,
-        "endTime": 1860,
-        "ttfb": 1,
-        "contentDownloadTime": 96
-      },
-      {
-        "url": "https://vite.dev/assets/index.md.Jxgm3HYN.js",
-        "resourceType": "other",
-        "transferSize": 41287,
-        "resourceSize": 0,
-        "statusCode": 200,
-        "mimeType": "application/javascript",
-        "isThirdParty": false,
-        "detectedLibrary": null,
-        "isCritical": false,
-        "startTime": 1763,
-        "endTime": 1916,
-        "ttfb": 1,
-        "contentDownloadTime": 152
-      },
-      {
-        "url": "https://vite.dev/assets/guide_features.md.ZGjCD171.js",
-        "resourceType": "other",
-        "transferSize": 28294,
-        "resourceSize": 0,
-        "statusCode": 200,
-        "mimeType": "application/javascript",
-        "isThirdParty": false,
-        "detectedLibrary": null,
-        "isCritical": false,
-        "startTime": 1763,
-        "endTime": 1860,
-        "ttfb": 1,
-        "contentDownloadTime": 96
+        "contentDownloadTime": 41
       },
       {
         "url": "https://vite.dev/logo-without-border.svg",
         "resourceType": "other",
-        "transferSize": 1876,
+        "transferSize": 1853,
         "resourceSize": 11429,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1832,
-        "endTime": 1917,
+        "startTime": 1116,
+        "endTime": 1195,
+        "ttfb": 0,
+        "contentDownloadTime": 78
+      },
+      {
+        "url": "https://vite.dev/assets/blog_cloudflare-supports-vite.md.Dt3Z95KV.js",
+        "resourceType": "other",
+        "transferSize": 2184,
+        "resourceSize": 0,
+        "statusCode": 200,
+        "mimeType": "application/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 1127,
+        "endTime": 1207,
         "ttfb": 1,
-        "contentDownloadTime": 84
+        "contentDownloadTime": 78
+      },
+      {
+        "url": "https://vite.dev/assets/index.md.Jxgm3HYN.js",
+        "resourceType": "other",
+        "transferSize": 41281,
+        "resourceSize": 0,
+        "statusCode": 200,
+        "mimeType": "application/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 1128,
+        "endTime": 1217,
+        "ttfb": 1,
+        "contentDownloadTime": 89
+      },
+      {
+        "url": "https://vite.dev/assets/guide_features.md.ZGjCD171.js",
+        "resourceType": "other",
+        "transferSize": 28248,
+        "resourceSize": 0,
+        "statusCode": 200,
+        "mimeType": "application/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 1128,
+        "endTime": 1211,
+        "ttfb": 1,
+        "contentDownloadTime": 83
       },
       {
         "url": "https://sponsors.vite.dev/images/voidzero.svg",
         "resourceType": "image",
-        "transferSize": 1077,
+        "transferSize": 1078,
         "resourceSize": 1940,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2277,
-        "ttfb": 1,
-        "contentDownloadTime": 222
+        "startTime": 1409,
+        "endTime": 1629,
+        "ttfb": 0,
+        "contentDownloadTime": 220
       },
       {
         "url": "https://sponsors.vite.dev/images/bolt.svg",
         "resourceType": "image",
-        "transferSize": 780,
+        "transferSize": 874,
         "resourceSize": 1440,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2320,
+        "startTime": 1409,
+        "endTime": 1692,
         "ttfb": 1,
-        "contentDownloadTime": 264
+        "contentDownloadTime": 283
       },
       {
         "url": "https://sponsors.vite.dev/images/nuxtlabs.svg",
         "resourceType": "image",
-        "transferSize": 880,
+        "transferSize": 849,
         "resourceSize": 1551,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2278,
+        "startTime": 1409,
+        "endTime": 1649,
         "ttfb": 1,
-        "contentDownloadTime": 222
+        "contentDownloadTime": 239
       },
       {
         "url": "https://sponsors.vite.dev/images/storyblok.png",
         "resourceType": "image",
-        "transferSize": 6241,
+        "transferSize": 6242,
         "resourceSize": 6104,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2295,
-        "ttfb": 2,
-        "contentDownloadTime": 238
+        "startTime": 1409,
+        "endTime": 1645,
+        "ttfb": 1,
+        "contentDownloadTime": 236
       },
       {
         "url": "https://sponsors.vite.dev/images/coderabbit.png",
         "resourceType": "image",
-        "transferSize": 7313,
+        "transferSize": 7290,
         "resourceSize": 7193,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2341,
-        "ttfb": 2,
-        "contentDownloadTime": 284
+        "startTime": 1409,
+        "endTime": 1691,
+        "ttfb": 1,
+        "contentDownloadTime": 281
       },
       {
         "url": "https://sponsors.vite.dev/images/greptile.png",
         "resourceType": "image",
-        "transferSize": 7350,
+        "transferSize": 7351,
         "resourceSize": 7254,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2301,
-        "ttfb": 2,
-        "contentDownloadTime": 244
+        "startTime": 1409,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 242
       },
       {
         "url": "https://sponsors.vite.dev/images/railway.svg",
@@ -964,25 +964,25 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2317,
-        "ttfb": 2,
-        "contentDownloadTime": 260
+        "startTime": 1409,
+        "endTime": 1693,
+        "ttfb": 0,
+        "contentDownloadTime": 283
       },
       {
         "url": "https://sponsors.vite.dev/images/serpapi.png",
         "resourceType": "image",
-        "transferSize": 13417,
+        "transferSize": 13418,
         "resourceSize": 13311,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2303,
-        "ttfb": 2,
-        "contentDownloadTime": 245
+        "startTime": 1409,
+        "endTime": 1689,
+        "ttfb": 0,
+        "contentDownloadTime": 279
       },
       {
         "url": "https://sponsors.vite.dev/images/mux.svg",
@@ -994,70 +994,70 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2319,
-        "ttfb": 2,
-        "contentDownloadTime": 261
+        "startTime": 1410,
+        "endTime": 1691,
+        "ttfb": 0,
+        "contentDownloadTime": 281
       },
       {
         "url": "https://sponsors.vite.dev/images/nx.svg",
         "resourceType": "image",
-        "transferSize": 1129,
+        "transferSize": 1059,
         "resourceSize": 2093,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2341,
-        "ttfb": 3,
-        "contentDownloadTime": 283
+        "startTime": 1410,
+        "endTime": 1652,
+        "ttfb": 0,
+        "contentDownloadTime": 242
       },
       {
         "url": "https://sponsors.vite.dev/images/transloadit.png",
         "resourceType": "image",
-        "transferSize": 3319,
+        "transferSize": 3320,
         "resourceSize": 3232,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2337,
-        "ttfb": 3,
-        "contentDownloadTime": 279
+        "startTime": 1410,
+        "endTime": 1649,
+        "ttfb": 0,
+        "contentDownloadTime": 239
       },
       {
         "url": "https://sponsors.vite.dev/images/handsontable.svg",
         "resourceType": "image",
-        "transferSize": 2132,
+        "transferSize": 2165,
         "resourceSize": 5614,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2339,
-        "ttfb": 3,
-        "contentDownloadTime": 281
+        "startTime": 1410,
+        "endTime": 1647,
+        "ttfb": 0,
+        "contentDownloadTime": 237
       },
       {
         "url": "https://sponsors.vite.dev/images/mojam.svg",
         "resourceType": "image",
-        "transferSize": 823,
+        "transferSize": 824,
         "resourceSize": 1721,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2336,
-        "ttfb": 3,
-        "contentDownloadTime": 277
+        "startTime": 1410,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 241
       },
       {
         "url": "https://sponsors.vite.dev/images/convex.svg",
@@ -1069,55 +1069,55 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2334,
-        "ttfb": 3,
-        "contentDownloadTime": 276
+        "startTime": 1410,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 241
       },
       {
         "url": "https://sponsors.vite.dev/images/zephyr_cloud.png",
         "resourceType": "image",
-        "transferSize": 4301,
+        "transferSize": 4300,
         "resourceSize": 4171,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2339,
-        "ttfb": 3,
-        "contentDownloadTime": 280
+        "startTime": 1410,
+        "endTime": 1689,
+        "ttfb": 0,
+        "contentDownloadTime": 279
       },
       {
         "url": "https://sponsors.vite.dev/images/catalyst.svg",
         "resourceType": "image",
-        "transferSize": 2412,
+        "transferSize": 2413,
         "resourceSize": 6577,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2331,
-        "ttfb": 3,
-        "contentDownloadTime": 272
+        "startTime": 1410,
+        "endTime": 1690,
+        "ttfb": 0,
+        "contentDownloadTime": 280
       },
       {
         "url": "https://sponsors.vite.dev/images/sanity.svg",
         "resourceType": "image",
-        "transferSize": 1536,
+        "transferSize": 1535,
         "resourceSize": 3309,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2340,
-        "ttfb": 3,
-        "contentDownloadTime": 281
+        "startTime": 1410,
+        "endTime": 1688,
+        "ttfb": 0,
+        "contentDownloadTime": 277
       },
       {
         "url": "https://sponsors.vite.dev/images/follower24.svg",
@@ -1129,96 +1129,96 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2338,
-        "ttfb": 3,
-        "contentDownloadTime": 279
+        "startTime": 1410,
+        "endTime": 1678,
+        "ttfb": 1,
+        "contentDownloadTime": 267
       },
       {
         "url": "https://images.opencollective.com/hirefortuna/b1906f3/logo/460.png",
         "resourceType": "image",
-        "transferSize": 22617,
+        "transferSize": 22615,
         "resourceSize": 21936,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2142,
-        "ttfb": 3,
-        "contentDownloadTime": 82
+        "startTime": 1411,
+        "endTime": 1467,
+        "ttfb": 1,
+        "contentDownloadTime": 56
       },
       {
         "url": "https://avatars.githubusercontent.com/u/107723282?u=2639caa14ce293a0b6202c5766a40bb99ac9697e&v=4",
         "resourceType": "image",
-        "transferSize": 46509,
+        "transferSize": 46526,
         "resourceSize": 45885,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2380,
-        "ttfb": 3,
-        "contentDownloadTime": 321
+        "startTime": 1411,
+        "endTime": 1753,
+        "ttfb": 1,
+        "contentDownloadTime": 342
       },
       {
         "url": "https://images.opencollective.com/bairesdev/48bb773/logo/460.png",
         "resourceType": "image",
-        "transferSize": 20938,
+        "transferSize": 20945,
         "resourceSize": 20290,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2182,
-        "ttfb": 3,
-        "contentDownloadTime": 122
+        "startTime": 1411,
+        "endTime": 1467,
+        "ttfb": 1,
+        "contentDownloadTime": 55
       }
     ],
     "summary": {
       "script": {
         "requestCount": 7,
-        "transferSize": 96001,
+        "transferSize": 95886,
         "resourceSize": 0
       },
       "stylesheet": {
         "requestCount": 2,
-        "transferSize": 43928,
+        "transferSize": 43894,
         "resourceSize": 0
       },
       "image": {
         "requestCount": 25,
-        "transferSize": 517069,
+        "transferSize": 516987,
         "resourceSize": 0
       },
       "font": {
         "requestCount": 5,
-        "transferSize": 226912,
+        "transferSize": 226886,
         "resourceSize": 0
       },
       "document": {
         "requestCount": 1,
-        "transferSize": 12414,
+        "transferSize": 12413,
         "resourceSize": 0
       },
       "media": {
         "requestCount": 1,
-        "transferSize": 3238,
+        "transferSize": 3204,
         "resourceSize": 0
       },
       "other": {
         "requestCount": 13,
-        "transferSize": 171302,
+        "transferSize": 171206,
         "resourceSize": 0
       },
       "total": {
         "requestCount": 54,
-        "transferSize": 1070864,
+        "transferSize": 1070476,
         "resourceSize": 0
       }
     },
@@ -1233,8 +1233,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1053,
-        "endTime": 1053,
+        "startTime": 778,
+        "endTime": 778,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1248,8 +1248,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1060,
-        "endTime": 1060,
+        "startTime": 782,
+        "endTime": 782,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1263,8 +1263,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1156,
-        "endTime": 1156,
+        "startTime": 826,
+        "endTime": 826,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1278,8 +1278,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1157,
-        "endTime": 1158,
+        "startTime": 827,
+        "endTime": 827,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1293,8 +1293,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1159,
-        "endTime": 1159,
+        "startTime": 828,
+        "endTime": 828,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1308,8 +1308,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1160,
-        "endTime": 1160,
+        "startTime": 829,
+        "endTime": 829,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1323,8 +1323,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1161,
-        "endTime": 1161,
+        "startTime": 830,
+        "endTime": 830,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1338,8 +1338,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1162,
-        "endTime": 1163,
+        "startTime": 831,
+        "endTime": 831,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1353,8 +1353,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1173,
-        "endTime": 1173,
+        "startTime": 840,
+        "endTime": 840,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1368,8 +1368,8 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1176,
-        "endTime": 1176,
+        "startTime": 842,
+        "endTime": 842,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
@@ -1383,10 +1383,10 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1710,
-        "endTime": 2048,
+        "startTime": 1055,
+        "endTime": 1403,
         "ttfb": 1,
-        "contentDownloadTime": 337
+        "contentDownloadTime": 347
       },
       {
         "url": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='no…",
@@ -1398,130 +1398,130 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1720,
-        "endTime": 1720,
+        "startTime": 1072,
+        "endTime": 1072,
         "ttfb": 0,
         "contentDownloadTime": 0
       },
       {
         "url": "https://api.iconify.design/lucide.json?icons=languages%2Csearch%2Cx",
         "resourceType": "other",
-        "transferSize": 556,
+        "transferSize": 557,
         "resourceSize": 657,
         "statusCode": 200,
         "mimeType": "application/json",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1752,
-        "endTime": 1859,
+        "startTime": 1106,
+        "endTime": 1152,
         "ttfb": 1,
-        "contentDownloadTime": 106
+        "contentDownloadTime": 45
       },
       {
         "url": "https://api.iconify.design/simple-icons.json?icons=bluesky%2Cdiscord%2Cgithub%2Cmastodon%2Cx",
         "resourceType": "other",
-        "transferSize": 2414,
+        "transferSize": 2410,
         "resourceSize": 3849,
         "statusCode": 200,
         "mimeType": "application/json",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1752,
-        "endTime": 1808,
+        "startTime": 1106,
+        "endTime": 1148,
         "ttfb": 1,
-        "contentDownloadTime": 55
+        "contentDownloadTime": 41
       },
       {
         "url": "https://sponsors.vite.dev/images/voidzero.svg",
         "resourceType": "image",
-        "transferSize": 1077,
+        "transferSize": 1078,
         "resourceSize": 1940,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2277,
-        "ttfb": 1,
-        "contentDownloadTime": 222
+        "startTime": 1409,
+        "endTime": 1629,
+        "ttfb": 0,
+        "contentDownloadTime": 220
       },
       {
         "url": "https://sponsors.vite.dev/images/bolt.svg",
         "resourceType": "image",
-        "transferSize": 780,
+        "transferSize": 874,
         "resourceSize": 1440,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2320,
+        "startTime": 1409,
+        "endTime": 1692,
         "ttfb": 1,
-        "contentDownloadTime": 264
+        "contentDownloadTime": 283
       },
       {
         "url": "https://sponsors.vite.dev/images/nuxtlabs.svg",
         "resourceType": "image",
-        "transferSize": 880,
+        "transferSize": 849,
         "resourceSize": 1551,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2278,
+        "startTime": 1409,
+        "endTime": 1649,
         "ttfb": 1,
-        "contentDownloadTime": 222
+        "contentDownloadTime": 239
       },
       {
         "url": "https://sponsors.vite.dev/images/storyblok.png",
         "resourceType": "image",
-        "transferSize": 6241,
+        "transferSize": 6242,
         "resourceSize": 6104,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2295,
-        "ttfb": 2,
-        "contentDownloadTime": 238
+        "startTime": 1409,
+        "endTime": 1645,
+        "ttfb": 1,
+        "contentDownloadTime": 236
       },
       {
         "url": "https://sponsors.vite.dev/images/coderabbit.png",
         "resourceType": "image",
-        "transferSize": 7313,
+        "transferSize": 7290,
         "resourceSize": 7193,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2341,
-        "ttfb": 2,
-        "contentDownloadTime": 284
+        "startTime": 1409,
+        "endTime": 1691,
+        "ttfb": 1,
+        "contentDownloadTime": 281
       },
       {
         "url": "https://sponsors.vite.dev/images/greptile.png",
         "resourceType": "image",
-        "transferSize": 7350,
+        "transferSize": 7351,
         "resourceSize": 7254,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2301,
-        "ttfb": 2,
-        "contentDownloadTime": 244
+        "startTime": 1409,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 242
       },
       {
         "url": "https://sponsors.vite.dev/images/railway.svg",
@@ -1533,25 +1533,25 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2317,
-        "ttfb": 2,
-        "contentDownloadTime": 260
+        "startTime": 1409,
+        "endTime": 1693,
+        "ttfb": 0,
+        "contentDownloadTime": 283
       },
       {
         "url": "https://sponsors.vite.dev/images/serpapi.png",
         "resourceType": "image",
-        "transferSize": 13417,
+        "transferSize": 13418,
         "resourceSize": 13311,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2303,
-        "ttfb": 2,
-        "contentDownloadTime": 245
+        "startTime": 1409,
+        "endTime": 1689,
+        "ttfb": 0,
+        "contentDownloadTime": 279
       },
       {
         "url": "https://sponsors.vite.dev/images/mux.svg",
@@ -1563,70 +1563,70 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2319,
-        "ttfb": 2,
-        "contentDownloadTime": 261
+        "startTime": 1410,
+        "endTime": 1691,
+        "ttfb": 0,
+        "contentDownloadTime": 281
       },
       {
         "url": "https://sponsors.vite.dev/images/nx.svg",
         "resourceType": "image",
-        "transferSize": 1129,
+        "transferSize": 1059,
         "resourceSize": 2093,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2055,
-        "endTime": 2341,
-        "ttfb": 3,
-        "contentDownloadTime": 283
+        "startTime": 1410,
+        "endTime": 1652,
+        "ttfb": 0,
+        "contentDownloadTime": 242
       },
       {
         "url": "https://sponsors.vite.dev/images/transloadit.png",
         "resourceType": "image",
-        "transferSize": 3319,
+        "transferSize": 3320,
         "resourceSize": 3232,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2337,
-        "ttfb": 3,
-        "contentDownloadTime": 279
+        "startTime": 1410,
+        "endTime": 1649,
+        "ttfb": 0,
+        "contentDownloadTime": 239
       },
       {
         "url": "https://sponsors.vite.dev/images/handsontable.svg",
         "resourceType": "image",
-        "transferSize": 2132,
+        "transferSize": 2165,
         "resourceSize": 5614,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2339,
-        "ttfb": 3,
-        "contentDownloadTime": 281
+        "startTime": 1410,
+        "endTime": 1647,
+        "ttfb": 0,
+        "contentDownloadTime": 237
       },
       {
         "url": "https://sponsors.vite.dev/images/mojam.svg",
         "resourceType": "image",
-        "transferSize": 823,
+        "transferSize": 824,
         "resourceSize": 1721,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2336,
-        "ttfb": 3,
-        "contentDownloadTime": 277
+        "startTime": 1410,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 241
       },
       {
         "url": "https://sponsors.vite.dev/images/convex.svg",
@@ -1638,55 +1638,55 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2334,
-        "ttfb": 3,
-        "contentDownloadTime": 276
+        "startTime": 1410,
+        "endTime": 1651,
+        "ttfb": 0,
+        "contentDownloadTime": 241
       },
       {
         "url": "https://sponsors.vite.dev/images/zephyr_cloud.png",
         "resourceType": "image",
-        "transferSize": 4301,
+        "transferSize": 4300,
         "resourceSize": 4171,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2339,
-        "ttfb": 3,
-        "contentDownloadTime": 280
+        "startTime": 1410,
+        "endTime": 1689,
+        "ttfb": 0,
+        "contentDownloadTime": 279
       },
       {
         "url": "https://sponsors.vite.dev/images/catalyst.svg",
         "resourceType": "image",
-        "transferSize": 2412,
+        "transferSize": 2413,
         "resourceSize": 6577,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2331,
-        "ttfb": 3,
-        "contentDownloadTime": 272
+        "startTime": 1410,
+        "endTime": 1690,
+        "ttfb": 0,
+        "contentDownloadTime": 280
       },
       {
         "url": "https://sponsors.vite.dev/images/sanity.svg",
         "resourceType": "image",
-        "transferSize": 1536,
+        "transferSize": 1535,
         "resourceSize": 3309,
         "statusCode": 200,
         "mimeType": "image/svg+xml",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2340,
-        "ttfb": 3,
-        "contentDownloadTime": 281
+        "startTime": 1410,
+        "endTime": 1688,
+        "ttfb": 0,
+        "contentDownloadTime": 277
       },
       {
         "url": "https://sponsors.vite.dev/images/follower24.svg",
@@ -1698,162 +1698,162 @@
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2338,
-        "ttfb": 3,
-        "contentDownloadTime": 279
+        "startTime": 1410,
+        "endTime": 1678,
+        "ttfb": 1,
+        "contentDownloadTime": 267
       },
       {
         "url": "https://images.opencollective.com/hirefortuna/b1906f3/logo/460.png",
         "resourceType": "image",
-        "transferSize": 22617,
+        "transferSize": 22615,
         "resourceSize": 21936,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2142,
-        "ttfb": 3,
-        "contentDownloadTime": 82
+        "startTime": 1411,
+        "endTime": 1467,
+        "ttfb": 1,
+        "contentDownloadTime": 56
       },
       {
         "url": "https://avatars.githubusercontent.com/u/107723282?u=2639caa14ce293a0b6202c5766a40bb99ac9697e&v=4",
         "resourceType": "image",
-        "transferSize": 46509,
+        "transferSize": 46526,
         "resourceSize": 45885,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2380,
-        "ttfb": 3,
-        "contentDownloadTime": 321
+        "startTime": 1411,
+        "endTime": 1753,
+        "ttfb": 1,
+        "contentDownloadTime": 342
       },
       {
         "url": "https://images.opencollective.com/bairesdev/48bb773/logo/460.png",
         "resourceType": "image",
-        "transferSize": 20938,
+        "transferSize": 20945,
         "resourceSize": 20290,
         "statusCode": 200,
         "mimeType": "image/png",
         "isThirdParty": true,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 2056,
-        "endTime": 2182,
-        "ttfb": 3,
-        "contentDownloadTime": 122
+        "startTime": 1411,
+        "endTime": 1467,
+        "ttfb": 1,
+        "contentDownloadTime": 55
       }
     ],
     "jsFiles": [
       {
         "url": "https://vite.dev/assets/chunks/metadata.7560197d.js",
         "resourceType": "script",
-        "transferSize": 2979,
+        "transferSize": 2949,
         "resourceSize": 10557,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 947,
-        "ttfb": 6,
-        "contentDownloadTime": 94
+        "startTime": 614,
+        "endTime": 702,
+        "ttfb": 3,
+        "contentDownloadTime": 85
       },
       {
         "url": "https://vite.dev/assets/app.ByX4a5ns.js",
         "resourceType": "script",
-        "transferSize": 824,
+        "transferSize": 796,
         "resourceSize": 1378,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1099,
-        "ttfb": 6,
-        "contentDownloadTime": 246
+        "startTime": 614,
+        "endTime": 759,
+        "ttfb": 3,
+        "contentDownloadTime": 142
       },
       {
         "url": "https://vite.dev/assets/chunks/framework.Cx3qj2MO.js",
         "resourceType": "script",
-        "transferSize": 42586,
+        "transferSize": 42559,
         "resourceSize": 112856,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1097,
-        "ttfb": 6,
-        "contentDownloadTime": 244
+        "startTime": 614,
+        "endTime": 853,
+        "ttfb": 3,
+        "contentDownloadTime": 235
       },
       {
         "url": "https://vite.dev/assets/chunks/theme.B2B3Fj5s.js",
         "resourceType": "script",
-        "transferSize": 42772,
+        "transferSize": 42771,
         "resourceSize": 141249,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1534,
-        "ttfb": 6,
-        "contentDownloadTime": 681
+        "startTime": 614,
+        "endTime": 823,
+        "ttfb": 3,
+        "contentDownloadTime": 205
       },
       {
         "url": "https://vite.dev/assets/chunks/assets.qdzaMdnh.js",
         "resourceType": "script",
-        "transferSize": 5037,
+        "transferSize": 5061,
         "resourceSize": 13638,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1526,
-        "ttfb": 6,
-        "contentDownloadTime": 672
+        "startTime": 614,
+        "endTime": 792,
+        "ttfb": 3,
+        "contentDownloadTime": 174
       },
       {
         "url": "https://vite.dev/assets/guide_index.md.Bff3qJkh.lean.js",
         "resourceType": "script",
-        "transferSize": 915,
+        "transferSize": 914,
         "resourceSize": 1526,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 847,
-        "endTime": 1098,
-        "ttfb": 6,
-        "contentDownloadTime": 245
+        "startTime": 614,
+        "endTime": 964,
+        "ttfb": 3,
+        "contentDownloadTime": 346
       },
       {
         "url": "https://vite.dev/assets/chunks/Dlg54cen.js",
         "resourceType": "script",
-        "transferSize": 888,
+        "transferSize": 836,
         "resourceSize": 722,
         "statusCode": 200,
         "mimeType": "application/javascript",
         "isThirdParty": false,
         "detectedLibrary": null,
         "isCritical": false,
-        "startTime": 1696,
-        "endTime": 1804,
+        "startTime": 1045,
+        "endTime": 1128,
         "ttfb": 1,
-        "contentDownloadTime": 107
+        "contentDownloadTime": 82
       }
     ],
     "detectedLibraries": []
@@ -1861,113 +1861,1529 @@
   "thirdParty": [
     {
       "name": "GitHub",
-      "transferSize": 46509,
+      "transferSize": 46526,
       "mainThreadTime": 0,
       "blockingTime": 0,
       "requestCount": 1
     },
     {
       "name": "opencollective.com",
-      "transferSize": 43555,
+      "transferSize": 43560,
       "mainThreadTime": 0,
       "blockingTime": 0,
       "requestCount": 2
     },
     {
       "name": "iconify.design",
-      "transferSize": 2970,
+      "transferSize": 2967,
       "mainThreadTime": 0,
       "blockingTime": 0,
       "requestCount": 2
     }
   ],
   "clsData": {
-    "totalScore": 0.006228,
+    "totalScore": 0.006191,
     "elements": [
       {
         "selector": "main.main > div.vp-doc > div > p",
         "snippet": "<p>",
-        "score": 0.0042,
+        "score": 0.006191,
         "impact": "low",
         "rect": {
           "topPct": 0.45929526123936815,
           "leftPct": 0.11893203883495146,
           "widthPct": 1,
           "heightPct": 0.11421628189550426
-        }
-      },
-      {
-        "selector": "main.main > div.vp-doc > div > p",
-        "snippet": "<p>",
-        "score": 0.001661,
-        "impact": "low",
-        "rect": {
-          "topPct": 0.45929526123936815,
-          "leftPct": 0.11893203883495146,
-          "widthPct": 1,
-          "heightPct": 0.11421628189550426
-        }
-      },
-      {
-        "selector": "div.has-sidebar > div.VPLocalNav > div.container > div.VPLocalNavOutlineDropdown",
-        "snippet": "<div class=\"VPLocalNavOutlineDropdown\" style=\"--vp-vh:0px;\" data-v-e51ed056=\"\" data-v-f7145467=\"\">",
-        "score": 0.000367,
-        "impact": "low",
-        "rect": {
-          "topPct": 0.14702308626974483,
-          "leftPct": 1,
-          "widthPct": 0.36893203883495146,
-          "heightPct": 0.05710814094775213
         }
       }
     ],
     "viewportWidth": 412,
     "viewportHeight": 823
   },
+  "heapMemoryData": {
+    "points": [
+      {
+        "timeMs": 618.592,
+        "heapMb": 6.775463104248047,
+        "isGC": false
+      },
+      {
+        "timeMs": 620.39,
+        "heapMb": 6.775463104248047,
+        "isGC": false
+      },
+      {
+        "timeMs": 778.119,
+        "heapMb": 6.835605621337891,
+        "isGC": false
+      },
+      {
+        "timeMs": 816.155,
+        "heapMb": 6.863193511962891,
+        "isGC": false
+      },
+      {
+        "timeMs": 884.163,
+        "heapMb": 7.050926208496094,
+        "isGC": false
+      },
+      {
+        "timeMs": 884.187,
+        "heapMb": 7.050926208496094,
+        "isGC": false
+      },
+      {
+        "timeMs": 980.871,
+        "heapMb": 8.324848175048828,
+        "isGC": false
+      },
+      {
+        "timeMs": 981.162,
+        "heapMb": 8.328231811523438,
+        "isGC": false
+      },
+      {
+        "timeMs": 981.335,
+        "heapMb": 8.330631256103516,
+        "isGC": false
+      },
+      {
+        "timeMs": 981.704,
+        "heapMb": 8.350353240966797,
+        "isGC": false
+      },
+      {
+        "timeMs": 981.908,
+        "heapMb": 8.353340148925781,
+        "isGC": false
+      },
+      {
+        "timeMs": 982.089,
+        "heapMb": 8.35573959350586,
+        "isGC": false
+      },
+      {
+        "timeMs": 982.318,
+        "heapMb": 8.659542083740234,
+        "isGC": false
+      },
+      {
+        "timeMs": 982.503,
+        "heapMb": 8.391925811767578,
+        "isGC": false
+      },
+      {
+        "timeMs": 982.667,
+        "heapMb": 8.394325256347656,
+        "isGC": false
+      },
+      {
+        "timeMs": 983.423,
+        "heapMb": 8.433319091796875,
+        "isGC": false
+      },
+      {
+        "timeMs": 983.642,
+        "heapMb": 8.443012237548828,
+        "isGC": false
+      },
+      {
+        "timeMs": 983.829,
+        "heapMb": 8.445457458496094,
+        "isGC": false
+      },
+      {
+        "timeMs": 984.654,
+        "heapMb": 9.007244110107422,
+        "isGC": false
+      },
+      {
+        "timeMs": 985.007,
+        "heapMb": 8.490283966064453,
+        "isGC": false
+      },
+      {
+        "timeMs": 985.276,
+        "heapMb": 8.493278503417969,
+        "isGC": false
+      },
+      {
+        "timeMs": 985.531,
+        "heapMb": 8.507781982421875,
+        "isGC": false
+      },
+      {
+        "timeMs": 985.815,
+        "heapMb": 8.510791778564453,
+        "isGC": false
+      },
+      {
+        "timeMs": 986.083,
+        "heapMb": 8.513786315917969,
+        "isGC": false
+      },
+      {
+        "timeMs": 986.244,
+        "heapMb": 8.52597427368164,
+        "isGC": false
+      },
+      {
+        "timeMs": 986.542,
+        "heapMb": 8.528984069824219,
+        "isGC": false
+      },
+      {
+        "timeMs": 986.801,
+        "heapMb": 8.531978607177734,
+        "isGC": false
+      },
+      {
+        "timeMs": 986.968,
+        "heapMb": 8.543758392333984,
+        "isGC": false
+      },
+      {
+        "timeMs": 987.253,
+        "heapMb": 8.551197052001953,
+        "isGC": false
+      },
+      {
+        "timeMs": 987.548,
+        "heapMb": 8.554191589355469,
+        "isGC": false
+      },
+      {
+        "timeMs": 987.69,
+        "heapMb": 8.565433502197266,
+        "isGC": false
+      },
+      {
+        "timeMs": 987.966,
+        "heapMb": 8.568443298339844,
+        "isGC": false
+      },
+      {
+        "timeMs": 988.233,
+        "heapMb": 8.57143783569336,
+        "isGC": false
+      },
+      {
+        "timeMs": 988.367,
+        "heapMb": 8.582447052001953,
+        "isGC": false
+      },
+      {
+        "timeMs": 988.636,
+        "heapMb": 8.593814849853516,
+        "isGC": false
+      },
+      {
+        "timeMs": 988.899,
+        "heapMb": 8.596809387207031,
+        "isGC": false
+      },
+      {
+        "timeMs": 989.031,
+        "heapMb": 8.607864379882812,
+        "isGC": false
+      },
+      {
+        "timeMs": 989.303,
+        "heapMb": 8.61087417602539,
+        "isGC": false
+      },
+      {
+        "timeMs": 989.562,
+        "heapMb": 8.613868713378906,
+        "isGC": false
+      },
+      {
+        "timeMs": 989.921,
+        "heapMb": 8.636856079101562,
+        "isGC": false
+      },
+      {
+        "timeMs": 990.317,
+        "heapMb": 8.649097442626953,
+        "isGC": false
+      },
+      {
+        "timeMs": 990.615,
+        "heapMb": 8.653133392333984,
+        "isGC": false
+      },
+      {
+        "timeMs": 990.799,
+        "heapMb": 8.664142608642578,
+        "isGC": false
+      },
+      {
+        "timeMs": 991.136,
+        "heapMb": 8.674739837646484,
+        "isGC": false
+      },
+      {
+        "timeMs": 991.45,
+        "heapMb": 8.678775787353516,
+        "isGC": false
+      },
+      {
+        "timeMs": 991.629,
+        "heapMb": 8.69076919555664,
+        "isGC": false
+      },
+      {
+        "timeMs": 991.945,
+        "heapMb": 8.695320129394531,
+        "isGC": false
+      },
+      {
+        "timeMs": 992.261,
+        "heapMb": 8.699356079101562,
+        "isGC": false
+      },
+      {
+        "timeMs": 992.402,
+        "heapMb": 8.71035385131836,
+        "isGC": false
+      },
+      {
+        "timeMs": 992.721,
+        "heapMb": 8.715877532958984,
+        "isGC": false
+      },
+      {
+        "timeMs": 993.059,
+        "heapMb": 8.719913482666016,
+        "isGC": false
+      },
+      {
+        "timeMs": 993.225,
+        "heapMb": 8.732414245605469,
+        "isGC": false
+      },
+      {
+        "timeMs": 993.538,
+        "heapMb": 8.739185333251953,
+        "isGC": false
+      },
+      {
+        "timeMs": 993.927,
+        "heapMb": 8.74887466430664,
+        "isGC": false
+      },
+      {
+        "timeMs": 994.426,
+        "heapMb": 8.760986328125,
+        "isGC": false
+      },
+      {
+        "timeMs": 994.839,
+        "heapMb": 8.765037536621094,
+        "isGC": false
+      },
+      {
+        "timeMs": 995.147,
+        "heapMb": 8.769073486328125,
+        "isGC": false
+      },
+      {
+        "timeMs": 995.364,
+        "heapMb": 8.780071258544922,
+        "isGC": false
+      },
+      {
+        "timeMs": 995.669,
+        "heapMb": 8.784122467041016,
+        "isGC": false
+      },
+      {
+        "timeMs": 995.989,
+        "heapMb": 8.788158416748047,
+        "isGC": false
+      },
+      {
+        "timeMs": 996.278,
+        "heapMb": 8.80294418334961,
+        "isGC": false
+      },
+      {
+        "timeMs": 996.484,
+        "heapMb": 8.805404663085938,
+        "isGC": false
+      },
+      {
+        "timeMs": 996.662,
+        "heapMb": 8.807849884033203,
+        "isGC": false
+      },
+      {
+        "timeMs": 996.902,
+        "heapMb": 8.829490661621094,
+        "isGC": false
+      },
+      {
+        "timeMs": 997.201,
+        "heapMb": 8.832500457763672,
+        "isGC": false
+      },
+      {
+        "timeMs": 997.471,
+        "heapMb": 8.835494995117188,
+        "isGC": false
+      },
+      {
+        "timeMs": 997.596,
+        "heapMb": 8.846698760986328,
+        "isGC": false
+      },
+      {
+        "timeMs": 997.875,
+        "heapMb": 8.849708557128906,
+        "isGC": false
+      },
+      {
+        "timeMs": 998.144,
+        "heapMb": 8.852703094482422,
+        "isGC": false
+      },
+      {
+        "timeMs": 998.312,
+        "heapMb": 8.873336791992188,
+        "isGC": false
+      },
+      {
+        "timeMs": 998.618,
+        "heapMb": 8.877388000488281,
+        "isGC": false
+      },
+      {
+        "timeMs": 998.945,
+        "heapMb": 8.881423950195312,
+        "isGC": false
+      },
+      {
+        "timeMs": 999.091,
+        "heapMb": 8.892398834228516,
+        "isGC": false
+      },
+      {
+        "timeMs": 999.418,
+        "heapMb": 8.89645004272461,
+        "isGC": false
+      },
+      {
+        "timeMs": 999.709,
+        "heapMb": 8.907005310058594,
+        "isGC": false
+      },
+      {
+        "timeMs": 999.845,
+        "heapMb": 8.91864013671875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1000.169,
+        "heapMb": 8.922691345214844,
+        "isGC": false
+      },
+      {
+        "timeMs": 1000.464,
+        "heapMb": 8.926727294921875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1000.56,
+        "heapMb": 8.937702178955078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1000.864,
+        "heapMb": 8.941753387451172,
+        "isGC": false
+      },
+      {
+        "timeMs": 1001.165,
+        "heapMb": 8.945789337158203,
+        "isGC": false
+      },
+      {
+        "timeMs": 1001.267,
+        "heapMb": 8.956764221191406,
+        "isGC": false
+      },
+      {
+        "timeMs": 1001.613,
+        "heapMb": 8.962150573730469,
+        "isGC": false
+      },
+      {
+        "timeMs": 1001.902,
+        "heapMb": 8.9661865234375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1002.017,
+        "heapMb": 8.977298736572266,
+        "isGC": false
+      },
+      {
+        "timeMs": 1002.323,
+        "heapMb": 8.98134994506836,
+        "isGC": false
+      },
+      {
+        "timeMs": 1002.613,
+        "heapMb": 8.98538589477539,
+        "isGC": false
+      },
+      {
+        "timeMs": 1002.712,
+        "heapMb": 8.998332977294922,
+        "isGC": false
+      },
+      {
+        "timeMs": 1003.022,
+        "heapMb": 9.002384185791016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1003.313,
+        "heapMb": 9.006420135498047,
+        "isGC": false
+      },
+      {
+        "timeMs": 1005.42,
+        "heapMb": 9.113311767578125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1005.758,
+        "heapMb": 9.116138458251953,
+        "isGC": false
+      },
+      {
+        "timeMs": 1006.01,
+        "heapMb": 9.118949890136719,
+        "isGC": false
+      },
+      {
+        "timeMs": 1006.192,
+        "heapMb": 9.130001068115234,
+        "isGC": false
+      },
+      {
+        "timeMs": 1006.458,
+        "heapMb": 9.133445739746094,
+        "isGC": false
+      },
+      {
+        "timeMs": 1006.703,
+        "heapMb": 9.143024444580078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1006.848,
+        "heapMb": 9.154121398925781,
+        "isGC": false
+      },
+      {
+        "timeMs": 1007.112,
+        "heapMb": 9.15694808959961,
+        "isGC": false
+      },
+      {
+        "timeMs": 1007.348,
+        "heapMb": 9.159759521484375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1007.45,
+        "heapMb": 9.170730590820312,
+        "isGC": false
+      },
+      {
+        "timeMs": 1007.7,
+        "heapMb": 9.17355728149414,
+        "isGC": false
+      },
+      {
+        "timeMs": 1007.966,
+        "heapMb": 9.176368713378906,
+        "isGC": false
+      },
+      {
+        "timeMs": 1008.093,
+        "heapMb": 9.187339782714844,
+        "isGC": false
+      },
+      {
+        "timeMs": 1008.4,
+        "heapMb": 9.190166473388672,
+        "isGC": false
+      },
+      {
+        "timeMs": 1008.636,
+        "heapMb": 9.192977905273438,
+        "isGC": false
+      },
+      {
+        "timeMs": 1008.772,
+        "heapMb": 9.205921173095703,
+        "isGC": false
+      },
+      {
+        "timeMs": 1009.033,
+        "heapMb": 9.208747863769531,
+        "isGC": false
+      },
+      {
+        "timeMs": 1009.274,
+        "heapMb": 9.211559295654297,
+        "isGC": false
+      },
+      {
+        "timeMs": 1009.397,
+        "heapMb": 9.222549438476562,
+        "isGC": false
+      },
+      {
+        "timeMs": 1009.651,
+        "heapMb": 9.22597885131836,
+        "isGC": false
+      },
+      {
+        "timeMs": 1009.884,
+        "heapMb": 9.228790283203125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1012.085,
+        "heapMb": 9.43033218383789,
+        "isGC": false
+      },
+      {
+        "timeMs": 1012.399,
+        "heapMb": 9.434455871582031,
+        "isGC": false
+      },
+      {
+        "timeMs": 1012.65,
+        "heapMb": 9.437267303466797,
+        "isGC": false
+      },
+      {
+        "timeMs": 1012.891,
+        "heapMb": 9.448177337646484,
+        "isGC": false
+      },
+      {
+        "timeMs": 1013.248,
+        "heapMb": 9.451004028320312,
+        "isGC": false
+      },
+      {
+        "timeMs": 1013.5,
+        "heapMb": 9.453815460205078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1013.719,
+        "heapMb": 9.464725494384766,
+        "isGC": false
+      },
+      {
+        "timeMs": 1014.025,
+        "heapMb": 9.467552185058594,
+        "isGC": false
+      },
+      {
+        "timeMs": 1014.291,
+        "heapMb": 9.47036361694336,
+        "isGC": false
+      },
+      {
+        "timeMs": 1014.418,
+        "heapMb": 9.481273651123047,
+        "isGC": false
+      },
+      {
+        "timeMs": 1014.696,
+        "heapMb": 9.484100341796875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1014.948,
+        "heapMb": 9.48691177368164,
+        "isGC": false
+      },
+      {
+        "timeMs": 1015.135,
+        "heapMb": 9.497821807861328,
+        "isGC": false
+      },
+      {
+        "timeMs": 1015.399,
+        "heapMb": 9.500648498535156,
+        "isGC": false
+      },
+      {
+        "timeMs": 1015.645,
+        "heapMb": 9.503459930419922,
+        "isGC": false
+      },
+      {
+        "timeMs": 1015.737,
+        "heapMb": 9.51436996459961,
+        "isGC": false
+      },
+      {
+        "timeMs": 1016.046,
+        "heapMb": 9.517196655273438,
+        "isGC": false
+      },
+      {
+        "timeMs": 1016.288,
+        "heapMb": 9.520320892333984,
+        "isGC": false
+      },
+      {
+        "timeMs": 1016.389,
+        "heapMb": 9.531230926513672,
+        "isGC": false
+      },
+      {
+        "timeMs": 1016.648,
+        "heapMb": 9.5340576171875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1016.898,
+        "heapMb": 9.536869049072266,
+        "isGC": false
+      },
+      {
+        "timeMs": 1021.341,
+        "heapMb": 9.80434799194336,
+        "isGC": false
+      },
+      {
+        "timeMs": 1021.597,
+        "heapMb": 9.806713104248047,
+        "isGC": false
+      },
+      {
+        "timeMs": 1021.783,
+        "heapMb": 9.80902099609375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1022.404,
+        "heapMb": 9.832965850830078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1022.673,
+        "heapMb": 9.835704803466797,
+        "isGC": false
+      },
+      {
+        "timeMs": 1022.952,
+        "heapMb": 9.83837890625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1023.275,
+        "heapMb": 10.350738525390625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1023.544,
+        "heapMb": 9.865036010742188,
+        "isGC": false
+      },
+      {
+        "timeMs": 1023.766,
+        "heapMb": 9.86771011352539,
+        "isGC": false
+      },
+      {
+        "timeMs": 1024.008,
+        "heapMb": 9.88543701171875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1024.258,
+        "heapMb": 9.888126373291016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1024.484,
+        "heapMb": 9.890800476074219,
+        "isGC": false
+      },
+      {
+        "timeMs": 1024.832,
+        "heapMb": 10.28286361694336,
+        "isGC": false
+      },
+      {
+        "timeMs": 1025.06,
+        "heapMb": 11.014446258544922,
+        "isGC": false
+      },
+      {
+        "timeMs": 1025.24,
+        "heapMb": 9.921585083007812,
+        "isGC": false
+      },
+      {
+        "timeMs": 1025.538,
+        "heapMb": 9.950092315673828,
+        "isGC": false
+      },
+      {
+        "timeMs": 1025.822,
+        "heapMb": 9.952781677246094,
+        "isGC": false
+      },
+      {
+        "timeMs": 1026.054,
+        "heapMb": 9.955455780029297,
+        "isGC": false
+      },
+      {
+        "timeMs": 1026.315,
+        "heapMb": 9.97378921508789,
+        "isGC": false
+      },
+      {
+        "timeMs": 1026.605,
+        "heapMb": 9.976478576660156,
+        "isGC": false
+      },
+      {
+        "timeMs": 1026.826,
+        "heapMb": 9.97915267944336,
+        "isGC": false
+      },
+      {
+        "timeMs": 1027.076,
+        "heapMb": 9.996700286865234,
+        "isGC": false
+      },
+      {
+        "timeMs": 1027.322,
+        "heapMb": 9.9993896484375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1027.549,
+        "heapMb": 10.002063751220703,
+        "isGC": false
+      },
+      {
+        "timeMs": 1027.785,
+        "heapMb": 10.419845581054688,
+        "isGC": false
+      },
+      {
+        "timeMs": 1028.048,
+        "heapMb": 10.044551849365234,
+        "isGC": false
+      },
+      {
+        "timeMs": 1028.294,
+        "heapMb": 10.047225952148438,
+        "isGC": false
+      },
+      {
+        "timeMs": 1028.55,
+        "heapMb": 10.064788818359375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1028.796,
+        "heapMb": 10.069221496582031,
+        "isGC": false
+      },
+      {
+        "timeMs": 1029.034,
+        "heapMb": 10.447696685791016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1029.245,
+        "heapMb": 10.095130920410156,
+        "isGC": false
+      },
+      {
+        "timeMs": 1029.499,
+        "heapMb": 10.097820281982422,
+        "isGC": false
+      },
+      {
+        "timeMs": 1029.76,
+        "heapMb": 10.100494384765625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1029.946,
+        "heapMb": 10.1180419921875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1030.214,
+        "heapMb": 10.120731353759766,
+        "isGC": false
+      },
+      {
+        "timeMs": 1030.439,
+        "heapMb": 10.123405456542969,
+        "isGC": false
+      },
+      {
+        "timeMs": 1030.62,
+        "heapMb": 10.140983581542969,
+        "isGC": false
+      },
+      {
+        "timeMs": 1030.874,
+        "heapMb": 10.143672943115234,
+        "isGC": false
+      },
+      {
+        "timeMs": 1031.11,
+        "heapMb": 10.150245666503906,
+        "isGC": false
+      },
+      {
+        "timeMs": 1031.345,
+        "heapMb": 10.64748764038086,
+        "isGC": false
+      },
+      {
+        "timeMs": 1031.6,
+        "heapMb": 10.17599105834961,
+        "isGC": false
+      },
+      {
+        "timeMs": 1031.824,
+        "heapMb": 10.178665161132812,
+        "isGC": false
+      },
+      {
+        "timeMs": 1032.022,
+        "heapMb": 10.196781158447266,
+        "isGC": false
+      },
+      {
+        "timeMs": 1032.283,
+        "heapMb": 10.199470520019531,
+        "isGC": false
+      },
+      {
+        "timeMs": 1032.55,
+        "heapMb": 10.202144622802734,
+        "isGC": false
+      },
+      {
+        "timeMs": 1032.716,
+        "heapMb": 10.219734191894531,
+        "isGC": false
+      },
+      {
+        "timeMs": 1032.965,
+        "heapMb": 10.222423553466797,
+        "isGC": false
+      },
+      {
+        "timeMs": 1033.203,
+        "heapMb": 10.22509765625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1033.364,
+        "heapMb": 10.246601104736328,
+        "isGC": false
+      },
+      {
+        "timeMs": 1033.61,
+        "heapMb": 10.249290466308594,
+        "isGC": false
+      },
+      {
+        "timeMs": 1033.836,
+        "heapMb": 10.251964569091797,
+        "isGC": false
+      },
+      {
+        "timeMs": 1033.991,
+        "heapMb": 10.269535064697266,
+        "isGC": false
+      },
+      {
+        "timeMs": 1034.257,
+        "heapMb": 10.272773742675781,
+        "isGC": false
+      },
+      {
+        "timeMs": 1034.481,
+        "heapMb": 10.275447845458984,
+        "isGC": false
+      },
+      {
+        "timeMs": 1034.643,
+        "heapMb": 10.292415618896484,
+        "isGC": false
+      },
+      {
+        "timeMs": 1034.883,
+        "heapMb": 10.29510498046875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1035.121,
+        "heapMb": 10.297779083251953,
+        "isGC": false
+      },
+      {
+        "timeMs": 1035.288,
+        "heapMb": 10.311481475830078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1035.523,
+        "heapMb": 10.315181732177734,
+        "isGC": false
+      },
+      {
+        "timeMs": 1035.749,
+        "heapMb": 10.317489624023438,
+        "isGC": false
+      },
+      {
+        "timeMs": 1036.089,
+        "heapMb": 10.34316635131836,
+        "isGC": false
+      },
+      {
+        "timeMs": 1036.364,
+        "heapMb": 10.345855712890625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1036.586,
+        "heapMb": 10.348529815673828,
+        "isGC": false
+      },
+      {
+        "timeMs": 1036.797,
+        "heapMb": 10.3660888671875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1037.066,
+        "heapMb": 10.369731903076172,
+        "isGC": false
+      },
+      {
+        "timeMs": 1037.292,
+        "heapMb": 10.372406005859375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1037.476,
+        "heapMb": 10.389984130859375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1037.715,
+        "heapMb": 10.39267349243164,
+        "isGC": false
+      },
+      {
+        "timeMs": 1037.939,
+        "heapMb": 10.395347595214844,
+        "isGC": false
+      },
+      {
+        "timeMs": 1038.088,
+        "heapMb": 10.412296295166016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1038.334,
+        "heapMb": 10.414985656738281,
+        "isGC": false
+      },
+      {
+        "timeMs": 1038.595,
+        "heapMb": 10.417659759521484,
+        "isGC": false
+      },
+      {
+        "timeMs": 1038.774,
+        "heapMb": 10.431838989257812,
+        "isGC": false
+      },
+      {
+        "timeMs": 1038.972,
+        "heapMb": 10.435016632080078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1039.161,
+        "heapMb": 10.892509460449219,
+        "isGC": false
+      },
+      {
+        "timeMs": 1039.36,
+        "heapMb": 10.462322235107422,
+        "isGC": false
+      },
+      {
+        "timeMs": 1039.601,
+        "heapMb": 10.465011596679688,
+        "isGC": false
+      },
+      {
+        "timeMs": 1039.821,
+        "heapMb": 10.46768569946289,
+        "isGC": false
+      },
+      {
+        "timeMs": 1040.024,
+        "heapMb": 10.486625671386719,
+        "isGC": false
+      },
+      {
+        "timeMs": 1040.265,
+        "heapMb": 10.489315032958984,
+        "isGC": false
+      },
+      {
+        "timeMs": 1040.479,
+        "heapMb": 10.491989135742188,
+        "isGC": false
+      },
+      {
+        "timeMs": 1040.653,
+        "heapMb": 11.090003967285156,
+        "isGC": false
+      },
+      {
+        "timeMs": 1040.886,
+        "heapMb": 10.514854431152344,
+        "isGC": false
+      },
+      {
+        "timeMs": 1041.113,
+        "heapMb": 10.517528533935547,
+        "isGC": false
+      },
+      {
+        "timeMs": 1041.309,
+        "heapMb": 10.53567123413086,
+        "isGC": false
+      },
+      {
+        "timeMs": 1041.606,
+        "heapMb": 10.538360595703125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1041.821,
+        "heapMb": 10.541034698486328,
+        "isGC": false
+      },
+      {
+        "timeMs": 1042.041,
+        "heapMb": 10.55841064453125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1042.326,
+        "heapMb": 10.563186645507812,
+        "isGC": false
+      },
+      {
+        "timeMs": 1042.547,
+        "heapMb": 10.565860748291016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1050.533,
+        "heapMb": 10.8836669921875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1050.815,
+        "heapMb": 10.886219024658203,
+        "isGC": false
+      },
+      {
+        "timeMs": 1051.045,
+        "heapMb": 10.888755798339844,
+        "isGC": false
+      },
+      {
+        "timeMs": 1051.29,
+        "heapMb": 10.891475677490234,
+        "isGC": false
+      },
+      {
+        "timeMs": 1051.546,
+        "heapMb": 10.894027709960938,
+        "isGC": false
+      },
+      {
+        "timeMs": 1051.757,
+        "heapMb": 10.896564483642578,
+        "isGC": false
+      },
+      {
+        "timeMs": 1052.038,
+        "heapMb": 10.903949737548828,
+        "isGC": false
+      },
+      {
+        "timeMs": 1052.18,
+        "heapMb": 10.905311584472656,
+        "isGC": false
+      },
+      {
+        "timeMs": 1052.3,
+        "heapMb": 10.906658172607422,
+        "isGC": false
+      },
+      {
+        "timeMs": 1069.788,
+        "heapMb": 11.138816833496094,
+        "isGC": false
+      },
+      {
+        "timeMs": 1104.652,
+        "heapMb": 11.15554428100586,
+        "isGC": false
+      },
+      {
+        "timeMs": 1104.746,
+        "heapMb": 11.15798568725586,
+        "isGC": false
+      },
+      {
+        "timeMs": 1107.076,
+        "heapMb": 11.168209075927734,
+        "isGC": false
+      },
+      {
+        "timeMs": 1107.392,
+        "heapMb": 11.17156982421875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1109.76,
+        "heapMb": 11.255176544189453,
+        "isGC": false
+      },
+      {
+        "timeMs": 1128.65,
+        "heapMb": 11.275524139404297,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.126,
+        "heapMb": 11.344776153564453,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.215,
+        "heapMb": 11.345649719238281,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.583,
+        "heapMb": 11.369159698486328,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.833,
+        "heapMb": 11.3819580078125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.925,
+        "heapMb": 11.382278442382812,
+        "isGC": false
+      },
+      {
+        "timeMs": 1151.958,
+        "heapMb": 11.382526397705078,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.06,
+        "heapMb": 11.386024475097656,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.128,
+        "heapMb": 11.386287689208984,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.158,
+        "heapMb": 11.38653564453125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.217,
+        "heapMb": 11.389965057373047,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.253,
+        "heapMb": 11.390228271484375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.282,
+        "heapMb": 11.39047622680664,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.332,
+        "heapMb": 11.393905639648438,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.376,
+        "heapMb": 11.82998275756836,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.4,
+        "heapMb": 11.400341033935547,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.469,
+        "heapMb": 11.404014587402344,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.515,
+        "heapMb": 11.404277801513672,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.54,
+        "heapMb": 11.404525756835938,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.581,
+        "heapMb": 11.407928466796875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.613,
+        "heapMb": 11.408191680908203,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.638,
+        "heapMb": 11.408439636230469,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.684,
+        "heapMb": 11.411842346191406,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.721,
+        "heapMb": 11.584114074707031,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.746,
+        "heapMb": 11.84222412109375,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.787,
+        "heapMb": 11.845626831054688,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.818,
+        "heapMb": 11.845890045166016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.839,
+        "heapMb": 11.425086975097656,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.886,
+        "heapMb": 11.428489685058594,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.922,
+        "heapMb": 11.428752899169922,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.951,
+        "heapMb": 11.429000854492188,
+        "isGC": false
+      },
+      {
+        "timeMs": 1152.986,
+        "heapMb": 11.432403564453125,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.03,
+        "heapMb": 11.432666778564453,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.051,
+        "heapMb": 11.432914733886719,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.684,
+        "heapMb": 11.443496704101562,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.709,
+        "heapMb": 11.443763732910156,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.8,
+        "heapMb": 11.447174072265625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1153.982,
+        "heapMb": 11.452545166015625,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.042,
+        "heapMb": 11.452808380126953,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.07,
+        "heapMb": 11.453056335449219,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.154,
+        "heapMb": 11.45705795288086,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.193,
+        "heapMb": 11.457321166992188,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.218,
+        "heapMb": 11.457569122314453,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.312,
+        "heapMb": 11.461833953857422,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.362,
+        "heapMb": 11.46209716796875,
+        "isGC": false
+      },
+      {
+        "timeMs": 1154.383,
+        "heapMb": 11.462345123291016,
+        "isGC": false
+      },
+      {
+        "timeMs": 1245.6,
+        "heapMb": 11.467826843261719,
+        "isGC": false
+      },
+      {
+        "timeMs": 1356.328,
+        "heapMb": 11.468406677246094,
+        "isGC": false
+      },
+      {
+        "timeMs": 2250.174,
+        "heapMb": 11.602638244628906,
+        "isGC": false
+      },
+      {
+        "timeMs": 2259.678,
+        "heapMb": 3.53558349609375,
+        "isGC": true
+      },
+      {
+        "timeMs": 6961.731,
+        "heapMb": 3.7696762084960938,
+        "isGC": false
+      },
+      {
+        "timeMs": 7114.42,
+        "heapMb": 3.780437469482422,
+        "isGC": false
+      },
+      {
+        "timeMs": 12517.728,
+        "heapMb": 3.791126251220703,
+        "isGC": false
+      }
+    ],
+    "averageMb": 9.751105788658405,
+    "peakMb": 11.845890045166016
+  },
   "flameChartData": {
     "events": [
       {
         "name": "RunTask",
         "category": "other",
-        "startMs": 1054.517,
-        "durationMs": 73.75,
-        "isLongTask": true,
-        "depth": 0
-      },
-      {
-        "name": "Layout",
-        "category": "rendering",
-        "startMs": 1067.329,
-        "durationMs": 56.998,
-        "isLongTask": true,
-        "depth": 1
-      },
-      {
-        "name": "RunTask",
-        "category": "other",
-        "startMs": 1146.969,
-        "durationMs": 71.586,
+        "startMs": 817.185,
+        "durationMs": 58.354,
         "isLongTask": true,
         "depth": 0
       },
       {
         "name": "RunTask",
         "category": "other",
-        "startMs": 1602.082,
-        "durationMs": 114.888,
+        "startMs": 967.518,
+        "durationMs": 93.29,
         "isLongTask": true,
         "depth": 0
       },
       {
         "name": "RunMicrotasks",
         "category": "scripting",
-        "startMs": 1602.474,
-        "durationMs": 114.181,
+        "startMs": 967.709,
+        "durationMs": 92.841,
         "isLongTask": true,
         "depth": 1
       }
     ],
     "maxDepth": 11,
-    "durationMs": 4438.816
+    "durationMs": 2877.536
   }
 }
