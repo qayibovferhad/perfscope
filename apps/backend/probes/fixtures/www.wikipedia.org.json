@@ -1,0 +1,345 @@
+{
+  "id": "ae947fd2-44ad-4201-b82d-7a6e89e78774",
+  "url": "https://www.wikipedia.org/",
+  "timestamp": "2026-08-22T08:58:52.550Z",
+  "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100
+  },
+  "metrics": {
+    "fcp": 1151.234,
+    "lcp": 1151.234,
+    "tbt": 0,
+    "cls": 0,
+    "si": 1060,
+    "tti": 1163.487
+  },
+  "audits": [
+    {
+      "id": "lcp-discovery-insight",
+      "title": "LCP request discovery",
+      "description": "Optimize LCP by making the LCP image [discoverable](https://web.dev/articles/optimize-lcp#1_eliminate_resource_load_delay) from the HTML immediately, and [avoiding lazy-loading](https://web.dev/articles/lcp-lazy-loading)",
+      "score": 0,
+      "impact": "critical"
+    },
+    {
+      "id": "network-dependency-tree-insight",
+      "title": "Network dependency tree",
+      "description": "[Avoid chaining critical requests](https://developer.chrome.com/docs/lighthouse/performance/critical-request-chains) by reducing the length of chains, reducing the download size of resources, or deferring the download of unnecessary resources to improve page load.",
+      "score": 0,
+      "impact": "critical"
+    },
+    {
+      "id": "uses-long-cache-ttl",
+      "title": "Serve static assets with an efficient cache policy",
+      "description": "A long cache lifetime can speed up repeat visits to your page. [Learn more about efficient cache policies](https://developer.chrome.com/docs/lighthouse/performance/uses-long-cache-ttl/).",
+      "score": 0.5,
+      "displayValue": "4 resources found",
+      "impact": "medium",
+      "details": [
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/sprite-e49fbf32.svg",
+          "value": "8KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png",
+          "value": "7KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/index-34f340e24a.js",
+          "value": "4KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/gt-ie9-507b16b6be.js",
+          "value": "1KB wasted"
+        }
+      ]
+    },
+    {
+      "id": "modern-image-formats",
+      "title": "Serve images in next-gen formats",
+      "description": "Image formats like WebP and AVIF often provide better compression than PNG or JPEG, which means faster downloads and less data consumption. [Learn more about modern image formats](https://developer.chrome.com/docs/lighthouse/performance/uses-webp-images/).",
+      "score": 0.5,
+      "displayValue": "Est savings of 9 KiB",
+      "impact": "medium",
+      "details": [
+        {
+          "selector": "… > img.central-featured-logo",
+          "snippet": "<img class=\"central-featured-logo\" src=\"portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png\" srcset=\"portal/wikipedia…",
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png",
+          "value": "9KB wasted"
+        }
+      ],
+      "savingsMs": 10,
+      "savingsBytes": 9094
+    },
+    {
+      "id": "dom-size",
+      "title": "Avoid an excessive DOM size",
+      "description": "A large DOM will increase memory usage, cause longer [style calculations](https://developers.google.com/web/fundamentals/performance/rendering/reduce-the-scope-and-complexity-of-style-calculations), and produce costly [layout reflows](https://developers.google.com/speed/articles/reflow). [Learn how to avoid an excessive DOM size](https://developer.chrome.com/docs/lighthouse/performance/dom-size/).",
+      "score": 0.5,
+      "displayValue": "1,094 elements",
+      "impact": "medium",
+      "details": [
+        {
+          "selector": "… > a",
+          "snippet": "<a href=\"//no.wikipedia.org/\" lang=\"nb\">"
+        },
+        {
+          "selector": "… > ul",
+          "snippet": "<ul>"
+        }
+      ]
+    },
+    {
+      "id": "cache-insight",
+      "title": "Use efficient cache lifetimes",
+      "description": "A long cache lifetime can speed up repeat visits to your page. [Learn more](https://web.dev/uses-long-cache-ttl/).",
+      "score": 0.5,
+      "displayValue": "Est savings of 18 KiB",
+      "impact": "medium",
+      "details": [
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/sprite-e49fbf32.svg",
+          "value": "8KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png",
+          "value": "7KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/index-34f340e24a.js",
+          "value": "4KB wasted"
+        },
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/gt-ie9-507b16b6be.js",
+          "value": "1KB wasted"
+        }
+      ]
+    },
+    {
+      "id": "image-delivery-insight",
+      "title": "Improve image delivery",
+      "description": "Reducing the download time of images can improve the perceived load time of the page and LCP. [Learn more about optimizing image size](https://developer.chrome.com/docs/lighthouse/performance/uses-optimized-images/)",
+      "score": 0.5,
+      "displayValue": "Est savings of 10 KiB",
+      "impact": "medium",
+      "details": [
+        {
+          "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png",
+          "value": "10KB wasted"
+        }
+      ]
+    }
+  ],
+  "resources": {
+    "requests": [
+      {
+        "url": "https://www.wikipedia.org/",
+        "resourceType": "document",
+        "transferSize": 31966,
+        "resourceSize": 120361,
+        "statusCode": 200,
+        "mimeType": "text/html",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 0,
+        "endTime": 453,
+        "ttfb": 2,
+        "contentDownloadTime": 451
+      },
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2.png",
+        "resourceType": "image",
+        "transferSize": 16809,
+        "resourceSize": 15829,
+        "statusCode": 200,
+        "mimeType": "image/png",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 468,
+        "endTime": 582,
+        "ttfb": 1,
+        "contentDownloadTime": 113
+      },
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/img/sprite-e49fbf32.svg",
+        "resourceType": "image",
+        "transferSize": 19270,
+        "resourceSize": 51190,
+        "statusCode": 200,
+        "mimeType": "image/svg+xml",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 472,
+        "endTime": 609,
+        "ttfb": 1,
+        "contentDownloadTime": 136
+      },
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/index-34f340e24a.js",
+        "resourceType": "script",
+        "transferSize": 9418,
+        "resourceSize": 24131,
+        "statusCode": 200,
+        "mimeType": "text/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 925,
+        "endTime": 1047,
+        "ttfb": 10,
+        "contentDownloadTime": 111
+      },
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/gt-ie9-507b16b6be.js",
+        "resourceType": "script",
+        "transferSize": 1380,
+        "resourceSize": 580,
+        "statusCode": 200,
+        "mimeType": "text/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 927,
+        "endTime": 1048,
+        "ttfb": 9,
+        "contentDownloadTime": 112
+      },
+      {
+        "url": "https://www.wikipedia.org/static/favicon/wikipedia.ico",
+        "resourceType": "other",
+        "transferSize": 1842,
+        "resourceSize": 2734,
+        "statusCode": 200,
+        "mimeType": "image/vnd.microsoft.icon",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 1175,
+        "endTime": 1273,
+        "ttfb": 1,
+        "contentDownloadTime": 98
+      }
+    ],
+    "summary": {
+      "script": {
+        "requestCount": 2,
+        "transferSize": 10798,
+        "resourceSize": 0
+      },
+      "stylesheet": {
+        "requestCount": 0,
+        "transferSize": 0,
+        "resourceSize": 0
+      },
+      "image": {
+        "requestCount": 2,
+        "transferSize": 36079,
+        "resourceSize": 0
+      },
+      "font": {
+        "requestCount": 0,
+        "transferSize": 0,
+        "resourceSize": 0
+      },
+      "document": {
+        "requestCount": 1,
+        "transferSize": 31966,
+        "resourceSize": 0
+      },
+      "media": {
+        "requestCount": 0,
+        "transferSize": 0,
+        "resourceSize": 0
+      },
+      "other": {
+        "requestCount": 1,
+        "transferSize": 1842,
+        "resourceSize": 0
+      },
+      "total": {
+        "requestCount": 6,
+        "transferSize": 80685,
+        "resourceSize": 0
+      }
+    },
+    "thirdPartyRequests": [],
+    "jsFiles": [
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/index-34f340e24a.js",
+        "resourceType": "script",
+        "transferSize": 9418,
+        "resourceSize": 24131,
+        "statusCode": 200,
+        "mimeType": "text/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 925,
+        "endTime": 1047,
+        "ttfb": 10,
+        "contentDownloadTime": 111
+      },
+      {
+        "url": "https://www.wikipedia.org/portal/wikipedia.org/assets/js/gt-ie9-507b16b6be.js",
+        "resourceType": "script",
+        "transferSize": 1380,
+        "resourceSize": 580,
+        "statusCode": 200,
+        "mimeType": "text/javascript",
+        "isThirdParty": false,
+        "detectedLibrary": null,
+        "isCritical": false,
+        "startTime": 927,
+        "endTime": 1048,
+        "ttfb": 9,
+        "contentDownloadTime": 112
+      }
+    ],
+    "detectedLibraries": []
+  },
+  "flameChartData": {
+    "events": [
+      {
+        "name": "RunTask",
+        "category": "other",
+        "startMs": 470.857,
+        "durationMs": 431.176,
+        "isLongTask": true,
+        "depth": 0
+      },
+      {
+        "name": "Layout",
+        "category": "rendering",
+        "startMs": 484.755,
+        "durationMs": 396.746,
+        "isLongTask": true,
+        "depth": 1
+      },
+      {
+        "name": "RunTask",
+        "category": "other",
+        "startMs": 930.265,
+        "durationMs": 210.785,
+        "isLongTask": true,
+        "depth": 0
+      },
+      {
+        "name": "Layout",
+        "category": "rendering",
+        "startMs": 937.154,
+        "durationMs": 197.374,
+        "isLongTask": true,
+        "depth": 1
+      }
+    ],
+    "maxDepth": 10,
+    "durationMs": 3885.275
+  }
+}

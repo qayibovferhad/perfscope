@@ -194,3 +194,51 @@ resurs eynidir : "…waiting nearly five seconds … Check the main hero image o
 Probe qeyddəki hər fayl adını səhifənin real resurs siyahısı ilə tutuşdurur; uydurulmuş ad
 testi qırır. `evidence` webhook gövdəsinə düşmür — səbəbin yeri qeyddir, gövdədə dəyişmiş
 faylların siyahısı əsas tapıntını basardı.
+
+## Qiymətləndirmə dəsti (2026-08-22)
+
+Konkretlik ölçüsü bu vaxta qədər **lokal bazadakı ən yeni auditi** götürürdü — bir sayt,
+hər yeni audit ilə dəyişən. Ölçü fixture dəyişdiyi üçün tərpənirsə, prompt dəyişikliyinin
+kömək edib-etmədiyini deyə bilmir, halbuki onun yeganə vəzifəsi budur.
+
+`probes/fixtures/` — dörd qəsdən bir-birinə oxşamayan səhifə (`capture-fixtures.probe.mts`
+ilə çəkilir):
+
+```
+www.bbc.com/news        157 sorğu, 145 sitat oluna bilən fakt  — ağır, onlarla vendor
+landau.cubicsbms.com    175 sorğu, 175 fakt                     — real tətbiq, bundle
+vite.dev/guide          60 sorğu,  60 fakt                      — sənədləşmə, qəsdən sürətli
+www.wikipedia.org       6 sorğu,   6 fakt                        — demək olar statik
+```
+
+Diskdə 468KB, çünki fixture yalnız AI-nin **oxuduğu** sahələri saxlayır: filmstrip, heap
+və dependency qrafiki modelə heç vaxt çatmır, flame event-lərindən isə yalnız `isLongTask`
+olanlar (`buildPageContext` onsuz da filtrləyir və ən uzun 6-nı götürür) — 1562KB → 468KB.
+Orijinal runun AI mətni də silinir: fixture qiymətləndirdiyi cavabı öz içində daşımamalıdır.
+
+**Dəst dərhal iki şey göstərdi.**
+
+1. Tək sayt 91% (PASS) deyirdi; dəst ilk çalışmada **68%** verdi və fərqin hamısı bir
+   fixture-dan gəlirdi — wikipedia 0/4.
+2. Sonrakı çalışma isə eyni model, eyni fixture ilə **95%** verdi (wikipedia 3/4). Yəni
+   **bir çalışma ölçü deyil**, və səs-küy ən çox sitat ediləcək materialı az olan səhifədədir:
+   6 faktla fix ya təsadüfən logo faylını adlandırır, ya yox.
+
+Ona görə `--runs N` əlavə olundu: hər çalışma ayrı prosesdə (prompt cache proses içindədir,
+eyni prosesdə təkrar eyni mətni qaytarardı), nəticə orta + diapazon kimi verilir — məhsulun
+özünün "median of N runs + spread" qaydası, bu dəfə öz AI ölçüsünə tətbiq olunmuş.
+
+3 çalışma, `gemini-flash-lite-latest`:
+```
+  fixture                        citable      concrete   range (3 runs)
+  landau.cubicsbms.com               175          100%   100–100%
+  vite.dev-guide                      60          100%   100–100%
+  www.bbc.com-news                   145           93%    80–100%
+  www.wikipedia.org                    6           69%     67–75%
+  all fixtures                                      93%     90–95%
+```
+
+**Açıq qalan sual (düzəldilməyib):** wikipedia 100/100/100/100 alır və AI yenə də dörd fix
+yazır ("DOM ağacını kiçildin", "png-ni next-gen formata çevirin"). Düzgün davranış yəqin ki
+"burada əhəmiyyətli düzəliş yoxdur" deməkdir — amma bu, prompt dəyişikliyidir və öz ölçüsü
+ilə gəlməlidir; indi ən azı görünür.

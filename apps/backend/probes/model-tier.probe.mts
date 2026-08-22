@@ -13,9 +13,9 @@
  * nothing. The child is `ai-quality.probe.mts` — the scoring lives there once and this
  * file only tabulates, so the two probes can never drift into scoring differently.
  */
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { spawnScored, mean, type ScoredRow } from './lib/repeat.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CHILD = join(here, 'ai-quality.probe.mts');
@@ -34,37 +34,25 @@ const RUNS = Math.max(1, parseInt(flags.get('--runs') ?? '2', 10) || 2);
 /** Rolling aliases only — pinned versions get retired and 404 silently (see client.ts). */
 const MODELS = (flags.get('--models') ?? 'gemini-flash-lite-latest,gemini-flash-latest,gemini-pro-latest').split(',');
 
-interface Row {
-  model: string; url: string; fixes: number; concrete: number;
-  auditsConcrete: number; auditsTotal: number; diagnosisChars: number;
-  elapsedMs: number; inTokens: number; outTokens: number;
-}
+type Row = ScoredRow;
 
 const results = new Map<string, Row[]>();
 
 for (const model of MODELS) {
   for (let run = 1; run <= RUNS; run++) {
     process.stdout.write(`· ${model} run ${run}/${RUNS} … `);
-    const child = spawnSync('npx', ['tsx', CHILD, ...(WANT ? [WANT] : []), '--json'], {
+    const row = spawnScored(CHILD, WANT ? [WANT] : [], {
       cwd: join(here, '..'),
-      env: { ...process.env, GEMINI_MODEL: model },
-      encoding: 'utf8',
-      timeout: 180_000,
+      env: { GEMINI_MODEL: model },
     });
-    const line = (child.stdout ?? '').split('\n').find(l => l.startsWith('##RESULT##'));
-    if (!line) {
-      console.log('FAILED');
-      console.log((child.stderr || child.stdout || '(no output)').trim().split('\n').slice(-4).join('\n'));
-      continue;
-    }
-    const row = JSON.parse(line.slice('##RESULT##'.length)) as Row;
+    if (!row) continue;
     results.set(model, [...(results.get(model) ?? []), row]);
     console.log(`${row.concrete}/${row.fixes} concrete · ${(row.elapsedMs / 1000).toFixed(1)}s`);
   }
 }
 
 // ─── Table ────────────────────────────────────────────────────────────────────
-const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
+const avg = mean;
 const pad = (s: string, n: number) => s.padEnd(n);
 
 console.log(`\nfixture: ${[...results.values()][0]?.[0]?.url ?? '(none)'}   ·   ${RUNS} run(s) per model\n`);
