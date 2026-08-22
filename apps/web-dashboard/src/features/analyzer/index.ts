@@ -20,6 +20,7 @@ export { ResourceDependencyChain } from './ui/ResourceDependencyChain';
 export { ResourceWaterfall } from './ui/ResourceWaterfall';
 export { ResourcesAlert } from './ui/ResourcesAlert';
 export { SinceLastRun } from './ui/SinceLastRun';
+export { BundleTreemap } from './ui/BundleTreemap';
 export { StreamingMetrics } from './ui/StreamingMetrics';
 export { StreamingScores } from './ui/StreamingScores';
 export { ThirdPartyPanel } from './ui/ThirdPartyPanel';

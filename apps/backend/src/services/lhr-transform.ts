@@ -4,6 +4,7 @@ import { parseDependenciesFromArtifacts, parseDependencies, type CompactNetworkE
 import { parseTimeline } from './timeline-parser.js';
 import { parseCLSData } from './cls-parser.js';
 import { parseThirdParties } from './third-party-parser.js';
+import { parseBundles } from './bundle-parser.js';
 import type { AnalysisResult, AuditItem, AuditDetail, AuditImpact, AnalysisCategory, CategoryPartial, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
 
 /** Lighthouse item shapes vary by audit: DOM audits nest `node.selector`/`node.snippet`,
@@ -321,6 +322,11 @@ export function buildFullResult(
 
     const thirdParty = parseThirdParties(performanceLhr, result.resources?.requests ?? []);
     if (thirdParty) result.thirdParty = thirdParty;
+
+    // Only the performance run carries `script-treemap-data` — it is that category's audit,
+    // and the static group never runs it.
+    const bundles = parseBundles(performanceLhr);
+    if (bundles) result.bundles = bundles;
 
     // Build dependency graph — prefer worker-extracted events, fall back to raw artifacts
     const requests = result.resources?.requests ?? [];

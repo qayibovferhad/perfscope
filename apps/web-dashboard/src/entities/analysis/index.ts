@@ -39,6 +39,9 @@ export type {
   PreviousRunSummary,
   AuditDetail,
   ResourceDiff,
+  BundleSummary,
+  ScriptBundle,
+  BundleNode,
   ResourceResize,
   DiffableResource,
 } from '@perfscope/shared'

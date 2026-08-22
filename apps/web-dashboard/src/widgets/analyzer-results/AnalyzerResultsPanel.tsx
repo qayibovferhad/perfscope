@@ -15,6 +15,7 @@ import { CLSVisualizer } from '@/features/analyzer';
 import { ResourcesAlert } from '@/features/analyzer';
 import { ThirdPartyPanel } from '@/features/analyzer';
 import { SinceLastRun } from '@/features/analyzer';
+import { BundleTreemap } from '@/features/analyzer';
 import { AskAboutAudit } from '@/features/analyzer';
 import { useCruxData, CruxFieldPanel } from '@/features/crux';
 import { TimelineProvider } from '@/features/analyzer';
@@ -210,6 +211,9 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
                 <SinceLastRun previous={data.previous} />
                 <ResourcesAlert resources={data.resources} />
                 <ResourceBreakdown resources={data.resources} />
+                {/* After the breakdown, which answers "how much JavaScript"; this one
+                    answers "which JavaScript", and only makes sense in that order. */}
+                <BundleTreemap bundles={data.bundles} />
               </div>
             </section>
           ) : (
@@ -228,6 +232,7 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
                   <AiCard title="How this page loaded" text={data.aiWaterfallNarrative} pending={aiPending} />
                   <ResourceWaterfall resources={data.resources} changes={data.previous?.resourceDiff} />
                   <ResourceBreakdown resources={data.resources} />
+                  <BundleTreemap bundles={data.bundles} />
                 </section>
               )}
             </div>

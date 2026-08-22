@@ -370,6 +370,53 @@ export interface DependencyGraph {
   links: DependencyLink[]
 }
 
+// ─── JavaScript bundles ──────────────────────────────────────────────────────
+
+/**
+ * One node of a script's module tree — a directory, a package, or a single source file.
+ *
+ * Sizes are *resource* bytes (uncompressed, as the engine parses them), because that is
+ * what "unused" is measured against and what a bundler's own output reports. The transfer
+ * size lives on the script, where compression actually applies.
+ */
+export interface BundleNode {
+  name:         string
+  bytes:        number
+  /** Bytes never executed during the load, where coverage could tell. */
+  unusedBytes?: number
+  children?:    BundleNode[]
+}
+
+export interface ScriptBundle {
+  url:            string
+  /** Uncompressed size. */
+  bytes:          number
+  /** Over the wire, when Lighthouse knew it — compression usually makes this much smaller. */
+  transferBytes?: number
+  unusedBytes?:   number
+  /** Whether a source map let Lighthouse see inside; without one there are no modules. */
+  hasSourceMap:   boolean
+  /** The pruned module tree. Absent when the script has no source map. */
+  modules?:       BundleNode[]
+}
+
+/**
+ * What the page's JavaScript is made of.
+ *
+ * Lighthouse computes this on every performance run (`script-treemap-data`, an
+ * informative audit of weight 0) from source maps and coverage, and PerfScope dropped it.
+ * "Reduce unused JavaScript — 612 KB" is a number; "lodash, 71 KB, 64% unused, inside
+ * vendor.js" is a fix.
+ */
+export interface BundleSummary {
+  /** Heaviest first. */
+  scripts:     ScriptBundle[]
+  totalBytes:  number
+  unusedBytes: number
+  /** Modules that appear in more than one bundle, heaviest first. */
+  duplicates?: { module: string; bytes: number; count: number }[]
+}
+
 // ─── Result root + progress ──────────────────────────────────────────────────
 
 /**
@@ -428,6 +475,8 @@ export interface AnalysisResult {
   thirdParty?:           ThirdPartyEntity[]
   /** The previous run of this URL, and what changed since it. Absent when there is none. */
   previous?:             PreviousRunSummary
+  /** What the page's JavaScript is made of. Absent when the page ships none. */
+  bundles?:              BundleSummary
 }
 
 export interface AnalysisProgress {

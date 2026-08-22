@@ -525,6 +525,68 @@ asserts `bundles.scripts.length > 0`, a script with `hasSourceMap`, pruning caps
 size delta logged; unit tests for `treemap.ts`; `e2e/bundle-treemap.probe.mjs` — panel
 renders, drill-down works, both themes. Stop; report; wait.
 
+
+### D6. DONE — 2026-08-22
+
+**Shipped as designed**, with the layout rewritten once and one part deliberately skipped.
+
+- `services/bundle-parser.ts` reads `script-treemap-data` — an auditRef of the performance
+  category with weight 0 and group "hidden", which is why it went unnoticed for a year —
+  and prunes it: depth ≤ 3, children under 1% of their parent (or past the 25th) folded
+  into one `(N smaller modules)` node so the rectangles still add up, single-child chains
+  collapsed into one label, ≤ 400 nodes per result, ≤ 20 scripts with a module tree.
+- **Three bugs found by measuring rather than by reading:**
+  1. The fold nodes were not counted against the node budget, so a page with 179 scripts
+     produced 601 nodes against a cap of 400. Every emitted node is counted now, and when
+     the fold itself cannot be afforded the level returns *no* children rather than a
+     partial list that does not add up.
+  2. The top-level `collapse()` merged a script into its first directory, labelling it
+     `vendor.js/node_modules`. The script's children are pruned directly now.
+  3. `inlineOnly` used `.every()` on an empty array, so an ordinary minified script with no
+     source map and no children counted as "inline" and was dropped under 2 KB.
+- **The chart is laid out in real pixels, not viewBox units.** The first version used
+  `viewBox` + `preserveAspectRatio="none"`, which scales x and y by different factors as
+  soon as the container is not the viewBox's aspect — every label came out squashed. The
+  container is measured (`ResizeObserver`) and the geometry computed at its true size.
+  Labels are clipped to their own tile: long package names were landing on top of the
+  neighbouring tile's label and reading as two interleaved words.
+- `lib/treemap.ts` is the squarified algorithm (Bruls et al.), pure and unit-tested (8
+  cases: fills the box exactly, areas proportional, no overlaps, everything inside the box,
+  biggest first, closer to square than slice-and-dice, zero weights dropped, empty inputs).
+  Hand-rolled rather than recharts — the analyzer draws its own SVG everywhere for the same
+  reason, and here it is the unused-bytes overlay drawn *inside* every tile.
+- Hatching, not a second hue, marks code that never ran; the duplicates list sits under the
+  map because two copies of one module are two rectangles that look like two modules.
+
+**Measured**
+- PerfScope's own dev server (181 unbundled scripts, source maps on everything — the worst
+  case there is): 385 nodes, **49 KB, 13.3% of the stored result**. Above the plan's 10%
+  guess, and left alone: the absolute caps are what bound it, the page is pathological by
+  construction, and every one of those scripts is real information when you are auditing
+  your own dev build.
+- `vite.dev/guide/` (7 production chunks, no source maps): **1 KB, 0.5%**.
+
+**Verified**
+- `probes/bundles.probe.mts` — **18/18 PASS** against a live audit, plus a synthetic tree
+  for the rules that no real page can be relied on to exercise (a module that is exactly
+  0.5% of its bundle). Asserts the fold keeps the sums exact, the chain collapses, the
+  depth and node ceilings hold, duplicates are counted once with their total, and a script
+  with no source map never claims modules. `--no-live` runs the rules alone; `U` overrides
+  the target. On a page with no source maps it says so and skips, rather than failing.
+- `e2e/bundle-treemap.probe.mjs` — **16/16 PASS**: 181 tiles drawn to scale, 150 carrying
+  an unused overlay, none zero-sized, areas genuinely weighted, the heaviest tiles labelled,
+  drill-down into `recharts.js` and back out through the breadcrumb, the hover readout,
+  both themes, zero console errors.
+- Gates: build, typecheck (6 workspaces), test (121), lint 0 errors, `pnpm e2e` 21/21.
+
+**D4 (the AI hook) deliberately skipped.** Feeding "largest unused modules" into
+`buildPageContext` is fifteen lines, but measuring it honestly is not: the fixture set
+would have to be re-captured to carry `bundles`, and a re-capture *also* picks up phase B's
+per-category audit caps — so a concreteness delta could not be attributed to either change.
+The model already receives `unused-javascript`'s per-file details and can name the file; the
+module-level increment is not worth a measurement nobody could interpret. Revisit as its own
+change, with a capture taken before and after.
+
 ---
 
 ## Order, estimates, and what stays out
