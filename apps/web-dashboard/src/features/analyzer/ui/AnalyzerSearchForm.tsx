@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Lock, ShieldCheck, ShieldAlert, Globe } from 'lucide-react';
+import { Search, Lock, ShieldCheck, ShieldAlert, Globe, Clock, X } from 'lucide-react';
 import type { SessionState } from '@/entities/website';
 import { Segmented } from '@/shared/ui/segmented';
-import { DEVICE_MODES, PrecisionToggle } from '@/entities/analysis';
+import { DEVICE_MODES, PrecisionToggle, ElapsedClock } from '@/entities/analysis';
 import { Button } from '@/shared/ui/button';
 import { Panel } from '@/shared/ui/panel';
 import { UrlCombobox, type UrlSuggestion } from '@/shared/ui/url-combobox';
@@ -22,6 +22,11 @@ interface Props {
   precision:     AuditPrecision;
   onPrecision:   (p: AuditPrecision) => void;
   onSubmit:      (e: React.FormEvent) => void;
+  /** When the run in flight began, for the elapsed clock. Null when the run was adopted
+   *  from an earlier page load and its true start time is unknown. */
+  startedAt:     number | null;
+  /** Abandons the run in flight. Absent for callers with nothing to cancel. */
+  onCancel?:     () => void;
   /** Opens the login-capture flow. Shown on the expired badge, which is otherwise a
    *  dead end: the session cannot be repaired from anywhere else on this page. */
   onFixSession:  () => void;
@@ -30,6 +35,7 @@ interface Props {
 export function AnalyzerSearchForm({
   url, setUrl, suggestions, isPending, authSessionId, sessionStatus, progress,
   formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession,
+  startedAt, onCancel,
 }: Props) {
   return (
     <Panel border="strong" className="shadow-ld-shadow-card p-[22px]">
@@ -86,14 +92,30 @@ export function AnalyzerSearchForm({
           className="flex-1"
           inputClassName="py-[14px] text-[15px]"
         />
-        <Button
-          type="submit"
-          disabled={isPending || !url.trim()}
-          className="h-auto py-[14px] px-[22px] [&_svg]:w-[16px] [&_svg]:h-[16px]"
-        >
-          {authSessionId ? <Lock /> : <Search />}
-          {isPending ? 'Analyzing…' : 'Analyze'}
-        </Button>
+        {/* One button, two jobs. While a run is in flight the primary button is dead
+            weight — disabled and reading "Analyzing…" — so it becomes the way out
+            instead. `outline` rather than the accent gradient so the change of meaning
+            is visible before the click, not after it. */}
+        {isPending && onCancel ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="h-auto py-[14px] px-[22px] [&_svg]:w-[16px] [&_svg]:h-[16px]"
+          >
+            <X />
+            Stop
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={isPending || !url.trim()}
+            className="h-auto py-[14px] px-[22px] [&_svg]:w-[16px] [&_svg]:h-[16px]"
+          >
+            {authSessionId ? <Lock /> : <Search />}
+            {isPending ? 'Analyzing…' : 'Analyze'}
+          </Button>
+        )}
       </form>
 
       <AnimatePresence>
@@ -106,6 +128,22 @@ export function AnalyzerSearchForm({
             className="mt-5 overflow-hidden"
           >
             <ProgressStepper progress={progress} />
+
+            {/* Lighthouse waits out its own quiet windows, so even a fast page is tens of
+                seconds and a Precise run measures several times over. Saying so up front
+                is what stops a working audit from reading as a hung one — and the clock
+                proves it is still moving. */}
+            <p className="mt-4 flex items-center gap-2 text-[12px] text-ld-text-3">
+              <Clock className="w-[13px] h-[13px] shrink-0" />
+              <span>
+                {precision === 'median'
+                  ? 'Precise mode measures the page several times — this usually takes a few minutes.'
+                  : 'This usually takes under a minute; heavy pages can take a few minutes.'}
+              </span>
+              {startedAt !== null && (
+                <ElapsedClock startedAt={startedAt} className="ml-auto font-mono tabular-nums text-ld-text-2" />
+              )}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

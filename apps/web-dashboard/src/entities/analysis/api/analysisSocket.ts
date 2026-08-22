@@ -65,6 +65,20 @@ export function startAnalysis(
   return cleanup;
 }
 
+/**
+ * Ask the server to abandon a running audit.
+ *
+ * The audit is real work — a Chrome per run, up to five runs on an unstable page — so
+ * leaving it going after the person stopped waiting burns the CPU that every other audit
+ * on the box is measured against. The server kills the workers; the caller detaches its
+ * own listeners, so the error that killing them produces never reaches the UI.
+ */
+export function cancelAnalysis(analysisId: string): void {
+  const s = getSocket();
+  if (!s.connected) return;
+  s.emit('analysis:cancel', { analysisId });
+}
+
 export function joinAnalysis(callbacks: AnalysisCallbacks): () => void {
   const s = getSocket();
   return attachAnalysisListeners(s, callbacks);

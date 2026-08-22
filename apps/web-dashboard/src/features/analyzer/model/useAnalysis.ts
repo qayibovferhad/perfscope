@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
-import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, type AuditPrecision } from '@/entities/analysis';
+import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, cancelAnalysis, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
 import type { AnalysisResult, AnalysisProgress, AuditFormFactor, PartialMap } from '@/entities/analysis';
 import type { AnalysisInsightsPayload } from '@perfscope/shared';
@@ -25,6 +25,14 @@ interface State {
    * Only a live run sets it: `bootstrap` renders a stored result whose AI is already in it.
    */
   aiPending: boolean;
+  /**
+   * The id the server generated for the run in flight, learned from its first progress
+   * event. Without it there is nothing to cancel: the audit belongs to the server, and
+   * closing the tab only stops the watching, not the work.
+   */
+  analysisId: string | null;
+  /** When the run started, for the elapsed clock. Null whenever nothing is running. */
+  startedAt: number | null;
 }
 
 /**
@@ -47,6 +55,8 @@ export function useAnalysis() {
     error:     null,
     errorCode: null,
     aiPending: false,
+    analysisId: null,
+    startedAt:  null,
   }));
 
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -98,11 +108,11 @@ export function useAnalysis() {
 
   const analyze = useCallback((url: string, projectId?: string, formFactor?: AuditFormFactor, precision?: AuditPrecision) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: Date.now() });
 
     const cleanup = startAnalysis(url, {
       onProgress: (progress) =>
-        setState((prev) => ({ ...prev, progress })),
+        setState((prev) => ({ ...prev, progress, analysisId: progress.analysisId || prev.analysisId })),
 
       onPartial: (partial) =>
         setState((prev) => ({
@@ -111,14 +121,14 @@ export function useAnalysis() {
         })),
 
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
         setResult(data, url);
         startAiWait();
       },
       onInsights: applyInsights,
 
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false, analysisId: null, startedAt: null }),
     }, { projectId, formFactor, precision });
 
     cleanupRef.current = cleanup;
@@ -126,7 +136,7 @@ export function useAnalysis() {
 
   const reset = useCallback(() => {
     cleanupRef.current?.();
-    setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
+    setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
     stopAiWait();
     useAnalysisStore.getState().clear();
   }, [stopAiWait]);
@@ -134,43 +144,45 @@ export function useAnalysis() {
   const bootstrap = useCallback((result: AnalysisResult, url: string) => {
     cleanupRef.current?.();
     stopAiWait();
-    setState({ status: 'success', data: result, progress: null, partials: {}, error: null, errorCode: null, aiPending: false });
+    setState({ status: 'success', data: result, progress: null, partials: {}, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
     setResult(result, url);
   }, [setResult, stopAiWait]);
 
   const adoptRunning = useCallback(() => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
+    // No startedAt: this attaches to a run that began before this page did, so the elapsed
+    // clock would be counting from the wrong moment. Better no number than a wrong one.
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
     const cleanup = joinAnalysis({
-      onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
+      onProgress: (progress) => setState((prev) => ({ ...prev, progress, analysisId: progress.analysisId || prev.analysisId })),
       onPartial:  (partial)  => setState((prev) => ({
         ...prev,
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
         setResult(data, data.url);
         startAiWait();
       },
       onInsights: applyInsights,
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false, analysisId: null, startedAt: null }),
     });
     cleanupRef.current = cleanup;
   }, [setResult, applyInsights, startAiWait]);
 
   const startAuthAudit = useCallback((sessionId: string, url: string, formFactor?: AuditFormFactor) => {
     cleanupRef.current?.();
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false });
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: Date.now() });
 
     const cleanup = emitAuthAuditStart(sessionId, url, {
-      onProgress: (progress) => setState((prev) => ({ ...prev, progress })),
+      onProgress: (progress) => setState((prev) => ({ ...prev, progress, analysisId: progress.analysisId || prev.analysisId })),
       onPartial:  (partial)  => setState((prev) => ({
         ...prev,
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
-        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true });
+        setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
         setResult(data, url);
         startAiWait();
         // The backend stores the freshly captured session on the website and clears its
@@ -179,19 +191,37 @@ export function useAnalysis() {
       },
       onInsights: applyInsights,
       onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false }),
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false, analysisId: null, startedAt: null }),
     }, formFactor);
 
     cleanupRef.current = cleanup;
   }, [setResult, queryClient, applyInsights, startAiWait]);
 
+  /**
+   * Stop the run in flight.
+   *
+   * Detaches first, then tells the server: killing the workers makes the audit throw, and
+   * a listener still attached would turn the person's own decision into a red error panel.
+   * Back to idle rather than to an error — nothing failed.
+   */
+  const cancel = useCallback(() => {
+    const { analysisId } = stateRef.current;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    stopAiWait();
+    if (analysisId) cancelAnalysis(analysisId);
+    setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
+  }, [stopAiWait]);
+
   return {
     analyze,
+    cancel,
     reset,
     bootstrap,
     adoptRunning,
     startAuthAudit,
     lastUrl,
+    startedAt: state.startedAt,
     data:      state.data,
     progress:  state.progress,
     partials:  state.partials,

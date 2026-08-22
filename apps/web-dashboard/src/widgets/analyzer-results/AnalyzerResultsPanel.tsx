@@ -89,7 +89,7 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
             title={`Runs scored ${measurement.scores.join(', ')} — the median run is reported`}
           >
             <Crosshair className="w-[11px] h-[11px]" />
-            median of {measurement.runs}
+            median of {measurement.runs} · {measurement.scores.join(' · ')}
           </span>
         )}
       </p>
