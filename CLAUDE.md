@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Analyzer — read before touching the result shape
+
+`docs/analyzer/PLAN.md` records the 2026-08-22 sprint that added four things to
+`AnalysisResult`, each with the reasoning, the caps and the measurements: `previous`
+(what moved since the last run of the same URL, attached *before* `analysis:complete`),
+`AuditItem.category`/`group` (read from Lighthouse's own `auditRefs`/`categoryGroups`,
+capped 15 **per category**), `AuditDetail.screenshot` (element crops, socket path only),
+and `bundles` (the JavaScript treemap). Read the phase records before changing any of them
+— several of the decisions look arbitrary and are not.
+
+Three traps it documents that will cost time again: `getPreviousRun` must be given
+`result.formFactor` or a mobile run is compared against a desktop one; Lighthouse reports
+screenshot dimensions in *fractional* CSS pixels and Puppeteer throws on them; Lighthouse
+audit descriptions are Markdown and end with a link.
+
+`e2e/fixtures/inaccessible.html` is a page that fails on purpose in five accessibility
+groups. The probes serve it themselves — reuse it rather than depending on a third-party
+site staying broken.
+
 ## AI layer — read before touching anything AI
 
 `docs/ai/HANDOFF.md` is the entry point: how the layer is wired, how to measure it, the
@@ -131,10 +150,10 @@ The `projects` feature groups audits by website and route. A `projectId` can be 
 - `controllers/` — route handler logic (thin layer; most business logic lives in `services/`)
 - `socket/analysis.handler.ts` — WebSocket event handling; orchestrates standard, auth-audit, and session auto-injection pipelines
 - `services/lighthouse.service.ts` — `LighthouseService` (EventEmitter); orchestration only (~370 lines) — Chrome/Worker lifecycle, queueing, run iteration
-- `services/lighthouse.worker.ts` — Worker thread entry point. **Must stay self-contained**: tsx's `.js`→`.ts` remap does not apply inside Worker threads, so a relative import here fails at runtime only
+- `services/lighthouse.worker.ts` — Worker thread entry point. **Must stay self-contained**: tsx's `.js`→`.ts` remap does not apply inside Worker threads, so a relative import here fails at runtime only. Also crops the failing-element screenshots (`captureElements`, static group only) out of Lighthouse's full-page capture, then deletes that capture before posting the LHR back
 - `services/lhr-transform.ts` — LHR → `AnalysisResult` (scores, audits, auth-redirect detection); calls the parsers
-- `services/*-parser.ts` — typed structures from raw artifacts: resource waterfall, timeline/filmstrip, CLS, dependencies, flame chart, heap memory, interactions, third parties
-- `services/auditPipeline.ts` — `enrichWithAi` + `persistAudit` (+ budget check); used by the socket handler, nightly audits and the REST controller alike
+- `services/*-parser.ts` — typed structures from raw artifacts: resource waterfall, timeline/filmstrip, CLS, dependencies, flame chart, heap memory, interactions, third parties, JS bundles (`bundle-parser.ts`, from `script-treemap-data`)
+- `services/auditPipeline.ts` — `attachPreviousRun` + `enrichWithAi` + `persistAudit` (+ budget check); used by the socket handler, nightly audits and the REST controller alike. Anything written onto `result` here is stored by `persistAudit`, which is what makes the live view, a reopened history row, the public report and the CLI agree without any of them re-deriving it
 - `services/auditQueue.ts` — concurrency cap + priority for every audit
 - `services/budget.service.ts`, `mailer.service.ts`, `crux.service.ts`, `ai.service.ts`, `authAuditSession.ts`
 - `lib/` — `url.ts` (`isValidUrl`, `hostOf`, `sameOrigin`, `normalizeUrl`, `escapeRegex`, `hostPrefixRegex`), `chrome.ts` (launch flags), `errors.ts`
