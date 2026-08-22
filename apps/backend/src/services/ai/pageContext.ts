@@ -7,7 +7,7 @@
  * saw, not a fresh, cheaper summary of the same page — and so the probes can assert on
  * the context directly: this is pure string assembly, no Gemini, no I/O.
  */
-import { rateVital, VITAL_THRESHOLDS, fmtMs } from '@perfscope/shared';
+import { rateVital, VITAL_THRESHOLDS, fmtMs, UNSTABLE_SPREAD } from '@perfscope/shared';
 import type { AnalysisResult, ComparisonSide, CoreWebVitals, CruxData, RumSummary } from '@perfscope/shared';
 import type { RecommendationHistoryEntry } from '../aiRecommendation.service.js';
 import type { PreviousRun } from '../previousRun.service.js';
@@ -135,7 +135,7 @@ export function buildPageContext(
   // noise. Precise-mode audits (runs > 1) report the median and carry their own spread;
   // a Fast-mode audit is one sample and has to be described as one.
   const measurementNote = result.measurement && result.measurement.runs > 1
-    ? (result.measurement.spread >= 15
+    ? (result.measurement.spread >= UNSTABLE_SPREAD
         ? `\nThis is the median of ${result.measurement.runs} runs (Precise mode); those runs disagreed by ${Math.round(result.measurement.spread)} points — this page's own load behavior is genuinely unstable, not just measurement noise.\n`
         : `\nThis is the median of ${result.measurement.runs} runs (Precise mode, spread ${Math.round(result.measurement.spread)} points) — a reliable reading.\n`)
     : `\nThis was a single run (Fast mode) — Lighthouse scores can swing significantly run to run on the same page. Treat this as one sample, not a precise measurement; a Precise-mode audit (several runs, median reported) would confirm whether a number here is real movement or just this run's noise.\n`;

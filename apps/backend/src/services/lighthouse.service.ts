@@ -19,6 +19,7 @@ import type { AuthSessionData } from './authAuditSession.js';
 import { SessionExpiredError } from '../lib/errors.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { config } from '../config/index.js';
+import { shouldMeasureAgain, MAX_RUNS } from '@perfscope/shared';
 import type { AnalysisResult, AnalysisProgress, AnalysisCategory, AuditFormFactor, CategoryPartial, MeasurementQuality, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
 
 /** What one worker thread hands back for a single Lighthouse pass. */
@@ -37,6 +38,13 @@ interface WorkerRunResult {
  * numbers stay internally consistent — the waterfall, filmstrip and trace all
  * belong to the same load as the score beside them. Averaging metrics would
  * produce a page that never actually existed.
+ *
+ * Run counts are no longer always odd: `shouldMeasureAgain` stops at two when a page
+ * proves itself steady. With an even count this picks the lower of the middle pair, so a
+ * two-run audit reports the worse of the two — deliberately. The runs are within
+ * STABLE_SPREAD of each other by the time that happens, so the pessimism is a few points
+ * at most, and a measurement tool that rounds towards flattering itself is worse than one
+ * that rounds the other way.
  */
 function pickMedianRun<T extends { lhr: WorkerRunResult['lhr'] }>(
   runs: T[],
@@ -75,9 +83,6 @@ const CATEGORIES: AnalysisCategory[] = ['performance', 'accessibility', 'best-pr
 const STATIC_CATEGORIES: AnalysisCategory[] = ['seo', 'best-practices', 'accessibility'];
 /** Categories that measure the load itself and therefore vary run to run. */
 const TIMED_CATEGORIES:  AnalysisCategory[] = ['performance'];
-
-/** More than this and the wait stops being worth the extra precision. */
-const MAX_RUNS = 5;
 
 /**
  * The one progress scale, shared by all three audit paths.
@@ -286,18 +291,32 @@ export class LighthouseService extends EventEmitter {
         staticRes = await this.runLighthouseInWorker(url, STATIC_CATEGORIES, workers, formFactor, 'simulate');
         emitFor(STATIC_CATEGORIES, staticRes.lhr);
 
+        // `runs` is a target, not a count. A page whose first two runs agree has already
+        // said what it does, and a third proves nothing but costs ~20s; a page whose runs
+        // disagree by double digits earns more of them, because a median over runs that
+        // contradict each other is a number with no meaning behind it.
         timedRuns = [];
-        for (let i = 0; i < runs; i++) {
+        const timedScores: number[] = [];
+        let runPct: number = PCT.auditing;
+
+        for (let i = 0; ; i++) {
+          // The plan can grow mid-audit, so progress is clamped forwards: a bar that slid
+          // backwards would read as a failure rather than as extra care.
+          runPct = Math.max(runPct, runProgress(i, Math.max(runs, i + 1)));
           this.emitProgress(
-            analysisId, 'auditing',
-            runProgress(i, runs),
-            `Measuring performance — run ${i + 1} of ${runs}...`,
+            analysisId, 'auditing', runPct,
+            i < runs
+              ? `Measuring performance — run ${i + 1} of ${runs}...`
+              : `Measuring performance — run ${i + 1} (this page measures unevenly)...`,
           );
           const res = await this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor);
           timedRuns.push(res);
+          timedScores.push(toScore(res.lhr.categories['performance']?.score));
           // Stream the first iteration so the user sees real numbers early; later
           // iterations refine them and the median is emitted below.
           if (i === 0) emitFor(TIMED_CATEGORIES, res.lhr);
+
+          if (!shouldMeasureAgain(timedScores, runs)) break;
         }
       }
 
@@ -416,22 +435,31 @@ export class LighthouseService extends EventEmitter {
       // the session is already loaded, and parallel loads would compete for the CPU they
       // are supposed to be measuring.
       const passes: Array<Awaited<ReturnType<typeof this.runLighthouse>>> = [];
+      const passScores: number[] = [];
+      let passPct: number = PCT.auditing;
       try {
-        for (let i = 0; i < runs; i++) {
+        for (let i = 0; ; i++) {
           if (runs > 1) {
+            // Same forward-only clamp as the streaming path: the run count is a target
+            // the page's own stability can move in either direction.
+            passPct = Math.max(passPct, runProgress(i, Math.max(runs, i + 1)));
             this.emitProgress(
-              analysisId, 'auditing',
-              runProgress(i, runs),
-              `Running Lighthouse audit — run ${i + 1} of ${runs}...`,
+              analysisId, 'auditing', passPct,
+              i < runs
+                ? `Running Lighthouse audit — run ${i + 1} of ${runs}...`
+                : `Running Lighthouse audit — run ${i + 1} (this page measures unevenly)...`,
             );
           }
           const pass = await this.runLighthouse(url, analysisId, browser, CATEGORIES, true, formFactor);
           passes.push(pass);
+          passScores.push(toScore(pass.lhr.categories['performance']?.score));
 
           // Stop after the first pass if the session is dead: the remaining runs would
           // measure the login page, and the caller is about to throw either way.
           const finalUrl = pass.lhr.finalDisplayedUrl ?? (pass.lhr as unknown as Record<string, string>)['finalUrl'];
           if (detectAuthRedirect(pass.lhr.requestedUrl, finalUrl)) break;
+
+          if (runs === 1 || !shouldMeasureAgain(passScores, runs)) break;
         }
       } finally {
         clearInterval(ticker);

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { NOISY_SPREAD } from '@perfscope/shared';
 import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
 import { ResourceBreakdown } from '@/features/analyzer';
 import { ResourceWaterfall } from '@/features/analyzer';
@@ -54,9 +55,6 @@ interface Props {
    */
   askEnabled?: boolean;
 }
-
-/** Score gap across runs beyond which the page's own variance dominates the number. */
-const NOISY_SPREAD = 8;
 
 export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
   const measurement = data.measurement;
