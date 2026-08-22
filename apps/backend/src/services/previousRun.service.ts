@@ -4,6 +4,8 @@ import { HAS_RESULT_FILTER } from '../lib/history.js';
 import type { ResourceSnapshot } from '../lib/resourceDiff.js';
 
 export interface PreviousRun {
+  /** Identifies the run an alert is comparing against, so a webhook payload can link it. */
+  analysisId: string;
   scores:     PerformanceScores;
   metrics:    CoreWebVitals;
   at:         string;
@@ -27,7 +29,7 @@ export async function getPreviousRun(
   const doc = await HistoryModel
     .findOne({ userId, url, createdAt: { $lt: before }, ...HAS_RESULT_FILTER })
     .sort({ createdAt: -1 })
-    .select('scores metrics createdAt fullResult.resources.requests fullResult.resources.detectedLibraries fullResult.thirdParty')
+    .select('analysisId scores metrics createdAt fullResult.resources.requests fullResult.resources.detectedLibraries fullResult.thirdParty')
     .lean()
     .catch(() => null);
   if (!doc) return null;
@@ -40,6 +42,7 @@ export async function getPreviousRun(
   }).fullResult;
 
   return {
+    analysisId: doc.analysisId,
     scores:  doc.scores,
     metrics: doc.metrics,
     at:      new Date(doc.createdAt as unknown as string).toISOString().slice(0, 10),

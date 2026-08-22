@@ -12,7 +12,7 @@ import type { AnalysisResult, ComparisonSide, CoreWebVitals, CruxData, RumSummar
 import type { RecommendationHistoryEntry } from '../aiRecommendation.service.js';
 import type { PreviousRun } from '../previousRun.service.js';
 import type { CompetitorComparison } from '../competitorContext.service.js';
-import { diffResources, resourceDiffHasChanges } from '../../lib/resourceDiff.js';
+import { diffResources, resourceDiffHasChanges, formatResourceDiff } from '../../lib/resourceDiff.js';
 import { attributeLongTasks } from '../../lib/longTaskAttribution.js';
 import { compareLabAndField, formatGapLines, rumAsFieldData } from '../../lib/labFieldComparison.js';
 import { findSitewideVendors, describeSitewideVendor, type OtherRouteVendors } from '../../lib/crossPageVendors.js';
@@ -157,17 +157,7 @@ export function buildPageContext(
         );
         if (!resourceDiffHasChanges(diff)) return '';
 
-        const fmtKB = (b: number) => `${Math.round(b / 1024)}KB`;
-        const name  = (url: string) => short(url).trim() || url;
-        const lines: string[] = [];
-        if (diff.added.length)   lines.push(`  Added: ${diff.added.map(r => `${name(r.url)} (${fmtKB(r.transferSize)})`).join(', ')}`);
-        if (diff.removed.length) lines.push(`  Removed: ${diff.removed.map(r => name(r.url)).join(', ')}`);
-        if (diff.grown.length)   lines.push(`  Grew: ${diff.grown.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
-        if (diff.shrunk.length)  lines.push(`  Shrunk: ${diff.shrunk.map(r => `${name(r.url)} ${fmtKB(r.fromBytes)}→${fmtKB(r.toBytes)}`).join(', ')}`);
-        if (diff.librariesAdded.length)   lines.push(`  New libraries: ${diff.librariesAdded.join(', ')}`);
-        if (diff.librariesRemoved.length) lines.push(`  Removed libraries: ${diff.librariesRemoved.join(', ')}`);
-        if (diff.vendorsAdded.length)     lines.push(`  New vendors: ${diff.vendorsAdded.join(', ')}`);
-        if (diff.vendorsRemoved.length)   lines.push(`  Removed vendors: ${diff.vendorsRemoved.join(', ')}`);
+        const lines = formatResourceDiff(diff).map(l => `  ${l}`);
         return `\nWhat changed since that run:\n${lines.join('\n')}\n`;
       })()
     : '';

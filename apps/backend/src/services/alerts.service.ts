@@ -49,6 +49,14 @@ export interface Alert {
   metrics: string[];
   /** One bullet per finding, already human-readable. */
   lines:   string[];
+  /**
+   * What changed on the page since the run this alert compares against — files added,
+   * grown, vendors that appeared. Given to the AI note as the only material it may cite
+   * for a cause; empty means the note stays with what the numbers say. Not delivered to
+   * the channels: the note is where a cause belongs, and a webhook body listing every
+   * changed file would bury the finding it came with.
+   */
+  evidence?: string[];
   analysisId?: string;
   /** Extra fields merged into the raw (non-Slack/Discord) webhook body. */
   payload: Record<string, unknown>;
@@ -158,7 +166,10 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
   // cooldown and the incident dedup rate-limit Gemini for free.
   const aiNote = await AiService
     .getAlertNote(
-      { kind: alert.kind, url: alert.url, formFactor: alert.formFactor, lines: alert.lines },
+      {
+        kind: alert.kind, url: alert.url, formFactor: alert.formFactor,
+        lines: alert.lines, evidence: alert.evidence ?? [],
+      },
       { timeoutMs: ALERT_NOTE_TIMEOUT_MS },
     )
     .catch((err: unknown) => {

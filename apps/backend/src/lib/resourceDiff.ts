@@ -7,6 +7,7 @@
  * because you shipped a 400KB hero image, not just LCP moved"). This is the pure diff —
  * no I/O, so it is cheap to unit test — that makes that sentence possible.
  */
+import { pathOf } from './url.js'
 
 export interface DiffableResource {
   url:          string
@@ -119,4 +120,30 @@ export function resourceDiffHasChanges(diff: ResourceDiff): boolean {
     || diff.grown.length > 0 || diff.shrunk.length > 0
     || diff.librariesAdded.length > 0 || diff.librariesRemoved.length > 0
     || diff.vendorsAdded.length > 0 || diff.vendorsRemoved.length > 0
+}
+
+/**
+ * The diff as lines a prompt can read — one line per kind of change, files named.
+ *
+ * Lives here rather than in the one caller because two prompts now need the same
+ * evidence in the same shape: `analysePage`'s "what changed since that run" block and
+ * the note that goes out with a regression alert. Two formatters would drift, and the
+ * alert would end up describing the change differently from the page that caused it.
+ *
+ * Unindented: `buildPageContext` nests these under a heading, an alert lists them flat.
+ */
+export function formatResourceDiff(diff: ResourceDiff): string[] {
+  const kb   = (b: number) => `${Math.round(b / 1024)}KB`
+  const name = (url: string) => pathOf(url, url).trim() || url
+
+  const lines: string[] = []
+  if (diff.added.length)   lines.push(`Added: ${diff.added.map(r => `${name(r.url)} (${kb(r.transferSize)})`).join(', ')}`)
+  if (diff.removed.length) lines.push(`Removed: ${diff.removed.map(r => name(r.url)).join(', ')}`)
+  if (diff.grown.length)   lines.push(`Grew: ${diff.grown.map(r => `${name(r.url)} ${kb(r.fromBytes)}→${kb(r.toBytes)}`).join(', ')}`)
+  if (diff.shrunk.length)  lines.push(`Shrunk: ${diff.shrunk.map(r => `${name(r.url)} ${kb(r.fromBytes)}→${kb(r.toBytes)}`).join(', ')}`)
+  if (diff.librariesAdded.length)   lines.push(`New libraries: ${diff.librariesAdded.join(', ')}`)
+  if (diff.librariesRemoved.length) lines.push(`Removed libraries: ${diff.librariesRemoved.join(', ')}`)
+  if (diff.vendorsAdded.length)     lines.push(`New vendors: ${diff.vendorsAdded.join(', ')}`)
+  if (diff.vendorsRemoved.length)   lines.push(`Removed vendors: ${diff.vendorsRemoved.join(', ')}`)
+  return lines
 }

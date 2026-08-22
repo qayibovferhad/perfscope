@@ -245,9 +245,23 @@ ${list}`;
    * note is whatever the model managed inside the deadline, or nothing.
    */
   static async getAlertNote(
-    alert: { kind: string; url: string; formFactor: string | null; lines: string[] },
+    alert: {
+      kind: string; url: string; formFactor: string | null; lines: string[];
+      /** What changed on the page since the compared run — the only material a cause may
+       *  cite. See `whatChanged` in regression.service.ts. */
+      evidence?: string[];
+    },
     opts: { timeoutMs?: number } = {},
   ): Promise<string | null> {
+    // Without the diff this prompt could only restate the numbers, so every alert note
+    // read like every other monitoring tool's. With it the first sentence can name the
+    // file that moved — but only when the diff actually shows one, hence the explicit
+    // instruction not to guess: an invented cause in an alert sends someone to the wrong
+    // place, which is worse than a note that stays with the measurement.
+    const changed = alert.evidence?.length
+      ? `\nWhat changed on the page since the run this is compared against:\n${alert.evidence.map(l => `- ${l}`).join('\n')}\n\nIf one of these plausibly explains the finding, say which, by name, in the first sentence. If none of them does, say what to check instead — never invent a cause that is not listed above.\n`
+      : '';
+
     const prompt = `You are a web performance expert. A monitoring alert just fired.
 
 ${VOICE}
@@ -257,7 +271,8 @@ In at most 2 sentences: what this likely means for the people using the page, an
 Alert: ${alert.kind}
 Page: ${alert.url} (${alert.formFactor ?? 'desktop'})
 Findings:
-${alert.lines.map(l => `- ${l}`).join('\n')}`;
+${alert.lines.map(l => `- ${l}`).join('\n')}
+${changed}`;
 
     const text = (await generate(prompt, { ...opts, label: 'alert note' })).trim();
     return text || null;

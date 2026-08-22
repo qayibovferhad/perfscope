@@ -166,3 +166,31 @@ yox: `timeoutMs` adamın gözlədiyi müddətdir, ayrıca 45s verilən retry mə
 ilə davam etdiyi üçün, sayğac olmasa yük altında əzilən model sadəcə sükut kimi görünür.
 Yoxlama: `probes/ai-retry.probe.mts` (503 → bərpa, 400 → təkrar yoxdur, qısa deadline →
 retry başlamır) — 11/11 PASS, ikinci cəhd real API-yə gedir.
+
+## (c) Regressiya alert-lərində səbəb (2026-08-22)
+
+Alert yalnız rəqəmləri daşıyırdı, ona görə AI qeydi də yalnız rəqəmi təkrar edə bilirdi —
+"LCP pisləşdi, şəkillərinizi yoxlayın", hansı monitorinq alətinin dediyi. İndi alert
+müqayisə etdiyi runla arasındakı **resurs fərqini** daşıyır (`Alert.evidence`), qeyd isə
+səbəbi yalnız o siyahıdan adlandıra bilər.
+
+Yeni kod az oldu, çünki hər şey artıq var idi: `getPreviousRun` (analyzer istifadə edirdi)
+və `diffResources`. `analysePage`-in içindəki formatlama `lib/resourceDiff.ts`-ə
+`formatResourceDiff` kimi çıxarıldı — iki formatlayıcı ayrılsa, alert səbəbi səhifənin
+özündən fərqli dildə təsvir edərdi.
+
+**Yan effekt, bilərəkdən:** regression.service öz `findPreviousRun`-unu atıb ortaq
+`getPreviousRun`-a keçdi. Ortaq olan `HAS_RESULT_FILTER` tətbiq edir, yəni **sıfır balla
+uğursuz run artıq müqayisə bazası olmur**. Əvvəl uğursuz bir run regressiyanı gizlədirdi
+(sıfırla müqayisədə hər şey yaxşılaşma görünür).
+
+Ölçü — `probes/regression-cause.probe.mts`, 8/8 PASS:
+```
+resurs dəyişib : "…waiting 4.60s … because /hero.jpg grew to 918KB. Check your image
+                  optimization pipeline…"          ← faylı adlandırır
+resurs eynidir : "…waiting nearly five seconds … Check the main hero image or script…"
+                                                   ← uydurma fayl adı YOXDUR
+```
+Probe qeyddəki hər fayl adını səhifənin real resurs siyahısı ilə tutuşdurur; uydurulmuş ad
+testi qırır. `evidence` webhook gövdəsinə düşmür — səbəbin yeri qeyddir, gövdədə dəyişmiş
+faylların siyahısı əsas tapıntını basardı.
