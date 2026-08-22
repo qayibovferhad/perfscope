@@ -185,6 +185,58 @@ stay in backend). The frontend needs the shape, not the algorithm.
 - Reopen the second audit from History and the public share link — deltas still there.
 - Gates green. Stop; report; wait for the commit word.
 
+
+### A5. DONE — 2026-08-22
+
+**Shipped exactly as designed above**, with these decisions worth keeping:
+
+- `PreviousRunSummary.at` is a full ISO timestamp, not the date-only string `PreviousRun.at`
+  already carried (a prompt reads a day, a UI formats an instant) — `PreviousRun` gained
+  `atIso` beside it rather than changing the field the AI prompts already read.
+- `snapshotOf(result)` in `lib/resourceDiff.ts` replaced the *three* inline copies of the
+  current-run snapshot literal (pageContext, regression.service, and the new attach point).
+  They must agree: a diff counting third parties in one place and not another would have the
+  alert and the page describing different changes.
+- **A real bug fixed on the way**: `getPreviousRun` never matched on form factor, so a
+  mobile audit was compared against yesterday's desktop one — every score "regressed" and
+  every resource looked resized, purely from the emulation. All four callers now pass
+  `result.formFactor` (analyzer deltas, AI page analysis, regression alerts, ask-a-question).
+  A stored run with **no** `formFactor` counts as desktop, because that is the default
+  `lighthouse.service.ts` gives a run without one (`full.formFactor = formFactor ?? 'desktop'`) —
+  not a guess.
+- One DB round trip per audit, not two: `attachPreviousRun` returns the full `PreviousRun`
+  and `enrichWithAi` takes it as `opts.previous` (`undefined` = not looked up, `null` = looked
+  up and there is none).
+- Attached on **all three** entry paths — socket (before `analysis:complete`, so the arrows
+  arrive with the numbers they annotate), nightly cron (the audit nobody watched is exactly
+  where "what moved overnight" has to be readable), and the REST path (no-op when anonymous).
+- `fixedAudits` is worded "no longer reported since last run", not "fixed": an audit can also
+  drop out of the capped list because something worse pushed it out. Capped at 8.
+- No `resourceDiff` at all when nothing crossed the noise floors — "the page is the same as
+  last time" is a claim worth making, and an empty panel says it far less clearly.
+
+**Verified**
+- `probes/previous-run.probe.mts` — **25/25 PASS**. Covers the summary's contents, new/fixed
+  audit sets, the three diff buckets, the unchanged page, both form-factor directions plus
+  the legacy no-field row, the first-ever audit, the anonymous audit, and that the whole
+  comparison survives `persistAudit` into Mongo (which is what makes history reopen, the
+  public report and the CLI agree with the live view).
+- `e2e/previous-run.probe.mjs` — **10/10 PASS** against a live audit of example.com with a
+  seeded predecessor: 10 delta badges (4 scores + 6 vitals), 9 of them coloured rather than
+  muted, the caption, the expanded "Since last run" strip naming `legacy-bundle.js`, the
+  "no longer reported" list naming the seeded audit, `new` tags on waterfall rows, zero
+  console errors, screenshots in both themes. Live AI output picked up the same diff
+  unprompted: *"removing /hero-uncompressed.png, /legacy-bundle.js, and jQuery successfully
+  eliminated your previous bottlenecks."*
+- `deltaOf` unit-tested (7 cases) in `entities/analysis/lib.test.ts`; the CLI reporter
+  exercised with and without `previous` — output is byte-identical to before when absent.
+- Gates: `pnpm build`, `pnpm typecheck` (6 workspaces), `pnpm test` (99), lint **0 errors**
+  (30 warnings, the pre-existing baseline), `pnpm e2e` **21/21**.
+
+**Note on the commit**: this work was swept into commit `6f1dfe0`, whose message describes
+unrelated AI work, by a parallel session committing the shared working tree. Nothing was
+lost; the history is simply mislabelled for this change.
+
 ---
 
 ## Phase B — Audit list: category, search, a11y groups, and the details themselves (~1 day)
