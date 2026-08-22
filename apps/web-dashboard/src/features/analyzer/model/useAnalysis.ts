@@ -44,7 +44,7 @@ interface State {
 const AI_WAIT_TIMEOUT_MS = 30_000;
 
 export function useAnalysis() {
-  const { lastResult, lastUrl, setResult } = useAnalysisStore();
+  const { lastResult, lastUrl, lastDurationMs, setResult } = useAnalysisStore();
   const queryClient = useQueryClient();
 
   const [state, setState] = useState<State>(() => ({
@@ -121,8 +121,11 @@ export function useAnalysis() {
         })),
 
       onComplete: (data) => {
+        // Read the start off the previous state rather than the closure: `analyze` may have
+        // been called again, and the run that just finished is the one that owns this clock.
+        const startedAt = stateRef.current.startedAt;
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
-        setResult(data, url);
+        setResult(data, url, startedAt ? Date.now() - startedAt : null);
         startAiWait();
       },
       onInsights: applyInsights,
@@ -145,7 +148,7 @@ export function useAnalysis() {
     cleanupRef.current?.();
     stopAiWait();
     setState({ status: 'success', data: result, progress: null, partials: {}, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
-    setResult(result, url);
+    setResult(result, url, null);
   }, [setResult, stopAiWait]);
 
   const adoptRunning = useCallback(() => {
@@ -161,7 +164,8 @@ export function useAnalysis() {
       })),
       onComplete: (data) => {
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
-        setResult(data, data.url);
+        // No duration: this run started before the page did (see adoptRunning above).
+        setResult(data, data.url, null);
         startAiWait();
       },
       onInsights: applyInsights,
@@ -182,8 +186,9 @@ export function useAnalysis() {
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
+        const startedAt = stateRef.current.startedAt;
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
-        setResult(data, url);
+        setResult(data, url, startedAt ? Date.now() - startedAt : null);
         startAiWait();
         // The backend stores the freshly captured session on the website and clears its
         // login-wall flag, so the "Session expired" badge is stale the moment this lands.
@@ -222,6 +227,8 @@ export function useAnalysis() {
     startAuthAudit,
     lastUrl,
     startedAt: state.startedAt,
+    /** How long the audit on screen took, when this session is the one that ran it. */
+    durationMs: lastDurationMs,
     data:      state.data,
     progress:  state.progress,
     partials:  state.partials,

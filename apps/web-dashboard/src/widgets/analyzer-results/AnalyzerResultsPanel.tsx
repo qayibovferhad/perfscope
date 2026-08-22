@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle } from 'lucide-react';
+import { TrendingUp, ShieldAlert, Monitor, Smartphone, Crosshair, AlertTriangle, Timer } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { NOISY_SPREAD } from '@perfscope/shared';
-import { ScoreCard, MetricsGrid, AuditList, type ScoreLabel } from '@/entities/analysis';
+import { ScoreCard, MetricsGrid, AuditList, formatElapsed, type ScoreLabel } from '@/entities/analysis';
 import { ResourceBreakdown } from '@/features/analyzer';
 import { ResourceWaterfall } from '@/features/analyzer';
 import { PerformanceTimeline } from '@/features/analyzer';
@@ -54,9 +54,15 @@ interface Props {
    * which has neither, so the box is opt-in rather than defaulting on.
    */
   askEnabled?: boolean;
+  /**
+   * Wall clock of the run that produced this result, in ms — what the clock beside the
+   * progress bar counted. Absent for a stored audit reopened from history: nobody watched
+   * that one, and borrowing another run's number would be a fabrication.
+   */
+  durationMs?: number | null;
 }
 
-export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
+export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }: Props) {
   const measurement = data.measurement;
   // Field data for the same URL/device — renders nothing when Chrome has no
   // real-user sample for this page (or the server has no CrUX key).
@@ -83,13 +89,26 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled }: Props) {
             {data.formFactor}
           </span>
         )}
+        {/* "median of 2" read like a value rather than a method, and the run count now
+            varies with the page's own stability, so the badge says what was done instead
+            of leaving the reader to infer it. The individual scores stay in the tooltip:
+            on the surface they compete with the score they were distilled into. */}
         {measurement && measurement.runs > 1 && (
           <span
             className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[.08em] px-[8px] py-[3px] rounded-full border border-ld-accent-line bg-ld-accent-soft text-ld-accent"
-            title={`Runs scored ${measurement.scores.join(', ')} — the median run is reported`}
+            title={`Runs scored ${measurement.scores.join(', ')} — the middle one is reported`}
           >
             <Crosshair className="w-[11px] h-[11px]" />
-            median of {measurement.runs} · {measurement.scores.join(' · ')}
+            measured {measurement.runs}×, middle run reported
+          </span>
+        )}
+        {durationMs != null && (
+          <span
+            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[.08em] px-[8px] py-[3px] rounded-full border border-ld-border-strong text-ld-text-3"
+            title="How long this audit took, end to end"
+          >
+            <Timer className="w-[11px] h-[11px]" />
+            took {formatElapsed(durationMs)}
           </span>
         )}
       </p>

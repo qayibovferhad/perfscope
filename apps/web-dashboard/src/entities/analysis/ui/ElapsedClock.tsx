@@ -10,6 +10,12 @@ import { useEffect, useState } from 'react';
  * Counts from `startedAt` rather than from mount, so re-rendering the panel (a partial
  * score arriving, a stage changing) cannot reset it back to zero.
  */
+/** `m:ss`, the one format an audit's duration is written in — live or finished. */
+export function formatElapsed(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 export function ElapsedClock({ startedAt, className }: { startedAt: number; className?: string }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -21,7 +27,7 @@ export function ElapsedClock({ startedAt, className }: { startedAt: number; clas
   }, []);
 
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
-  const label = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const label = formatElapsed(now - startedAt);
 
   return (
     <span

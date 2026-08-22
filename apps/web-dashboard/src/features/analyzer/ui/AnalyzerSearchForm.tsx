@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Lock, ShieldCheck, ShieldAlert, Globe, Clock, X } from 'lucide-react';
+import { Search, Lock, ShieldCheck, ShieldAlert, Globe, Clock } from 'lucide-react';
 import type { SessionState } from '@/entities/website';
 import { Segmented } from '@/shared/ui/segmented';
 import { DEVICE_MODES, PrecisionToggle, ElapsedClock } from '@/entities/analysis';
@@ -94,16 +94,15 @@ export function AnalyzerSearchForm({
         />
         {/* One button, two jobs. While a run is in flight the primary button is dead
             weight — disabled and reading "Analyzing…" — so it becomes the way out
-            instead. `outline` rather than the accent gradient so the change of meaning
-            is visible before the click, not after it. */}
+            instead. Red rather than the accent gradient, so the change of meaning is
+            visible before the click rather than after it. */}
         {isPending && onCancel ? (
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             onClick={onCancel}
-            className="h-auto py-[14px] px-[22px] [&_svg]:w-[16px] [&_svg]:h-[16px]"
+            className="h-auto py-[14px] px-[22px]"
           >
-            <X />
             Stop
           </Button>
         ) : (

@@ -24,7 +24,7 @@ import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
 export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
-  const { analyze, cancel, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, aiPending, isError, error, errorCode, reset, lastUrl, startedAt } = useAnalysis();
+  const { analyze, cancel, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, aiPending, isError, error, errorCode, reset, lastUrl, startedAt, durationMs } = useAnalysis();
   const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
@@ -211,7 +211,7 @@ export function AnalyzerPage() {
       )}
 
       <AnimatePresence>
-        {data && <AnalyzerResultsPanel data={data} aiPending={aiPending} askEnabled />}
+        {data && <AnalyzerResultsPanel data={data} aiPending={aiPending} durationMs={durationMs} askEnabled />}
       </AnimatePresence>
     </Page>
     </>
