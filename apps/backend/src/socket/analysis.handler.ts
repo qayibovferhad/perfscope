@@ -92,6 +92,35 @@ interface RunAuditParams {
  * authenticate left the session it had just stored in place, ready to be injected into
  * every later audit of that origin.
  */
+/**
+ * Audits this connection asked to stop.
+ *
+ * Cancelling kills the worker threads and the Chrome instances they own, and Lighthouse
+ * reports that the only way it can: the run in flight throws — "Worker exited with code 1",
+ * or, if the browser died first, "Failed to fetch browser webSocket URL from
+ * http://127.0.0.1:PORT/json/version". Both are the *sound of the cancellation working*, and
+ * both used to be emitted to the client as `analysis:error`.
+ *
+ * Nothing showed them for a while: the dashboard detaches its listeners before it sends the
+ * cancel, so the error arrived at an empty room. That is a timing accident, not a design —
+ * the CLI, the extension and any listener that outlives the page (the shell's own, now) all
+ * see it, and a person who pressed Stop being told their audit failed with a socket URL is
+ * the worst possible reading of "it stopped".
+ *
+ * Per-connection rather than global: an id belongs to the socket that minted it.
+ */
+const cancelledByThisSocket = new WeakMap<TypedSocket, Set<string>>();
+
+function markCancelled(socket: TypedSocket, analysisId: string): void {
+  const ids = cancelledByThisSocket.get(socket) ?? new Set<string>();
+  ids.add(analysisId);
+  cancelledByThisSocket.set(socket, ids);
+}
+
+function wasCancelled(socket: TypedSocket, analysisId: string): boolean {
+  return cancelledByThisSocket.get(socket)?.has(analysisId) ?? false;
+}
+
 async function runAudit({
   socket, url, userId, measure, expiredMessage,
 }: RunAuditParams): Promise<void> {
@@ -157,6 +186,14 @@ async function runAudit({
         .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
     }
 
+    // A stopped audit is not a failed one. The throw is how the cancellation reached this
+    // frame, and the client that asked for it has already moved on.
+    if (wasCancelled(socket, analysisId)) {
+      console.log(`[Socket] Audit ${analysisId.slice(0, 8)} stopped by the client`);
+      cancelledByThisSocket.get(socket)?.delete(analysisId);
+      return;
+    }
+
     const message = err instanceof SessionExpiredError
       ? expiredMessage(err)
       : err instanceof Error ? err.message : 'Analysis failed';
@@ -210,6 +247,9 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('analysis:cancel', (payload) => {
+      // Marked before the kill, not after: terminating the workers is what makes the run
+      // throw, and the throw can reach `runAudit`'s catch before this handler returns.
+      markCancelled(socket, payload.analysisId);
       lighthouseService.cancelAnalysis(payload.analysisId);
     });
 
