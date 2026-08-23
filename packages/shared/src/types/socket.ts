@@ -33,7 +33,15 @@ export interface AnalysisStartPayload {
 }
 
 export interface AnalysisCancelPayload {
-  analysisId: string
+  /**
+   * Which audit to stop, or `null` for "the one I just started".
+   *
+   * The server mints the id and the client only learns it from the first progress event.
+   * Stop pressed inside that window — which is what someone does the moment they notice
+   * they typed the wrong URL — had no id to send, so nothing was sent and nothing stopped.
+   * The server resolves a null against the runs that socket has in flight.
+   */
+  analysisId: string | null
 }
 
 export interface AuthAuditStartPayload {

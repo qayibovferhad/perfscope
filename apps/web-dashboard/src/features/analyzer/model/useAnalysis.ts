@@ -245,7 +245,9 @@ export function useAnalysis() {
     cleanupRef.current?.();
     cleanupRef.current = null;
     stopAiWait();
-    if (analysisId) cancelAnalysis(analysisId);
+    // Sent even when it is null: the server resolves that against this socket's own
+    // in-flight run. Skipping the emit is what made Stop do nothing in the first seconds.
+    cancelAnalysis(analysisId);
     setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
   }, [stopAiWait]);
 

@@ -200,3 +200,54 @@ completion while the report lands as usual; and Stop genuinely stopping the run 
 straight after starting one and straight after adopting one — the two windows where the page
 has no id of its own. Asserted through the DOM, because a probe that imports the store
 through Vite gets its own empty copy of it.
+
+
+---
+
+# Stop (2026-08-23)
+
+Reported four times before it was actually fixed. Recording the whole sequence, because the
+*way* it went wrong is the reusable part.
+
+The complaint was "Stop does not work: the timer resets and the analysis starts again". Five
+separate defects turned out to sit behind it, and every one of my probes was green while the
+report kept coming back — because every probe I wrote tested the path *I* had built, on a
+throwaway account, in a fresh browser, without reloading.
+
+1. **A cancelled audit was reported as a failure.** Killing the workers makes the run throw
+   ("Worker exited with code 1", or "Failed to fetch browser webSocket URL from …/json/
+   version"), and that went out as `analysis:error`. Hidden only by accident: the dashboard
+   detaches its listeners before sending the cancel. The socket now remembers which of its
+   own audits it was asked to stop.
+2. **A queued audit could not be cancelled at all.** `activeAnalyses` is filled by the task
+   *after* the queue admits it, so a waiting audit was invisible — and started the moment a
+   slot opened. With the cap at two, that is the ordinary case. A cancel that finds nothing
+   active now leaves a note that every queued task checks on entry.
+3. **`/app?url=…` re-ran on every reload.** A deep link is an instruction; left in the
+   address bar it means the same thing again. Vite reloads an open tab whenever a module
+   cannot be hot-swapped, so during this very session the user's page was restarting audits
+   by itself. The start parameters are consumed once acted on.
+4. **The client sent nothing when it had no id.** The page learns the `analysisId` from a
+   progress event; Stop pressed before that had nothing to send. `analysis:cancel` now
+   accepts `null`, meaning "the run I just started", and the server resolves it against that
+   socket's in-flight audits — including the case where the cancel *overtakes* the start,
+   which is a real race because `analysis:start` is handled asynchronously.
+5. **The saved-session path ignored cancellation entirely** — and this was the user's actual
+   path, because their site has a stored login. It uses one browser rather than worker
+   threads, and `browser.close()` waits politely while Lighthouse holds the connection:
+   measured, a cancelled audit went on for another forty-five seconds. Worse, a
+   `setInterval` invents progress every three seconds to show the run is alive, and it kept
+   doing so for the cancelled run — the bar climbed from 35% to 74% after Stop. Chrome is
+   killed by pid now, as the worker path always did, the ticker stops itself, and the run
+   loop checks before and after every pass.
+
+**The lesson, which cost hours:** when a report contradicts a green probe, the question is
+what the reporter's setup does that the probe does not. Here it was three things at once — a
+saved session, a reloading tab, and a queue — and none of them were in any test. Checking the
+reporter's own data (`websites.session` was set on both their sites) took thirty seconds and
+should have been the first move, not the last.
+
+**Verified** — `probes/cancel-audit.probe.mts`: cancellation swept across 0/150/400/900/
+1800/3000/5000/8000 ms with none surviving, both audit paths (worker and saved-session), an
+audit cancelled while queued behind two others, a genuine failure still reported, and two
+connections not silencing each other.

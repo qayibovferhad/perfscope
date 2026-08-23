@@ -98,10 +98,10 @@ export function startAnalysis(
  * on the box is measured against. The server kills the workers; the caller detaches its
  * own listeners, so the error that killing them produces never reaches the UI.
  */
-export function cancelAnalysis(analysisId: string): void {
+export function cancelAnalysis(analysisId: string | null): void {
   // Dropped from the indicator here rather than on the error the cancellation produces:
   // the caller detaches its listeners as part of stopping, so that error never arrives.
-  useRunningAuditsStore.getState().endByAnalysisId(analysisId);
+  useRunningAuditsStore.getState().endByAnalysisId(analysisId ?? undefined);
 
   const s = getSocket();
   if (!s.connected) return;

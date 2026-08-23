@@ -111,6 +111,60 @@ interface RunAuditParams {
  */
 const cancelledByThisSocket = new WeakMap<TypedSocket, Set<string>>();
 
+/**
+ * Audits this connection currently has in flight, oldest first.
+ *
+ * The client cannot always name the audit it wants stopped: the server mints the id and the
+ * client only learns it from the first progress event. Press Stop inside that window — which
+ * is exactly what someone does when they realise they typed the wrong URL — and there was
+ * nothing to send, so nothing stopped and the audit ran to completion.
+ *
+ * A cancel with no id therefore means "the audit I just started", and this is how the server
+ * knows which one that is. Scoped to the socket, so it can only ever stop your own.
+ */
+const inFlightBySocket = new WeakMap<TypedSocket, string[]>();
+
+function markInFlight(socket: TypedSocket, analysisId: string): void {
+  inFlightBySocket.set(socket, [...(inFlightBySocket.get(socket) ?? []), analysisId]);
+}
+
+function clearInFlight(socket: TypedSocket, analysisId: string): void {
+  const ids = inFlightBySocket.get(socket);
+  if (ids) inFlightBySocket.set(socket, ids.filter(id => id !== analysisId));
+}
+
+/** The id a cancel is about: the one it named, or this socket's newest run. */
+function resolveCancelTarget(socket: TypedSocket, requested: string | null | undefined): string | null {
+  if (requested) return requested;
+  return inFlightBySocket.get(socket)?.at(-1) ?? null;
+}
+
+/**
+ * A cancel that arrived before the audit it is about.
+ *
+ * `analysis:start` is handled asynchronously — the URL is validated and a saved session is
+ * looked up before the run is even given an id — while `analysis:cancel` is handled the
+ * instant it lands. Stop pressed in the same tick as the start therefore reaches a server
+ * that has nothing in flight yet, and used to be dropped on the floor: the audit began a
+ * moment later and ran to completion.
+ *
+ * So an unresolvable cancel is remembered for a moment, and the next run this socket starts
+ * checks whether it was already unwanted before it does any work. The window is short by
+ * design — this is about a race of milliseconds, not a standing instruction to refuse work.
+ */
+const CANCEL_AHEAD_WINDOW_MS = 5_000;
+const cancelAheadBySocket = new WeakMap<TypedSocket, number>();
+
+function markCancelAhead(socket: TypedSocket): void {
+  cancelAheadBySocket.set(socket, Date.now());
+}
+
+function consumeCancelAhead(socket: TypedSocket): boolean {
+  const at = cancelAheadBySocket.get(socket);
+  cancelAheadBySocket.delete(socket);
+  return at !== undefined && Date.now() - at < CANCEL_AHEAD_WINDOW_MS;
+}
+
 function markCancelled(socket: TypedSocket, analysisId: string): void {
   const ids = cancelledByThisSocket.get(socket) ?? new Set<string>();
   ids.add(analysisId);
@@ -127,6 +181,15 @@ async function runAudit({
   // Own the id up front so this socket only forwards its own audit's progress —
   // concurrent audits share the service's event emitter.
   const analysisId = uuidv4();
+  markInFlight(socket, analysisId);
+
+  // Stopped before it started — see `cancelAheadBySocket`. Nothing has been emitted yet, so
+  // there is nothing to take back: the client asked for silence and gets it.
+  if (consumeCancelAhead(socket)) {
+    console.log(`[Socket] Audit ${analysisId.slice(0, 8)} stopped before it began`);
+    clearInFlight(socket, analysisId);
+    return;
+  }
 
   const onProgress = (data: AnalysisProgress) => {
     if (data.analysisId === analysisId) socket.emit('analysis:progress', data);
@@ -205,6 +268,7 @@ async function runAudit({
     });
   } finally {
     lighthouseService.off('progress', onProgress);
+    clearInFlight(socket, analysisId);
   }
 }
 
@@ -247,10 +311,18 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('analysis:cancel', (payload) => {
+      // An unnamed cancel is about this socket's newest run — see `inFlightBySocket`.
+      const analysisId = resolveCancelTarget(socket, payload.analysisId);
+      if (!analysisId) {
+        // The start has not been processed yet; leave a note for it.
+        markCancelAhead(socket);
+        return;
+      }
+
       // Marked before the kill, not after: terminating the workers is what makes the run
       // throw, and the throw can reach `runAudit`'s catch before this handler returns.
-      markCancelled(socket, payload.analysisId);
-      lighthouseService.cancelAnalysis(payload.analysisId);
+      markCancelled(socket, analysisId);
+      lighthouseService.cancelAnalysis(analysisId);
     });
 
     socket.on('auth-audit:start', async (payload) => {

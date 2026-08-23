@@ -210,7 +210,7 @@ export class LighthouseService extends EventEmitter {
   }
 
   private async singleShotAudit(analysisId: string, url: string): Promise<AnalysisResult> {
-    this.abortIfCancelledWhileQueued(analysisId);
+    this.abortIfCancelled(analysisId);
     let browser: Browser | null = null;
     try {
       browser = await this.launchBrowser(analysisId);
@@ -259,13 +259,16 @@ export class LighthouseService extends EventEmitter {
     onPartial: (partial: CategoryPartial) => void,
     opts: AnalyzeOptions,
   ): Promise<AnalysisResult> {
-    this.abortIfCancelledWhileQueued(analysisId);
+    this.abortIfCancelled(analysisId);
     const { formFactor, captureElements = false } = opts;
     const runs = Math.max(1, Math.min(Math.floor(opts.runs ?? 1), MAX_RUNS));
     const workers: Worker[] = [];
 
     // Register workers immediately so cancelAnalysis can terminate them at any point
     this.activeAnalyses.set(analysisId, { type: 'workers', workers });
+    // …and check again right after: a cancel that arrived between the task starting and
+    // this line found nothing to terminate, and the run would have carried on regardless.
+    this.abortIfCancelled(analysisId);
 
     try {
       this.emitProgress(analysisId, 'launching', PCT.launching, 'Launching Chrome instances...');
@@ -328,7 +331,9 @@ export class LighthouseService extends EventEmitter {
               ? `Measuring performance — run ${i + 1} of ${runs}...`
               : `Measuring performance — run ${i + 1} (this page measures unevenly)...`,
           );
+          this.abortIfCancelled(analysisId);
           const res = await this.runLighthouseInWorker(url, TIMED_CATEGORIES, workers, formFactor);
+          this.abortIfCancelled(analysisId);
           timedRuns.push(res);
           timedScores.push(toScore(res.lhr.categories['performance']?.score));
           // Stream the first iteration so the user sees real numbers early; later
@@ -339,6 +344,9 @@ export class LighthouseService extends EventEmitter {
         }
       }
 
+      // Nothing below is cheap — merging LHRs, running every parser, building the result —
+      // and none of it is worth doing for a run the user stopped watching.
+      this.abortIfCancelled(analysisId);
       this.emitProgress(analysisId, 'processing', PCT.processing, 'Finalizing results...');
 
       const { run: medianRun, measurement } = pickMedianRun(timedRuns);
@@ -393,7 +401,7 @@ export class LighthouseService extends EventEmitter {
     formFactor?: AuditFormFactor,
     runs = 1,
   ): Promise<AnalysisResult> {
-    this.abortIfCancelledWhileQueued(analysisId);
+    this.abortIfCancelled(analysisId);
     let browser: Browser | null = null;
 
     try {
@@ -402,6 +410,7 @@ export class LighthouseService extends EventEmitter {
       browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
       trackChrome(browser.process()?.pid);
       this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
+      this.abortIfCancelled(analysisId);
 
       const { cookies, localStorage: ls } = sessionData;
       const hasCookies = cookies.length > 0;
@@ -446,8 +455,16 @@ export class LighthouseService extends EventEmitter {
 
       this.emitProgress(analysisId, 'auditing', PCT.auditing, 'Running Lighthouse audit...');
 
+      // Lighthouse reports nothing while a pass is in flight, so this invents movement to
+      // show the run is alive. It has to notice when the run is *not* alive any more:
+      // untouched, it kept announcing progress for a cancelled audit, which is the single
+      // most convincing way to tell someone their Stop button did nothing.
       let fakeProg: number = PCT.auditing;
       const ticker = setInterval(() => {
+        if (this.cancelledBeforeStart.has(analysisId)) {
+          clearInterval(ticker);
+          return;
+        }
         fakeProg = Math.min(fakeProg + 3, PCT.auditCeil);
         this.emitProgress(analysisId, 'auditing', fakeProg, 'Running Lighthouse audit...');
       }, 3000);
@@ -473,7 +490,9 @@ export class LighthouseService extends EventEmitter {
                 : `Running Lighthouse audit — run ${i + 1} (this page measures unevenly)...`,
             );
           }
+          this.abortIfCancelled(analysisId);
           const pass = await this.runLighthouse(url, analysisId, browser, CATEGORIES, true, formFactor);
+          this.abortIfCancelled(analysisId);
           passes.push(pass);
           passScores.push(toScore(pass.lhr.categories['performance']?.score));
 
@@ -645,15 +664,27 @@ export class LighthouseService extends EventEmitter {
    * on the way in. Returns whether anything was actually killed; the note is left either way.
    */
   cancelAnalysis(analysisId: string): boolean {
+    // The note is recorded *always*, not only when there is nothing to kill.
+    //
+    // Killing what is registered closes the common case, but registration happens at one
+    // instant inside a run that has many: a queued audit is not registered yet, an audit
+    // launching its browser is not registered yet, and a cancel that lands in either gap
+    // used to be lost completely. Chasing those gaps one at a time is how this took three
+    // attempts; the note closes all of them, because every phase boundary checks it.
+    this.cancelledBeforeStart.set(analysisId, Date.now());
+    this.pruneCancelNotes();
+
     const analysis = this.activeAnalyses.get(analysisId);
-    if (!analysis) {
-      this.cancelledBeforeStart.set(analysisId, Date.now());
-      this.pruneCancelNotes();
-      return false;
-    }
+    if (!analysis) return false;
 
     if (analysis.type === 'browser') {
       analysis.abortController.abort();
+      // Killed, not asked politely. `browser.close()` waits for a graceful shutdown, and
+      // Lighthouse in the middle of a pass does not let go — measured on the saved-session
+      // path, where a cancelled audit went on reporting progress for another forty-five
+      // seconds because the close never took effect. The worker path has always done this
+      // (see `fail()` → `killChrome`); the browser path was the one being polite.
+      killChrome(analysis.browser.process()?.pid);
       analysis.browser.close().catch(() => void 0);
     } else {
       // terminate() kills the thread; each worker closes its own Chrome in its finally block
@@ -673,9 +704,11 @@ export class LighthouseService extends EventEmitter {
    * stop one run — and the socket handler already knows not to report a cancelled audit as
    * a failure, so this throw reaches the client as silence.
    */
-  private abortIfCancelledWhileQueued(analysisId: string): void {
-    if (this.cancelledBeforeStart.delete(analysisId)) {
-      throw new Error('Analysis was cancelled before it started');
+  private abortIfCancelled(analysisId: string): void {
+    // Not consumed: a run passes several of these, and the first one must not clear the
+    // note for the ones behind it. The TTL sweep is what removes it.
+    if (this.cancelledBeforeStart.has(analysisId)) {
+      throw new Error('Analysis was cancelled');
     }
   }
 
@@ -694,6 +727,9 @@ export class LighthouseService extends EventEmitter {
     const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
     trackChrome(browser.process()?.pid);
     this.activeAnalyses.set(analysisId, { type: 'browser', browser, abortController: new AbortController() });
+    // Registered at last — and if the stop arrived while Chrome was starting, this is the
+    // first moment the run can find out about it.
+    this.abortIfCancelled(analysisId);
     this.emitProgress(analysisId, 'navigating', PCT.browserReady, 'Browser ready...');
     return browser;
   }

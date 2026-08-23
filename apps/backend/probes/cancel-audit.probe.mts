@@ -32,7 +32,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { io, type Socket } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { config } from '../src/config/index.js';
+import { Website } from '../src/models/Website.model.js';
 
 const BACKEND = process.env['BACKEND_URL'] ?? 'http://localhost:3101';
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -53,7 +55,8 @@ const TARGET = `http://localhost:${PORT}/`;
 
 // No account needed: the socket tags history with whatever the token says, and an audit
 // that is cancelled never gets that far.
-const token = jwt.sign({ sub: '000000000000000000000000' }, config.jwtSecret);
+const userId = new mongoose.Types.ObjectId();
+const token = jwt.sign({ sub: String(userId) }, config.jwtSecret);
 
 interface Seen { errors: string[]; completed: boolean }
 
@@ -95,6 +98,36 @@ try {
     socket.disconnect();
   }
 
+  // ─── Every moment, not three hand-picked ones ──────────────────────────────
+  // A run passes through phases — queued, launching, registered, measuring, processing —
+  // and a cancel that lands between two of them used to be lost. Each gap was found and
+  // closed separately, which is how this took three attempts; this sweeps the whole span
+  // instead, including 0ms, before a single event has been exchanged.
+  {
+    const delays = [0, 150, 400, 900, 1800, 3000, 5000, 8000];
+    const survivors: string[] = [];
+
+    for (const delay of delays) {
+      const socket = await connect();
+      const seen = listen(socket);
+      let id: string | null = null;
+      socket.on('analysis:progress', (d: { analysisId: string }) => { id ||= d.analysisId; });
+
+      socket.emit('analysis:start', { url: TARGET });
+      await sleep(delay);
+      // At 0ms there is no id yet; the client sends what it has, exactly as the UI does.
+      socket.emit('analysis:cancel', { analysisId: id });
+      await sleep(30_000);
+
+      if (seen.completed) survivors.push(`${delay}ms completed anyway`);
+      if (seen.errors.length) survivors.push(`${delay}ms reported "${seen.errors[0]}"`);
+      socket.disconnect();
+    }
+
+    console.log(`\ncancelled at ${delays.join('ms, ')}ms`);
+    check(survivors.length === 0, `none of them survives or complains (${survivors.join(' | ') || 'all stopped silently'})`);
+  }
+
   // ─── A real failure still speaks ───────────────────────────────────────────
   // The fix must not be "swallow errors on this socket": a run nobody cancelled has to
   // report, or the page waits forever on an audit that already died.
@@ -131,6 +164,54 @@ try {
     a.disconnect();
     b.disconnect();
   }
+  // ─── The saved-session path ────────────────────────────────────────────────
+  // A site with a stored login session takes a completely different route through the
+  // service: one browser driven directly, rather than worker threads. It is also the path
+  // nobody had ever cancelled in a test — and the one where cancelling did not work, for
+  // two reasons at once. `browser.close()` waits politely while Lighthouse holds the
+  // connection, and a `setInterval` invents progress every three seconds to show the run is
+  // alive, which it went on doing for a cancelled audit. Together: press Stop, watch the
+  // bar keep climbing.
+  {
+    await mongoose.connect(config.mongoUri);
+    await Website.create({
+      userId, url: new URL(TARGET).origin, name: 'cancel probe (session path)',
+      session: { cookies: [], localStorage: { probe: '1' }, capturedAt: new Date() },
+    });
+
+    try {
+      for (const waitMs of [1500, 6000]) {
+        const socket = await connect();
+        const seen = listen(socket);
+        let id: string | null = null;
+        const afterCancel: string[] = [];
+        let cancelled = false;
+        socket.on('analysis:progress', (d: { analysisId: string; progress: number }) => {
+          id ||= d.analysisId;
+          if (cancelled) afterCancel.push(`${d.progress}%`);
+        });
+
+        socket.emit('analysis:start', { url: TARGET });
+        await sleep(waitMs);
+        cancelled = true;
+        socket.emit('analysis:cancel', { analysisId: id });
+        await sleep(30_000);
+
+        // One event may already be in flight at the moment of the cancel; a *stream* of them
+        // is the ticker still running.
+        console.log(`\nsession-backed audit, cancelled ${waitMs}ms in`);
+        console.log(`  progress after the cancel: ${afterCancel.join(', ') || 'none'}`);
+        check(afterCancel.length <= 1, `the progress stops (${afterCancel.length} events after)`);
+        check(!seen.completed, 'and the audit does not finish anyway');
+        check(seen.errors.length === 0, `and nothing is reported as a failure (${seen.errors.join(' | ') || 'silent'})`);
+        socket.disconnect();
+      }
+    } finally {
+      await Website.deleteMany({ userId });
+      await mongoose.disconnect();
+    }
+  }
+
   // ─── Cancelled while still in the queue ────────────────────────────────────
   // Two audits saturate the default cap; the third waits. Cancelling *that* one used to be
   // a no-op, and it ran to completion minutes later.
