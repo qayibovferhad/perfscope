@@ -34,7 +34,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-ld-bg-2">
 
       {/* Desktop sidebar */}
-      <div className="hidden md:flex shrink-0">
+      <div className="hidden md:flex shrink-0" data-print="hide">
         <Sidebar onAddWebsite={() => setModalOpen(true)} />
       </div>
 
@@ -67,7 +67,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile topbar */}
-        <div className="md:hidden flex items-center gap-3 px-4 h-14 shrink-0 border-b border-ld-border">
+        <div className="md:hidden flex items-center gap-3 px-4 h-14 shrink-0 border-b border-ld-border" data-print="hide">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -105,10 +105,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* The advisor collapses to a floating button on narrow screens, and it floats
               *over* this column — without the padding it permanently covers the last inch
               of every page. */}
-          <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] 2xl:pb-0">{children}</main>
+          {/* `data-print="root"`: this is the scroll container, so on paper it has to stop
+              being one or the print is a single sheet of whatever was in the viewport. */}
+          <main
+            ref={mainRef}
+            data-print="root"
+            className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] 2xl:pb-0"
+          >{children}</main>
           {/* Its own column rather than an overlay: a panel that sits on top of the page
               competes with it, and every page caps its width well short of the viewport. */}
-          <AdvisorPanel />
+          <div data-print="hide"><AdvisorPanel /></div>
         </div>
       </div>
     </div>

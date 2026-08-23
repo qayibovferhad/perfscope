@@ -512,3 +512,37 @@
      moving element: it jumps in steps instead of sliding. */
   .ps-toast-bar { animation-timing-function: steps(4, end); }
 }
+
+/* ── Print ────────────────────────────────────────────────────────────────────
+
+   "Export as PDF" is the browser's own print pipeline, which means the app has to
+   survive being laid out on paper. Two things break it by default: the shell (a
+   sidebar and a toolbar nobody wants on a page they are handing to someone) and the
+   scroll container — `main` owns the scrolling, so an unadjusted print produces one
+   sheet showing whatever happened to be in the viewport.
+
+   The palette is handled in ThemeProvider, which swaps to the light theme for the
+   duration: browsers do not print background colours unless asked, and the dark
+   theme's light text on an unpainted page prints as a blank sheet. */
+@media print {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  [data-print="hide"] { display: none !important; }
+
+  [data-print="root"] {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  /* A panel split across a page break is the one thing that makes a printed report
+     look broken rather than long. */
+  [data-print="keep"],
+  .recharts-wrapper { break-inside: avoid; }
+
+  @page { margin: 14mm; }
+}

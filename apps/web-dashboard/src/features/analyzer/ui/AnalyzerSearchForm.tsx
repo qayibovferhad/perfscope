@@ -37,8 +37,10 @@ export function AnalyzerSearchForm({
   formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession,
   startedAt, onCancel,
 }: Props) {
+  // `data-print="hide"`: a form is an invitation to type, and the printed report already
+  // names the page it is about in the line beneath this one.
   return (
-    <Panel border="strong" className="shadow-ld-shadow-card p-[22px]">
+    <Panel border="strong" className="shadow-ld-shadow-card p-[22px]" data-print="hide">
 
       {/* Header row */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">

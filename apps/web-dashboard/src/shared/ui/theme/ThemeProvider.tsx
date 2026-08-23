@@ -42,6 +42,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
+  /**
+   * Paper is white, and browsers drop background colours by default.
+   *
+   * Printing the dark theme therefore lands light text on an unpainted page — a sheet
+   * that looks blank until you notice the faint outlines. Swapping to the light palette
+   * for the duration of the print is the whole fix, and it reuses the theme the app
+   * already ships rather than a second print-only set of colours to keep in step.
+   *
+   * Listening for the events rather than only doing this behind an Export button, because
+   * Ctrl-P is how most people reach for a PDF.
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    // Both halves of the switch, because the palette is in two places: the `--ld-*` tokens
+    // key off `data-theme`, while the older shadcn ones key off the `dark` class. Setting
+    // only the first left legacy-token text light-on-light — invisible on the page.
+    const before = () => {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+    };
+    const after = () => {
+      if (theme !== 'dark') return;
+      root.classList.add('dark');
+      root.removeAttribute('data-theme');
+    };
+
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    return () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
+    };
+  }, [theme]);
+
   function toggle() {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
   }

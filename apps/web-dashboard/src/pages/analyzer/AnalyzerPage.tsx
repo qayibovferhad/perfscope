@@ -8,6 +8,7 @@ import { Page } from '@/shared/ui/page';
 import { useAdviceContext } from '@/features/advisor';
 import { getHostname } from '@/entities/website';
 import { apiClient } from '@/shared/api/client';
+import { shareCardBlob, shareCardFilename } from '@/entities/analysis';
 import { downloadBlob } from '@/shared/lib/download';
 import { toast } from '@/shared/ui/toast';
 import { normalizeUrl } from '@/shared/lib/utils';
@@ -175,6 +176,31 @@ export function AnalyzerPage() {
     downloadBlob(blob, `perfscope-${getHostname(data.url)}-${Date.now()}.json`);
   }
 
+  async function handleImage() {
+    if (!data) return;
+    downloadBlob(await shareCardBlob(data), shareCardFilename(data));
+  }
+
+  /**
+   * The card onto the clipboard, for the far more common case than saving a file: pasting
+   * it straight into a chat or a pull request.
+   *
+   * Returns whether it worked instead of throwing. Clipboard image writes are refused
+   * outright by some browsers and by any page not on a secure origin, and that is a
+   * limitation to report quietly, not an error to surface as a failure.
+   */
+  async function handleCopyImage(): Promise<boolean> {
+    if (!data) return false;
+    try {
+      const blob = await shareCardBlob(data);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      return true;
+    } catch {
+      toast.info('This browser will not let a page copy an image — download it instead.');
+      return false;
+    }
+  }
+
   // Once a result is on screen the analyzer is about that page. Before that it is a form,
   // and account-wide advice is the more useful thing to have beside it.
   useAdviceContext(data ? { scope: 'site', url: data.url, label: getHostname(data.url) } : null);
@@ -194,6 +220,9 @@ export function AnalyzerPage() {
       <AnalyzerHeader
         hasData={!!data}
         onExport={handleExport}
+        onImage={() => void handleImage()}
+        onCopyImage={handleCopyImage}
+        onPdf={() => window.print()}
         onAuthModal={() => setAuthModalOpen(true)}
         onShare={handleShare}
         shareState={shareState}

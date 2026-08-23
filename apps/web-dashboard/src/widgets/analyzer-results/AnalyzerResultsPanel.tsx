@@ -93,11 +93,13 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="space-y-8"
     >
-      <p className="text-xs text-muted-foreground -mb-4 flex items-center gap-2">
+      {/* --ld-* rather than the leftover shadcn tokens: those follow the `dark` class, not
+          `data-theme`, so this line was light-on-light wherever the two disagree. */}
+      <p className="text-xs text-ld-text-3 -mb-4 flex items-center gap-2">
         <span>
           Results for{' '}
           <a href={data.url} target="_blank" rel="noreferrer"
-            className="font-medium text-foreground underline underline-offset-2">
+            className="font-medium text-ld-text underline underline-offset-2">
             {data.url}
           </a>
         </span>

@@ -1,6 +1,6 @@
 import { cn } from '@/shared/lib/utils';
 
-interface Props {
+interface Props extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   /** `sunken` is the inner box that sits INSIDE a panel — surface-2, tighter radius. */
@@ -8,9 +8,13 @@ interface Props {
   border?: 'default' | 'strong';
 }
 
-export function Panel({ children, className, tone = 'default', border = 'default' }: Props) {
+// `rest` is forwarded so a caller can put an id, a `data-*` or an aria attribute on the
+// panel — `data-print="hide"` was silently dropped before this, which is a failure mode
+// with no symptom: the attribute is simply absent and nothing complains.
+export function Panel({ children, className, tone = 'default', border = 'default', ...rest }: Props) {
   return (
     <div
+      {...rest}
       className={cn(
         'border overflow-hidden',
         tone === 'sunken' ? 'rounded-[13px] bg-ld-surface-2' : 'rounded-[16px] bg-ld-surface',
