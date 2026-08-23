@@ -7,6 +7,7 @@ import { AddWebsiteModal } from '@/features/websites';
 import { AdvisorPanel } from '@/features/advisor';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './ui/RunningAudits';
+import { useFinishedAuditToast } from './model/useFinishedAuditToast';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
 
@@ -15,6 +16,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [modalOpen,  setModalOpen]  = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
+
+  // Mounted here because it must outlive every page: an audit that finishes while the
+  // analyzer is closed is the one worth announcing, and only the shell is still listening.
+  useFinishedAuditToast();
 
   // A new route starts at the top. The window never scrolls here — `main` is the scroll
   // container — so the browser's own restoration does nothing and, without this, arriving

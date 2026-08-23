@@ -165,11 +165,29 @@ adopts a run in flight on arrival — before this it landed on an empty form whi
 had just advertised finished off screen. The URL field is seeded from the running audit in
 the `useState` initialiser rather than an effect, so the first paint is already right.
 
+**The adopted run's clock is the run's.** Adopting used to show no elapsed time at all, and
+the comment in `adoptRunning` said why: the run began before the page did, so counting from
+the mount would be a wrong number rather than a missing one. That reasoning stopped holding
+the moment the store started recording `startedAt` — the honest number is available now, so
+the clock is right even when the run is being watched from its second minute, and the stored
+duration is right with it.
+
+**A run that finishes while nobody is looking says so.** `useFinishedAuditToast`, mounted in
+the shell for the same reason the tracker is: `useAnalysis`'s listeners go when the analyzer
+does, so the one case worth announcing is the one a listener there cannot see. It fires when
+the tab is hidden *or* the open route is not `/app` — never for someone watching the scores
+appear in front of them. It writes the result into the analyzer's store on the way past, so
+"View report" lands on the report instead of an empty form; nothing else would have kept it,
+because the page that normally stores it was not mounted.
+
 A hard reload still loses the indicator: the store is in memory, and the socket reconnects as
 a new client. The audit itself survives on the server and lands in history.
 
-**Verified** — `e2e/running-audits.probe.mjs`, **12/12 PASS**: no pill when idle; a pill
+**Verified** — `e2e/running-audits.probe.mjs`, **21/21 PASS**: no pill when idle; a pill
 naming the URL once a run starts; still there after clicking through to another route, with
-progress moving (35% → 62%) while the analyzer is unmounted; clicking it returns to `/app`;
-the pill clearing itself on completion while the report lands as usual. Asserted through the
-DOM, because a probe that imports the store through Vite gets its own empty copy of it.
+progress moving (35% → 62%) while the analyzer is unmounted; a finished-audit toast on
+another page carrying the score, the host and a working *View report* that lands on the
+report rather than an empty form; a second run putting the pill back; clicking the pill
+returning to `/app` with the run's own clock (0:05, not 0:00); the pill clearing itself on
+completion while the report lands as usual. Asserted through the DOM, because a probe that
+imports the store through Vite gets its own empty copy of it.

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, cancelAnalysis, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
+import { useRunningAuditsStore } from '@/entities/analysis';
 import { toast } from '@/shared/ui/toast';
 // The host alone — a toast has one line, and the scheme and path spend it saying nothing.
 import { getHostname } from '@/entities/website';
@@ -130,15 +131,9 @@ export function useAnalysis() {
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
         setResult(data, url, startedAt ? Date.now() - startedAt : null);
         startAiWait();
-
-        // Only when the reader has looked away. An audit takes tens of seconds, so people
-        // switch tabs; announcing the result to someone who is watching the scores appear
-        // in front of them is noise, and noise is how a notification system stops being read.
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-          toast.success(`Audit finished — performance ${data.scores.performance}`, {
-            description: getHostname(url),
-          });
-        }
+        // Announcing a finished run is the shell's job, not this page's — see
+        // `useFinishedAuditToast`. It has to work when this page is *not* mounted, which is
+        // exactly the case a listener living here cannot cover.
       },
       onInsights: applyInsights,
 
@@ -169,9 +164,13 @@ export function useAnalysis() {
 
   const adoptRunning = useCallback(() => {
     cleanupRef.current?.();
-    // No startedAt: this attaches to a run that began before this page did, so the elapsed
-    // clock would be counting from the wrong moment. Better no number than a wrong one.
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
+    // The clock is the run's, not this page's. Adopting used to show no elapsed time at all
+    // — the run began before the page did, and counting from the mount would have been a
+    // wrong number rather than a missing one. The shell's running-audits store knows when
+    // it actually started, so the honest number is available now and the clock is right
+    // even though it is being watched from its second minute.
+    const running = useRunningAuditsStore.getState().runs.find(r => r.returnTo === '/app');
+    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: running?.startedAt ?? null });
     const cleanup = joinAnalysis({
       onProgress: (progress) => setState((prev) => ({ ...prev, progress, analysisId: progress.analysisId || prev.analysisId })),
       onPartial:  (partial)  => setState((prev) => ({
@@ -179,9 +178,10 @@ export function useAnalysis() {
         partials: { ...prev.partials, [partial.category]: partial },
       })),
       onComplete: (data) => {
+        const startedAt = stateRef.current.startedAt;
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
-        // No duration: this run started before the page did (see adoptRunning above).
-        setResult(data, data.url, null);
+        // A duration now, when the adopted run's real start time was known (see above).
+        setResult(data, data.url, startedAt ? Date.now() - startedAt : null);
         startAiWait();
       },
       onInsights: applyInsights,

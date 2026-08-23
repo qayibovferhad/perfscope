@@ -4,10 +4,11 @@
  * page, once left, gave no sign it had ever been running. `adoptRunning` had been there to
  * re-attach to a live run since long before this; nothing ever told anyone there *was* one.
  *
- * The two things worth proving are the two that a screenshot cannot show: that the
- * indicator keeps moving after the page that started the run is gone — its listeners went
- * with it, so the tracking cannot be built on them — and that it disappears on its own when
- * the run finishes, rather than leaving a permanent claim that something is happening.
+ * The things worth proving are the ones a screenshot cannot show: that the indicator keeps
+ * moving after the page that started the run is gone — its listeners went with it, so the
+ * tracking cannot be built on them — that it disappears on its own when the run finishes,
+ * that going back to an adopted run shows the *run's* clock rather than starting a new one,
+ * and that a run finishing while the reader is on another page says so.
  *
  *   node e2e/running-audits.probe.mjs [outDir]
  */
@@ -101,6 +102,50 @@ try {
   console.log(`  progress ${before}% → ${after}%`);
   check(after > before || after >= 85, `and keeps moving with the page gone (${before}% → ${after}%)`);
 
+  // ─── Finishing while nobody is looking ─────────────────────────────────────
+  // Still on /websites here, deliberately: this is the case the analyzer's own listeners
+  // cannot cover, because it is not mounted.
+  let announced = null;
+  for (let i = 0; i < 240; i++) {
+    announced = await page.evaluate(() => {
+      const el = [...document.querySelectorAll('.ps-toast')]
+        .find((t) => /audit finished/i.test(t.innerText));
+      return el ? el.innerText.replace(/\n/g, ' · ') : null;
+    });
+    if (announced) break;
+    await sleep(500);
+  }
+  console.log(`  toast: ${announced}`);
+  check(!!announced, 'a run that finishes on another page announces itself');
+  check(/performance \d+/i.test(announced ?? ''), 'with the score it landed on');
+  check(/localhost/.test(announced ?? ''), 'and the page it was about');
+  check(/view report/i.test(announced ?? ''), 'offering a way to the report');
+  await page.screenshot({ path: `${OUT}/finished-elsewhere.png` });
+
+  // The report has to be *there* when the offer is taken up — the page that would normally
+  // have kept it was not mounted when the audit finished.
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('.ps-toast button')]
+      .find((b) => /view report/i.test(b.textContent ?? ''));
+    btn?.click();
+  });
+  await sleep(1800);
+  check(new URL(page.url()).pathname === '/app', 'the action navigates to the analyzer');
+  check(/opportunities & diagnostics/i.test(await bodyText(page)), 'and the report is there rather than an empty form');
+
+  console.log(`\n  (a second run, to check the pill and the clock while it is live)`);
+  await page.evaluate(() => {
+    const input = document.querySelector('input[placeholder^="https"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, 'http://localhost:3392/');
+    input?.dispatchEvent(new Event('input', { bubbles: true }));
+    [...document.querySelectorAll('button[type="submit"]')].at(-1)?.click();
+  });
+  await sleep(2500);
+  check(await pill(page) !== null, 'a fresh run puts the pill back');
+  check(await clickNav(page, 'My Websites'), 'and can be left again');
+  await sleep(1200);
+
   // ─── Clicking it goes back to the run ──────────────────────────────────────
   await page.evaluate(() => {
     const el = [...document.querySelectorAll('aside button')]
@@ -109,6 +154,20 @@ try {
   });
   await sleep(1500);
   check(new URL(page.url()).pathname === '/app', `clicking the pill goes back to the run (${new URL(page.url()).pathname})`);
+
+  // ─── The clock is the run's, not the page's ────────────────────────────────
+  // Adopting a run used to show no elapsed time at all: it began before this page did, and
+  // counting from the mount would be a wrong number rather than a missing one. The store
+  // knows when it really started.
+  const clock = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('*')]
+      .map((e) => e.textContent?.trim() ?? '')
+      .find((t) => /^\d+:\d{2}$/.test(t));
+    return el ?? null;
+  });
+  console.log(`  elapsed on the adopted run: ${clock}`);
+  check(clock !== null, 'the adopted run shows an elapsed clock');
+  check(clock !== '0:00' && clock !== '0:01', `counting from when the run began, not from the click (${clock})`);
 
   // ─── It clears itself ──────────────────────────────────────────────────────
   let cleared = false;
