@@ -172,6 +172,14 @@ the moment the store started recording `startedAt` — the honest number is avai
 the clock is right even when the run is being watched from its second minute, and the stored
 duration is right with it.
 
+**A finished run is a card, not a confirmation.** `toast` gained `onClick`, which makes the
+whole card the target instead of a link inside it, and the finished-audit notification uses
+it with `duration: Infinity`. A confirmation of something you just did can time out; a
+*result waiting to be read* cannot — one that removes itself after four seconds while the
+reader is on another page is a result they never had. Clicking anywhere on the card opens
+the report; the close button and any action still stop the click from reaching it, and a
+swipe is not a click (a drag past four pixels suppresses the one it produces).
+
 **A run that finishes while nobody is looking says so.** `useFinishedAuditToast`, mounted in
 the shell for the same reason the tracker is: `useAnalysis`'s listeners go when the analyzer
 does, so the one case worth announcing is the one a listener there cannot see. It fires when

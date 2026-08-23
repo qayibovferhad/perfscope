@@ -23,9 +23,14 @@ const ANALYZER_PATH = '/app';
  * front of them gets nothing, because a notification for something already on screen is
  * how people learn to ignore notifications.
  *
- * The result is written into the analyzer's store on the way past, so "View report" lands
- * on the report itself rather than on an empty form — nothing else would have kept it: the
+ * The result is written into the analyzer's store on the way past, so opening it lands on
+ * the report itself rather than on an empty form — nothing else would have kept it: the
  * page that would normally store it was not mounted when the audit finished.
+ *
+ * It does not time out. A finished audit is not a confirmation of something the reader just
+ * did, it is a *result waiting to be read*, and a result that removes itself after four
+ * seconds while they are looking at another page is a result they never had. It stays as a
+ * card until it is opened or dismissed, and the whole card is the target.
  */
 export function useFinishedAuditToast(): void {
   const navigate = useNavigate();
@@ -40,8 +45,9 @@ export function useFinishedAuditToast(): void {
       useAnalysisStore.getState().setResult(result, result.url, null);
 
       toast.success(`Audit finished — performance ${result.scores.performance}`, {
-        description: getHostname(result.url),
-        action: { label: 'View report', onClick: () => navigate(ANALYZER_PATH) },
+        description: `${getHostname(result.url)} · open the report`,
+        duration: Infinity,
+        onClick: () => navigate(ANALYZER_PATH),
       });
     };
 

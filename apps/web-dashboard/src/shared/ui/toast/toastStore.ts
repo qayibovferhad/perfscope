@@ -14,6 +14,15 @@ export interface ToastOptions {
   /** Milliseconds on screen. `Infinity` pins it until dismissed; the default depends on type. */
   duration?:    number;
   action?:      ToastAction;
+  /**
+   * Makes the whole card a target rather than just its action link.
+   *
+   * For a toast that is really a *card* — something that waits to be dealt with, like a
+   * finished audit — the action is the point of the thing, and asking someone to hit a
+   * small link inside a notification they can already see is a needless second aim.
+   * Dismisses on click.
+   */
+  onClick?:     () => void;
 }
 
 export interface Toast {
@@ -23,6 +32,7 @@ export interface Toast {
   description?: string;
   duration:     number;
   action?:      ToastAction;
+  onClick?:     () => void;
   /** Bumped whenever an existing toast is updated, so its timer restarts from the change. */
   version:      number;
 }
@@ -79,6 +89,7 @@ export const useToastStore = create<ToastStore>((set) => ({
                 ...t, type, title, duration, version: t.version + 1,
                 ...(options.description !== undefined ? { description: options.description } : { description: undefined }),
                 ...(options.action !== undefined ? { action: options.action } : { action: undefined }),
+            ...(options.onClick !== undefined ? { onClick: options.onClick } : { onClick: undefined }),
               }
             : t),
         };
@@ -88,6 +99,7 @@ export const useToastStore = create<ToastStore>((set) => ({
         id, type, title, duration, version: 0,
         ...(options.description ? { description: options.description } : {}),
         ...(options.action ? { action: options.action } : {}),
+        ...(options.onClick ? { onClick: options.onClick } : {}),
       };
       const next = [...state.toasts, toast];
       return { toasts: next.length > MAX_VISIBLE ? next.slice(next.length - MAX_VISIBLE) : next };

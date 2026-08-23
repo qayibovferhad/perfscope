@@ -119,18 +119,34 @@ try {
   check(!!announced, 'a run that finishes on another page announces itself');
   check(/performance \d+/i.test(announced ?? ''), 'with the score it landed on');
   check(/localhost/.test(announced ?? ''), 'and the page it was about');
-  check(/view report/i.test(announced ?? ''), 'offering a way to the report');
+  check(/open the report/i.test(announced ?? ''), 'saying what clicking it does');
+
+  // It is a card, not a confirmation: a finished audit is a result waiting to be read, and
+  // one that removes itself after four seconds while the reader is on another page is a
+  // result they never had.
+  const card = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('.ps-toast')].find((t) => /audit finished/i.test(t.innerText));
+    return el ? { clickable: /cursor-pointer/.test(el.className), countdown: !!el.querySelector('.ps-toast-bar') } : null;
+  });
+  check(card?.countdown === false, 'it carries no countdown — it waits to be dealt with');
+  check(card?.clickable === true, 'and the whole card is the target, not a link inside it');
+  await sleep(9000);
+  const survived = await page.evaluate(() =>
+    [...document.querySelectorAll('.ps-toast')].some((t) => /audit finished/i.test(t.innerText)));
+  check(survived, 'so it is still there long after an ordinary toast would have gone');
   await page.screenshot({ path: `${OUT}/finished-elsewhere.png` });
 
   // The report has to be *there* when the offer is taken up — the page that would normally
   // have kept it was not mounted when the audit finished.
-  await page.evaluate(() => {
-    const btn = [...document.querySelectorAll('.ps-toast button')]
-      .find((b) => /view report/i.test(b.textContent ?? ''));
-    btn?.click();
+  const cardBox = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('.ps-toast')].find((t) => /audit finished/i.test(t.innerText));
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + 24 };
   });
+  await page.mouse.click(cardBox.x, cardBox.y);
   await sleep(1800);
-  check(new URL(page.url()).pathname === '/app', 'the action navigates to the analyzer');
+  check(new URL(page.url()).pathname === '/app', 'clicking the card goes to the analyzer');
   check(/opportunities & diagnostics/i.test(await bodyText(page)), 'and the report is there rather than an empty form');
 
   console.log(`\n  (a second run, to check the pill and the clock while it is live)`);

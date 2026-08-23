@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AlertTriangle, Check, Info, Loader2, X, XCircle } from 'lucide-react';
@@ -28,6 +28,16 @@ function ToastCard({ toast }: { toast: Toast }) {
   const Icon = tone.icon;
   const timed = Number.isFinite(toast.duration);
 
+  // A swipe ends in a click event too, and a card that navigated every time someone pushed
+  // it aside would be worse than one that could not be clicked at all.
+  const dragged = useRef(false);
+
+  const open = () => {
+    if (dragged.current || !toast.onClick) return;
+    toast.onClick();
+    dismiss(toast.id);
+  };
+
   return (
     <motion.div
       layout={!reduced}
@@ -42,12 +52,23 @@ function ToastCard({ toast }: { toast: Toast }) {
       drag={reduced ? false : 'x'}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={{ left: 0.02, right: 0.7 }}
-      onDragEnd={(_, info) => { if (info.offset.x > SWIPE_DISMISS_PX) dismiss(toast.id); }}
+      onDragStart={() => { dragged.current = false; }}
+      onDrag={(_, info) => { if (Math.abs(info.offset.x) > 4) dragged.current = true; }}
+      onDragEnd={(_, info) => {
+        if (info.offset.x > SWIPE_DISMISS_PX) dismiss(toast.id);
+        // Cleared on the next tick so the click this drag produces is still suppressed.
+        setTimeout(() => { dragged.current = false; }, 0);
+      }}
+      onClick={open}
       // `group` drives the pause-on-hover below; `pointer-events-auto` because the
       // container itself is transparent to clicks.
-      className="ps-toast group pointer-events-auto relative w-[min(380px,calc(100vw-32px))] overflow-hidden
-                 rounded-[14px] border border-ld-border-strong bg-ld-surface shadow-ld-shadow-card
-                 cursor-grab active:cursor-grabbing"
+      className={cn(
+        'ps-toast group pointer-events-auto relative w-[min(380px,calc(100vw-32px))] overflow-hidden',
+        'rounded-[14px] border border-ld-border-strong bg-ld-surface shadow-ld-shadow-card',
+        toast.onClick
+          ? 'cursor-pointer hover:border-ld-accent-line transition-colors'
+          : 'cursor-grab active:cursor-grabbing',
+      )}
       role={toast.type === 'error' ? 'alert' : 'status'}
     >
       <div className="flex items-start gap-[11px] p-[14px] pr-[38px]">
@@ -63,7 +84,7 @@ function ToastCard({ toast }: { toast: Toast }) {
           {toast.action && (
             <button
               type="button"
-              onClick={() => { toast.action!.onClick(); dismiss(toast.id); }}
+              onClick={(e) => { e.stopPropagation(); toast.action!.onClick(); dismiss(toast.id); }}
               className="mt-[9px] font-mono text-[11.5px] font-semibold uppercase tracking-[.08em] text-ld-accent
                          bg-transparent border-0 p-0 cursor-pointer hover:underline"
             >
@@ -75,7 +96,7 @@ function ToastCard({ toast }: { toast: Toast }) {
 
       <button
         type="button"
-        onClick={() => dismiss(toast.id)}
+        onClick={(e) => { e.stopPropagation(); dismiss(toast.id); }}
         aria-label="Dismiss notification"
         className="absolute top-[9px] right-[9px] w-[22px] h-[22px] grid place-items-center rounded-[6px]
                    text-ld-text-3 hover:text-ld-text hover:bg-ld-surface-2 transition-colors bg-transparent border-0 cursor-pointer"
