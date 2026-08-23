@@ -169,3 +169,23 @@ export interface CompetitorSessionEntry {
   createdAt: string
   session:   WebsiteSession | null
 }
+
+// ─── Route discovery ─────────────────────────────────────────────────────────
+
+/** One page a site's sitemap claims to have. */
+export interface DiscoveredRoute {
+  /** Path with its query string, as the sitemap gives it. */
+  path:      string
+  /** 0–1, when the sitemap says — the site telling us what it thinks matters. */
+  priority?: number
+  lastmod?:  string
+}
+
+export interface RouteDiscovery {
+  routes:  DiscoveredRoute[]
+  /** Which sitemaps answered. "We found nothing" and "there is no sitemap" are different
+   *  answers, and the reader can only act on one of them. */
+  sources: string[]
+  /** Set when nothing could be read at all. */
+  reason?: string
+}

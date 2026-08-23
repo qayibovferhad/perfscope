@@ -7,6 +7,7 @@ import { Input }              from '@/shared/ui/input';
 import { Button }             from '@/shared/ui/button';
 import { Toggle }             from '@/shared/ui/toggle';
 import { ScheduleEditor }     from './ScheduleEditor';
+import { RouteDiscovery }     from './RouteDiscovery';
 import { useAutomation }      from '@/features/automation';
 import { getHostname, useWebsites } from '@/entities/website';
 import type { Website }       from '@/entities/website';
@@ -129,6 +130,12 @@ export function SetupModal({ site, open, onClose }: Props) {
               <Plus className="w-3.5 h-3.5" /> Add
             </Button>
           </div>
+
+          <RouteDiscovery
+            siteId={site._id}
+            existing={routes}
+            onAdd={paths => setRoutes(prev => [...prev, ...paths.filter(p => !prev.includes(p))])}
+          />
 
           {routes.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 mt-3">

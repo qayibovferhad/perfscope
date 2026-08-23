@@ -13,6 +13,7 @@ import { NightlyAuditService } from '../services/nightlyAudit.service.js';
 import { escapeRegex, normalizeUrl as normalizeSiteUrl } from '../lib/url.js';
 import { computeSiteScores } from '../services/overview.service.js';
 import { parseAutomationUpdate, parseBudgets } from '../services/websiteInput.js';
+import { discoverRoutes } from '../services/sitemap.service.js';
 import { isDbReady } from '../config/database.js';
 import { requireStorageForWrites } from '../middleware/storage.middleware.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
@@ -143,6 +144,20 @@ websiteRouter.post('/websites', asyncHandler<AuthedRequest>(async (req, res) => 
 }));
 
 // PATCH /api/websites/:id/session — save extracted session data to the website doc
+/**
+ * GET /api/websites/:id/routes — what this site's sitemap says it has.
+ *
+ * Live, not cached: it is asked for once, by hand, when someone is setting up a schedule,
+ * and a stale list is worse than a two-second wait. The ownership lookup comes first — the
+ * URL that gets fetched has to be one of the caller's own sites, not one they named.
+ */
+websiteRouter.get('/websites/:id/routes', asyncHandler<AuthedRequest>(async (req, res) => {
+  const website = await Website.findOne(ownedSite(req)).lean<IWebsite>();
+  if (!website) throw new AppError(404, 'Website not found');
+
+  ok(res, await discoverRoutes(website.url));
+}));
+
 websiteRouter.patch('/websites/:id/session', asyncHandler<AuthedRequest>(async (req, res) => {
   const { cookies = [], localStorage: ls = {} } = req.body as {
     cookies?: unknown[];
