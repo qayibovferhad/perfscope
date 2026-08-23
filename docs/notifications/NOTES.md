@@ -32,6 +32,10 @@ come back.
 Other decisions worth not re-litigating:
 - **Portalled to `document.body`.** The shell clips and scrolls its own columns; a `fixed`
   element inside a transformed ancestor is positioned against that ancestor.
+- **Top centre, newest first.** The right-hand corner is spoken for — the advisor rail, the
+  ask-about-this-audit button, and on a phone both at once — and a stack squeezed past
+  furniture lands somewhere different on every screen size. The top of the page is the same
+  place everywhere; cards enter downwards from the edge they sit on.
 - **`version` is in the React key** so promoting a toast restarts the countdown — otherwise
   a `loading` promoted to `success` inherits the elapsed wait and vanishes instantly.
 - **Four at once**, oldest dropped: past that it is a wall, and the oldest is the one
@@ -171,6 +175,12 @@ the mount would be a wrong number rather than a missing one. That reasoning stop
 the moment the store started recording `startedAt` — the honest number is available now, so
 the clock is right even when the run is being watched from its second minute, and the stored
 duration is right with it.
+
+**A finished run is parked in two places.** The toast is where the reader was looking when
+it landed; the sidebar, above Add Website and beside anything still running, is where they
+come back to. Same list as the running audits, because the shell answers one question —
+what has this account been doing — and a result nobody has read yet is part of that answer.
+Three at most, cleared by opening one or by its ×.
 
 **A finished run is a card, not a confirmation.** `toast` gained `onClick`, which makes the
 whole card the target instead of a link inside it, and the finished-audit notification uses

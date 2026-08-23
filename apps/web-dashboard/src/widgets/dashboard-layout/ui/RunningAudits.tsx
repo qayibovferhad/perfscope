@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Activity } from 'lucide-react';
+import { Activity, Check, X } from 'lucide-react';
 import { useRunningAuditsStore } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';
 import { formatElapsed } from '@/entities/analysis';
@@ -36,11 +36,13 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
   onNavigate?: () => void;
 }) {
   const runs = useRunningAuditsStore(s => s.runs);
+  const finished = useRunningAuditsStore(s => s.finished);
+  const dismissFinished = useRunningAuditsStore(s => s.dismissFinished);
   const navigate = useNavigate();
   const reduced = useReducedMotion();
 
   const first = runs[0];
-  if (!first) return null;
+  if (!first && finished.length === 0) return null;
 
   function open(returnTo: string) {
     onNavigate?.();
@@ -48,6 +50,20 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
   }
 
   if (variant === 'compact') {
+    // The topbar has room for one glyph. A run in flight outranks a finished one — the
+    // finished result is not going anywhere.
+    if (!first) {
+      return (
+        <button
+          type="button"
+          onClick={() => open('/app')}
+          aria-label={`${finished.length} finished ${finished.length === 1 ? 'audit' : 'audits'}`}
+          className="relative w-[36px] h-[36px] grid place-items-center rounded-[11px] border border-ld-accent-line bg-ld-accent-soft text-ld-accent cursor-pointer"
+        >
+          <Check className="w-[17px] h-[17px]" />
+        </button>
+      );
+    }
     return (
       <button
         type="button"
@@ -81,6 +97,39 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
         <div className="mt-[10px] mb-[14px] rounded-[12px] border border-ld-accent-line bg-ld-accent-wash overflow-hidden">
           {runs.map(run => (
             <RunRow key={run.key} run={run} onOpen={() => open(run.returnTo)} />
+          ))}
+          {/* A result that landed while the reader was elsewhere waits here as well as in
+              the toast: the toast is where they were looking, this is where they come back
+              to. Dismissed by opening it, or by the ×. */}
+          {finished.map(done => (
+            <div key={done.key} className="flex items-stretch border-t border-ld-accent-line first:border-t-0">
+              <button
+                type="button"
+                onClick={() => { dismissFinished(done.key); open('/app'); }}
+                className="flex-1 min-w-0 text-left px-[12px] py-[10px] bg-transparent border-0 cursor-pointer hover:bg-ld-accent-soft transition-colors"
+              >
+                <span className="flex items-center gap-[7px]">
+                  <Check className="w-[13px] h-[13px] text-ld-accent shrink-0" />
+                  <span className="font-mono text-[11.5px] text-ld-text truncate flex-1" title={done.url}>
+                    {getHostname(done.url)}
+                  </span>
+                  <span className="font-mono text-[11px] font-semibold text-ld-accent tabular-nums shrink-0">
+                    {done.score}
+                  </span>
+                </span>
+                <span className="block font-mono text-[10.5px] text-ld-text-3 mt-[2px]">
+                  Finished · open the report
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => dismissFinished(done.key)}
+                aria-label="Dismiss finished audit"
+                className="w-[30px] shrink-0 grid place-items-center bg-transparent border-0 cursor-pointer text-ld-text-3 hover:text-ld-text hover:bg-ld-accent-soft transition-colors"
+              >
+                <X className="w-[12px] h-[12px]" />
+              </button>
+            </div>
           ))}
         </div>
       </motion.div>

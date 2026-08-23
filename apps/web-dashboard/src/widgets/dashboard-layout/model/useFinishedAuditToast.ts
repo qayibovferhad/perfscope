@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { joinAnalysis } from '@/entities/analysis';
+import { joinAnalysis, useRunningAuditsStore } from '@/entities/analysis';
 import { useAnalysisStore } from '@/features/analyzer';
 import { getHostname } from '@/entities/website';
 import { toast } from '@/shared/ui/toast';
@@ -43,6 +43,9 @@ export function useFinishedAuditToast(): void {
       if (!unattended) return;
 
       useAnalysisStore.getState().setResult(result, result.url, null);
+      // Also parked in the shell, above Add Website: the toast is where the reader was
+      // looking when it landed, the sidebar is where they come back to afterwards.
+      useRunningAuditsStore.getState().finish(result.url, result.scores.performance);
 
       toast.success(`Audit finished — performance ${result.scores.performance}`, {
         description: `${getHostname(result.url)} · open the report`,

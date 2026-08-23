@@ -45,9 +45,11 @@ function ToastCard({ toast }: { toast: Toast }) {
       // place — otherwise a loading card promoted to success would inherit the elapsed
       // time of the wait and vanish immediately.
       key={`${toast.id}-${toast.version}`}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, x: 32, scale: 0.96 }}
-      animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
-      exit={reduced ? { opacity: 0 } : { opacity: 0, x: 32, scale: 0.96, transition: { duration: 0.16 } }}
+      // Down from the top edge, which is where the stack now lives; a card that slid in
+      // from the right would be arriving from a direction nothing else on screen uses.
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: -16, scale: 0.96 }}
+      animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.96, transition: { duration: 0.16 } }}
       transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
       drag={reduced ? false : 'x'}
       dragConstraints={{ left: 0, right: 0 }}
@@ -126,8 +128,13 @@ function ToastCard({ toast }: { toast: Toast }) {
  * positioned against that ancestor, not the viewport — which is how these end up halfway
  * up the page on one route and off-screen on another.
  *
- * Right-hand side, clear of the advisor rail (46px). Newest sits at the bottom, closest
- * to where the eye already is after clicking something.
+ * Top centre. The right-hand corner is spoken for — the advisor rail, the ask-about-this-
+ * audit button, and on a phone the two of them together — and a notification that has to be
+ * squeezed past furniture ends up somewhere different on every screen size. The top of the
+ * page is the same place everywhere.
+ *
+ * Newest first, so the newest card is the one nearest the top edge and the stack grows
+ * downwards away from it.
  */
 export function Toaster() {
   const toasts = useToastStore(s => s.toasts);
@@ -152,16 +159,15 @@ export function Toaster() {
       aria-live="polite"
       aria-relevant="additions"
       className={cn(
-        'pointer-events-none fixed z-[100] bottom-[18px] right-[18px]',
-        // Clear of the advisor rail below 2xl, and above the ask-about-this-audit button
-        // on a phone — the two share the bottom-right corner there.
-        'max-2xl:right-[64px] max-md:bottom-[86px]',
-        'flex flex-col items-end gap-[10px]',
+        'pointer-events-none fixed z-[100] top-[18px] left-1/2 -translate-x-1/2',
+        // Below the mobile topbar, which owns the top of the screen there.
+        'max-md:top-[68px]',
+        'flex flex-col items-center gap-[10px]',
         backgrounded && 'ps-toasts-paused',
       )}
     >
       <AnimatePresence initial={false} mode="popLayout">
-        {toasts.map(t => <ToastCard key={t.id} toast={t} />)}
+        {[...toasts].reverse().map(t => <ToastCard key={t.id} toast={t} />)}
       </AnimatePresence>
     </div>,
     document.body,

@@ -34,8 +34,27 @@ export interface RunningAudit {
  */
 const STALE_AFTER_MS = 12 * 60_000;
 
+/**
+ * An audit that has finished while the reader was somewhere else.
+ *
+ * Kept beside the running ones because the shell's list answers one question — "what has
+ * my account been doing?" — and a run that finished thirty seconds ago is part of that
+ * answer until someone has looked at it.
+ */
+export interface FinishedAudit {
+  key:   string;
+  url:   string;
+  score: number;
+  at:    number;
+}
+
+/** Past a few, this stops being a list of results and becomes a backlog. */
+const MAX_FINISHED = 3;
+
 interface RunningAuditsStore {
   runs: RunningAudit[];
+  /** Finished while unwatched, newest first, waiting to be opened or dismissed. */
+  finished: FinishedAudit[];
   /** Register a run that has just been asked for. Returns its local key. */
   begin: (url: string, returnTo: string) => string;
   /** Route a progress event to the run it belongs to. */
@@ -43,6 +62,9 @@ interface RunningAuditsStore {
   /** A run finished or failed. An empty id means "whichever run never got one". */
   endByAnalysisId: (analysisId: string | undefined) => void;
   end: (key: string) => void;
+  /** Record a run that finished while nobody was looking at it. */
+  finish: (url: string, score: number) => void;
+  dismissFinished: (key: string) => void;
 }
 
 let counter = 0;
@@ -62,6 +84,7 @@ const fresh = (runs: RunningAudit[]) => runs.filter(r => Date.now() - r.startedA
  *  the cancel clearing the other. */
 export const useRunningAuditsStore = hmrSingleton('runningAudits', () => create<RunningAuditsStore>((set) => ({
   runs: [],
+  finished: [],
 
   begin: (url, returnTo) => {
     const key = `run-${++counter}`;
@@ -98,6 +121,12 @@ export const useRunningAuditsStore = hmrSingleton('runningAudits', () => create<
   }),
 
   end: (key) => set((s) => ({ runs: s.runs.filter(r => r.key !== key) })),
+
+  finish: (url, score) => set((s) => ({
+    finished: [{ key: `done-${++counter}`, url, score, at: Date.now() }, ...s.finished].slice(0, MAX_FINISHED),
+  })),
+
+  dismissFinished: (key) => set((s) => ({ finished: s.finished.filter(f => f.key !== key) })),
 })));
 
 // ─── Dev only ────────────────────────────────────────────────────────────────
