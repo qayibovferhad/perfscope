@@ -128,6 +128,10 @@ export const RUN_TIMEOUT_MS = 4 * 60_000;
 /** Grace period for a finished worker to close its browser before we do it for it. */
 const CLOSE_GRACE_MS = 15_000;
 
+/** How long a "this one was cancelled before it started" note is kept. Longer than any
+ *  queue wait worth honouring, short enough that notes for ids that never run expire. */
+const CANCEL_NOTE_TTL_MS = 15 * 60_000;
+
 export interface AnalyzeOptions {
   // Explicit `| undefined` so callers can spread optional values under
   // exactOptionalPropertyTypes without pre-filtering them.
@@ -183,6 +187,8 @@ function extractTraceData(runnerResult: { lhr: { audits?: Record<string, { numer
 
 export class LighthouseService extends EventEmitter {
   private readonly activeAnalyses = new Map<string, ActiveAnalysis>();
+  /** Audits told to stop while they were still waiting for a queue slot — see cancelAnalysis. */
+  private readonly cancelledBeforeStart = new Map<string, number>();
 
   // Serialises concurrent main-thread Lighthouse runs so they never share
   // performance marks (workers are exempt — each thread has its own context).
@@ -204,6 +210,7 @@ export class LighthouseService extends EventEmitter {
   }
 
   private async singleShotAudit(analysisId: string, url: string): Promise<AnalysisResult> {
+    this.abortIfCancelledWhileQueued(analysisId);
     let browser: Browser | null = null;
     try {
       browser = await this.launchBrowser(analysisId);
@@ -252,6 +259,7 @@ export class LighthouseService extends EventEmitter {
     onPartial: (partial: CategoryPartial) => void,
     opts: AnalyzeOptions,
   ): Promise<AnalysisResult> {
+    this.abortIfCancelledWhileQueued(analysisId);
     const { formFactor, captureElements = false } = opts;
     const runs = Math.max(1, Math.min(Math.floor(opts.runs ?? 1), MAX_RUNS));
     const workers: Worker[] = [];
@@ -385,6 +393,7 @@ export class LighthouseService extends EventEmitter {
     formFactor?: AuditFormFactor,
     runs = 1,
   ): Promise<AnalysisResult> {
+    this.abortIfCancelledWhileQueued(analysisId);
     let browser: Browser | null = null;
 
     try {
@@ -623,9 +632,25 @@ export class LighthouseService extends EventEmitter {
     });
   }
 
+  /**
+   * Stop an audit, whether or not it has started yet.
+   *
+   * A queued audit is not in `activeAnalyses` — that map is filled by the task itself, once
+   * the queue admits it — so cancelling one used to do nothing at all, and the run started
+   * the moment a slot opened. On a busy box (two concurrent audits is the default cap) that
+   * is the common case, not the rare one: press Stop while three are waiting and the third
+   * still measures the page a minute later.
+   *
+   * So a cancel that finds nothing to kill leaves a note instead, and the task checks for it
+   * on the way in. Returns whether anything was actually killed; the note is left either way.
+   */
   cancelAnalysis(analysisId: string): boolean {
     const analysis = this.activeAnalyses.get(analysisId);
-    if (!analysis) return false;
+    if (!analysis) {
+      this.cancelledBeforeStart.set(analysisId, Date.now());
+      this.pruneCancelNotes();
+      return false;
+    }
 
     if (analysis.type === 'browser') {
       analysis.abortController.abort();
@@ -639,6 +664,27 @@ export class LighthouseService extends EventEmitter {
 
     this.activeAnalyses.delete(analysisId);
     return true;
+  }
+
+  /**
+   * Throw if this audit was cancelled while it sat in the queue.
+   *
+   * Called at the top of every queued task. The note is consumed here, so an id can only
+   * stop one run — and the socket handler already knows not to report a cancelled audit as
+   * a failure, so this throw reaches the client as silence.
+   */
+  private abortIfCancelledWhileQueued(analysisId: string): void {
+    if (this.cancelledBeforeStart.delete(analysisId)) {
+      throw new Error('Analysis was cancelled before it started');
+    }
+  }
+
+  /** A note for an id that never runs would otherwise sit in the map forever. */
+  private pruneCancelNotes(): void {
+    const cutoff = Date.now() - CANCEL_NOTE_TTL_MS;
+    for (const [id, at] of this.cancelledBeforeStart) {
+      if (at < cutoff) this.cancelledBeforeStart.delete(id);
+    }
   }
 
   // ─── Private: Browser ────────────────────────────────────────────────────

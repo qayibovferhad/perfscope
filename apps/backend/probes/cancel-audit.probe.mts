@@ -13,6 +13,12 @@
  * pressed Stop being told their audit failed with a socket URL is the worst possible
  * reading of "it stopped".
  *
+ * It also covers the case that made "Stop doesn't work" a real complaint rather than a
+ * cosmetic one: an audit **still in the queue** was not in `activeAnalyses` — that map is
+ * filled by the task once the queue admits it — so cancelling one did nothing at all, and
+ * the run started the moment a slot opened. With the cap at two concurrent audits that is
+ * the common case on a busy box, not a rare one.
+ *
  * Driven over a real socket rather than through the browser, because the thing under test
  * is what the *server* sends — a client that happens not to be listening proves nothing.
  *
@@ -124,6 +130,39 @@ try {
     check(seenB.errors.length === 1, `the other still hears its own failure (${seenB.errors[0] ?? 'nothing'})`);
     a.disconnect();
     b.disconnect();
+  }
+  // ─── Cancelled while still in the queue ────────────────────────────────────
+  // Two audits saturate the default cap; the third waits. Cancelling *that* one used to be
+  // a no-op, and it ran to completion minutes later.
+  {
+    const sockets = await Promise.all([connect(), connect(), connect()]);
+    const seen = sockets.map(listen);
+    const ids: (string | null)[] = [null, null, null];
+    const queued = [false, false, false];
+    sockets.forEach((socket, i) => {
+      socket.on('analysis:progress', (d: { analysisId: string; message: string }) => {
+        ids[i] ||= d.analysisId;
+        if (/queued/i.test(d.message)) queued[i] = true;
+      });
+    });
+
+    for (const socket of sockets) socket.emit('analysis:start', { url: TARGET });
+    await sleep(4000);
+
+    console.log(`\nthree audits against a cap of two`);
+    check(queued[2] === true, `the third one waits in the queue (${queued.join(', ')})`);
+
+    sockets[2]!.emit('analysis:cancel', { analysisId: ids[2] });
+
+    // Long enough for the two ahead of it to finish and free the slot it was waiting for.
+    for (let i = 0; i < 150 && !(seen[0]!.completed && seen[1]!.completed); i++) await sleep(1000);
+    await sleep(8000);
+
+    check(seen[0]!.completed && seen[1]!.completed, 'the two ahead of it finish normally');
+    check(!seen[2]!.completed, 'the cancelled one never runs, even once its slot opens');
+    check(seen[2]!.errors.length === 0, `and reports nothing (${seen[2]!.errors.join(' | ') || 'silent'})`);
+
+    for (const socket of sockets) socket.disconnect();
   }
 } finally {
   fixture.close();
