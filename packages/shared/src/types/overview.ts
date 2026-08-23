@@ -131,3 +131,39 @@ export interface OverviewData {
   rum:          OverviewRum | null;
   charts:       OverviewCharts;
 }
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+/**
+ * One entry in the bell.
+ *
+ * The same alerts the dashboard's incident list is built from, but ordered by time rather
+ * than by whether they are still open — the bell answers "what happened", not "what is
+ * broken", and a recovery is as much news as a breach.
+ */
+export interface NotificationEntry {
+  id:        string
+  /** 'budget.breach' | 'budget.recovered' | 'audit.regression' — as stored. */
+  event:     string
+  status:    'firing' | 'recovered' | 'event'
+  /** The audited page. */
+  url:       string
+  siteUrl:   string
+  websiteId: string
+  metrics:   string[]
+  /** Human-readable bullets, exactly as they were sent. */
+  lines:     string[]
+  aiNote?:   string
+  at:        string
+  /** Raised since this account last opened the bell. */
+  unread:    boolean
+}
+
+export interface NotificationsResponse {
+  entries: NotificationEntry[]
+  /** How many of them are unread — the badge. Counted server-side over the whole log,
+   *  not over the returned page, so a busy account does not under-report. */
+  unread:  number
+  /** When the account last opened the bell; null if never. */
+  seenAt:  string | null
+}

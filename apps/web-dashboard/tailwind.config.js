@@ -22,6 +22,7 @@ export default {
         'ld-text-3':        'var(--ld-text-3)',
         'ld-accent':        'var(--ld-accent)',
         'ld-accent-2':      'var(--ld-accent-2)',
+        'ld-accent-wash':   'var(--ld-accent-wash)',
         'ld-accent-soft':   'var(--ld-accent-soft)',
         'ld-accent-line':   'var(--ld-accent-line)',
         'ld-teal':          'var(--ld-teal)',

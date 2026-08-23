@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, cancelAnalysis, type AuditPrecision } from '@/entities/analysis';
 import { useAnalysisStore } from './analysisStore';
+import { toast } from '@/shared/ui/toast';
+// The host alone — a toast has one line, and the scheme and path spend it saying nothing.
+import { getHostname } from '@/entities/website';
 import type { AnalysisResult, AnalysisProgress, AuditFormFactor, PartialMap } from '@/entities/analysis';
 import type { AnalysisInsightsPayload } from '@perfscope/shared';
 
@@ -127,11 +130,24 @@ export function useAnalysis() {
         setState({ status: 'success', data, progress: null, partials: {}, error: null, errorCode: null, aiPending: true, analysisId: null, startedAt: null });
         setResult(data, url, startedAt ? Date.now() - startedAt : null);
         startAiWait();
+
+        // Only when the reader has looked away. An audit takes tens of seconds, so people
+        // switch tabs; announcing the result to someone who is watching the scores appear
+        // in front of them is noise, and noise is how a notification system stops being read.
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          toast.success(`Audit finished — performance ${data.scores.performance}`, {
+            description: getHostname(url),
+          });
+        }
       },
       onInsights: applyInsights,
 
-      onError: (error, code) =>
-        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false, analysisId: null, startedAt: null }),
+      // Always announced: the analyzer shows the failure on screen, but a run started from
+      // one page and abandoned for another would otherwise fail in silence.
+      onError: (error, code) => {
+        setState({ status: 'error', error, errorCode: code ?? null, data: null, progress: null, partials: {}, aiPending: false, analysisId: null, startedAt: null });
+        toast.error('Audit failed', { description: `${getHostname(url)} — ${error}` });
+      },
     }, { projectId, formFactor, precision });
 
     cleanupRef.current = cleanup;

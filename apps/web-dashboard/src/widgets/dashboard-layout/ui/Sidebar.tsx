@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { useAuthStore } from '@/features/auth';
 import { useWebsites, getHostname } from '@/entities/website';
+import { NotificationBell } from '@/features/notifications';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '../model/navItems';
 
@@ -63,6 +64,9 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
             Perf<b className="text-ld-accent-2 font-extrabold">Scope</b>
           </span>
         </Link>
+        {/* In the brand row rather than beside the nav: it belongs to the account, not to
+            a page, and this is the one row that is on screen whatever route is open. */}
+        <NotificationBell />
         {onClose && (
           <Button
             variant="ghost"

@@ -484,3 +484,31 @@
   background: linear-gradient(90deg, transparent 0%, rgba(var(--ld-accent-rgb), 0.22) 50%, transparent 100%);
   animation: wf-shimmer 1.3s ease-in-out infinite;
 }
+
+/* ── Toast countdown ─────────────────────────────────────────────────────────
+   The bar is the timer, not a picture of it: `Toaster` dismisses the toast when
+   this animation ends. That is what makes hover pause both at once — a JS timer
+   beside a CSS bar drifts, and pausing only the bar leaves a toast that vanishes
+   under a stopped progress indicator.
+
+   Paused while the pointer is over the card, while anything inside it has focus
+   (a keyboard user reading the action), and while the tab is in the background —
+   a toast raised behind another window should still be there on return. */
+@keyframes ps-toast-countdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+.ps-toast-bar {
+  animation-name: ps-toast-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.ps-toast:hover .ps-toast-bar,
+.ps-toast:focus-within .ps-toast-bar,
+.ps-toasts-paused .ps-toast-bar { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The countdown still has to run — it is the dismissal — but it stops being a
+     moving element: it jumps in steps instead of sliding. */
+  .ps-toast-bar { animation-timing-function: steps(4, end); }
+}

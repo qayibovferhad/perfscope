@@ -22,6 +22,10 @@
   --ld-accent:        #14c08a;
   --ld-accent-2:      #34e0a4;
   --ld-accent-deep:   #0c8f66;
+  /* `wash` completes the scale the amber and rose families already have. The first
+     surface to need it is the notification bell's unread row: `soft` at .12 reads as a
+     selected row, and unread is a quieter claim than that. */
+  --ld-accent-wash:   rgba(var(--ld-accent-rgb), 0.06);
   --ld-accent-soft:   rgba(var(--ld-accent-rgb), 0.12);
   --ld-accent-line:   rgba(var(--ld-accent-rgb), 0.30);
   --ld-accent-strong: rgba(var(--ld-accent-rgb), 0.45);
@@ -91,6 +95,7 @@
   --ld-accent:        #0a9e6f;
   --ld-accent-2:      #07875e;
   --ld-accent-deep:   #066b4a;
+  --ld-accent-wash:   rgba(var(--ld-accent-rgb), 0.07);
   --ld-accent-soft:   rgba(10, 158, 111, 0.12);
   --ld-accent-line:   rgba(var(--ld-accent-rgb), 0.28);
   --ld-accent-strong: rgba(var(--ld-accent-rgb), 0.42);

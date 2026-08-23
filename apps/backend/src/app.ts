@@ -13,6 +13,7 @@ import { authAuditRouter } from './routes/authAudit.routes.js';
 import { competitorSessionRouter } from './routes/competitorSession.routes.js';
 import { onboardingRouter } from './routes/onboarding.routes.js';
 import { overviewRouter }   from './routes/overview.routes.js';
+import { notificationsRouter } from './routes/notifications.routes.js';
 import { cliAuthRouter }           from './routes/cliAuth.routes.js';
 import { rumRouter } from './routes/rum.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
@@ -73,6 +74,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', cruxRouter);
   app.use('/api', onboardingRouter);
   app.use('/api', overviewRouter);
+  app.use('/api', notificationsRouter);
   app.use('/api/auth', cliAuthRouter);
 
   app.get('/', (_req, res) => {

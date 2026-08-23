@@ -9,6 +9,7 @@ import { useAdviceContext } from '@/features/advisor';
 import { getHostname } from '@/entities/website';
 import { apiClient } from '@/shared/api/client';
 import { downloadBlob } from '@/shared/lib/download';
+import { toast } from '@/shared/ui/toast';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { useAnalysis } from '@/features/analyzer';
 import { TimelineWaterfallSkeleton } from '@/features/analyzer';
@@ -100,9 +101,17 @@ export function AnalyzerPage() {
       await navigator.clipboard.writeText(link);
       setShareState('copied');
       setTimeout(() => setShareState('idle'), 2500);
+      toast.success('Share link copied', {
+        description: 'Anyone with the link can read this report — no account needed.',
+        action: { label: 'Open it', onClick: () => window.open(link, '_blank', 'noopener') },
+      });
     } catch {
-      // History persists asynchronously right after an audit — a retry moment later succeeds.
+      // History persists asynchronously right after an audit — a retry moment later succeeds,
+      // which used to be something the user had to guess.
       setShareState('idle');
+      toast.error('Could not create the share link', {
+        description: 'This audit is still being saved. Try again in a moment.',
+      });
     }
   }
 

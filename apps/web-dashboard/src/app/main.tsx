@@ -7,6 +7,7 @@ import './styles/index.css';
 import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
+import { Toaster } from '@/shared/ui/toast';
 import { configureApiToken, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
 import { useAuthStore } from '@/features/auth';
@@ -99,6 +100,9 @@ createRoot(document.getElementById('root')!).render(
             <BrowserRouter>
               <App />
             </BrowserRouter>
+            {/* Outside the router: a toast raised by a navigation, a logout or a background
+                socket event has to outlive whatever route was on screen when it fired. */}
+            <Toaster />
           </QueryClientProvider>
         </ThemeProvider>
       </GoogleOAuthProvider>

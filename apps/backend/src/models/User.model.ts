@@ -27,6 +27,15 @@ const userSchema = new Schema(
      *  Accounts are matched on email — this records the link rather than establishing it. */
     googleId: { type: String, default: null, index: true },
     digest:   { type: digestSchema, default: () => ({ enabled: false, day: 1, time: '09:00', lastSentAt: null }) },
+    /**
+     * When this account last opened its notifications.
+     *
+     * One timestamp rather than a read flag per alert: "unread" is "raised since you last
+     * looked", which needs no per-alert state, cannot drift out of sync with the log, and
+     * costs one indexed comparison. Null means never opened — everything is unread, which
+     * is the right answer for a new account with alerts already waiting.
+     */
+    alertsSeenAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -46,6 +55,7 @@ export interface IUser {
   provider:  'email' | 'google';
   googleId:  string | null;
   digest:    IUserDigest;
+  alertsSeenAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BellRing, Mail, Webhook, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
-import type { OverviewIncident } from '@perfscope/shared';
+import { alertEventLabel, type OverviewIncident } from '@perfscope/shared';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { cn } from '@/shared/lib/utils';
 import { timeAgo } from '@/shared/lib/time';
@@ -15,14 +15,6 @@ import { AiNote } from '@/shared/ui/ai-card';
  * feature — the other half is answering "did it actually reach me?", which is why the
  * delivery line is given its own row rather than being tucked into the copy.
  */
-
-const EVENT_LABEL: Record<string, string> = {
-  // Keys are the stored event names and cannot change without orphaning open
-  // incidents; the labels are what a person reads, and follow the app's wording.
-  'budget.breach':    'Target missed',
-  'audit.regression': 'Regression',
-  'rum.breach':       'Field target missed',
-};
 
 function DeliveryNote({ delivery }: { delivery: OverviewIncident['delivery'] }) {
   if (!delivery.length) {
@@ -82,7 +74,7 @@ export function IncidentsCard({ incidents, className }: { incidents: OverviewInc
                   <span className="mt-[6px] w-[8px] h-[8px] rounded-full bg-ld-rose shrink-0" />
                   <div className="min-w-0 flex-1">
                     <b className="block text-[13.5px] font-bold text-ld-text tracking-tight">
-                      {EVENT_LABEL[incident.event] ?? incident.event}
+                      {alertEventLabel(incident.event)}
                     </b>
                     <Link
                       to={`/projects/${incident.websiteId}`}
