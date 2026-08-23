@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle, Lock } from 'lucide-react';
@@ -24,7 +24,7 @@ import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 
 export function AnalyzerPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { analyze, cancel, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, aiPending, isError, error, errorCode, reset, lastUrl, startedAt, durationMs } = useAnalysis();
   // Seeded, in this order: an explicit link, a prefill, the audit that is *running right
   // now* (arriving from the shell's pill), then whatever was audited last. Read in the
@@ -68,6 +68,26 @@ export function AnalyzerPage() {
   }, [data, isPending, searchParams, adoptRunning]);
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
+  /**
+   * The query is an instruction — "audit this now" — so it is consumed once it has been
+   * carried out, leaving a plain `/app` in the address bar.
+   *
+   * Without that, the instruction is still sitting there afterwards and *every* reload
+   * repeats it. Someone who pressed Stop and then reloaded — or whose page reloaded on its
+   * own, which is what Vite does to an open tab whenever a module cannot be hot-swapped —
+   * got a brand new audit and the very reasonable impression that Stop had done nothing.
+   *
+   * `?audit=` survives: it names a finding inside a report rather than asking for work, and
+   * a link to one has to keep working when the page is reloaded.
+   */
+  const consumeStartParams = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      for (const key of ['url', 'prefill', 'projectId', 'ff']) next.delete(key);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   useEffect(() => {
     const ff = searchParams.get('ff');
     if (ff === 'mobile' || ff === 'desktop') setFormFactor(ff);
@@ -77,6 +97,7 @@ export function AnalyzerPage() {
     if (!paramUrl || paramUrl === handledUrl.current) return;
     handledUrl.current = paramUrl;
     setUrl(paramUrl);
+    consumeStartParams();
 
     const prefetch = usePrefetchStore.getState();
     if (prefetch.url === paramUrl) {

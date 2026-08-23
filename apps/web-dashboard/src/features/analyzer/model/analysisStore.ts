@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { hmrSingleton } from '@/shared/lib/hmrSingleton';
 import type { AnalysisResult } from '@/entities/analysis';
 
 interface AnalysisStore {
@@ -21,7 +22,9 @@ interface AnalysisStore {
   clear:      () => void;
 }
 
-export const useAnalysisStore = create<AnalysisStore>((set) => ({
+/** Per tab — the shell writes a finished result into this and the analyzer reads it; two
+ *  copies after a hot reload means one of them is talking to itself. */
+export const useAnalysisStore = hmrSingleton('analysisResult', () => create<AnalysisStore>((set) => ({
   lastResult: null,
   lastUrl:    '',
   lastDurationMs: null,
@@ -31,4 +34,4 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
     lastDurationMs: durationMs === undefined ? s.lastDurationMs : durationMs,
   })),
   clear:      ()          => set({ lastResult: null, lastUrl: '', lastDurationMs: null }),
-}));
+})));

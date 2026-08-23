@@ -216,6 +216,29 @@ try {
     await sleep(1000);
   }
 
+  // ─── A deep link is an instruction, not a state ────────────────────────────
+  // `/app?url=…` means "audit this now". Left in the address bar afterwards it means it
+  // again on every reload — including the reloads Vite gives an open tab whenever a module
+  // cannot be hot-swapped. Someone who pressed Stop and then reloaded got a fresh audit and
+  // the entirely reasonable impression that Stop had done nothing.
+  await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle0' });
+  await sleep(3500);
+  const consumed = await page.evaluate(() => location.pathname + location.search);
+  check(consumed === '/app', `the start parameters are consumed once acted on (${consumed})`);
+
+  await page.evaluate(() => {
+    [...document.querySelectorAll('button')].find((b) => /^Stop$/i.test(b.textContent?.trim() ?? ''))?.click();
+  });
+  await sleep(1500);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await sleep(3500);
+  const afterReload = await page.evaluate(() => ({
+    running: [...document.querySelectorAll('button')].some((b) => /^Stop$/i.test(b.textContent?.trim() ?? '')),
+    clock: /\b\d+:\d{2}\b/.test(document.body.innerText),
+  }));
+  check(!afterReload.running && !afterReload.clock,
+    `reloading after Stop does not start another audit (${JSON.stringify(afterReload)})`);
+
   const real = errors.filter((e) => !/favicon|ERR_INTERNET_DISCONNECTED/i.test(e.text));
   check(real.length === 0, `no console errors (${real.map((e) => e.text).join(' | ') || 'none'})`);
   console.log(`  screenshots → ${OUT}`);

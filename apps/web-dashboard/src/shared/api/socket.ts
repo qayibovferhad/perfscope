@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import { hmrSingleton } from '@/shared/lib/hmrSingleton';
 import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
@@ -30,9 +31,12 @@ export function createSocket(): AppSocket {
   });
 }
 
-let socket: AppSocket | null = null;
-
+/**
+ * The shared socket. Held per *tab* rather than per module instance: a hot reload of this
+ * file used to leave the old socket connected with all its listeners while the new copy
+ * opened a second one, so every analysis event was handled twice by two generations of
+ * the same code.
+ */
 export function getSocket(): AppSocket {
-  if (!socket) socket = createSocket();
-  return socket;
+  return hmrSingleton('socket', () => createSocket());
 }

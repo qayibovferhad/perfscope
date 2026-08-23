@@ -4,6 +4,7 @@ import type {
 } from '@perfscope/shared';
 import { getSocket, type AppSocket } from '@/shared/api/socket';
 import { useRunningAuditsStore } from '../model/runningAuditsStore';
+import { oncePerTab } from '@/shared/lib/hmrSingleton';
 
 export interface AnalysisCallbacks {
   onProgress: (data: AnalysisProgress) => void;
@@ -54,10 +55,10 @@ export function attachAnalysisListeners(s: AppSocket, callbacks: AnalysisCallbac
  * Registered once, on the first audit of the session, and never removed — the socket is a
  * singleton and so is this.
  */
-let trackerAttached = false;
 function ensureRunTracker(s: AppSocket): void {
-  if (trackerAttached) return;
-  trackerAttached = true;
+  // Per tab, not per module instance: a hot reload of this file would otherwise attach a
+  // second tracker beside the first, and every progress event would be applied twice.
+  if (!oncePerTab('runTracker')) return;
   s.on('analysis:progress', (data: AnalysisProgress) => useRunningAuditsStore.getState().applyProgress(data));
   s.on('analysis:complete', (result: AnalysisResult) => useRunningAuditsStore.getState().endByAnalysisId(result.id));
   s.on('analysis:error',    (data: AnalysisErrorPayload) => useRunningAuditsStore.getState().endByAnalysisId(data.analysisId));

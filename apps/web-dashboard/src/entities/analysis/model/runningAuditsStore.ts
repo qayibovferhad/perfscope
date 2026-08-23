@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { hmrSingleton } from '@/shared/lib/hmrSingleton';
 import type { AnalysisProgress, AnalysisStage } from '@perfscope/shared';
 
 /**
@@ -57,7 +58,9 @@ function ownerOf(runs: RunningAudit[], analysisId: string | undefined): RunningA
 
 const fresh = (runs: RunningAudit[]) => runs.filter(r => Date.now() - r.startedAt < STALE_AFTER_MS);
 
-export const useRunningAuditsStore = create<RunningAuditsStore>((set) => ({
+/** One store per tab — see `hmrSingleton`. Two copies of this is the pill reading one and
+ *  the cancel clearing the other. */
+export const useRunningAuditsStore = hmrSingleton('runningAudits', () => create<RunningAuditsStore>((set) => ({
   runs: [],
 
   begin: (url, returnTo) => {
@@ -95,4 +98,4 @@ export const useRunningAuditsStore = create<RunningAuditsStore>((set) => ({
   }),
 
   end: (key) => set((s) => ({ runs: s.runs.filter(r => r.key !== key) })),
-}));
+})));
