@@ -40,3 +40,13 @@ export function createSocket(): AppSocket {
 export function getSocket(): AppSocket {
   return hmrSingleton('socket', () => createSocket());
 }
+
+// ─── Dev only ────────────────────────────────────────────────────────────────
+// This module holds live state — a socket, a store, or the listeners that keep them in
+// step. Vite's default hot update evaluates a *new copy* and leaves the old one running,
+// so the tab ends up with two of everything: one set answering events, another rendering
+// the screen. That is invisible until something like Stop stops working, and then it
+// costs hours, because a fresh tab behaves perfectly and the reporter's does not.
+//
+// So changes here force a full reload instead. Slower to develop against, and honest.
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
