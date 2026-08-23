@@ -75,7 +75,10 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
         exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
         className="overflow-hidden"
       >
-        <div className="mt-[14px] rounded-[12px] border border-ld-accent-line bg-ld-accent-wash overflow-hidden">
+        {/* Margin on both sides: the brand row above and the Add Website button below are
+            both flush against it otherwise, and a tinted card touching a filled button
+            reads as one control in two colours. */}
+        <div className="mt-[10px] mb-[14px] rounded-[12px] border border-ld-accent-line bg-ld-accent-wash overflow-hidden">
           {runs.map(run => (
             <RunRow key={run.key} run={run} onOpen={() => open(run.returnTo)} />
           ))}
