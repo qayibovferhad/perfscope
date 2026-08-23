@@ -4,6 +4,7 @@ import { Compass, Loader2 } from 'lucide-react';
 import { ProtectedRoute }  from '@/features/auth';
 import { useAuthStore }    from '@/features/auth';
 import { DashboardLayout } from '@/widgets/dashboard-layout';
+import { CommandPalette }  from '@/widgets/command-palette';
 import { StatePanel }      from '@/shared/ui/state-panel';
 
 // Each page is its own chunk — visiting the landing no longer downloads the dashboard.
@@ -74,6 +75,9 @@ function NotFoundRoute() {
 function DashboardRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
+      {/* Inside the guard, so it never renders on the login screens, and outside the
+          layout, because a widget may not import another widget. */}
+      <CommandPalette />
       <DashboardLayout>{children}</DashboardLayout>
     </ProtectedRoute>
   );

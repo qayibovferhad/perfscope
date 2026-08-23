@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, Globe, LogOut, Plus, Trash2, X } from 'lucide-react';
+import { ChevronRight, Globe, LogOut, Plus, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { useAuthStore } from '@/features/auth';
@@ -8,7 +8,8 @@ import { useWebsites, getHostname } from '@/entities/website';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './RunningAudits';
 import { useAllHistory } from '@/entities/history';
-import { NAV } from '../model/navItems';
+import { NAV } from '@/shared/config/nav';
+import { usePaletteStore } from '@/shared/model/paletteStore';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -90,6 +91,19 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
         <Plus className="w-[17px] h-[17px]" />
         Add Website
       </Button>
+
+      {/*
+        The palette's only advertisement. A shortcut nobody is told about is a shortcut
+        nobody uses, and the row doubles as the button for anyone not on a keyboard.
+      */}
+      <button
+        onClick={() => { usePaletteStore.getState().setOpen(true); onClose?.(); }}
+        className="mt-2.5 w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-[10px] border border-ld-border text-ld-text-3 hover:text-ld-text hover:border-ld-accent-line transition-colors"
+      >
+        <Search className="w-[15px] h-[15px] shrink-0" />
+        <span className="flex-1 text-left text-[13px]">Search…</span>
+        <kbd className="font-mono text-[10px] font-bold border border-ld-border rounded px-1.5 py-px">⌘K</kbd>
+      </button>
 
       {/* My Websites */}
       {sortedWebsites.length > 0 && (

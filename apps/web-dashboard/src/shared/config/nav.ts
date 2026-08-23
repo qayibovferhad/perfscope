@@ -1,6 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
 import { CalendarClock, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
 
+/**
+ * The workspace's navigation, in one place.
+ *
+ * It lives in `shared` rather than beside the sidebar because two widgets read it now —
+ * the sidebar draws it, and the command palette makes every entry reachable by name. A
+ * widget may not import another widget, and a second hand-maintained copy of this list is
+ * how a new page ends up in one of them and not the other.
+ */
 export interface NavItem {
   to: string;
   icon: LucideIcon;
