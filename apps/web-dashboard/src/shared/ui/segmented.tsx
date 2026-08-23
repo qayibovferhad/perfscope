@@ -40,7 +40,12 @@ export function Segmented<T extends string>({
     : 'text-[12px] px-[11px] py-[6px] rounded-[8px]';
   return (
     <div
-      className={`inline-flex rounded-[10px] border border-ld-border-strong bg-ld-surface-2 p-[3px] ${className ?? ''}`}
+      // `max-w-full` + horizontal scroll rather than wrapping: five category chips on a
+      // phone were squeezing "Best practices 2" onto two lines and making the control twice
+      // as tall as the rows it filters. `shrink-0` on the buttons is what forces the scroll
+      // instead of the squeeze; the scrollbar is hidden because the chips are the affordance.
+      className={`inline-flex max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+                  rounded-[10px] border border-ld-border-strong bg-ld-surface-2 p-[3px] ${className ?? ''}`}
       role="radiogroup"
       aria-label={ariaLabel}
     >
@@ -55,7 +60,7 @@ export function Segmented<T extends string>({
             title={title}
             disabled={disabled}
             onClick={() => onChange(v)}
-            className={`relative inline-flex items-center gap-[6px] font-semibold transition-colors duration-150 disabled:opacity-50 ${btnSize} ${
+            className={`relative inline-flex shrink-0 items-center gap-[6px] whitespace-nowrap font-semibold transition-colors duration-150 disabled:opacity-50 ${btnSize} ${
               active ? 'text-ld-accent-2' : 'text-ld-text-3 hover:text-ld-text-2'
             }`}
           >

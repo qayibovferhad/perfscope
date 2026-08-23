@@ -10,6 +10,18 @@
 /** Width of the resource-name column, left of the bars. */
 export const LEFT_W = 280;
 
+/**
+ * The same column on a phone.
+ *
+ * 280px of a 390px viewport leaves seventy for the timing lane, which is where the entire
+ * point of a waterfall lives — the bars were a few pixels wide and told the reader nothing.
+ * The names truncate instead; the row is clickable and the detail panel has the full URL.
+ */
+export const LEFT_W_NARROW = 132;
+
+/** Below this the full-width name column stops being affordable. */
+export const NARROW_QUERY = '(max-width: 640px)';
+
 /** Height of the filmstrip/axis row above the lanes:
  *  top-pad(8) + thumb(45) + tick-line(6) + label(16) + bottom-pad(8). */
 export const AXIS_ROW_H = 83;

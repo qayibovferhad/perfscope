@@ -43,7 +43,10 @@ export function AnalyzerSearchForm({
       {/* Header row */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h2 className="text-[16px] font-bold text-ld-text">Enter a URL to analyze</h2>
-        <div className="flex items-center gap-2">
+        {/* Wraps, and each control keeps its own line rather than being clipped by the
+            panel: at 390px the device and precision toggles together are wider than the
+            card, and "Precise" was disappearing off the edge of it. */}
+        <div className="flex items-center gap-2 flex-wrap max-w-full">
           {sessionStatus === 'active' && (
             <span className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-ld-accent px-[11px] py-[5px] rounded-full border border-ld-accent-line bg-ld-accent-soft">
               <ShieldCheck className="w-[13px] h-[13px]" />
@@ -80,7 +83,10 @@ export function AnalyzerSearchForm({
       </div>
 
       {/* Input row */}
-      <form onSubmit={onSubmit} className="flex gap-[10px]">
+      {/* Stacked on a phone. Side by side, the button's text is fixed-width and the input
+          gets whatever is left — which at 390px was not enough for a URL, and the button
+          itself was pushed past the card edge. */}
+      <form onSubmit={onSubmit} className="flex flex-col sm:flex-row gap-[10px]">
         <UrlCombobox
           icon={<Globe />}
           mono
@@ -101,7 +107,7 @@ export function AnalyzerSearchForm({
             type="button"
             variant="destructive"
             onClick={onCancel}
-            className="h-auto py-[14px] px-[22px]"
+            className="h-auto py-[14px] px-[22px] max-sm:w-full"
           >
             Stop
           </Button>
@@ -109,7 +115,7 @@ export function AnalyzerSearchForm({
           <Button
             type="submit"
             disabled={isPending || !url.trim()}
-            className="h-auto py-[14px] px-[22px] [&_svg]:w-[16px] [&_svg]:h-[16px]"
+            className="h-auto py-[14px] px-[22px] max-sm:w-full [&_svg]:w-[16px] [&_svg]:h-[16px]"
           >
             {authSessionId ? <Lock /> : <Search />}
             {isPending ? 'Analyzing…' : 'Analyze'}

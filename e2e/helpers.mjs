@@ -88,9 +88,16 @@ export async function launchAuthedBrowser({ user, token }) {
   });
 
   // Seed the Zustand persist payload before any app code runs.
+  //
+  // Guarded, because this runs on *every* document the page loads — including the
+  // `about:blank` a fresh tab starts on, where reading localStorage throws a SecurityError.
+  // That exception surfaced as a page error in the collector below and made probes that
+  // assert "no console errors" fail for a reason that had nothing to do with them.
   await page.evaluateOnNewDocument(
     (state) => {
-      localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 }));
+      try {
+        localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 }));
+      } catch { /* opaque origin — the app is not running here anyway */ }
     },
     { user, token },
   );

@@ -112,7 +112,15 @@ export function AskAboutAudit({ subjects }: Props) {
     // put this button and its popup ON TOP OF the nav rail on any screen wide enough to
     // show one. Below `md` there is no persistent sidebar (a slide-out drawer instead,
     // closed by default), so the plain edge offset is fine there.
-    <div ref={panelRef} className="fixed bottom-6 left-4 md:left-[19rem] z-[45] flex flex-col items-start">
+    //
+    // Bottom-left is also where a line of text begins, so on a phone this button sat on
+    // top of the report. Below `md` it moves to the right instead, clear of the advisor
+    // rail (46px); the only other thing in that corner is a toast, and those stack above it.
+    <div
+      ref={panelRef}
+      className="fixed bottom-6 z-[45] flex flex-col items-start
+                 left-4 max-md:left-auto max-md:right-[64px] md:left-[19rem]"
+    >
       <AnimatePresence>
         {open && (
           <motion.div

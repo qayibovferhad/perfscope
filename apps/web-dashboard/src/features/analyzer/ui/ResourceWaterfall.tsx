@@ -6,6 +6,8 @@ import { useTimelineContext } from '../model/TimelineContext';
 import { useWaterfallPlayhead } from '../model/useWaterfallPlayhead';
 import { MAX_ROWS, TICK_COUNT } from '../lib/waterfall';
 import { buildChangeMap } from '../lib/resourceChange';
+import { LEFT_W_NARROW, NARROW_QUERY } from '../lib/timelineWaterfall';
+import { useMediaQuery } from '@/shared/lib/useMediaQuery';
 import { WaterfallRow } from './WaterfallRow';
 import { METRIC_MARKERS } from '@/entities/analysis';
 import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals, ResourceDiff } from '@/entities/analysis';
@@ -14,6 +16,7 @@ import type { ParsedResources, NetworkRequest, ResourceType, CoreWebVitals, Reso
  *  size ride in this column) — but every width below must come from this constant: the
  *  header, gridline and playhead offsets used to hardcode `320px` classes beside it, so
  *  changing it silently sheared the layout. */
+/** Wider than the timeline variant's: with no filmstrip beside it, the names get the room. */
 const LEFT_W = 320;
 
 const FILTER_CHIPS: { key: ResourceType | 'all'; label: string }[] = [
@@ -90,6 +93,9 @@ export function ResourceWaterfall({
   changes?:          ResourceDiff | undefined;
 }) {
   const ctx = useTimelineContext();
+  // Same reason as the timeline waterfall: 320px of a 390px viewport leaves nothing for
+  // the bars, which are the point.
+  const leftW = useMediaQuery(NARROW_QUERY) ? LEFT_W_NARROW : LEFT_W;
 
   const [typeFilter, setTypeFilter] = useState<ResourceType | 'all'>('all');
 
@@ -123,7 +129,7 @@ export function ResourceWaterfall({
     rootRef, rowsLineRef: indicatorRef, labelRef,
     rowRefs, ttfbRefs, dlRefs, shimRefs,
   } = useWaterfallPlayhead({
-    rows, axisMs, leftW: LEFT_W,
+    rows, axisMs, leftW,
     motionMs: ctx && hasTimingData ? ctx.motionMs : null,
     networkOffset: ctx?.networkOffset,
   });
@@ -158,10 +164,15 @@ export function ResourceWaterfall({
       )}
 
       <div className="flex border-b border-ld-border bg-ld-bg text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
-        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border" style={{ width: LEFT_W }}>
+        <div className="shrink-0 flex items-center gap-6 px-3 py-2 border-r border-ld-border" style={{ width: leftW }}>
           <span>Resource</span>
-          <span className="ml-auto">Type</span>
-          <span className="w-11 text-right">Size</span>
+          {/* Dropped with the columns themselves on a narrow screen — see WaterfallRow. */}
+          {leftW >= 180 && (
+            <>
+              <span className="ml-auto">Type</span>
+              <span className="w-11 text-right">Size</span>
+            </>
+          )}
         </div>
         <div className="flex-1 overflow-hidden px-0 py-1">
           <TimeAxis axisMs={axisMs} metrics={metrics} />
@@ -170,7 +181,7 @@ export function ResourceWaterfall({
 
       <div className="relative">
         <div className="max-h-[420px] overflow-y-auto [scrollbar-width:thin] [scrollbar-color:var(--ld-border-strong)_transparent]">
-          <div className="absolute top-0 bottom-0 right-0 pointer-events-none" style={{ left: LEFT_W }}>
+          <div className="absolute top-0 bottom-0 right-0 pointer-events-none" style={{ left: leftW }}>
             {Array.from({ length: TICK_COUNT - 1 }, (_, i) => (
               <div
                 key={i}
@@ -199,7 +210,7 @@ export function ResourceWaterfall({
               req={req}
               index={i}
               axisMs={axisMs}
-              leftW={LEFT_W}
+              leftW={leftW}
               barStyle="typed"
               change={changeMap.get(req.url)}
               isSelected={selectedIdx === i}
@@ -219,7 +230,7 @@ export function ResourceWaterfall({
             aria-hidden
             className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20 [will-change:transform]"
             style={{
-              transform: `translateX(${LEFT_W}px)`,
+              transform: `translateX(${leftW}px)`,
               background: 'linear-gradient(to bottom, var(--ld-accent) 0%, rgba(20,192,138,0.4) 80%, transparent 100%)',
             }}
           >

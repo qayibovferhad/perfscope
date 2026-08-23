@@ -1,6 +1,7 @@
 import { Network } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { LEFT_W, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { LEFT_W, LEFT_W_NARROW, NARROW_QUERY, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { useMediaQuery } from '@/shared/lib/useMediaQuery';
 import { TICK_COUNT } from '../lib/waterfall';
 
 /** One shimmering block — same emerald sweep the live bars use while pending. */
@@ -28,6 +29,10 @@ const SK_ROWS = [
  * lands. That is the placeholder's whole contract.
  */
 export function TimelineWaterfallSkeleton() {
+  // The placeholder's whole job is to occupy the space the real panel will, so it has to
+  // narrow its name column on the same breakpoint.
+  const leftW = useMediaQuery(NARROW_QUERY) ? LEFT_W_NARROW : LEFT_W;
+
   return (
     <div className="rounded-[18px] border border-ld-border bg-ld-surface shadow-ld-shadow-card overflow-hidden">
       <style>{`
@@ -93,7 +98,7 @@ export function TimelineWaterfallSkeleton() {
 
         {/* ── Column headers + filmstrip axis ─────────────────────────── */}
         <div className="flex border-t border-ld-border text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
-          <div className="shrink-0 flex items-center gap-4 px-3 border-r border-ld-border" style={{ width: LEFT_W, height: AXIS_ROW_H }}>
+          <div className="shrink-0 flex items-center gap-4 px-3 border-r border-ld-border" style={{ width: leftW, height: AXIS_ROW_H }}>
             <span>Resource</span>
             <span className="ml-auto">Type</span>
             <span className="w-11 text-right">Size</span>
@@ -122,7 +127,7 @@ export function TimelineWaterfallSkeleton() {
       <div className="rounded-b-[18px] overflow-hidden bg-ld-bg">
         <div className="relative">
           {/* Grid lines, same 6 ticks as the live chart */}
-          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: LEFT_W, right: 0 }}>
+          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: leftW, right: 0 }}>
             {Array.from({ length: 5 }, (_, i) => (
               <div key={i} className="absolute top-0 bottom-0 w-px bg-ld-border" style={{ left: `${((i + 1) / TICK_COUNT) * 100}%` }} />
             ))}
@@ -133,7 +138,7 @@ export function TimelineWaterfallSkeleton() {
               key={i}
               className={cn('flex items-center border-b border-ld-border', i % 2 === 0 ? 'bg-ld-surface' : 'bg-ld-bg')}
             >
-              <div className="flex items-center gap-2 px-3 py-1 shrink-0 border-r border-ld-border" style={{ width: LEFT_W }}>
+              <div className="flex items-center gap-2 px-3 py-1 shrink-0 border-r border-ld-border" style={{ width: leftW }}>
                 <WfShim className="w-3 h-3 rounded-[3px] shrink-0" delay={i * 60} />
                 <WfShim className="h-2.5 rounded-[3px] flex-1" delay={i * 60} style={{ maxWidth: 90 + ((i * 37) % 70) }} />
                 <WfShim className="w-[30px] h-[14px] rounded-[5px] shrink-0" delay={i * 60} />

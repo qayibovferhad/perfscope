@@ -9,8 +9,11 @@ import { StatCard } from '@/shared/ui/stat-card';
  * summary strip uses, so the two screens cannot disagree about what a site scores.
  */
 export function TotalsStrip({ totals }: { totals: OverviewTotals }) {
+  // Two across on a phone, not one. Four full-width cards carrying one number each were
+  // most of a screen of scrolling before the page said anything; paired, the whole strip
+  // is a glance and the numbers are still large enough to read.
   return (
-    <div className="grid grid-cols-4 gap-[14px] mb-[26px] max-[1000px]:grid-cols-2 max-[560px]:grid-cols-1">
+    <div className="grid grid-cols-4 gap-[14px] mb-[26px] max-[1000px]:grid-cols-2">
       <StatCard
         label="Sites tracked"
         value={totals.sites}

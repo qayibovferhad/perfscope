@@ -131,7 +131,10 @@ export function Toaster() {
       aria-live="polite"
       aria-relevant="additions"
       className={cn(
-        'pointer-events-none fixed z-[100] bottom-[18px] right-[18px] max-2xl:right-[64px]',
+        'pointer-events-none fixed z-[100] bottom-[18px] right-[18px]',
+        // Clear of the advisor rail below 2xl, and above the ask-about-this-audit button
+        // on a phone — the two share the bottom-right corner there.
+        'max-2xl:right-[64px] max-md:bottom-[86px]',
         'flex flex-col items-end gap-[10px]',
         backgrounded && 'ps-toasts-paused',
       )}

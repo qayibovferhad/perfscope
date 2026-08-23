@@ -5,6 +5,7 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { AddWebsiteModal } from '@/features/websites';
 import { AdvisorPanel } from '@/features/advisor';
+import { NotificationBell } from '@/features/notifications';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
 
@@ -80,6 +81,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               Perf<b className="text-ld-accent-2 font-extrabold">Scope</b>
             </span>
           </span>
+          {/* Also here, not only in the sidebar: on a phone the sidebar is a drawer, and a
+              badge nobody can see until they open a drawer is a badge that does not work. */}
+          <span className="ml-auto">
+            <NotificationBell />
+          </span>
         </div>
 
         {/* Outside `main` so it survives the per-route scroll reset above and cannot be
@@ -87,7 +93,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <StorageBanner />
 
         <div className="flex-1 flex min-h-0">
-          <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">{children}</main>
+          {/* The advisor collapses to a floating button on narrow screens, and it floats
+              *over* this column — without the padding it permanently covers the last inch
+              of every page. */}
+          <main ref={mainRef} className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] 2xl:pb-0">{children}</main>
           {/* Its own column rather than an overlay: a panel that sits on top of the page
               competes with it, and every page caps its width well short of the viewport. */}
           <AdvisorPanel />

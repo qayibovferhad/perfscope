@@ -6,7 +6,8 @@ import { fmtMsOrDash as fmtMs, fmtSec2 } from '@/shared/lib/format';
 import { useTimelinePlayback } from '@/shared/lib/useTimelinePlayback';
 import { useTimelineContext } from '../model/TimelineContext';
 import { useWaterfallPlayhead } from '../model/useWaterfallPlayhead';
-import { LEFT_W, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { LEFT_W, LEFT_W_NARROW, NARROW_QUERY, AXIS_ROW_H, METRICS_CFG } from '../lib/timelineWaterfall';
+import { useMediaQuery } from '@/shared/lib/useMediaQuery';
 import { MAX_ROWS, TICK_COUNT } from '../lib/waterfall';
 import { buildChangeMap } from '../lib/resourceChange';
 import { WaterfallRow } from './WaterfallRow';
@@ -31,6 +32,9 @@ export function TimelineWaterfall({
   changes?:        ResourceDiff | undefined;
 }) {
   const ctx = useTimelineContext();
+  // A pixel width, not a class: the flame chart below draws its own x-axis from the same
+  // number and the two must agree or the columns stop lining up.
+  const leftW = useMediaQuery(NARROW_QUERY) ? LEFT_W_NARROW : LEFT_W;
   const { frames, metrics, networkOffsetMs } = timelineData;
   const maxTiming = frames.at(-1)!.timing;
 
@@ -68,7 +72,7 @@ export function TimelineWaterfall({
     rootRef, rowsLineRef, axisLineRef, labelRef: curLabelRef,
     rowRefs, ttfbRefs, dlRefs, shimRefs,
   } = useWaterfallPlayhead({
-    rows, axisMs, leftW: LEFT_W, motionMs, networkOffset: ctx?.networkOffset,
+    rows, axisMs, leftW, motionMs, networkOffset: ctx?.networkOffset,
   });
 
   useEffect(() => {
@@ -264,11 +268,17 @@ export function TimelineWaterfall({
         <div className="flex border-t border-ld-border text-[10px] font-semibold uppercase tracking-widest text-ld-text-3">
           <div
             className="shrink-0 flex items-center gap-4 px-3 border-r border-ld-border"
-            style={{ width: LEFT_W, height: AXIS_ROW_H }}
+            style={{ width: leftW, height: AXIS_ROW_H }}
           >
             <span>Resource</span>
-            <span className="ml-auto">Type</span>
-            <span className="w-11 text-right">Size</span>
+            {/* The rows drop these two when the column is this narrow (see WaterfallRow),
+                so the header must drop them with it or it labels columns that are not there. */}
+            {leftW >= 180 && (
+              <>
+                <span className="ml-auto">Type</span>
+                <span className="w-11 text-right">Size</span>
+              </>
+            )}
           </div>
 
           <div className="flex-1 relative overflow-hidden" style={{ height: AXIS_ROW_H }}>
@@ -311,7 +321,7 @@ export function TimelineWaterfall({
         <div className="relative">
 
           {/* Grid lines + metric markers */}
-          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: LEFT_W, right: 0 }}>
+          <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: leftW, right: 0 }}>
             {Array.from({ length: TICK_COUNT - 1 }, (_, i) => (
               <div
                 key={i}
@@ -341,7 +351,7 @@ export function TimelineWaterfall({
               req={req}
               index={i}
               axisMs={axisMs}
-              leftW={LEFT_W}
+              leftW={leftW}
               barStyle="agnostic"
               dense
               trackHover
@@ -361,7 +371,7 @@ export function TimelineWaterfall({
             ref={rowsLineRef}
             aria-hidden
             className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-20 will-change-transform bg-gradient-to-b from-ld-accent via-[rgba(20,192,138,.5)] to-transparent"
-            style={{ transform: `translateX(${LEFT_W}px)` }}
+            style={{ transform: `translateX(${leftW}px)` }}
           >
             <div className="absolute -top-px left-1/2 -translate-x-1/2">
               <div className="w-2 h-2 rounded-full bg-ld-accent ring-2 ring-ld-accent-line [box-shadow:0_0_8px_var(--ld-accent)]" />
@@ -400,7 +410,7 @@ export function TimelineWaterfall({
                 {flameChartData.maxDepth} call stack levels
               </span>
             </div>
-            <FlameChart data={flameChartData} axisMs={axisMs} leftW={LEFT_W} />
+            <FlameChart data={flameChartData} axisMs={axisMs} leftW={leftW} />
           </div>
         )}
       </div>

@@ -134,7 +134,10 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
           return (
             <div
               key={step.id}
-              className={`flex items-start gap-[13px] px-[22px] py-[16px] ${
+              // Wraps on a phone: side by side, the button keeps its natural width and the
+              // step's one explanatory sentence gets what is left — which was a column
+              // narrow enough to break it over four lines.
+              className={`flex items-start gap-[13px] max-sm:flex-wrap px-[22px] max-sm:px-[16px] py-[16px] ${
                 i < STEPS.length - 1 ? 'border-b border-ld-border' : ''
               }`}
             >
@@ -146,7 +149,7 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
                 <Icon className="w-[15px] h-[15px]" />
               </span>
 
-              <span className="min-w-0 flex-1">
+              <span className="min-w-0 flex-1 max-sm:basis-[calc(100%-45px)]">
                 <b className={`block text-[13.5px] font-semibold ${complete ? 'text-ld-text-3' : 'text-ld-text'}`}>
                   {step.title}
                 </b>
@@ -169,11 +172,11 @@ export function GettingStartedPanel({ onAddWebsite }: Props) {
                   Add a website first
                 </span>
               ) : step.id === 'website' ? (
-                <Button size="md" variant="outline" className="shrink-0" onClick={onAddWebsite}>
+                <Button size="md" variant="outline" className="shrink-0 max-sm:w-full max-sm:justify-center" onClick={onAddWebsite}>
                   {step.cta} <ArrowRight />
                 </Button>
               ) : (
-                <Button size="md" variant="outline" className="shrink-0" asChild>
+                <Button size="md" variant="outline" className="shrink-0 max-sm:w-full max-sm:justify-center" asChild>
                   <Link to={destination(step.id)}>
                     {step.cta} <ArrowRight />
                   </Link>

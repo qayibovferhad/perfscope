@@ -73,6 +73,15 @@ export const WaterfallRow = memo(function WaterfallRow({
   rowRef, ttfbRef, dlRef, shimRef,
 }: WaterfallRowProps) {
   const ctx  = useTimelineContext();
+  /**
+   * A narrow name column has room for one thing, and that thing is the filename.
+   *
+   * On a phone the column is 132px; the type badge and the byte count are `shrink-0`, so
+   * they took it all and the name — the only part that identifies the row — was squeezed
+   * to nothing. Both are still one tap away in the detail panel, and the icon already
+   * says what kind of resource it is.
+   */
+  const tight = leftW < 180;
   const cfg  = RESOURCE_TYPES[req.resourceType];
   const Icon = cfg.icon;
   const name = resourceFilename(req.url);
@@ -107,7 +116,7 @@ export const WaterfallRow = memo(function WaterfallRow({
           <span className="font-mono text-[11px] text-ld-text-2 truncate flex-1 leading-none" title={req.url}>
             {name}
           </span>
-          {change && (
+          {change && !tight && (
             <span
               title={`This request is ${CHANGE_TAG[change].label === 'new' ? 'new since' : `${CHANGE_TAG[change].label} since`} the previous run`}
               className={cn(
@@ -118,15 +127,19 @@ export const WaterfallRow = memo(function WaterfallRow({
               {CHANGE_TAG[change].label}
             </span>
           )}
-          <span
-            className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] border shrink-0"
-            style={resourceBadgeStyle(req.resourceType)}
-          >
-            {cfg.label}
-          </span>
-          <span className="text-[10px] text-ld-text-3 tabular-nums shrink-0 w-11 text-right font-mono">
-            {fmtBytes(req.transferSize)}
-          </span>
+          {!tight && (
+            <>
+              <span
+                className="text-[9.5px] font-semibold font-mono px-[6px] py-[2px] rounded-[5px] border shrink-0"
+                style={resourceBadgeStyle(req.resourceType)}
+              >
+                {cfg.label}
+              </span>
+              <span className="text-[10px] text-ld-text-3 tabular-nums shrink-0 w-11 text-right font-mono">
+                {fmtBytes(req.transferSize)}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Lane */}
