@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, AlertTriangle, GitCommit, Info } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
+import type { Deploy } from '@perfscope/shared';
 import { EvolutionChart, isRegression } from './EvolutionChart';
 import { fmtMs } from '@/shared/lib/format';
 import { fmtDay } from '@/shared/lib/time';
@@ -84,7 +85,11 @@ function HoverTooltip({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry
  * the identical panel — they used to wrap the same EvolutionChart in two different,
  * hand-rolled legends built on different token families.
  */
-export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
+export function EvolutionChartPanel({ entries, deploys = [] }: {
+  entries: HistoryEntry[];
+  /** Releases to mark on the timeline; empty until the site has recorded any. */
+  deploys?: Deploy[];
+}) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const hasRegression = useMemo(() => {
@@ -140,6 +145,7 @@ export function EvolutionChartPanel({ entries }: { entries: HistoryEntry[] }) {
       <div className="relative">
         <EvolutionChart
           entries={entries}
+          deploys={deploys}
           hoveredIdx={hoveredIdx}
           onHover={setHoveredIdx}
         />

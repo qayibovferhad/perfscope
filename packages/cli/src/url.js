@@ -28,3 +28,18 @@ export function portOf(urlStr) {
     return 80;
   }
 }
+
+/**
+ * The hostname of a URL, for matching a site the account already has.
+ *
+ * Scheme and trailing slash are noise here — a pipeline says `https://mysite.com` and the
+ * dashboard has `https://mysite.com/`, and those are the same site to everyone but a
+ * string comparison. `www.` is kept: it can genuinely be a different host.
+ */
+export function hostOf(urlStr) {
+  try {
+    return new URL(urlStr).hostname.toLowerCase();
+  } catch {
+    return String(urlStr).trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+  }
+}

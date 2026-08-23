@@ -1,7 +1,7 @@
 import {
-  ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { isRegression } from '@perfscope/shared';
+import { isRegression, deployLabel, type Deploy } from '@perfscope/shared';
 import type { HistoryEntry } from '@/entities/history';
 import { fmtMs } from '@/shared/lib/format';
 import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, MONO } from '@/shared/ui/chart';
@@ -23,6 +23,15 @@ export { isRegression };
  */
 
 interface Row {
+  /**
+   * The category value of the X axis, and unique per run.
+   *
+   * The tick renders `date` and `shortId` out of `rows[index]`, so the axis value itself
+   * is never read by anything visible — which frees it to be an index. It has to be:
+   * recharts matches a `ReferenceLine` to a category *by value*, and two runs on the same
+   * day share a date, so a deploy marker would silently land on the earlier one.
+   */
+  key:        string;
   date:       string;
   shortId:    string;
   lcp:        number;
@@ -81,12 +90,42 @@ function LcpDot({ cx, cy, index, rows, hoveredIdx }: {
   );
 }
 
+/**
+ * Which run first felt a deploy: the earliest one measured at or after it went out.
+ *
+ * A release does not land on the chart at the moment it happened — it lands on the first
+ * measurement that could possibly have seen it, and drawing it anywhere else would invite
+ * blaming a deploy for a number taken before it shipped. Deploys made after the last run
+ * are dropped: there is nothing measured yet to attribute to them.
+ */
+function markersByRun(entries: HistoryEntry[], deploys: Deploy[]): Map<number, Deploy[]> {
+  const byRun = new Map<number, Deploy[]>();
+  const times = entries.map(e => new Date(e.timestamp).getTime());
+
+  for (const deploy of deploys) {
+    const at = new Date(deploy.at).getTime();
+    if (Number.isNaN(at)) continue;
+    const idx = times.findIndex(t => t >= at);
+    if (idx === -1) continue;
+    byRun.set(idx, [...(byRun.get(idx) ?? []), deploy]);
+  }
+  return byRun;
+}
+
+/** Deploys sharing a run share one line; a stack of labels would overprint itself. */
+function markerText(deploys: Deploy[]): string {
+  return deploys.length === 1 ? deployLabel(deploys[0]!) : `${deploys.length} deploys`;
+}
+
 export function EvolutionChart({
   entries,
+  deploys = [],
   hoveredIdx,
   onHover,
 }: {
   entries:    HistoryEntry[];
+  /** Releases to mark on the timeline. Absent until the site has recorded any. */
+  deploys?:   Deploy[];
   hoveredIdx: number | null;
   onHover:    (i: number | null) => void;
 }) {
@@ -95,6 +134,7 @@ export function EvolutionChart({
   const rows: Row[] = entries.map((entry, i) => {
     const prev = entries[i - 1];
     return {
+      key:     String(i),
       date:    fmtDay(entry.timestamp),
       shortId: entry.shortId,
       lcp:     entry.metrics.lcp,
@@ -104,6 +144,8 @@ export function EvolutionChart({
         : false,
     };
   });
+
+  const markers = markersByRun(entries, deploys);
 
   // Matches the old framing: a little air under the lowest point and above the highest,
   // so a flat series does not render as a line pinned to the axis.
@@ -135,7 +177,7 @@ export function EvolutionChart({
         <CartesianGrid {...GRID_PROPS} />
 
         <XAxis
-          dataKey="date"
+          dataKey="key"
           {...AXIS_PROPS}
           interval="preserveStartEnd"
           tick={<DateTick rows={rows} />}
@@ -153,6 +195,34 @@ export function EvolutionChart({
 
         {/* Renders the crosshair only; the panel above owns the readout. */}
         <Tooltip cursor={CURSOR_PROPS} content={() => null} />
+
+        {/*
+          Deploy markers sit under the data, not over it: they are context for the shape of
+          the lines, and a release that hides the regression it caused is worse than none.
+        */}
+        {[...markers].map(([index, group]) => (
+          <ReferenceLine
+            key={`deploy-${index}`}
+            yAxisId="lcp"
+            x={String(index)}
+            stroke="var(--ld-text-3)"
+            strokeDasharray="3 4"
+            strokeWidth={1.5}
+            label={{
+              value: markerText(group),
+              position: 'insideTopLeft',
+              // Anchored inward on the last run for the same reason the regression label
+              // is: centred text there runs off the plot.
+              offset: index === rows.length - 1 ? -6 : 6,
+              fill: 'var(--ld-text-3)',
+              fontSize: 9.5,
+              fontFamily: MONO,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              textAnchor: index === rows.length - 1 ? 'end' : 'start',
+            }}
+          />
+        ))}
 
         <Area
           yAxisId="tbt" type="linear" dataKey="tbt" name="TBT"

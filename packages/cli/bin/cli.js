@@ -19,7 +19,7 @@ import {
   formatValue, labelOf, BUDGET_KEYS, DEFAULT_BUDGET_FILES,
 } from '../src/budget.js';
 import { appendFileSync } from 'node:fs';
-import { isLocal, portOf } from '../src/url.js';
+import { isLocal, portOf, hostOf } from '../src/url.js';
 import { openBrowser } from '../src/browser.js';
 import { openTunnel } from '../src/tunnel.js';
 import { resolveAppUrl } from '../src/appUrl.js';
@@ -504,6 +504,61 @@ async function ciCmd(opts) {
   process.exit(opts.warnOnly ? EXIT.OK : EXIT.BUDGET);
 }
 
+// ── Deploy ───────────────────────────────────────────────
+
+/**
+ * Record a release, so the charts can say *why* a line moved.
+ *
+ * Meant to be one line in a pipeline, right after the deploy step. It never fails the
+ * build: a marker that could not be recorded is a missing annotation, and taking a green
+ * release red over an annotation would teach everyone to drop the step.
+ */
+async function deployCmd(opts) {
+  const apiKey = requireApiKey(opts);
+  const apiUrl = opts.apiUrl.replace(/\/$/, '');
+  const headers = { Authorization: `Bearer ${apiKey}` };
+
+  if (!opts.site) {
+    console.error(chalk.red('Missing --site.') + chalk.dim(' The URL of the site this release went out to.'));
+    process.exit(EXIT.ERROR);
+  }
+
+  try {
+    const sites = unwrap(await axios.get(`${apiUrl}/api/websites`, { headers, timeout: 15000 }));
+    const wanted = hostOf(opts.site);
+    const site = (Array.isArray(sites) ? sites : []).find((s) => hostOf(s.url) === wanted);
+    if (!site) {
+      console.error(
+        chalk.red(`No website matching ${wanted}.`) +
+        chalk.dim(' Add it in the dashboard first — a deploy is recorded against a site.')
+      );
+      process.exit(EXIT.ERROR);
+    }
+
+    // Every field is optional on the server; `ref` is what makes a retried pipeline step
+    // record one marker rather than two.
+    const body = {};
+    if (opts.ref)   body.ref   = opts.ref;
+    if (opts.label) body.label = opts.label;
+    if (opts.url)   body.url   = opts.url;
+    if (opts.at)    body.at    = opts.at;
+
+    const saved = unwrap(await axios.post(
+      `${apiUrl}/api/websites/${site._id}/deploys`, body, { headers, timeout: 15000 },
+    ));
+
+    console.log(
+      chalk.greenBright('●') + ' Deploy recorded ' +
+      chalk.white(saved.label || saved.ref || new Date(saved.at).toISOString()) +
+      chalk.dim(` → ${wanted}`)
+    );
+  } catch (err) {
+    // Deliberately EXIT.OK: see the note above.
+    console.error(chalk.yellow('Could not record the deploy.') + chalk.dim(` ${err.message}`));
+    process.exit(EXIT.OK);
+  }
+}
+
 // ── CLI definition ───────────────────────────────────────
 
 program
@@ -579,6 +634,26 @@ ${chalk.bold('GitHub Actions:')}
   ${chalk.dim('    PERFSCOPE_API_KEY: ${{ secrets.PERFSCOPE_API_KEY }}')}
   `)
   .action(ciCmd);
+
+// deploy
+program
+  .command('deploy')
+  .description('Mark a release on this site\'s charts')
+  .requiredOption('-s, --site <url>',   'The site that was deployed (matched by hostname)')
+  .option('-r, --ref <ref>',            'Commit sha, tag or build number (makes the call idempotent)')
+  .option('-l, --label <label>',        'What to call it on the chart, e.g. "v2.4.0"')
+  .option('--url <url>',                'Where to read about it — a commit, PR or pipeline run')
+  .option('--at <iso>',                 'When it went out (ISO 8601). Defaults to now')
+  .option('--api-url <url>',            'PerfScope API base URL ($PERFSCOPE_API_URL)', DEFAULT_API_URL)
+  .option('-k, --key <apiKey>',         'API key (overrides saved login)')
+  .addHelpText('after', `
+${chalk.bold('In a pipeline:')}
+  ${chalk.dim('$')} npx perfscope deploy --site https://mysite.com --ref $GITHUB_SHA --label $GITHUB_REF_NAME
+
+  ${chalk.dim('Never fails the build — a marker that could not be recorded is a missing')}
+  ${chalk.dim('annotation, not a broken release.')}
+  `)
+  .action(deployCmd);
 
 // audit (default)
 program

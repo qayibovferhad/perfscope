@@ -2,6 +2,7 @@ import { REGRESSION_PCT, SCORE_NOISE_POINTS } from '@perfscope/shared';
 import type { HistoryEntry } from '@/entities/history';
 import { HistoryPageHeader } from './HistoryPageHeader';
 import { EvolutionChartPanel } from './EvolutionChartPanel';
+import { MarkDeployButton, useDeploys } from '@/entities/deploy';
 
 interface Props {
   url:     string;
@@ -19,13 +20,14 @@ interface Props {
  * legends and two token families for what is the same information.
  */
 export function HistoryEvolutionCard({ url, entries, action }: Props) {
+  const { deploys } = useDeploys(url);
   const last = entries.at(-1);
   if (!last) return null;
 
   return (
     <div className="rounded-[20px] border border-ld-border bg-ld-surface overflow-hidden shadow-ld-shadow-card">
       <HistoryPageHeader url={url} entries={entries} />
-      <EvolutionChartPanel entries={entries} />
+      <EvolutionChartPanel entries={entries} deploys={deploys} />
 
       <div className="flex items-center justify-between px-[24px] py-[14px] border-t border-ld-border bg-ld-surface-2 flex-wrap gap-[12px]">
         <span className="font-mono text-[12.5px] text-ld-text-3">
@@ -33,11 +35,14 @@ export function HistoryEvolutionCard({ url, entries, action }: Props) {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
           })}
         </span>
-        {action ?? (
-          <span className="font-mono text-[11px] text-ld-text-3 opacity-60">
-            Judged vs the previous run: &gt;{SCORE_NOISE_POINTS} score points, or &gt;{REGRESSION_PCT}% on LCP/TBT
-          </span>
-        )}
+        <div className="flex items-center gap-[16px] flex-wrap">
+          <MarkDeployButton url={url} />
+          {action ?? (
+            <span className="font-mono text-[11px] text-ld-text-3 opacity-60">
+              Judged vs the previous run: &gt;{SCORE_NOISE_POINTS} score points, or &gt;{REGRESSION_PCT}% on LCP/TBT
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
