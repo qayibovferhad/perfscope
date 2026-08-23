@@ -178,6 +178,54 @@ try {
   check(cleared, 'the pill disappears when the audit finishes');
   check(/opportunities & diagnostics/i.test(await bodyText(page)), 'while the report lands as usual');
 
+  // ─── Stop, pressed the way a person presses it ─────────────────────────────
+  // With a *real pointer*, and watching the wire. Both matter, and both were missing for
+  // hours: `element.click()` does not exercise the browser's default action the way a
+  // pointer does, and the bug it hid was Stop submitting the form as well as cancelling —
+  // React reused one DOM node for the two buttons, so the node the pointer pressed had its
+  // type mutated from "button" to "submit" mid-click. Cancel, then an immediate identical
+  // start: on screen, a counter resetting to zero and climbing again.
+  {
+    await page.evaluate(async () => {
+      const { getSocket } = await import('/src/shared/api/socket.ts');
+      const socket = getSocket();
+      window.__starts = 0;
+      const emit = socket.emit.bind(socket);
+      socket.emit = (event, ...rest) => {
+        if (event === 'analysis:start' || event === 'auth-audit:start') window.__starts++;
+        return emit(event, ...rest);
+      };
+    });
+
+    await page.evaluate((url) => {
+      const input = document.querySelector('input[placeholder^="https"]');
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, url);
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+      [...document.querySelectorAll('button[type="submit"]')].at(-1)?.click();
+    }, TARGET);
+    await sleep(4000);
+
+    const startsBefore = await page.evaluate(() => window.__starts);
+    const box = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find((x) => /^Stop$/i.test(x.textContent?.trim() ?? ''));
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    });
+    check(!!box, 'Stop is on screen while a run is in flight');
+    await page.mouse.click(box.x, box.y);
+    await sleep(3000);
+
+    const startsAfter = await page.evaluate(() => window.__starts);
+    console.log(`  analysis:start emissions — before Stop ${startsBefore}, after ${startsAfter}`);
+    check(startsAfter === startsBefore, 'clicking Stop does not also start another audit');
+    check(await pill(page) === null, 'and the run is gone from the shell');
+
+    await sleep(8000);
+    check(await pill(page) === null, 'and stays gone');
+  }
+
   // ─── Stop actually stops it ────────────────────────────────────────────────
   // Two moments where the page has not yet been told the run's id — it learns that from a
   // progress event, which in Fast mode can be twenty seconds away. Stop pressed in either

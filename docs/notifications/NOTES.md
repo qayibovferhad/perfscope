@@ -241,6 +241,19 @@ throwaway account, in a fresh browser, without reloading.
    killed by pid now, as the worker path always did, the ticker stops itself, and the run
    loop checks before and after every pass.
 
+6. **And the one the report was actually about: Stop submitted the form.** The Stop and
+   Analyze buttons are one conditional slot, so React reused the same `<button>` node and
+   mutated its `type` from "button" to "submit" while the click was still being handled.
+   The browser then ran the default action for the element as it had become. Cancel, then
+   an identical start in the same tick — on screen, a counter resetting to zero and
+   climbing again, in both the page and the shell's pill. Distinct keys make them two
+   elements, so the node the pointer pressed is gone rather than repurposed.
+
+   **This is why every probe was green.** They clicked with `element.click()`, which does
+   not go through the same default-action path as a pointer. `page.mouse.click()`
+   reproduced it on the first try. Any probe asserting that a click *does not* do something
+   has to use a real pointer.
+
 **The lesson, which cost hours:** when a report contradicts a green probe, the question is
 what the reporter's setup does that the probe does not. Here it was three things at once — a
 saved session, a reloading tab, and a queue — and none of them were in any test. Checking the

@@ -102,8 +102,24 @@ export function AnalyzerSearchForm({
             weight — disabled and reading "Analyzing…" — so it becomes the way out
             instead. Red rather than the accent gradient, so the change of meaning is
             visible before the click rather than after it. */}
+        {/*
+          * The keys are load-bearing.
+          *
+          * Without them React sees one <Button> in one slot and *reuses the DOM node*: the
+          * same <button> has its type mutated from "button" to "submit" while the click on
+          * Stop is still being processed. The browser then runs the default action for the
+          * element as it now is — and submits the form. Pressing Stop cancelled the audit
+          * and started an identical one in the same tick, which on screen is a counter
+          * resetting to zero and climbing again.
+          *
+          * Distinct keys mean two different elements, so the node the pointer pressed is
+          * gone rather than repurposed. Reproducible only with a real pointer: a synthetic
+          * `element.click()` does not go through the same default-action path, which is why
+          * every probe of this was green while the bug was in front of the user.
+          */}
         {isPending && onCancel ? (
           <Button
+            key="stop"
             type="button"
             variant="destructive"
             onClick={onCancel}
@@ -113,6 +129,7 @@ export function AnalyzerSearchForm({
           </Button>
         ) : (
           <Button
+            key="analyze"
             type="submit"
             disabled={isPending || !url.trim()}
             className="h-auto py-[14px] px-[22px] max-sm:w-full [&_svg]:w-[16px] [&_svg]:h-[16px]"
