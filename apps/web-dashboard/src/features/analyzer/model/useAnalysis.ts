@@ -110,7 +110,17 @@ export function useAnalysis() {
     setResult(next, next.url);
   }, [setResult, stopAiWait]);
 
+  /**
+   * Set by an explicit Stop, cleared only by an explicit start.
+   *
+   * Stopping is a strong instruction and nothing should quietly undo it — not the shell's
+   * pill, not an adopt on arrival, not a stale run left in a store. Whatever else is going
+   * on, after Stop this page stays stopped until the person asks for another audit.
+   */
+  const stoppedByUser = useRef(false);
+
   const analyze = useCallback((url: string, projectId?: string, formFactor?: AuditFormFactor, precision?: AuditPrecision) => {
+    stoppedByUser.current = false;
     cleanupRef.current?.();
     setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: Date.now() });
 
@@ -149,6 +159,7 @@ export function useAnalysis() {
   }, [setResult, applyInsights, startAiWait]);
 
   const reset = useCallback(() => {
+    stoppedByUser.current = false;
     cleanupRef.current?.();
     setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
     stopAiWait();
@@ -163,6 +174,9 @@ export function useAnalysis() {
   }, [setResult, stopAiWait]);
 
   const adoptRunning = useCallback(() => {
+    // Refused after an explicit Stop: re-attaching to a run the user just stopped is how a
+    // stopped audit comes back to life on screen, clock and all.
+    if (stoppedByUser.current) return;
     cleanupRef.current?.();
     // The clock is the run's, not this page's. Adopting used to show no elapsed time at all
     // — the run began before the page did, and counting from the mount would have been a
@@ -201,6 +215,7 @@ export function useAnalysis() {
   }, [setResult, applyInsights, startAiWait]);
 
   const startAuthAudit = useCallback((sessionId: string, url: string, formFactor?: AuditFormFactor) => {
+    stoppedByUser.current = false;
     cleanupRef.current?.();
     setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: Date.now() });
 
@@ -242,12 +257,18 @@ export function useAnalysis() {
     const analysisId = stateRef.current.analysisId
       ?? useRunningAuditsStore.getState().runs.find(r => r.returnTo === '/app')?.analysisId
       ?? null;
+    stoppedByUser.current = true;
     cleanupRef.current?.();
     cleanupRef.current = null;
     stopAiWait();
     // Sent even when it is null: the server resolves that against this socket's own
     // in-flight run. Skipping the emit is what made Stop do nothing in the first seconds.
     cancelAnalysis(analysisId);
+    // Every run this page could adopt goes, not just the one it happened to know the id
+    // of. A leftover entry is a pill that keeps counting and an adopt waiting to happen.
+    for (const run of useRunningAuditsStore.getState().runs) {
+      if (run.returnTo === '/app') useRunningAuditsStore.getState().end(run.key);
+    }
     setState({ status: 'idle', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: null });
   }, [stopAiWait]);
 
