@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button';
 import { AddWebsiteModal } from '@/features/websites';
 import { AdvisorPanel } from '@/features/advisor';
 import { NotificationBell } from '@/features/notifications';
+import { RunningAudits } from './ui/RunningAudits';
 import { Sidebar } from './ui/Sidebar';
 import { StorageBanner } from './ui/StorageBanner';
 
@@ -83,7 +84,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </span>
           {/* Also here, not only in the sidebar: on a phone the sidebar is a drawer, and a
               badge nobody can see until they open a drawer is a badge that does not work. */}
-          <span className="ml-auto">
+          <span className="ml-auto flex items-center gap-2">
+            {/* The sidebar's version of this is inside the drawer, which on a phone is
+                closed — so the topbar carries its own, compact. */}
+            <RunningAudits variant="compact" />
             <NotificationBell />
           </span>
         </div>

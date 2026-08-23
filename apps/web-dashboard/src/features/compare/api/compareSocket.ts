@@ -4,6 +4,15 @@ import { createSocket, type AppSocket } from '@/shared/api/socket';
 
 // The event wiring is the entity's; only the teardown differs — these sockets are
 // per-analysis and die with it, so the whole connection goes, not just the listeners.
+/**
+ * Deliberately *not* tracked in the shell's running-audits indicator.
+ *
+ * That indicator's promise is "this is still going, and you can go back and watch it".
+ * These sockets are per-analysis and die with the page: leaving compare mid-run orphans
+ * the client side of it, so there is nothing left to go back to. The server finishes the
+ * audit and stores it, and history is where it turns up — which is the honest answer, and
+ * a pill offering to reopen a run that cannot be reopened is not.
+ */
 function attachCallbacks(socket: AppSocket, callbacks: AnalysisCallbacks) {
   attachAnalysisListeners(socket, callbacks);
   return () => { socket.disconnect(); socket.removeAllListeners(); };

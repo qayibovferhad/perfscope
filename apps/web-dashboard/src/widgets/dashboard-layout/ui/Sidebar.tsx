@@ -6,6 +6,7 @@ import { ConfirmModal } from '@/shared/ui/modal';
 import { useAuthStore } from '@/features/auth';
 import { useWebsites, getHostname } from '@/entities/website';
 import { NotificationBell } from '@/features/notifications';
+import { RunningAudits } from './RunningAudits';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '../model/navItems';
 
@@ -79,6 +80,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
           </Button>
         )}
       </div>
+
+      {/* Above the primary action and the nav: an audit in flight is the most
+          time-sensitive thing on the screen, and it is why someone came back. */}
+      <RunningAudits onNavigate={onClose} />
 
       {/* Add Website */}
       <Button className="w-full" onClick={() => { onAddWebsite(); onClose?.(); }}>

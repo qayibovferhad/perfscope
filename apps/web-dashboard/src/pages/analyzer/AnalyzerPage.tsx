@@ -18,7 +18,7 @@ import { AnalyzerSearchForm } from '@/features/analyzer';
 import { StreamingScores } from '@/features/analyzer';
 import { StreamingMetrics } from '@/features/analyzer';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
-import { usePrefetchStore, useAuditModeStore, type AuditFormFactor } from '@/entities/analysis';
+import { usePrefetchStore, useAuditModeStore, useRunningAuditsStore, type AuditFormFactor } from '@/entities/analysis';
 import { useWebsites, useUrlSuggestions, sessionState } from '@/entities/website';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
@@ -26,7 +26,16 @@ import { AnalysisIdlePanel } from '@/widgets/analysis-idle';
 export function AnalyzerPage() {
   const [searchParams] = useSearchParams();
   const { analyze, cancel, bootstrap, adoptRunning, startAuthAudit, data, progress, partials, isPending, aiPending, isError, error, errorCode, reset, lastUrl, startedAt, durationMs } = useAnalysis();
-  const [url, setUrl]             = useState(() => searchParams.get('url') ?? searchParams.get('prefill') ?? lastUrl ?? '');
+  // Seeded, in this order: an explicit link, a prefill, the audit that is *running right
+  // now* (arriving from the shell's pill), then whatever was audited last. Read in the
+  // initialiser rather than an effect — the field's first paint should already be right,
+  // and a setState in an effect to fix it up is a second render saying the same thing.
+  const [url, setUrl]             = useState(() =>
+    searchParams.get('url')
+    ?? searchParams.get('prefill')
+    ?? useRunningAuditsStore.getState().runs.find(r => r.returnTo === '/app')?.url
+    ?? lastUrl
+    ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
@@ -35,6 +44,28 @@ export function AnalyzerPage() {
   const matchedSite   = websites.find(w => url.startsWith(w.url) && w.session != null) ?? null;
   const sessionStatus = sessionState(matchedSite);
   const handledUrl = useRef<string | null>(null);
+  const adopted = useRef(false);
+
+  /**
+   * Arriving while an audit of this account is already running — from the shell's
+   * running-audits pill, or simply by coming back — attaches to it.
+   *
+   * Without this the pill was a lie: it offered to take you back to a run and then landed
+   * you on an empty form while the audit it was tracking finished somewhere off screen.
+   * `adoptRunning` has always been able to do this; nothing called it unless the run had
+   * been started by a website-card prefetch.
+   *
+   * Guarded by a ref rather than the effect's deps: it must happen once, on arrival, and
+   * never fight the `?url=` branch below (which starts its own run) or a result the user
+   * is already reading.
+   */
+  useEffect(() => {
+    if (adopted.current || data || isPending) return;
+    if (searchParams.get('url')) return;
+    if (!useRunningAuditsStore.getState().runs.some(r => r.returnTo === '/app')) return;
+    adopted.current = true;
+    adoptRunning();
+  }, [data, isPending, searchParams, adoptRunning]);
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
   useEffect(() => {

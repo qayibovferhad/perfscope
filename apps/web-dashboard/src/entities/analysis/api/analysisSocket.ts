@@ -3,6 +3,7 @@ import type {
   AuditPrecision, AnalysisErrorPayload, AnalysisInsightsPayload,
 } from '@perfscope/shared';
 import { getSocket, type AppSocket } from '@/shared/api/socket';
+import { useRunningAuditsStore } from '../model/runningAuditsStore';
 
 export interface AnalysisCallbacks {
   onProgress: (data: AnalysisProgress) => void;
@@ -18,6 +19,7 @@ export interface AnalysisCallbacks {
  * Wires the four analysis events to callbacks; returns the detach. Exported so the
  * compare feature's short-lived sockets share the exact wiring — the two copies had
  * already drifted on how the error payload was unpacked.
+ *
  */
 export function attachAnalysisListeners(s: AppSocket, callbacks: AnalysisCallbacks): () => void {
   const onProgress = (data: AnalysisProgress)   => callbacks.onProgress(data);
@@ -41,6 +43,26 @@ export function attachAnalysisListeners(s: AppSocket, callbacks: AnalysisCallbac
   };
 }
 
+/**
+ * Keep the shell's running-audits list in step with the shared socket.
+ *
+ * A *separate*, permanent subscription rather than a hook into the callers' listeners,
+ * because the whole point of the indicator is the case where the caller has gone: leaving
+ * the analyzer detaches its handlers while the audit carries on, and a tracker built on
+ * those handlers would freeze at whatever progress it last saw and never see the finish.
+ *
+ * Registered once, on the first audit of the session, and never removed — the socket is a
+ * singleton and so is this.
+ */
+let trackerAttached = false;
+function ensureRunTracker(s: AppSocket): void {
+  if (trackerAttached) return;
+  trackerAttached = true;
+  s.on('analysis:progress', (data: AnalysisProgress) => useRunningAuditsStore.getState().applyProgress(data));
+  s.on('analysis:complete', (result: AnalysisResult) => useRunningAuditsStore.getState().endByAnalysisId(result.id));
+  s.on('analysis:error',    (data: AnalysisErrorPayload) => useRunningAuditsStore.getState().endByAnalysisId(data.analysisId));
+}
+
 export interface StartAnalysisOptions {
   projectId?: string | undefined;
   formFactor?: AuditFormFactor | undefined;
@@ -55,6 +77,8 @@ export function startAnalysis(
 ): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
+  ensureRunTracker(s);
+  useRunningAuditsStore.getState().begin(url, '/app');
   const cleanup = attachAnalysisListeners(s, callbacks);
   s.emit('analysis:start', {
     url,
@@ -74,6 +98,10 @@ export function startAnalysis(
  * own listeners, so the error that killing them produces never reaches the UI.
  */
 export function cancelAnalysis(analysisId: string): void {
+  // Dropped from the indicator here rather than on the error the cancellation produces:
+  // the caller detaches its listeners as part of stopping, so that error never arrives.
+  useRunningAuditsStore.getState().endByAnalysisId(analysisId);
+
   const s = getSocket();
   if (!s.connected) return;
   s.emit('analysis:cancel', { analysisId });
@@ -92,6 +120,8 @@ export function emitAuthAuditStart(
 ): () => void {
   const s = getSocket();
   if (!s.connected) s.connect();
+  ensureRunTracker(s);
+  useRunningAuditsStore.getState().begin(url, '/app');
   const cleanup = attachAnalysisListeners(s, callbacks);
   s.emit('auth-audit:start', { sessionId, url, ...(formFactor ? { formFactor } : {}) });
   return cleanup;

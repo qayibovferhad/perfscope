@@ -126,3 +126,50 @@ which a scrollWidth check cannot see:
 topbar reachability, the drawer, two-up stats, the form's geometry, the toggles' last option,
 the name column as a fraction of its panel, filenames still legible, no title over three
 lines, and no bleed on eight routes. Screenshots at four scroll positions.
+
+---
+
+# Running audits in the shell (2026-08-23)
+
+An audit takes tens of seconds and nobody watches it: people start one and go look at
+something else. The run existed only on the page that started it, and that page — once left
+— gave no sign it had ever been running. `adoptRunning` had been able to re-attach to a live
+run for months; nothing ever told anyone there was one to re-attach to.
+
+`entities/analysis/model/runningAuditsStore.ts` holds what is in flight. Two renderings:
+the sidebar gets a row per run with the server's own progress message and a bar, the mobile
+topbar gets a pulsing icon and a count.
+
+**The tracker is its own permanent subscription, not a hook into the callers' listeners.**
+That is the whole design. The point of the indicator is the case where the caller has gone —
+leaving the analyzer detaches its handlers while the audit carries on — so a tracker built on
+those handlers would freeze at the last progress it saw and never see the finish. One pair of
+listeners is registered on the shared socket at the first audit of the session and never
+removed.
+
+**Runs are claimed, not keyed.** The server mints the `analysisId` (so concurrent audits
+cannot read each other's progress), which means the client knows a run exists a second before
+it knows its name. A run starts unclaimed; the first id to arrive belongs to the oldest
+unclaimed run, and after that events route by id. Twelve minutes without finishing and an
+entry is pruned — the one case events cannot cover is a socket that went away and took the
+completion with it.
+
+**Compare runs are deliberately excluded.** The indicator's promise is "still going, and you
+can go back and watch it". `compareSocket` creates a socket per analysis and disconnects it
+with the page, so leaving compare orphans the client side of those runs — the server finishes
+and stores them, and history is where they turn up. A pill offering to reopen a run that
+cannot be reopened is worse than no pill.
+
+**The pill had to be made true.** Clicking it navigates to `/app`, and the analyzer now
+adopts a run in flight on arrival — before this it landed on an empty form while the audit it
+had just advertised finished off screen. The URL field is seeded from the running audit in
+the `useState` initialiser rather than an effect, so the first paint is already right.
+
+A hard reload still loses the indicator: the store is in memory, and the socket reconnects as
+a new client. The audit itself survives on the server and lands in history.
+
+**Verified** — `e2e/running-audits.probe.mjs`, **12/12 PASS**: no pill when idle; a pill
+naming the URL once a run starts; still there after clicking through to another route, with
+progress moving (35% → 62%) while the analyzer is unmounted; clicking it returns to `/app`;
+the pill clearing itself on completion while the report lands as usual. Asserted through the
+DOM, because a probe that imports the store through Vite gets its own empty copy of it.
