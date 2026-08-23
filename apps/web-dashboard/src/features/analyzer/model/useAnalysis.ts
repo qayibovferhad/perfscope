@@ -170,7 +170,16 @@ export function useAnalysis() {
     // it actually started, so the honest number is available now and the clock is right
     // even though it is being watched from its second minute.
     const running = useRunningAuditsStore.getState().runs.find(r => r.returnTo === '/app');
-    setState({ status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null, aiPending: false, analysisId: null, startedAt: running?.startedAt ?? null });
+    // The id comes from the store too, and not only for tidiness: `cancel` needs it, and
+    // the page otherwise learns it from the *next* progress event — which in Fast mode can
+    // be twenty seconds away. Stop pressed in that window reset the page and left the audit
+    // running, which is exactly what it looks like: the shell's pill kept counting.
+    setState({
+      status: 'loading', progress: null, partials: {}, data: null, error: null, errorCode: null,
+      aiPending: false,
+      analysisId: running?.analysisId ?? null,
+      startedAt:  running?.startedAt ?? null,
+    });
     const cleanup = joinAnalysis({
       onProgress: (progress) => setState((prev) => ({ ...prev, progress, analysisId: progress.analysisId || prev.analysisId })),
       onPartial:  (partial)  => setState((prev) => ({
@@ -226,7 +235,13 @@ export function useAnalysis() {
    * Back to idle rather than to an error — nothing failed.
    */
   const cancel = useCallback(() => {
-    const { analysisId } = stateRef.current;
+    // The shell's record is the fallback, for the same reason `adoptRunning` reads it: this
+    // page only learns the id from a progress event, so Stop pressed in the first seconds of
+    // a run — or straight after adopting one — had nothing to send and quietly did nothing
+    // but reset the form. The audit carried on, and the pill was the only thing that said so.
+    const analysisId = stateRef.current.analysisId
+      ?? useRunningAuditsStore.getState().runs.find(r => r.returnTo === '/app')?.analysisId
+      ?? null;
     cleanupRef.current?.();
     cleanupRef.current = null;
     stopAiWait();

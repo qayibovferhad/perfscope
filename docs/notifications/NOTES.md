@@ -180,14 +180,23 @@ appear in front of them. It writes the result into the analyzer's store on the w
 "View report" lands on the report instead of an empty form; nothing else would have kept it,
 because the page that normally stores it was not mounted.
 
+**Stop had been quietly failing, and the pill is what exposed it.** The page learns a run's
+`analysisId` from a *progress event*, which in Fast mode can be twenty seconds away — and a
+run that has just been adopted starts with no id at all. Stop pressed in either window sent
+nothing: the form reset, and the audit carried on. Nobody could see that before, because the
+page that would have shown it had just reset itself; now the pill keeps counting and says so
+plainly. `adoptRunning` seeds the id from the store, and `cancel` falls back to it.
+
 A hard reload still loses the indicator: the store is in memory, and the socket reconnects as
 a new client. The audit itself survives on the server and lands in history.
 
-**Verified** — `e2e/running-audits.probe.mjs`, **21/21 PASS**: no pill when idle; a pill
+**Verified** — `e2e/running-audits.probe.mjs`, **25/25 PASS**: no pill when idle; a pill
 naming the URL once a run starts; still there after clicking through to another route, with
 progress moving (35% → 62%) while the analyzer is unmounted; a finished-audit toast on
 another page carrying the score, the host and a working *View report* that lands on the
 report rather than an empty form; a second run putting the pill back; clicking the pill
 returning to `/app` with the run's own clock (0:05, not 0:00); the pill clearing itself on
-completion while the report lands as usual. Asserted through the DOM, because a probe that
-imports the store through Vite gets its own empty copy of it.
+completion while the report lands as usual; and Stop genuinely stopping the run both
+straight after starting one and straight after adopting one — the two windows where the page
+has no id of its own. Asserted through the DOM, because a probe that imports the store
+through Vite gets its own empty copy of it.

@@ -178,6 +178,44 @@ try {
   check(cleared, 'the pill disappears when the audit finishes');
   check(/opportunities & diagnostics/i.test(await bodyText(page)), 'while the report lands as usual');
 
+  // ─── Stop actually stops it ────────────────────────────────────────────────
+  // Two moments where the page has not yet been told the run's id — it learns that from a
+  // progress event, which in Fast mode can be twenty seconds away. Stop pressed in either
+  // window used to reset the form and leave the audit running; the pill was the only thing
+  // that said so, by carrying on counting.
+  for (const [label, adopt] of [['straight after starting', false], ['straight after adopting a run', true]]) {
+    await page.evaluate((url) => {
+      const input = document.querySelector('input[placeholder^="https"]');
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, url);
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+      [...document.querySelectorAll('button[type="submit"]')].at(-1)?.click();
+    }, TARGET);
+
+    if (adopt) {
+      // Leave and come back through the pill, so the page adopts a run it did not start.
+      await sleep(3000);
+      await clickNav(page, 'My Websites');
+      await sleep(1200);
+      await page.evaluate(() => {
+        [...document.querySelectorAll('aside button')].find((b) => b.querySelector('span[style*="width"]'))?.click();
+      });
+      await sleep(600);
+    } else {
+      await sleep(350);
+    }
+
+    const stopped = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll('button')].find((b) => /^Stop$/i.test(b.textContent?.trim() ?? ''));
+      btn?.click();
+      return Boolean(btn);
+    });
+    check(stopped, `Stop is offered ${label}`);
+    await sleep(4000);
+    check(await pill(page) === null, `and stopping ${label} really stops the run`);
+    await sleep(1000);
+  }
+
   const real = errors.filter((e) => !/favicon|ERR_INTERNET_DISCONNECTED/i.test(e.text));
   check(real.length === 0, `no console errors (${real.map((e) => e.text).join(' | ') || 'none'})`);
   console.log(`  screenshots → ${OUT}`);
