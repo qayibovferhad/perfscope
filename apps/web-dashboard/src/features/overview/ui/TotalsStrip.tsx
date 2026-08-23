@@ -8,7 +8,7 @@ import { StatCard } from '@/shared/ui/stat-card';
  * `avgScore` and `needsAttention` are computed by the same backend helper the websites
  * summary strip uses, so the two screens cannot disagree about what a site scores.
  */
-export function TotalsStrip({ totals }: { totals: OverviewTotals }) {
+export function TotalsStrip({ totals, days }: { totals: OverviewTotals; days: number }) {
   // Two across on a phone, not one. Four full-width cards carrying one number each were
   // most of a screen of scrolling before the page said anything; paired, the whole strip
   // is a glance and the numbers are still large enough to read.
@@ -25,8 +25,10 @@ export function TotalsStrip({ totals }: { totals: OverviewTotals }) {
         icon={<Gauge className="w-5 h-5" />}
       />
       <StatCard
-        label="Audits this week"
-        value={totals.audits7d}
+        // Named after the window on screen. "Audits this week" beside a 90-day range is a
+        // label that quietly contradicts the control the reader just used.
+        label={days === 7 ? 'Audits this week' : `Audits · ${days} days`}
+        value={totals.auditsInWindow}
         icon={<Activity className="w-5 h-5" />}
       />
       <StatCard

@@ -4,6 +4,8 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.middleware.j
 import { emptyOverview, getOverview } from '../services/overview.service.js';
 import { emptyOnNoStorage } from '../middleware/storage.middleware.js';
 import { asyncHandler } from '../lib/errors.js';
+import { intParam } from '../lib/params.js';
+import { DEFAULT_OVERVIEW_WINDOW } from '@perfscope/shared';
 
 export const overviewRouter: Router = Router();
 
@@ -21,6 +23,14 @@ overviewRouter.get(
   requireAuth,
   emptyOnNoStorage(emptyOverview),
   asyncHandler<AuthedRequest>(async (req, res) => {
-    ok(res, await getOverview(req.userId));
+    // `days` is validated against the shared list rather than clamped: an unrecognised
+    // window is a client sending something the product does not offer, and quietly
+    // answering with a different one hides that.
+    ok(res, await getOverview(req.userId, {
+      days: intParam(req.query['days'], { def: DEFAULT_OVERVIEW_WINDOW, min: 1, max: 365 }),
+      websiteId: typeof req.query['websiteId'] === 'string' && /^[a-f\d]{24}$/i.test(req.query['websiteId'])
+        ? req.query['websiteId']
+        : undefined,
+    }));
   }),
 );

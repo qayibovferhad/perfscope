@@ -15,8 +15,24 @@ export interface OverviewTotals {
   avgScore:       number;
   /** Audited sites scoring below the poor threshold. */
   needsAttention: number;
-  /** Successful audits recorded in the last 7 days, across all sites. */
-  audits7d:       number;
+  /**
+   * Successful audits recorded inside the selected window.
+   *
+   * Named for what it is rather than for its old fixed seven days: the window is a control
+   * on the page now, and a field called `audits7d` holding ninety days of them is the kind
+   * of name that survives long enough to mislead someone.
+   */
+  auditsInWindow: number;
+}
+
+/** The windows the dashboard offers. Shared so the client cannot ask for one the server
+ *  will silently round to something else. */
+export const OVERVIEW_WINDOWS = [7, 30, 90] as const
+export type OverviewWindow = typeof OVERVIEW_WINDOWS[number]
+export const DEFAULT_OVERVIEW_WINDOW: OverviewWindow = 30
+
+export function isOverviewWindow(value: unknown): value is OverviewWindow {
+  return OVERVIEW_WINDOWS.includes(Number(value) as OverviewWindow)
 }
 
 export interface OverviewDelivery {

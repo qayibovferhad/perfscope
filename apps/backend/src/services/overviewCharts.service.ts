@@ -16,6 +16,7 @@ import type { PipelineStage } from 'mongoose';
  * server's clock drifts to.
  */
 
+/** Kept as the default; the dashboard passes its own window now. */
 export const CHART_DAYS = 30;
 
 /** Metrics worth splitting into bands. CLS and TBT are where regressions usually hide. */
@@ -57,14 +58,17 @@ function vitalCounters(): Record<string, unknown> {
 export async function getOverviewCharts(
   userId: string,
   sites: { _id: unknown; url: string; name: string }[],
+  windowDays: number = CHART_DAYS,
+  /** Restrict to one site's routes — `normalizedUrl` is stored as `host/path`. */
+  hostFilter?: RegExp,
 ): Promise<OverviewCharts> {
-  const days  = dayKeys(CHART_DAYS);
+  const days  = dayKeys(windowDays);
   const since = new Date(`${days[0]}T00:00:00.000Z`);
 
   const [facet] = await HistoryModel.aggregate<{
     activity: DayCount[]; trend: HostDay[]; vitals: VitalRow[];
   }>([
-    { $match: { userId, createdAt: { $gte: since }, ...HAS_RESULT_FILTER } },
+    { $match: { userId, createdAt: { $gte: since }, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } },
     {
       $facet: {
         activity: [
@@ -115,7 +119,7 @@ export async function getOverviewCharts(
   }));
 
   return {
-    days: CHART_DAYS,
+    days: windowDays,
     trend,
     activity: days.map(day => ({ day, audits: activityByDay.get(day) ?? 0 })),
     vitals,

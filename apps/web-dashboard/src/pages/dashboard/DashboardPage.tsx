@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, CalendarDays, BarChart3, Plus } from 'lucide-react';
 import { GettingStartedPanel } from '@/features/onboarding';
@@ -21,6 +21,9 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { NextStepCard } from '@/features/advisor';
 import { useGettingStartedVisible } from '@/features/onboarding';
+import { Segmented } from '@/shared/ui/segmented';
+import { useWebsites, getHostname } from '@/entities/website';
+import { OVERVIEW_WINDOWS, DEFAULT_OVERVIEW_WINDOW, isOverviewWindow } from '@perfscope/shared';
 
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
@@ -54,8 +57,31 @@ const fadeUp = (delay: number) => ({
  * question of the day.
  */
 export function DashboardPage() {
-  const { data, isPending } = useOverview();
+  /**
+   * The window and the site live in the address, not in a store.
+   *
+   * They describe *what is on screen*, which makes the page linkable — "here is our slow
+   * site over ninety days" is a URL someone can paste — and it survives a reload without
+   * anything having to remember it. Unlike the analyzer's `?url=`, these ask for no work:
+   * they are read on every render rather than consumed once.
+   */
+  const [params, setParams] = useSearchParams();
+  const days = isOverviewWindow(params.get('days')) ? Number(params.get('days')) : DEFAULT_OVERVIEW_WINDOW;
+  const siteId = params.get('site') ?? '';
+
+  const { websites } = useWebsites();
+  const { data, isPending } = useOverview(days, siteId || undefined);
   const [modalOpen, setModalOpen] = useState(false);
+
+  function setParam(key: string, value: string | null) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set(key, value); else next.delete(key);
+      return next;
+    }, { replace: true });
+  }
+
+  const scopedSite = websites.find(w => w._id === siteId);
 
   // Both charts in the top row take the fixed height together, or neither does: sizing
   // them independently is what put a 340px panel next to a 90px one in the first place,
@@ -81,6 +107,37 @@ export function DashboardPage() {
         }
       />
 
+      {/* Above everything, because every number below is an answer to these two questions.
+          The site picker only appears once there is more than one site to choose between —
+          a filter with a single option is a control that cannot do anything. */}
+      <div className="flex items-center gap-[10px] flex-wrap mb-[18px]">
+        <Segmented
+          size="sm"
+          ariaLabel="Time range"
+          options={OVERVIEW_WINDOWS.map(w => ({ value: String(w), label: w === 7 ? '7 days' : `${w} days` }))}
+          value={String(days)}
+          onChange={(v) => setParam('days', v === String(DEFAULT_OVERVIEW_WINDOW) ? null : v)}
+        />
+        {websites.length > 1 && (
+          <Segmented
+            size="sm"
+            ariaLabel="Site filter"
+            className="max-w-full"
+            options={[
+              { value: '', label: 'All sites' },
+              ...websites.map(w => ({ value: w._id, label: getHostname(w.url) })),
+            ]}
+            value={siteId}
+            onChange={(v) => setParam('site', v || null)}
+          />
+        )}
+        {scopedSite && (
+          <span className="font-mono text-[11px] text-ld-text-3">
+            showing {getHostname(scopedSite.url)} only
+          </span>
+        )}
+      </div>
+
       {/* One "what to do next" block at a time. While the checklist is up it is the better
           of the two — its steps are buttons that do the thing — and the advisor panel on
           the right still carries the AI voice. */}
@@ -96,7 +153,7 @@ export function DashboardPage() {
           in reads as an animation glitch, not as progress. */}
       {data ? (
         <motion.div {...fadeUp(0.05)}>
-          <TotalsStrip totals={data.totals} />
+          <TotalsStrip totals={data.totals} days={days} />
         </motion.div>
       ) : isPending ? <TotalsStripSkeleton /> : null}
 

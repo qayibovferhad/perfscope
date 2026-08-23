@@ -80,7 +80,7 @@ async function buildOverviewContext(
   const o = await getOverview(userId);
   const lines: string[] = [
     `Sites tracked: ${o.totals.sites}, audited: ${o.totals.audited}, average score: ${o.totals.avgScore || 'none yet'}`,
-    `Audits in the last 7 days: ${o.totals.audits7d}, sites needing attention: ${o.totals.needsAttention}`,
+    `Audits in the window: ${o.totals.auditsInWindow}, sites needing attention: ${o.totals.needsAttention}`,
   ];
 
   if (o.attention.length) {

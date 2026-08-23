@@ -1,4 +1,7 @@
-import { SCORE_BANDS, describeBudgetFailure, type OverviewData, type OverviewAttention, type OverviewIncident } from '@perfscope/shared';
+import {
+  SCORE_BANDS, describeBudgetFailure, isOverviewWindow, DEFAULT_OVERVIEW_WINDOW,
+  type OverviewData, type OverviewAttention, type OverviewIncident,
+} from '@perfscope/shared';
 import { meanRounded } from '../lib/stats.js';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { HistoryModel } from '../models/History.model.js';
@@ -18,7 +21,8 @@ import { Types, type QueryFilter } from 'mongoose';
  */
 
 /** Audits older than this stop counting toward the "recent activity" number. */
-const RECENT_DAYS = 7;
+/** Fallback when nothing asks for a window — the dashboard always does. */
+const RECENT_DAYS = DEFAULT_OVERVIEW_WINDOW;
 /** Rows per list. Enough to see a pattern, few enough to read without scrolling. */
 const LIST_LIMIT = 8;
 /** Runs scanned to find each listed audit's predecessor. Covers LIST_LIMIT rows comfortably. */
@@ -70,7 +74,11 @@ export async function computeSiteScores(userId: string, sites: { url: string }[]
 }
 
 /** Open incidents: the newest alert per site+url+event, kept only while it is still firing. */
-async function openIncidents(userId: string, siteUrlById: Map<string, string>): Promise<OverviewIncident[]> {
+async function openIncidents(
+  userId: string,
+  siteUrlById: Map<string, string>,
+  websiteId?: string | undefined,
+): Promise<OverviewIncident[]> {
   // A recovery is stored under the *base* event name (see alerts.service `baseEvent`),
   // so a recovered incident's newest entry has status 'recovered' and drops out here.
   // That means there is no incident state to maintain — the log already is the state.
@@ -83,7 +91,12 @@ async function openIncidents(userId: string, siteUrlById: Map<string, string>): 
     };
   }>([
     // AlertLog stores userId as an ObjectId; History stores it as a plain string.
-    { $match: { userId: new Types.ObjectId(userId) } },
+    {
+      $match: {
+        userId: new Types.ObjectId(userId),
+        ...(websiteId ? { websiteId: new Types.ObjectId(websiteId) } : {}),
+      },
+    },
     { $sort:  { createdAt: -1 } },
     { $group: { _id: { websiteId: '$websiteId', url: '$url', event: '$event' }, doc: { $first: '$$ROOT' } } },
     { $match: { 'doc.status': 'firing' } },
@@ -143,7 +156,7 @@ function attentionFor(site: IWebsite, score: SiteScore | undefined): OverviewAtt
  */
 export function emptyOverview(): OverviewData {
   return {
-    totals:       { sites: 0, audited: 0, avgScore: 0, needsAttention: 0, audits7d: 0 },
+    totals:       { sites: 0, audited: 0, avgScore: 0, needsAttention: 0, auditsInWindow: 0 },
     incidents:    [],
     recentAudits: [],
     attention:    [],
@@ -152,26 +165,48 @@ export function emptyOverview(): OverviewData {
   };
 }
 
-export async function getOverview(userId: string): Promise<OverviewData> {
-  const sites = await Website.find({ userId }).lean<IWebsite[]>();
+/** What the dashboard is asking about: how far back, and whether one site or all of them. */
+export interface OverviewScope {
+  days?:      number;
+  /** A site of this account, or nothing for the whole account. */
+  websiteId?: string | undefined;
+}
+
+export async function getOverview(userId: string, scope: OverviewScope = {}): Promise<OverviewData> {
+  const days = isOverviewWindow(scope.days) ? scope.days : DEFAULT_OVERVIEW_WINDOW;
+
+  const all = await Website.find({ userId }).lean<IWebsite[]>();
+  // Narrowed *after* the ownership query, never inside it: a websiteId from the client is
+  // an id, not a permission, and the only sites that can be selected are this user's own.
+  const sites = scope.websiteId
+    ? all.filter((s) => String(s._id) === scope.websiteId)
+    : all;
+  // A filter naming a site that is not theirs — or one that has since been deleted — has
+  // nothing to show, and says so instead of running six queries that cannot match. The
+  // first attempt at this filtered on a never-matching regex and learned that a sentinel
+  // with a NUL byte in it cannot be serialised into a Mongo query at all.
+  if (scope.websiteId && sites.length === 0) return emptyOverview();
+
+  const hosts = sites.map((s) => hostOf(s.url)).filter(Boolean);
+  const hostFilter = scope.websiteId && hosts.length ? normalizedUrlHostRegex(hosts) : undefined;
   const siteUrlById = new Map(sites.map((s) => [String(s._id), s.url]));
   const siteIds     = sites.map((s) => s._id);
   const rumInstalled = sites.filter((s) => s.rumKey).length;
 
-  const since = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const [scores, audits7d, recent, incidents, rumRows, charts] = await Promise.all([
+  const [scores, auditsInWindow, recent, incidents, rumRows, charts] = await Promise.all([
     computeSiteScores(userId, sites),
-    HistoryModel.countDocuments({ userId, createdAt: { $gte: since }, ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>),
+    HistoryModel.countDocuments({ userId, createdAt: { $gte: since }, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>),
     // Manual only, like the history page: eight rows filled with last night's timetable
     // tell the user nothing they did, and the scheduled page reports those in full.
     HistoryModel
-      .find({ userId, ...HAS_RESULT_FILTER, ...MANUAL_ONLY_FILTER } as QueryFilter<Record<string, unknown>>)
+      .find({ userId, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER, ...MANUAL_ONLY_FILTER } as QueryFilter<Record<string, unknown>>)
       .sort({ createdAt: -1 })
       .limit(LIST_LIMIT)
       .select('url normalizedUrl routePath scores.performance createdAt')
       .lean(),
-    openIncidents(userId, siteUrlById),
+    openIncidents(userId, siteUrlById, scope.websiteId),
     rumInstalled && siteIds.length
       ? RumEvent.aggregate<{ _id: unknown; views: number }>([
           { $match: { websiteId: { $in: siteIds }, createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } },
@@ -179,7 +214,7 @@ export async function getOverview(userId: string): Promise<OverviewData> {
           { $limit: 200 },
         ])
       : Promise.resolve([]),
-    getOverviewCharts(userId, sites),
+    getOverviewCharts(userId, sites, days, hostFilter),
   ]);
 
   // Each listed run is compared with the run immediately before *it*, not with one
@@ -227,7 +262,7 @@ export async function getOverview(userId: string): Promise<OverviewData> {
       audited:  scoreList.length,
       avgScore: meanRounded(scoreList) ?? 0,
       needsAttention,
-      audits7d,
+      auditsInWindow,
     },
     incidents,
     recentAudits: recent.map((r) => {
