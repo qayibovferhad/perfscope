@@ -4,6 +4,7 @@ import { lighthouseService, RUN_TIMEOUT_MS } from '../services/lighthouse.servic
 import { attachPreviousRun, enrichWithAi, persistAudit, resolveOrCreateProject } from '../services/auditPipeline.js';
 import { optionalAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { isValidUrl } from '../lib/url.js';
+import { assertPublicTarget } from '../lib/ssrf.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
 
 export const analyzerRouter: Router = Router();
@@ -31,6 +32,8 @@ analyzerRouter.post('/analyze', optionalAuth, asyncHandler<AuthRequest>(async (r
 
   if (!url || typeof url !== 'string') throw new AppError(400, 'url field is required');
   if (!isValidUrl(url)) throw new AppError(400, 'Invalid URL. Must start with http:// or https://');
+  // No-op in development, where auditing a local dev server is the point — see lib/ssrf.ts.
+  await assertPublicTarget(url, 'audit target');
 
   // The server hangs up at HTTP_TIMEOUT_MS (70s), and an audit is allowed four minutes.
   // A slow site therefore reported failure to the caller while the audit carried on

@@ -12,6 +12,7 @@
  * is a larger surface than the thing it would buy.
  */
 import { hostOf } from '../lib/url.js';
+import { isFetchableTarget } from '../lib/ssrf.js';
 
 export interface DiscoveredRoute {
   /** Path with its query string, as the sitemap gives it: `/pricing`, `/blog/post-1`. */
@@ -122,6 +123,13 @@ export async function discoverRoutes(siteUrl: string): Promise<RouteDiscovery> {
     host = u.host;
   } catch {
     return { routes: [], sources: [], reason: 'That site has no usable URL.' };
+  }
+
+  // The URL comes from the caller's own Website record, but "it is in our database" is not
+  // a reason to fetch an address on this server's own network. No-op in development, where
+  // a locally-hosted site is the ordinary case — see lib/ssrf.ts.
+  if (!(await isFetchableTarget(origin))) {
+    return { routes: [], sources: [], reason: 'That site resolves to a private or local address, which this server will not scan.' };
   }
 
   const queue: string[] = [`${origin}/sitemap.xml`];

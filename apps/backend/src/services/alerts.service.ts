@@ -1,5 +1,6 @@
 import { Mailer } from './mailer.service.js';
 import { AiService } from './ai.service.js';
+import { isFetchableTarget } from '../lib/ssrf.js';
 import { postJson } from '../lib/http.js';
 import { AlertLog, type IAlertDelivery } from '../models/AlertLog.model.js';
 import type { IWebsite } from '../models/Website.model.js';
@@ -86,6 +87,13 @@ function webhookBody(
 }
 
 async function postWebhook(webhookUrl: string, payload: unknown): Promise<void> {
+  // A webhook is a server-side POST to whatever URL somebody saved on their site, which is
+  // the same forgery primitive as the audit target and reaches further — it carries a body.
+  // Refused rather than skipped silently: the delivery record is what tells the owner their
+  // alerts are not arriving. No-op in development (lib/ssrf.ts).
+  if (!(await isFetchableTarget(webhookUrl))) {
+    throw new Error('webhook resolves to a private or local address');
+  }
   const res = await postJson(webhookUrl, payload, { timeoutMs: WEBHOOK_TIMEOUT_MS });
   // A 200 from Slack can still carry "invalid_payload"; surface the status either way.
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

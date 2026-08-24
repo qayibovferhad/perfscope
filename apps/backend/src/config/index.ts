@@ -22,6 +22,19 @@ export const config = {
   /** Chrome UX Report field data is disabled unless this is set. */
   cruxApiKey:  process.env['CRUX_API_KEY'],
   mongoUri:    optionalEnv('MONGODB_URI', 'mongodb://localhost:27017/perfscope'),
+
+  /**
+   * Whether a URL that resolves into a private network may be fetched by this server.
+   *
+   * Off on a laptop, where auditing `http://localhost:5173` is the ordinary case and always
+   * has been; on in production, where the same feature is a request-forgery primitive
+   * pointed at cloud metadata and internal admin panels. `ALLOW_PRIVATE_TARGETS=true` turns
+   * it off again for an install that deliberately audits an intranet — a real deployment,
+   * so it gets a switch rather than a code change. See lib/ssrf.ts.
+   */
+  blockPrivateTargets:
+    optionalEnv('NODE_ENV', 'development') === 'production' &&
+    optionalEnv('ALLOW_PRIVATE_TARGETS', 'false') !== 'true',
   jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
 
   /**

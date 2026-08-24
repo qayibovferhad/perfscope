@@ -5,6 +5,7 @@ import {
   createAuthAuditSession, hasSession, destroySession, extractSessionData,
 } from '../services/authAuditSession.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
+import { assertPublicTarget } from '../lib/ssrf.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
 
 export const authAuditRouter: Router = Router();
@@ -25,6 +26,7 @@ function sessionIdOf(raw: unknown): string {
 authAuditRouter.post('/auth-audit/session', asyncHandler(async (req, res) => {
   const { url } = req.body as { url?: string };
   if (!url) throw new AppError(400, 'url is required');
+  await assertPublicTarget(url, 'login page');
 
   const body: AuthAuditSessionResponse = { sessionId: await createAuthAuditSession(url) };
   ok(res, body);
