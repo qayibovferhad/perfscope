@@ -91,11 +91,9 @@ jobs:
           pnpm --filter @perfscope/web-dashboard dev > /tmp/web.log 2>&1 &
 
       - name: Wait for servers
-        # Backend has no /health route: any HTTP response (404 included) means up,
-        # so plain curl (no -f) is used for the backend probe.
         run: |
           for i in $(seq 1 90); do
-            if curl -sf -o /dev/null http://localhost:5173 && curl -s -o /dev/null http://localhost:3101/api; then
+            if curl -sf -o /dev/null http://localhost:5173 && curl -sf -o /dev/null http://localhost:3101/health; then
               echo "both servers up"
               exit 0
             fi
@@ -115,13 +113,18 @@ jobs:
         # socket pipeline the app uses. Budgets are deliberately loose — a GitHub runner
         # is slower and noisier than any real host, so this is a smoke test for a
         # catastrophic regression, not a performance gate.
+        #
+        # The token is read out of `data`: every route answers `{success, data}` since the
+        # envelope was unified, and reading `.token` off the envelope silently produced an
+        # empty string — which is why this step had been failing with "could not obtain a
+        # token" long before anyone looked at it.
         env:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
           TOKEN=$(curl -s -X POST http://localhost:3101/api/auth/register \
             -H 'Content-Type: application/json' \
             -d '{"name":"CI","email":"ci-budget@example.com","password":"ci-password"}' \
-            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).token??'')}catch{console.log('')}})")
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const b=JSON.parse(d);console.log(b.data?.token??b.token??'')}catch{console.log('')}})")
 
           if [ -z "$TOKEN" ]; then echo "could not obtain a token"; exit 1; fi
 
