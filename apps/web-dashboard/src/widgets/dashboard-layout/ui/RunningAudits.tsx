@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, Check, X } from 'lucide-react';
 import { useRunningAuditsStore } from '@/entities/analysis';
 import { getHostname } from '@/entities/website';
 import { formatElapsed } from '@/entities/analysis';
 import { cn } from '@/shared/lib/utils';
+import { isResultRoute } from '../model/resultRoutes';
 
 /** Rounded up, so a bar at 99% for twenty seconds does not read as finished. */
 const pct = (n: number) => Math.min(99, Math.max(2, Math.round(n)));
@@ -39,10 +40,18 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
   const finished = useRunningAuditsStore(s => s.finished);
   const dismissFinished = useRunningAuditsStore(s => s.dismissFinished);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const reduced = useReducedMotion();
 
+  // A finished-audit card offers "open the report" — on the pages that already show one it
+  // points at the page it is drawn on. Hidden rather than dismissed: the result is still
+  // unread, and it is waiting again the moment the reader goes anywhere else. Runs still in
+  // flight keep their row everywhere, because "how much longer" is a live question wherever
+  // you are standing.
+  const done = isResultRoute(pathname) ? [] : finished;
+
   const first = runs[0];
-  if (!first && finished.length === 0) return null;
+  if (!first && done.length === 0) return null;
 
   function open(returnTo: string) {
     onNavigate?.();
@@ -57,7 +66,7 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
         <button
           type="button"
           onClick={() => open('/app')}
-          aria-label={`${finished.length} finished ${finished.length === 1 ? 'audit' : 'audits'}`}
+          aria-label={`${done.length} finished ${done.length === 1 ? 'audit' : 'audits'}`}
           className="relative w-[36px] h-[36px] grid place-items-center rounded-[11px] border border-ld-accent-line bg-ld-accent-soft text-ld-accent cursor-pointer"
         >
           <Check className="w-[17px] h-[17px]" />
@@ -101,20 +110,20 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
           {/* A result that landed while the reader was elsewhere waits here as well as in
               the toast: the toast is where they were looking, this is where they come back
               to. Dismissed by opening it, or by the ×. */}
-          {finished.map(done => (
-            <div key={done.key} className="flex items-stretch border-t border-ld-accent-line first:border-t-0">
+          {done.map(item => (
+            <div key={item.key} className="flex items-stretch border-t border-ld-accent-line first:border-t-0">
               <button
                 type="button"
-                onClick={() => { dismissFinished(done.key); open('/app'); }}
+                onClick={() => { dismissFinished(item.key); open('/app'); }}
                 className="flex-1 min-w-0 text-left px-[12px] py-[10px] bg-transparent border-0 cursor-pointer hover:bg-ld-accent-soft transition-colors"
               >
                 <span className="flex items-center gap-[7px]">
                   <Check className="w-[13px] h-[13px] text-ld-accent shrink-0" />
-                  <span className="font-mono text-[11.5px] text-ld-text truncate flex-1" title={done.url}>
-                    {getHostname(done.url)}
+                  <span className="font-mono text-[11.5px] text-ld-text truncate flex-1" title={item.url}>
+                    {getHostname(item.url)}
                   </span>
                   <span className="font-mono text-[11px] font-semibold text-ld-accent tabular-nums shrink-0">
-                    {done.score}
+                    {item.score}
                   </span>
                 </span>
                 <span className="block font-mono text-[10.5px] text-ld-text-3 mt-[2px]">
@@ -123,7 +132,7 @@ export function RunningAudits({ variant = 'full', onNavigate }: {
               </button>
               <button
                 type="button"
-                onClick={() => dismissFinished(done.key)}
+                onClick={() => dismissFinished(item.key)}
                 aria-label="Dismiss finished audit"
                 className="w-[30px] shrink-0 grid place-items-center bg-transparent border-0 cursor-pointer text-ld-text-3 hover:text-ld-text hover:bg-ld-accent-soft transition-colors"
               >

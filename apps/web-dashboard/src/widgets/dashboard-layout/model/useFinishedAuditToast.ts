@@ -4,9 +4,10 @@ import { joinAnalysis, useRunningAuditsStore } from '@/entities/analysis';
 import { useAnalysisStore } from '@/features/analyzer';
 import { getHostname } from '@/entities/website';
 import { toast } from '@/shared/ui/toast';
+import { isResultRoute } from './resultRoutes';
 import type { AnalysisResult } from '@/entities/analysis';
 
-/** The analyzer's own route — a run finishing while it is open needs no announcement. */
+/** Where "open the report" sends the reader. */
 const ANALYZER_PATH = '/app';
 
 /**
@@ -18,10 +19,11 @@ const ANALYZER_PATH = '/app';
  * is precisely the case a listener there cannot see. The sidebar is mounted for as long as
  * the app is.
  *
- * Two conditions, and they are both "the reader is not looking at it": the tab is in the
- * background, or the open route is not the analyzer. Someone watching the scores appear in
- * front of them gets nothing, because a notification for something already on screen is
- * how people learn to ignore notifications.
+ * One condition: the open route is not one that shows results (see `resultRoutes`).
+ * Someone on the analyzer or the compare page gets nothing — no toast and no sidebar card —
+ * because a notification for something already on screen is how people learn to ignore
+ * notifications. That covers a backgrounded tab too: whenever they come back to it, the
+ * report is what they are looking at, so there is nothing left to announce.
  *
  * The result is written into the analyzer's store on the way past, so opening it lands on
  * the report itself rather than on an empty form — nothing else would have kept it: the
@@ -37,10 +39,7 @@ export function useFinishedAuditToast(): void {
 
   useEffect(() => {
     const onComplete = (result: AnalysisResult) => {
-      const unattended =
-        document.visibilityState === 'hidden' ||
-        window.location.pathname !== ANALYZER_PATH;
-      if (!unattended) return;
+      if (isResultRoute(window.location.pathname)) return;
 
       useAnalysisStore.getState().setResult(result, result.url, null);
       // Also parked in the shell, above Add Website: the toast is where the reader was
