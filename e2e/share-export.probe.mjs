@@ -174,7 +174,7 @@ try {
   check(themed.after === null && themed.darkAfter,
     'the screen goes back to the reader\'s own theme afterwards, both halves of it');
 
-  window0: {
+  {
     // Screenshot with the print palette applied — what actually lands on paper.
     await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
     await sleep(400);

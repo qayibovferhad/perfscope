@@ -8,15 +8,18 @@
     "dev": "tsx watch src/index.ts",
     "lint": "eslint .",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@perfscope/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "lighthouse": "^12.4.0",
     "mongoose": "^9.6.1",
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/jsonwebtoken": "^9.0.10",
@@ -37,6 +41,7 @@
     "@types/uuid": "^10.0.0",
     "socket.io-client": "^4.8.3",
     "tsx": "^4.19.3",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.10"
   }
 }

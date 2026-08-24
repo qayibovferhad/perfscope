@@ -18,9 +18,10 @@ import { AuditQueue, type AuditPriority } from './auditQueue.js';
 import type { AuthSessionData } from './authAuditSession.js';
 import { SessionExpiredError } from '../lib/errors.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
+import { pickMedianRun } from '../lib/medianRun.js';
 import { config } from '../config/index.js';
 import { shouldMeasureAgain, MAX_RUNS } from '@perfscope/shared';
-import type { AnalysisResult, AnalysisProgress, AnalysisCategory, AuditFormFactor, CategoryPartial, MeasurementQuality, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
+import type { AnalysisResult, AnalysisProgress, AnalysisCategory, AuditFormFactor, CategoryPartial, FlameChartData, HeapMemoryData, InteractionData } from '@perfscope/shared';
 
 /** What one worker thread hands back for a single Lighthouse pass. */
 interface WorkerRunResult {
@@ -31,35 +32,6 @@ interface WorkerRunResult {
   networkEvents?:   CompactNetworkEvent[];
   /** Cropped pictures of failing elements, keyed by Lighthouse node id. Static group only. */
   elementShots?:    Record<string, string>;
-}
-
-/**
- * Pick the run that represents the page.
- *
- * The median is taken over whole runs rather than per metric so the reported
- * numbers stay internally consistent — the waterfall, filmstrip and trace all
- * belong to the same load as the score beside them. Averaging metrics would
- * produce a page that never actually existed.
- *
- * Run counts are no longer always odd: `shouldMeasureAgain` stops at two when a page
- * proves itself steady. With an even count this picks the lower of the middle pair, so a
- * two-run audit reports the worse of the two — deliberately. The runs are within
- * STABLE_SPREAD of each other by the time that happens, so the pessimism is a few points
- * at most, and a measurement tool that rounds towards flattering itself is worse than one
- * that rounds the other way.
- */
-function pickMedianRun<T extends { lhr: WorkerRunResult['lhr'] }>(
-  runs: T[],
-): { run: T; measurement: MeasurementQuality } {
-  const scored = runs
-    .map(run => ({ run, score: toScore(run.lhr.categories['performance']?.score) }))
-    .sort((a, b) => a.score - b.score);
-
-  const median = scored[Math.floor((scored.length - 1) / 2)]!;
-  const scores = runs.map(run => toScore(run.lhr.categories['performance']?.score));
-  const spread = scored.length > 1 ? scored[scored.length - 1]!.score - scored[0]!.score : 0;
-
-  return { run: median.run, measurement: { runs: runs.length, scores, median: median.score, spread } };
 }
 
 type ActiveAnalysis =
