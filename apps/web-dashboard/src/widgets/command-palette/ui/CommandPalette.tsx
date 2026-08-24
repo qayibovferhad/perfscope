@@ -112,7 +112,6 @@ export function CommandPalette() {
               placeholder="Search sites, pages and actions…"
               className="flex-1 bg-transparent outline-none text-[14px] text-ld-text placeholder:text-ld-text-3"
             />
-            <kbd className="text-[10px] font-mono font-bold text-ld-text-3 border border-ld-border rounded px-1.5 py-0.5">ESC</kbd>
           </div>
 
           <div ref={listRef} className="max-h-[min(52vh,380px)] overflow-y-auto py-1.5">
