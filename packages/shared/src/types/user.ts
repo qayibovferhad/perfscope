@@ -13,7 +13,17 @@ export interface AuthUser {
  * is how a field could be renamed on one route and noticed on none.
  */
 export interface AuthResponse {
+  /** Short-lived (30 minutes). Sent as the Bearer on every request. */
   token: string
+  /**
+   * Long-lived (30 days), opaque, and rotated every time it is spent.
+   *
+   * The pair exists so the access token can afford to be short: a leaked token is useful
+   * for half an hour instead of a month, and a session can be ended server-side, which a
+   * stateless JWT cannot be. Clients store it beside the access token and trade it in at
+   * `POST /auth/refresh` when a request comes back 401.
+   */
+  refreshToken: string
   user:  AuthUser
 }
 

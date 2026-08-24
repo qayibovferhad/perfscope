@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { printReport, printJson, printMinimal, printInsights } from '../src/reporter.js';
 import { unwrap } from '../src/api.js';
+import { resolveAccessToken, storedRefreshToken } from '../src/session.js';
 import {
   loadCredentials, saveCredentials, clearCredentials, getConfigPath,
 } from '../src/auth.js';
@@ -74,7 +75,7 @@ async function loginCmd(opts) {
           email = payload.email || '';
         } catch { /* non-standard JWT */ }
 
-        saveCredentials(data.token, email);
+        saveCredentials(data, email);
         spinner.succeed(
           chalk.greenBright('Logged in') +
           (email ? chalk.dim(` as ${chalk.white(email)}`) : '') +
@@ -210,13 +211,25 @@ async function pickUrl(apiUrl, apiKey, customUrl = '') {
 
 // ── Audit ────────────────────────────────────────────────
 
-/** Resolve the API key: flag → env → saved credentials. Exits when none is available. */
-function requireApiKey(opts) {
-  const fromFlagOrEnv = opts.key || process.env.PERFSCOPE_API_KEY || '';
-  if (fromFlagOrEnv) return fromFlagOrEnv;
-
-  const creds = loadCredentials();
-  if (creds?.token) return creds.token;
+/**
+ * Resolve the access token: flag → env → saved session, renewing it when it has lapsed.
+ *
+ * Async now, because a saved session is normally *expired* between commands — access tokens
+ * live thirty minutes — and renewing it is a request. See src/session.js for the order of
+ * precedence and for the CI story (`PERFSCOPE_REFRESH_TOKEN`).
+ */
+async function requireApiKey(opts) {
+  let token = null;
+  try {
+    token = await resolveAccessToken(opts);
+  } catch {
+    console.error(
+      chalk.red('Your session has expired.') +
+      chalk.dim(' Run ') + chalk.white('perfscope login') + chalk.dim(' again.')
+    );
+    process.exit(EXIT.ERROR);
+  }
+  if (token) return token;
 
   console.error(
     chalk.red('Not logged in.') +
@@ -268,7 +281,7 @@ async function performAudit(targetUrl, opts, apiKey, spinner) {
 }
 
 async function audit(targetUrl, opts) {
-  const apiKey  = requireApiKey(opts);
+  const apiKey  = await requireApiKey(opts);
   const spinner = ora({ text: chalk.dim('Preparing audit…'), color: 'green' }).start();
 
   let result;
@@ -440,7 +453,7 @@ async function ciCmd(opts) {
     process.exit(EXIT.ERROR);
   }
 
-  const apiKey = requireApiKey(opts);
+  const apiKey = await requireApiKey(opts);
 
   // --json output must be the only thing on stdout so `perfscope ci --json | jq` works;
   // everything human-facing goes to stderr (where ora already writes its spinner).
@@ -514,7 +527,7 @@ async function ciCmd(opts) {
  * release red over an annotation would teach everyone to drop the step.
  */
 async function deployCmd(opts) {
-  const apiKey = requireApiKey(opts);
+  const apiKey = await requireApiKey(opts);
   const apiUrl = opts.apiUrl.replace(/\/$/, '');
   const headers = { Authorization: `Bearer ${apiKey}` };
 
@@ -582,9 +595,18 @@ program
 program
   .command('logout')
   .description('Remove saved PerfScope credentials')
-  .action(() => {
+  .option('--api-url <url>', 'PerfScope API URL', 'http://localhost:3101')
+  .action(async (opts) => {
+    // End it on the server as well: the refresh token is good for a month, and deleting the
+    // local file would leave that session alive on a machine somebody may not control.
+    const refreshToken = storedRefreshToken();
+    if (refreshToken) {
+      try {
+        await axios.post(`${opts.apiUrl.replace(/\/$/, '')}/api/auth/logout`, { refreshToken }, { timeout: 5000 });
+      } catch { /* best effort — the local half must happen either way */ }
+    }
     clearCredentials();
-    console.log(chalk.greenBright('Logged out.') + chalk.dim(' Credentials removed.'));
+    console.log(chalk.greenBright('Logged out.') + chalk.dim(' Session ended and credentials removed.'));
   });
 
 // whoami

@@ -27,11 +27,21 @@ export function loadCredentials() {
   }
 }
 
-export function saveCredentials(token, email) {
+/**
+ * Store the session.
+ *
+ * Takes the whole pair rather than a token: access tokens live thirty minutes now, so what
+ * is worth persisting is the refresh token that renews them — see session.js. Accepts a
+ * bare string as well, so an older caller (or an older backend that answers without a
+ * refresh token) still writes a usable file.
+ */
+export function saveCredentials(tokens, email) {
+  const { token, refreshToken = null } = typeof tokens === 'string' ? { token: tokens } : tokens;
+
   mkdirSync(CONFIG_DIR, { recursive: true });
   writeFileSync(
     CREDS_FILE,
-    JSON.stringify({ token, email, savedAt: new Date().toISOString() }, null, 2),
+    JSON.stringify({ token, refreshToken, email, savedAt: new Date().toISOString() }, null, 2),
     // 0o600 = only owner can read/write (ignored on Windows, handled by NTFS ACL)
     { mode: 0o600 },
   );

@@ -6,6 +6,7 @@ type ActiveTab = 'quick-audit' | 'compare'
 
 interface StorageState {
   token:      string | null
+  refreshToken: string | null
   backendUrl: string
   webUrl:     string
 }
@@ -27,16 +28,17 @@ async function ensureHostPermission(url: string): Promise<boolean> {
 
 export function App() {
   const [activeTab,    setActiveTab]    = useState<ActiveTab>('quick-audit')
-  const [storage,      setStorage]      = useState<StorageState>({ token: null, backendUrl: DEFAULT_BACKEND, webUrl: DEFAULT_WEB })
+  const [storage,      setStorage]      = useState<StorageState>({ token: null, refreshToken: null, backendUrl: DEFAULT_BACKEND, webUrl: DEFAULT_WEB })
   const [showSettings, setShowSettings] = useState(false)
   const [backendInput, setBackendInput] = useState(DEFAULT_BACKEND)
   const [webInput,     setWebInput]     = useState(DEFAULT_WEB)
   const [permError,    setPermError]    = useState(false)
 
   useEffect(() => {
-    browser.storage.local.get(['token', 'backendUrl', 'webUrl']).then(result => {
+    browser.storage.local.get(['token', 'refreshToken', 'backendUrl', 'webUrl']).then(result => {
       setStorage({
         token:      (result.token      as string | undefined) ?? null,
+        refreshToken: (result.refreshToken as string | undefined) ?? null,
         backendUrl: (result.backendUrl as string | undefined) ?? DEFAULT_BACKEND,
         webUrl:     (result.webUrl     as string | undefined) ?? DEFAULT_WEB,
       })

@@ -5,5 +5,6 @@
  * this file. Internals can move freely as long as these names keep resolving.
  */
 export { useAuthStore } from './model/authStore';
+export { signOut } from './model/signOut';
 export { GoogleButton, googleAuthEnabled } from './ui/GoogleButton';
 export { ProtectedRoute } from './ui/ProtectedRoute';

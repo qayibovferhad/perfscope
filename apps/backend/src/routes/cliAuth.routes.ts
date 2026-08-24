@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { ok } from '../lib/respond.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware.js';
 import { CliAuthService } from '../services/cliAuth.service.js';
+import { issueTokens } from '../services/authTokens.service.js';
+import { User } from '../models/User.model.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
 
 const router: Router = Router();
@@ -23,15 +25,22 @@ router.post('/cli/init', asyncHandler(async (req, res) => {
   ok(res);
 }, 'Could not start CLI login'));
 
-// Browser (CliAuthPage) → store token against the code.
-// The token handed to the CLI comes from the verified Authorization header, never the
-// body: a body token would let anyone who learned a pending code plant an arbitrary
-// token into the waiting CLI.
+// Browser (CliAuthPage) → mint a session for the CLI and store it against the code.
+//
+// Authorisation still comes from the verified Authorization header and never from the body
+// — a body token would let anyone who learned a pending code plant an arbitrary token into
+// the waiting CLI. What changed is *which* token the CLI receives: it used to be a copy of
+// the browser's, which was fine while that lived thirty days and is not now that it lives
+// thirty minutes. The CLI gets a session of its own, which it can renew, and which shows up
+// separately when somebody signs out of everything.
 router.post('/cli/complete', requireAuth, asyncHandler<AuthRequest>(async (req, res) => {
-  const code  = requireCode((req.body as { code?: unknown }).code);
-  const token = (req.headers.authorization as string).slice(7);
+  const code = requireCode((req.body as { code?: unknown }).code);
 
-  if (!await CliAuthService.complete(code, token)) {
+  const user = await User.findById(req.userId);
+  if (!user) throw new AppError(401, 'Unauthorized');
+
+  const tokens = await issueTokens(user, 'cli');
+  if (!await CliAuthService.complete(code, tokens)) {
     throw new AppError(404, 'Unknown or expired code');
   }
   ok(res);
@@ -44,7 +53,7 @@ router.get('/cli/poll', asyncHandler(async (req, res) => {
 
   if (result.status === 'unknown') throw new AppError(404, 'Unknown or expired code — re-run login');
   if (result.status === 'pending') { ok(res, { pending: true }); return; }
-  ok(res, { token: result.token });
+  ok(res, result.tokens);
 }, 'Could not check CLI login'));
 
 export { router as cliAuthRouter };

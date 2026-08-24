@@ -29,6 +29,9 @@ export function LoginPage() {
   const sessionNotice =
     reason === 'expired' ? 'Your session expired. Please sign in again.'
     : reason === 'invalid' ? 'Your session is no longer valid. Please sign in again.'
+    // A reset signs every device out, this one included — so landing here is the expected
+    // end of that flow, not a failure, and the wording has to say so.
+    : reason === 'reset' ? 'Your password has been changed. Sign in with the new one.'
     : '';
 
   const [showPass,   setShowPass]   = useState(false);
@@ -48,7 +51,7 @@ export function LoginPage() {
     setServerErr('');
     try {
       const res = await apiClient.post<AuthResponse>('/auth/login', data);
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.token, res.data.refreshToken);
       navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
@@ -57,8 +60,8 @@ export function LoginPage() {
     }
   }
 
-  function onGoogleSuccess({ user, token }: AuthResponse) {
-    setAuth(user, token);
+  function onGoogleSuccess({ user, token, refreshToken }: AuthResponse) {
+    setAuth(user, token, refreshToken);
     navigate(redirectTo, { replace: true });
   }
 
@@ -150,6 +153,12 @@ export function LoginPage() {
             Don't have an account?{' '}
             <Link to="/register" className="font-semibold text-ps-accent">
               Register
+            </Link>
+          </p>
+
+          <p className="text-center text-xs text-ps-muted">
+            <Link to="/forgot-password" className="font-semibold text-ps-accent">
+              Forgot your password?
             </Link>
           </p>
         </form>

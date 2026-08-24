@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { DigestPreference } from '@perfscope/shared';
+import type { AuthResponse, DigestPreference } from '@perfscope/shared';
 import { useForm } from 'react-hook-form';
-import { KeyRound, Loader2, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { KeyRound, Loader2, LogOut, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { useSaveState, SaveError, SavedChip } from './ui/saveState';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Page, PageHeader } from '@/shared/ui/page';
@@ -33,6 +33,7 @@ export function SettingsPage() {
         <ProfileSection user={user} setAuth={setAuth} />
         <DigestSection />
         <PasswordSection />
+        <SessionsSection />
       </div>
     </Page>
   );
@@ -126,7 +127,7 @@ function DigestSection() {
 
 interface ProfileSectionProps {
   user:    AuthUser | null;
-  setAuth: (user: AuthUser, token: string) => void;
+  setAuth: (user: AuthUser, token: string, refreshToken?: string | null) => void;
 }
 
 function ProfileSection({ user, setAuth }: ProfileSectionProps) {
@@ -138,9 +139,10 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
 
   async function onSubmit({ name }: ProfileForm) {
     await run(async () => {
-      const res = await apiClient.patch<{ token: string; user: AuthUser }>('/auth/profile', { name });
-      // The name lives in the JWT too, so swap in the re-signed token alongside the user.
-      setAuth(res.data.user, res.data.token);
+      const res = await apiClient.patch<AuthResponse>('/auth/profile', { name });
+      // The name lives in the JWT too, so swap in the re-signed token alongside the user —
+      // and the refresh token with it, because renaming mints a whole new session.
+      setAuth(res.data.user, res.data.token, res.data.refreshToken);
       reset({ name: res.data.user.name }); // clears isDirty so the Save button settles
     });
   }
@@ -191,6 +193,7 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
 
 function PasswordSection() {
   const { saved, error, run } = useSaveState('Could not change your password');
+  const [endedSessions, setEndedSessions] = useState(0);
 
   const {
     register, handleSubmit, reset, watch, formState: { errors, isSubmitting },
@@ -202,7 +205,13 @@ function PasswordSection() {
 
   async function onSubmit({ currentPassword, newPassword: next }: PasswordForm) {
     await run(async () => {
-      await apiClient.patch('/auth/password', { currentPassword, newPassword: next });
+      // Sending our own refresh token is what keeps *this* tab signed in: the server ends
+      // every other session on a password change, which is the point of changing one.
+      const refreshToken = useAuthStore.getState().refreshToken;
+      const res = await apiClient.patch<{ ended: number }>('/auth/password', {
+        currentPassword, newPassword: next, refreshToken,
+      });
+      setEndedSessions(res.data?.ended ?? 0);
       reset();
     });
   }
@@ -270,7 +279,67 @@ function PasswordSection() {
           </Button>
           {saved && <SavedChip label="Password updated" />}
         </div>
+        {saved && endedSessions > 0 && (
+          <span className="text-[11.5px] text-ld-text-3">
+            {endedSessions === 1
+              ? 'One other signed-in device was signed out.'
+              : `${endedSessions} other signed-in devices were signed out.`}
+          </span>
+        )}
       </form>
+    </Panel>
+  );
+}
+
+/* ── Sessions ─────────────────────────────────────────────────────────────── */
+
+/**
+ * The lost-laptop button.
+ *
+ * A signed-in device holds a refresh token that is good for a month, and until this existed
+ * there was no way to take one back: clearing localStorage on the machine in front of you
+ * says nothing about the one you left on a train. This ends every session except this tab's.
+ *
+ * It reports the number rather than saying "done", because "no other devices were signed in"
+ * and "four were" are different pieces of news and only one of them means anything.
+ */
+function SessionsSection() {
+  const { saved, error, run } = useSaveState('Could not sign out your other devices');
+  const [ended, setEnded] = useState<number | null>(null);
+
+  async function signOutOthers() {
+    await run(async () => {
+      const refreshToken = useAuthStore.getState().refreshToken;
+      const res = await apiClient.post<{ ended: number }>('/auth/logout-all', { refreshToken });
+      setEnded(res.data?.ended ?? 0);
+    });
+  }
+
+  return (
+    <Panel>
+      <PanelHeader icon={<LogOut />} title="Signed-in devices" />
+      <div className="flex flex-col gap-[14px] p-[18px]">
+        <p className="text-[12.5px] leading-relaxed text-ld-text-2">
+          Signing in on a browser, the CLI or the extension creates a session that stays valid
+          for 30&nbsp;days. Ending them all leaves only this tab signed in — do it if a device
+          was lost, or if you shared a machine.
+        </p>
+
+        {error && <SaveError>{error}</SaveError>}
+
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="destructive-soft" size="md" onClick={signOutOthers}>
+            Sign out other devices
+          </Button>
+          {saved && ended !== null && (
+            <span className="text-[11.5px] text-ld-text-3">
+              {ended === 0 ? 'No other devices were signed in.'
+                : ended === 1 ? 'One device was signed out.'
+                : `${ended} devices were signed out.`}
+            </span>
+          )}
+        </div>
+      </div>
     </Panel>
   );
 }

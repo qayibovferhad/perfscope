@@ -11,6 +11,8 @@ import { StatePanel }      from '@/shared/ui/state-panel';
 const LandingPage           = lazy(() => import('@/pages/landing').then(m => ({ default: m.LandingPage })));
 const LoginPage             = lazy(() => import('@/pages/login/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage          = lazy(() => import('@/pages/register/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ForgotPasswordPage    = lazy(() => import('@/pages/forgot-password/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage     = lazy(() => import('@/pages/reset-password/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const AnalyzerPage          = lazy(() => import('@/pages/analyzer/AnalyzerPage').then(m => ({ default: m.AnalyzerPage })));
 const ComparisonPage        = lazy(() => import('@/pages/compare/ComparisonPage').then(m => ({ default: m.ComparisonPage })));
 const DashboardPage         = lazy(() => import('@/pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -90,6 +92,8 @@ export default function App() {
         <Route path="/"         element={<HomeRoute />} />
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password"  element={<ResetPasswordPage />} />
 
         <Route path="/dashboard"       element={<DashboardRoute><DashboardPage /></DashboardRoute>} />
         <Route path="/app"             element={<DashboardRoute><AnalyzerPage /></DashboardRoute>} />

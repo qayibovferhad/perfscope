@@ -16,6 +16,9 @@ const cliAuthCodeSchema = new Schema(
     code:  { type: String, required: true, unique: true },
     /** Set by the browser once the user is signed in. Absent while still pending. */
     token: { type: String, default: null },
+    /** The CLI gets a session of its own rather than a copy of the browser's — so it can
+     *  renew its short-lived access token, and so ending one does not end the other. */
+    refreshToken: { type: String, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
@@ -29,9 +32,10 @@ cliAuthCodeSchema.index({ createdAt: 1 }, { expireAfterSeconds: CODE_TTL_SECONDS
 
 export interface ICliAuthCode {
   _id:       Types.ObjectId;
-  code:      string;
-  token:     string | null;
-  createdAt: Date;
+  code:         string;
+  token:        string | null;
+  refreshToken: string | null;
+  createdAt:    Date;
 }
 
 export const CliAuthCode = model<ICliAuthCode>('CliAuthCode', cliAuthCodeSchema);

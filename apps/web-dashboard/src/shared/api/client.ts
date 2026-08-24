@@ -4,6 +4,23 @@ import { useStorageStore } from '@/shared/model/storageStore';
 let _getToken: () => string | null = () => null;
 export function configureApiToken(getter: () => string | null) { _getToken = getter; }
 
+/**
+ * How the client renews a lapsed access token without anybody noticing.
+ *
+ * Wired in main.tsx from the auth store: `getRefreshToken` reads the stored one,
+ * `onRefreshed` writes the new pair back. Kept as configuration rather than an import so
+ * this module still knows nothing about auth — it is `shared/`, and the store is a feature.
+ */
+let _getRefreshToken: () => string | null = () => null;
+let _onRefreshed: (token: string, refreshToken: string) => void = () => {};
+export function configureTokenRefresh(
+  getRefreshToken: () => string | null,
+  onRefreshed: (token: string, refreshToken: string) => void,
+) {
+  _getRefreshToken = getRefreshToken;
+  _onRefreshed = onRefreshed;
+}
+
 export type UnauthorizedReason = 'expired' | 'invalid';
 
 let _onUnauthorized: (reason: UnauthorizedReason) => void = () => {};
@@ -86,13 +103,52 @@ function unwrapEnvelope(res: { data?: unknown }): void {
   }
 }
 
+/**
+ * One renewal at a time.
+ *
+ * A dashboard route fires half a dozen queries at once, so a lapsed token produces half a
+ * dozen simultaneous 401s. Each refreshing on its own would spend the refresh token six
+ * times — and since refresh tokens rotate, five of those are *reuse*, which the server
+ * correctly reads as a stolen token and answers by killing the session. The first 401 to
+ * arrive starts the renewal; the rest wait on the same promise.
+ */
+let refreshing: Promise<string | null> | null = null;
+
+async function renewAccessToken(): Promise<string | null> {
+  const refreshToken = _getRefreshToken();
+  if (!refreshToken) return null;
+
+  refreshing ??= (async () => {
+    try {
+      // Bare axios, not apiClient: this must not carry the dead Authorization header, and
+      // it must not recurse through this interceptor if it fails.
+      const res = await axios.post('/api/auth/refresh', { refreshToken }, {
+        baseURL: apiClient.defaults.baseURL?.replace(/\/api$/, '') || undefined,
+        timeout: DEFAULT_TIMEOUT_MS,
+      });
+      const body = res.data?.data ?? res.data;
+      if (!body?.token || !body?.refreshToken) return null;
+      _onRefreshed(body.token, body.refreshToken);
+      return body.token as string;
+    } catch {
+      return null;
+    } finally {
+      // Cleared on the next tick so everyone waiting on this attempt reads its result
+      // before a later 401 can start a second one.
+      setTimeout(() => { refreshing = null; }, 0);
+    }
+  })();
+
+  return refreshing;
+}
+
 apiClient.interceptors.response.use(
   (res) => {
     trackStorageState(res);
     unwrapEnvelope(res);
     return res;
   },
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
     const url    = error?.config?.url ?? '';
     trackStorageState(error?.response);
@@ -100,6 +156,18 @@ apiClient.interceptors.response.use(
     // 401 on /auth/* means bad credentials on the login/register form itself —
     // those pages render their own error, so never treat it as a dead session.
     if (status === 401 && !url.startsWith('/auth')) {
+      // An expired access token is the ordinary case now, not a dead session: try to renew
+      // it once and replay the request. `_retried` is what stops a request that 401s again
+      // (a revoked session, a bad signature) from looping.
+      const request = error.config as (typeof error.config & { _retried?: boolean });
+      if (request && !request._retried) {
+        const token = await renewAccessToken();
+        if (token) {
+          request._retried = true;
+          request.headers = { ...request.headers, Authorization: `Bearer ${token}` };
+          return apiClient.request(request);
+        }
+      }
       _onUnauthorized(error.response?.data?.code === 'TOKEN_EXPIRED' ? 'expired' : 'invalid');
     }
     return Promise.reject(error);

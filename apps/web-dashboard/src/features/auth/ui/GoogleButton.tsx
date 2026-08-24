@@ -1,6 +1,5 @@
 import { useGoogleLogin } from '@react-oauth/google';
 import type { AuthResponse } from '@perfscope/shared';
-import type { AuthUser } from '@/entities/user';
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
 
@@ -13,7 +12,7 @@ export const googleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 interface Props {
   /** A real session: the user *and* the token every later request is signed with. */
-  onSuccess: (auth: { user: AuthUser; token: string }) => void;
+  onSuccess: (auth: AuthResponse) => void;
   onError:   (msg: string) => void;
 }
 
@@ -30,7 +29,7 @@ export function GoogleButton({ onSuccess, onError }: Props) {
           '/auth/google',
           { accessToken: tokenRes.access_token },
         );
-        onSuccess({ user: res.data.user, token: res.data.token });
+        onSuccess(res.data);
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
         onError(msg ?? 'Google sign-in failed');

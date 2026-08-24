@@ -19,7 +19,9 @@ import { CliAuthService } from '../src/services/cliAuth.service.js';
 import { CliAuthCode } from '../src/models/CliAuthCode.model.js';
 
 const CODE = `probe-${Math.random().toString(16).slice(2)}`;
-const TOKEN = 'probe.jwt.value';
+/** The CLI is handed a session of its own now — an access token and the refresh token that
+ *  renews it — rather than a copy of the browser's token. */
+const TOKENS = { token: 'probe.jwt.value', refreshToken: 'probe.refresh.value' };
 
 async function runSuite(label: string) {
   console.log(`\n── ${label} ──`);
@@ -32,19 +34,21 @@ async function runSuite(label: string) {
   const waiting = await CliAuthService.claim(CODE);
   console.log(`  registered, not signed : ${waiting.status} ${waiting.status === 'pending' ? '✓' : '← should be pending'}`);
 
-  const completed = await CliAuthService.complete(CODE, TOKEN);
+  const completed = await CliAuthService.complete(CODE, TOKENS);
   console.log(`  browser completes      : ${completed ? '✓' : '← should have matched'}`);
 
   const claimed = await CliAuthService.claim(CODE);
-  const ok = claimed.status === 'ready' && claimed.token === TOKEN;
-  console.log(`  CLI collects the token : ${ok ? '✓' : `← got ${JSON.stringify(claimed)}`}`);
+  const ok = claimed.status === 'ready'
+    && claimed.tokens.token === TOKENS.token
+    && claimed.tokens.refreshToken === TOKENS.refreshToken;
+  console.log(`  CLI collects the pair  : ${ok ? '✓' : `← got ${JSON.stringify(claimed)}`}`);
 
   // The token is one-use: a second poller (or a replayed code) must get nothing.
   const again = await CliAuthService.claim(CODE);
   console.log(`  second claim           : ${again.status} ${again.status === 'unknown' ? '✓ consumed' : '← should be gone'}`);
 
   // Completing an unknown code must fail rather than silently create one.
-  const orphan = await CliAuthService.complete('never-registered', TOKEN);
+  const orphan = await CliAuthService.complete('never-registered', TOKENS);
   console.log(`  complete unknown code  : ${orphan ? '← should have been rejected' : '✓ rejected'}`);
 
   // Re-running login before the first attempt expired must not collide on the unique index.

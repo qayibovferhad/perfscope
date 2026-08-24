@@ -14,7 +14,9 @@ import { CliAuthCode, CODE_TTL_SECONDS } from '../models/CliAuthCode.model.js';
  * That fallback is single-instance by nature, which is the same guarantee as before.
  */
 
-interface MemoryEntry { token: string | null; at: number }
+interface CliTokens { token: string; refreshToken: string }
+
+interface MemoryEntry { tokens: CliTokens | null; at: number }
 const memory = new Map<string, MemoryEntry>();
 
 const CODE_TTL_MS = CODE_TTL_SECONDS * 1000;
@@ -35,26 +37,26 @@ export const CliAuthService = {
       // Re-running `perfscope login` before the first attempt expired must not 11000.
       await CliAuthCode.updateOne(
         { code },
-        { $set: { token: null, createdAt: new Date() } },
+        { $set: { token: null, refreshToken: null, createdAt: new Date() } },
         { upsert: true },
       );
       return;
     }
-    memory.set(code, { token: null, at: Date.now() });
+    memory.set(code, { tokens: null, at: Date.now() });
   },
 
-  /** Browser: attach the signed-in user's verified token. Returns false for an unknown code. */
-  async complete(code: string, token: string): Promise<boolean> {
+  /** Browser: attach the session minted for the CLI. Returns false for an unknown code. */
+  async complete(code: string, tokens: CliTokens): Promise<boolean> {
     if (isDbReady()) {
       const { matchedCount } = await CliAuthCode.updateOne(
         { code, createdAt: { $gte: freshSince() } },
-        { $set: { token } },
+        { $set: { token: tokens.token, refreshToken: tokens.refreshToken } },
       );
       return matchedCount > 0;
     }
     const entry = memory.get(code);
     if (!entry || entry.at < Date.now() - CODE_TTL_MS) return false;
-    entry.token = token;
+    entry.tokens = tokens;
     return true;
   },
 
@@ -64,13 +66,15 @@ export const CliAuthService = {
    * `'pending'` and `'unknown'` are different answers — one means keep waiting, the other
    * means the code is gone and the user has to start again.
    */
-  async claim(code: string): Promise<{ status: 'ready'; token: string } | { status: 'pending' } | { status: 'unknown' }> {
+  async claim(code: string): Promise<{ status: 'ready'; tokens: CliTokens } | { status: 'pending' } | { status: 'unknown' }> {
     if (isDbReady()) {
       // findOneAndDelete, so two pollers racing cannot both be handed the token.
       const taken = await CliAuthCode.findOneAndDelete(
         { code, token: { $ne: null }, createdAt: { $gte: freshSince() } },
       ).lean();
-      if (taken?.token) return { status: 'ready', token: taken.token };
+      if (taken?.token) {
+        return { status: 'ready', tokens: { token: taken.token, refreshToken: taken.refreshToken ?? '' } };
+      }
 
       const exists = await CliAuthCode.exists({ code, createdAt: { $gte: freshSince() } });
       return exists ? { status: 'pending' } : { status: 'unknown' };
@@ -78,8 +82,8 @@ export const CliAuthService = {
 
     const entry = memory.get(code);
     if (!entry || entry.at < Date.now() - CODE_TTL_MS) return { status: 'unknown' };
-    if (!entry.token) return { status: 'pending' };
+    if (!entry.tokens) return { status: 'pending' };
     memory.delete(code);
-    return { status: 'ready', token: entry.token };
+    return { status: 'ready', tokens: entry.tokens };
   },
 };

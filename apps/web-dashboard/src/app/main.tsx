@@ -8,7 +8,7 @@ import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
 import { Toaster } from '@/shared/ui/toast';
-import { configureApiToken, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
+import { configureApiToken, configureTokenRefresh, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
 import { useAuthStore } from '@/features/auth';
 import { useAnalysisStore } from '@/features/analyzer';
@@ -20,12 +20,22 @@ const getToken = () => useAuthStore.getState().token;
 configureApiToken(getToken);
 configureSocketToken(getToken);
 
+// Access tokens last half an hour, so the ordinary state of an open dashboard is one that
+// has just lapsed. The client renews it against the stored refresh token and replays the
+// request; the reader sees nothing. Only a refresh that *fails* becomes a sign-out.
+configureTokenRefresh(
+  () => useAuthStore.getState().refreshToken,
+  (token, refreshToken) => useAuthStore.getState().setTokens(token, refreshToken),
+);
+
 // A dead token leaves the UI looking logged in while every request 401s.
 // Drop the stored session and bounce to /login, keeping the current page as redirect target.
 configureUnauthorizedHandler((reason) => {
   const { token, logout } = useAuthStore.getState();
   if (!token) return; // already cleared by a concurrent 401 — don't redirect twice
 
+  // Not `signOut()`: we are here *because* the credentials no longer work, so there is
+  // nothing to tell the server that it does not already know.
   logout();
 
   const here = window.location.pathname + window.location.search;

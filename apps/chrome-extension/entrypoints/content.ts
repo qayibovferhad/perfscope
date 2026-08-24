@@ -22,11 +22,15 @@ function syncToken() {
       browser.runtime.sendMessage({ type: 'PERFSCOPE_LOGOUT' }).catch(() => undefined)
       return
     }
-    const parsed = JSON.parse(raw) as { state?: { token?: string | null } }
+    const parsed = JSON.parse(raw) as { state?: { token?: string | null; refreshToken?: string | null } }
     const token  = parsed?.state?.token ?? null
+    // The refresh token travels with it: an access token lives thirty minutes, so syncing
+    // only that would leave the popup signed out again by the time anybody opened it.
+    const refreshToken = parsed?.state?.refreshToken ?? null
     browser.runtime.sendMessage({
       type:  token ? 'PERFSCOPE_TOKEN' : 'PERFSCOPE_LOGOUT',
       token,
+      refreshToken,
     }).catch(() => undefined)
   } catch { /* ignore */ }
 }

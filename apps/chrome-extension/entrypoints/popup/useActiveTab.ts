@@ -39,7 +39,21 @@ export function pathnameOf(url: string): string {
  */
 export function useApiClient(backendUrl: string, token: string | null) {
   return useMemo(
-    () => createApiClient({ baseUrl: backendUrl, getToken: () => token }),
+    () => createApiClient({
+      baseUrl:  backendUrl,
+      getToken: () => token,
+      // The popup is opened minutes or days after the dashboard synced the token, so its
+      // access token is usually expired. It renews against the refresh token that came with
+      // it and writes the new pair straight back to storage — the next popup opens signed
+      // in rather than sending everyone back to the dashboard to "log in again".
+      getRefreshToken: async () => {
+        const { refreshToken } = await browser.storage.local.get('refreshToken')
+        return (refreshToken as string | undefined) ?? null
+      },
+      onTokensRefreshed: async (tokens) => {
+        await browser.storage.local.set({ token: tokens.token, refreshToken: tokens.refreshToken })
+      },
+    }),
     [backendUrl, token],
   )
 }

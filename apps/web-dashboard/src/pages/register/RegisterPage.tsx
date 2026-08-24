@@ -38,7 +38,7 @@ export function RegisterPage() {
     setServerErr('');
     try {
       const res = await apiClient.post<AuthResponse>('/auth/register', data);
-      setAuth(res.data.user, res.data.token);
+      setAuth(res.data.user, res.data.token, res.data.refreshToken);
       navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
@@ -47,8 +47,8 @@ export function RegisterPage() {
     }
   }
 
-  function onGoogleSuccess({ user, token }: AuthResponse) {
-    setAuth(user, token);
+  function onGoogleSuccess({ user, token, refreshToken }: AuthResponse) {
+    setAuth(user, token, refreshToken);
     navigate('/dashboard', { replace: true });
   }
 

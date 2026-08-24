@@ -63,7 +63,9 @@ export async function registerUser(email = uniqueEmail()) {
   }
   // Every endpoint answers `{ success, data }` — see the backend's lib/respond.ts.
   const { data } = await res.json();
-  return { token: data.token, user: data.user, email };
+  // `refreshToken` came with sessions becoming revocable: the access token now lasts 30
+  // minutes, so a probe that seeds only that is seeding something that expires mid-run.
+  return { token: data.token, refreshToken: data.refreshToken, user: data.user, email };
 }
 
 /**
@@ -71,7 +73,7 @@ export async function registerUser(email = uniqueEmail()) {
  * boots straight into an authenticated session. Returns { browser, page, errors }
  * where `errors` collects every console error and uncaught page error.
  */
-export async function launchAuthedBrowser({ user, token }) {
+export async function launchAuthedBrowser({ user, token, refreshToken = null }) {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
@@ -99,7 +101,7 @@ export async function launchAuthedBrowser({ user, token }) {
         localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 }));
       } catch { /* opaque origin — the app is not running here anyway */ }
     },
-    { user, token },
+    { user, token, refreshToken },
   );
 
   return { browser, page, errors };
