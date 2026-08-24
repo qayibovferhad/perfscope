@@ -5,7 +5,7 @@ import { NAV } from '@/shared/config/nav';
 import { useTheme } from '@/shared/ui/theme/ThemeProvider';
 import { getHostname, useWebsites } from '@/entities/website';
 import { useWebsiteActions } from '@/features/websites';
-import { useAuthStore } from '@/features/auth';
+import { signOut } from '@/features/auth';
 
 export interface Command {
   id:      string;
@@ -31,7 +31,6 @@ export function useCommands(): Command[] {
   const { websites } = useWebsites();
   const { quickAudit, startCompare } = useWebsiteActions();
   const { theme, toggle } = useTheme();
-  const logout = useAuthStore(s => s.logout);
 
   return useMemo(() => {
     const siteCommands = websites.flatMap((site) => {
@@ -68,10 +67,10 @@ export function useCommands(): Command[] {
       },
       {
         id: 'logout', label: 'Log out', group: 'Actions', icon: LogOut,
-        run: () => { logout(); navigate('/login'); },
+        run: () => { signOut(); navigate('/login'); },
       },
     ];
 
     return [...siteCommands, ...pages, ...actions];
-  }, [websites, navigate, quickAudit, startCompare, theme, toggle, logout]);
+  }, [websites, navigate, quickAudit, startCompare, theme, toggle]);
 }

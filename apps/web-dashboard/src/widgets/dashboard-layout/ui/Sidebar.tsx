@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight, Globe, LogOut, Plus, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
-import { useAuthStore } from '@/features/auth';
+import { signOut, useAuthStore } from '@/features/auth';
 import { useWebsites, getHostname } from '@/entities/website';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './RunningAudits';
@@ -19,7 +19,7 @@ interface SidebarProps {
 export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore(s => s.user);
   const { websites, remove } = useWebsites();
   const { data: allHistory = [] } = useAllHistory();
 
@@ -39,7 +39,8 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
 
   function handleLogout() {
     setLogoutOpen(false);
-    logout();
+    // Ends the session on the server too, not just in this tab — see signOut.
+    signOut();
     navigate('/login', { replace: true });
   }
 
