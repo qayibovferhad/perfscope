@@ -1,5 +1,5 @@
 import {
-  SCORE_BANDS, describeBudgetFailure, isOverviewWindow, DEFAULT_OVERVIEW_WINDOW,
+  SCORE_BANDS, describeBudgetFailure, resolveOverviewRange,
   type OverviewData, type OverviewAttention, type OverviewIncident,
 } from '@perfscope/shared';
 import { meanRounded } from '../lib/stats.js';
@@ -20,9 +20,6 @@ import { Types, type QueryFilter } from 'mongoose';
  * independent copies of that definition is exactly how they came to disagree before.
  */
 
-/** Audits older than this stop counting toward the "recent activity" number. */
-/** Fallback when nothing asks for a window — the dashboard always does. */
-const RECENT_DAYS = DEFAULT_OVERVIEW_WINDOW;
 /** Rows per list. Enough to see a pattern, few enough to read without scrolling. */
 const LIST_LIMIT = 8;
 /** Runs scanned to find each listed audit's predecessor. Covers LIST_LIMIT rows comfortably. */
@@ -161,19 +158,29 @@ export function emptyOverview(): OverviewData {
     recentAudits: [],
     attention:    [],
     rum:          null,
-    charts:       { days: CHART_DAYS, trend: [], activity: [], vitals: [] },
+    // A real window even with nothing in it: the axis still has to span something, and
+    // a sentinel date would render as a chart labelled with a day nobody chose.
+    charts:       { ...resolveOverviewRange({ days: CHART_DAYS }), trend: [], activity: [], vitals: [] },
   };
 }
 
-/** What the dashboard is asking about: how far back, and whether one site or all of them. */
+/**
+ * What the dashboard is asking about: which days, and whether one site or all of them.
+ *
+ * `days` is the shorthand the presets produce; `from`/`to` is what the date picker sends.
+ * Both are resolved by the *shared* `resolveOverviewRange`, so the client can label the
+ * charts with exactly the window the server counted — see lib/overviewRange.ts.
+ */
 export interface OverviewScope {
   days?:      number;
+  from?:      string | undefined;
+  to?:        string | undefined;
   /** A site of this account, or nothing for the whole account. */
   websiteId?: string | undefined;
 }
 
 export async function getOverview(userId: string, scope: OverviewScope = {}): Promise<OverviewData> {
-  const days = isOverviewWindow(scope.days) ? scope.days : DEFAULT_OVERVIEW_WINDOW;
+  const range = resolveOverviewRange(scope);
 
   const all = await Website.find({ userId }).lean<IWebsite[]>();
   // Narrowed *after* the ownership query, never inside it: a websiteId from the client is
@@ -193,11 +200,16 @@ export async function getOverview(userId: string, scope: OverviewScope = {}): Pr
   const siteIds     = sites.map((s) => s._id);
   const rumInstalled = sites.filter((s) => s.rumKey).length;
 
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  // Both ends are calendar days, so the window closes at the *end* of `to` — a range
+  // ending today has to include the runs from an hour ago, and one ending last Friday must
+  // not swallow Saturday.
+  const since = new Date(`${range.from}T00:00:00.000Z`);
+  const until = new Date(`${range.to}T23:59:59.999Z`);
+  const inWindow = { $gte: since, $lte: until };
 
   const [scores, auditsInWindow, recent, incidents, rumRows, charts] = await Promise.all([
     computeSiteScores(userId, sites),
-    HistoryModel.countDocuments({ userId, createdAt: { $gte: since }, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>),
+    HistoryModel.countDocuments({ userId, createdAt: inWindow, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } as QueryFilter<Record<string, unknown>>),
     // Manual only, like the history page: eight rows filled with last night's timetable
     // tell the user nothing they did, and the scheduled page reports those in full.
     HistoryModel
@@ -214,7 +226,7 @@ export async function getOverview(userId: string, scope: OverviewScope = {}): Pr
           { $limit: 200 },
         ])
       : Promise.resolve([]),
-    getOverviewCharts(userId, sites, days, hostFilter),
+    getOverviewCharts(userId, sites, range, hostFilter),
   ]);
 
   // Each listed run is compared with the run immediately before *it*, not with one

@@ -1,6 +1,6 @@
 import {
-  VITAL_THRESHOLDS,
-  type OverviewCharts, type OverviewSiteTrend, type OverviewVitalSplit, type VitalKey,
+  VITAL_THRESHOLDS, dayKeysBetween,
+  type OverviewCharts, type OverviewRange, type OverviewSiteTrend, type OverviewVitalSplit, type VitalKey,
 } from '@perfscope/shared';
 import { HistoryModel } from '../models/History.model.js';
 import { HAS_RESULT_FILTER } from '../lib/history.js';
@@ -26,17 +26,6 @@ interface DayCount { _id: string; audits: number }
 interface HostDay  { _id: { host: string; day: string }; score: number }
 type VitalRow = { _id: null } & Record<string, number>;
 
-/** Every UTC day in the window, so a gap in the data is still a gap on the axis. */
-function dayKeys(days: number): string[] {
-  const out: string[] = [];
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  for (let i = days - 1; i >= 0; i--) {
-    out.push(new Date(today.getTime() - i * 86_400_000).toISOString().slice(0, 10));
-  }
-  return out;
-}
-
 /**
  * Band counters built from VITAL_THRESHOLDS rather than retyped numbers — the same
  * reason the tooltips derive their copy from it. A threshold change lands here for free.
@@ -58,17 +47,22 @@ function vitalCounters(): Record<string, unknown> {
 export async function getOverviewCharts(
   userId: string,
   sites: { _id: unknown; url: string; name: string }[],
-  windowDays: number = CHART_DAYS,
+  /** The window, already resolved — the caller and the client share one definition of it. */
+  range: OverviewRange,
   /** Restrict to one site's routes — `normalizedUrl` is stored as `host/path`. */
   hostFilter?: RegExp,
 ): Promise<OverviewCharts> {
-  const days  = dayKeys(windowDays);
-  const since = new Date(`${days[0]}T00:00:00.000Z`);
+  const days  = dayKeysBetween(range.from, range.to);
+  const since = new Date(`${range.from}T00:00:00.000Z`);
+  // Closed at the far end too, now that the window can end before today: without this a
+  // range picked as "the first week of August" would draw seven ticks and count the whole
+  // month into the last of them.
+  const until = new Date(`${range.to}T23:59:59.999Z`);
 
   const [facet] = await HistoryModel.aggregate<{
     activity: DayCount[]; trend: HostDay[]; vitals: VitalRow[];
   }>([
-    { $match: { userId, createdAt: { $gte: since }, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } },
+    { $match: { userId, createdAt: { $gte: since, $lte: until }, ...(hostFilter ? { normalizedUrl: hostFilter } : {}), ...HAS_RESULT_FILTER } },
     {
       $facet: {
         activity: [
@@ -119,7 +113,9 @@ export async function getOverviewCharts(
   }));
 
   return {
-    days: windowDays,
+    days: range.days,
+    from: range.from,
+    to:   range.to,
     trend,
     activity: days.map(day => ({ day, audits: activityByDay.get(day) ?? 0 })),
     vitals,

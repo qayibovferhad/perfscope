@@ -37,6 +37,14 @@ const PLAN = [
 ];
 const within = (days, host) => PLAN.filter(p => p.daysAgo <= days && (!host || p.host === host)).length;
 
+/** The UTC day an audit `n` days old lands on — the same key the picker's cells carry. */
+const dayKey = (daysAgo) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+
+/** How many seeded audits fall inside an explicit range, by day key. */
+const betweenDays = (fromDaysAgo, toDaysAgo, host) => PLAN.filter(p =>
+  dayKey(p.daysAgo) >= dayKey(fromDaysAgo) && dayKey(p.daysAgo) <= dayKey(toDaysAgo)
+  && (!host || p.host === host)).length;
+
 await waitForServers();
 const { token, user, email } = await registerUser();
 const userId = String(user.sub ?? user.id);
@@ -81,6 +89,41 @@ const shown = async () => {
   return Number(v.fromCard ?? v.fromText ?? NaN);
 };
 
+
+/**
+ * Click the first element matching `selector` (optionally the first whose text matches
+ * `text`), with a real pointer at its centre.
+ *
+ * `element.click()` does not take the same default-action path a pointer does — the Stop
+ * saga cost most of a day to that, and a listbox and a calendar are almost entirely
+ * default-action behaviour.
+ */
+async function clickText(page, selector, text) {
+  const box = await page.evaluate((sel, pattern) => {
+    const re = pattern ? new RegExp(pattern) : null;
+    const el = [...document.querySelectorAll(sel)]
+      .find(e => !re || re.test(e.textContent ?? ''));
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return null;
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  }, selector, text ? text.source : null);
+
+  if (!box) return false;
+  await page.mouse.click(box.x, box.y);
+  return true;
+}
+
+/** Click a day in the open calendar, paging back a month at a time until it is on screen. */
+async function pickDay(page, day) {
+  for (let i = 0; i < 14; i++) {
+    if (await clickText(page, `button[aria-label="${day}"]`)) return true;
+    if (!await clickText(page, '[aria-label="Previous month"]')) return false;
+    await sleep(150);
+  }
+  return false;
+}
+
 try {
   for (const days of [7, 30, 90]) {
     await page.goto(`${WEB_URL}/dashboard?days=${days}`, { waitUntil: 'networkidle0' });
@@ -91,12 +134,12 @@ try {
   }
 
   // The same window, one site: a filter that does not change the number is not a filter.
-  const siteId = await page.evaluate(() => {
-    const btn = [...document.querySelectorAll('[aria-label="Site filter"] button')]
-      .find(b => /alpha/.test(b.textContent ?? ''));
-    btn?.click();
-    return btn ? new URLSearchParams(location.search).get('site') : null;
-  });
+  // It is a select now, so this is open-then-choose rather than one click — and both go
+  // through a real pointer, because a listbox is almost entirely default-action behaviour.
+  await clickText(page, '[aria-label="Site filter"]');
+  await sleep(600);
+  const chose = await clickText(page, '[role="option"]', /alpha/);
+  check(chose, 'the site select offers the account\'s own sites');
   await sleep(2200);
   const scopedId = await page.evaluate(() => new URLSearchParams(location.search).get('site'));
   const scoped = await shown();
@@ -110,16 +153,57 @@ try {
   const both = await shown();
   console.log(`  7 days, alpha only  → ${both} (expected ${within(7, 'alpha.probe.test')})`);
   check(both === within(7, 'alpha.probe.test'), 'the two controls compose');
-  check(/Audits this week/.test(await page.evaluate(() => document.body.innerText)),
+  check(/Audits · 7 days/.test(await page.evaluate(() => document.body.innerText)),
     'and the card is named after the window on screen');
 
   await page.goto(`${WEB_URL}/dashboard?days=90`, { waitUntil: 'networkidle0' });
   await sleep(2000);
   check(/Audits · 90 days/.test(await page.evaluate(() => document.body.innerText)),
     'which changes with it');
-  check((await page.evaluate(() => document.body.innerText)).includes('last 90 days'),
+  check((await page.evaluate(() => document.body.innerText)).includes('90 days'),
     'the charts state the same window');
   await page.screenshot({ path: `${OUT}/dashboard-90d.png` });
+
+  // ─── The picker itself ─────────────────────────────────────────────────────
+  // A preset first: it has to write the shorthand and clear any explicit pair, or the two
+  // would disagree in the address and the pair would silently win.
+  await page.goto(`${WEB_URL}/dashboard?from=${dayKey(60)}&to=${dayKey(50)}`, { waitUntil: 'networkidle0' });
+  await sleep(2000);
+  check(await clickText(page, '[aria-label="Time range"]'), 'the range picker opens');
+  await sleep(400);
+  await page.screenshot({ path: `${OUT}/picker-open.png` });
+  check(await clickText(page, 'button', /^7 days$/), 'and offers the presets');
+  await sleep(2200);
+
+  const afterPreset = await page.evaluate(() => location.search);
+  check(/days=7/.test(afterPreset) && !/from=/.test(afterPreset),
+    `a preset writes the shorthand and drops the explicit pair (${afterPreset})`);
+  check(await shown() === within(7), 'and the numbers follow it');
+
+  // Then two clicks on the calendar. The window deliberately ends *before* today, which is
+  // the thing the old three-button control could not ask for at all.
+  const [fromAgo, toAgo] = [21, 5];
+  check(await clickText(page, '[aria-label="Time range"]'), 'the picker opens again');
+  await sleep(400);
+  check(await pickDay(page, dayKey(toAgo)), `the calendar reaches ${dayKey(toAgo)}`);
+  await sleep(250);
+  check(await pickDay(page, dayKey(fromAgo)), `and ${dayKey(fromAgo)}`);
+  await sleep(2400);
+
+  const custom = await page.evaluate(() => location.search);
+  check(custom.includes(`from=${dayKey(fromAgo)}`) && custom.includes(`to=${dayKey(toAgo)}`),
+    `two clicks put the range in the address (${custom})`);
+  check(!/days=/.test(custom), 'and drop the shorthand');
+
+  const inCustom = await shown();
+  console.log(`  ${dayKey(fromAgo)} → ${dayKey(toAgo)} → ${inCustom} (expected ${betweenDays(fromAgo, toAgo)})`);
+  check(inCustom === betweenDays(fromAgo, toAgo),
+    'a window that ends before today counts only the runs inside it');
+
+  const label = await page.evaluate(() => document.body.innerText);
+  check(!/last \d+ days|· \d+ days/.test(label.split('Audits')[1]?.slice(0, 40) ?? ''),
+    'and is named by its dates rather than by a day count it does not have');
+  await page.screenshot({ path: `${OUT}/custom-range.png` });
 
   // A site that is not theirs must narrow to nothing rather than leak someone else's data.
   await page.goto(`${WEB_URL}/dashboard?days=90&site=${new ObjectId().toString()}`, { waitUntil: 'networkidle0' });

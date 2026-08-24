@@ -133,6 +133,11 @@ export interface OverviewVitalSplit {
 export interface OverviewCharts {
   /** Window length in days, so the UI can label itself without hardcoding it. */
   days:     number;
+  /** The window the server actually counted, as calendar days. Sent back because the
+   *  picker can ask for a range that gets clamped — a chart labelled with what was
+   *  requested rather than what was measured is a chart that lies about its own axis. */
+  from:     string;
+  to:       string;
   trend:    OverviewSiteTrend[];
   activity: OverviewActivityPoint[];
   vitals:   OverviewVitalSplit[];

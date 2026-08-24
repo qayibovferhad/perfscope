@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '@/shared/api/client';
-import type { OverviewData } from '@perfscope/shared';
+import type { OverviewData, OverviewRange } from '@perfscope/shared';
 
 /**
  * The account at a glance: totals, open incidents, recent runs, and what needs action.
@@ -8,12 +8,17 @@ import type { OverviewData } from '@perfscope/shared';
  * The window and the site are part of the key, not just the request — two ranges are two
  * different answers, and caching them under one key is how switching back to a range you
  * already looked at shows you the other one for a frame.
+ *
+ * The window is sent as the resolved pair rather than as whatever the URL happened to say.
+ * `?days=7` and an explicit week are the same question, and asking it two ways would cache
+ * one answer twice — and, worse, let the two disagree about which day the week ends on.
  */
-export function useOverview(days?: number, websiteId?: string) {
+export function useOverview(range: OverviewRange, websiteId?: string) {
   return useQuery<OverviewData>({
-    queryKey: ['overview', days ?? null, websiteId ?? null],
+    queryKey: ['overview', range.from, range.to, websiteId ?? null],
     queryFn: () => fetchJson<OverviewData>('/overview', {
-      ...(days ? { days } : {}),
+      from: range.from,
+      to:   range.to,
       ...(websiteId ? { websiteId } : {}),
     }),
     // A range the user has already seen should come back instantly while it revalidates.

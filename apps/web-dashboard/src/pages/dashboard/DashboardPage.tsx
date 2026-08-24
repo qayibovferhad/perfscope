@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, CalendarDays, BarChart3, Plus } from 'lucide-react';
+import { TrendingUp, CalendarDays, BarChart3, Globe, Plus } from 'lucide-react';
 import { GettingStartedPanel } from '@/features/onboarding';
 import { AddWebsiteModal } from '@/features/websites';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
@@ -21,9 +21,19 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { NextStepCard } from '@/features/advisor';
 import { useGettingStartedVisible } from '@/features/onboarding';
-import { Segmented } from '@/shared/ui/segmented';
+import { DateRangePicker, rangeLabel } from '@/shared/ui/date-range-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 import { useWebsites, getHostname } from '@/entities/website';
-import { OVERVIEW_WINDOWS, DEFAULT_OVERVIEW_WINDOW, isOverviewWindow } from '@perfscope/shared';
+import { OVERVIEW_WINDOWS, DEFAULT_OVERVIEW_WINDOW, resolveOverviewRange, dayKeyOf } from '@perfscope/shared';
+
+/** The shorthands the picker offers beside the calendar — the three windows the dashboard
+ *  has always had, now as presets rather than as the only choice. */
+const PRESETS = OVERVIEW_WINDOWS.map(days => ({ days, label: `${days} days` }));
+
+
+/** The site select needs a value for "no filter", and Radix treats an empty string as
+ *  "nothing selected" — which renders the placeholder instead of the option. */
+const ALL_SITES = 'all';
 
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
@@ -66,22 +76,44 @@ export function DashboardPage() {
    * they are read on every render rather than consumed once.
    */
   const [params, setParams] = useSearchParams();
-  const days = isOverviewWindow(params.get('days')) ? Number(params.get('days')) : DEFAULT_OVERVIEW_WINDOW;
+  // Resolved by the *shared* helper, the same one the server runs on the query it receives
+  // — so the label above the charts names the window the numbers were actually counted in,
+  // including when a hand-edited URL gets clamped.
+  const range = resolveOverviewRange({
+    days: params.get('days'),
+    from: params.get('from'),
+    to:   params.get('to'),
+  });
   const siteId = params.get('site') ?? '';
 
+  const today = dayKeyOf(new Date());
+  /** What the window is called wherever it is named — "30 days" for a preset, the two
+   *  dates for anything else. One label, so the strip and the charts cannot disagree. */
+  const windowLabel = rangeLabel(range, PRESETS, today);
+
   const { websites } = useWebsites();
-  const { data, isPending } = useOverview(days, siteId || undefined);
+  const { data, isPending } = useOverview(range, siteId || undefined);
   const [modalOpen, setModalOpen] = useState(false);
 
-  function setParam(key: string, value: string | null) {
+  function setParams_(changes: Record<string, string | null>) {
     setParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (value) next.set(key, value); else next.delete(key);
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) next.set(key, value); else next.delete(key);
+      }
       return next;
     }, { replace: true });
   }
 
-  const scopedSite = websites.find(w => w._id === siteId);
+  /** A preset is "the last N days", which is what `?days=` means — so the explicit pair
+   *  goes, or the two would disagree and the pair would win. */
+  const choosePreset = (days: number) => setParams_({
+    days: days === DEFAULT_OVERVIEW_WINDOW ? null : String(days),
+    from: null,
+    to:   null,
+  });
+
+  const chooseRange = (from: string, to: string) => setParams_({ days: null, from, to });
 
   // Both charts in the top row take the fixed height together, or neither does: sizing
   // them independently is what put a 340px panel next to a 90px one in the first place,
@@ -111,30 +143,47 @@ export function DashboardPage() {
           The site picker only appears once there is more than one site to choose between —
           a filter with a single option is a control that cannot do anything. */}
       <div className="flex items-center gap-[10px] flex-wrap mb-[18px]">
-        <Segmented
-          size="sm"
-          ariaLabel="Time range"
-          options={OVERVIEW_WINDOWS.map(w => ({ value: String(w), label: w === 7 ? '7 days' : `${w} days` }))}
-          value={String(days)}
-          onChange={(v) => setParam('days', v === String(DEFAULT_OVERVIEW_WINDOW) ? null : v)}
+        <DateRangePicker
+          range={range}
+          presets={PRESETS}
+          onPreset={choosePreset}
+          onRange={chooseRange}
         />
         {websites.length > 1 && (
-          <Segmented
-            size="sm"
-            ariaLabel="Site filter"
-            className="max-w-full"
-            options={[
-              { value: '', label: 'All sites' },
-              ...websites.map(w => ({ value: w._id, label: getHostname(w.url) })),
-            ]}
-            value={siteId}
-            onChange={(v) => setParam('site', v || null)}
-          />
-        )}
-        {scopedSite && (
-          <span className="font-mono text-[11px] text-ld-text-3">
-            showing {getHostname(scopedSite.url)} only
-          </span>
+          <Select
+            value={siteId || ALL_SITES}
+            onValueChange={(v) => setParams_({ site: v === ALL_SITES ? null : v })}
+          >
+            {/* A row of buttons was fine at two sites and unusable at ten — it wrapped onto
+                its own line and pushed the whole page down. A select is one control whose
+                width does not depend on how many sites somebody tracks. */}
+            <SelectTrigger
+              aria-label="Site filter"
+              className="w-auto min-w-[150px] max-w-[240px] h-[32px] gap-[7px] rounded-[10px]
+                         border-ld-border bg-ld-surface text-[12.5px] font-semibold text-ld-text-2
+                         hover:border-ld-border-strong hover:text-ld-text shadow-none"
+            >
+              <Globe className="w-[14px] h-[14px] shrink-0 text-ld-text-3" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-ld-surface border-ld-border max-h-[280px]">
+              <SelectItem
+                value={ALL_SITES}
+                className="text-[12.5px] cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent"
+              >
+                All sites
+              </SelectItem>
+              {websites.map(w => (
+                <SelectItem
+                  key={w._id}
+                  value={w._id}
+                  className="text-[12.5px] font-mono cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent"
+                >
+                  {getHostname(w.url)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
@@ -153,7 +202,7 @@ export function DashboardPage() {
           in reads as an animation glitch, not as progress. */}
       {data ? (
         <motion.div {...fadeUp(0.05)}>
-          <TotalsStrip totals={data.totals} days={days} />
+          <TotalsStrip totals={data.totals} days={range.days} label={windowLabel} />
         </motion.div>
       ) : isPending ? <TotalsStripSkeleton /> : null}
 
@@ -196,7 +245,7 @@ export function DashboardPage() {
                 <PanelHeader
                   icon={<TrendingUp />}
                   title="Performance over time"
-                  meta={`last ${data.charts.days} days`}
+                  meta={windowLabel}
                 />
                 <PanelBody className="flex-1 min-h-0">
                   <ScoreTrendChart trend={data.charts.trend} days={data.charts.days} />
@@ -224,7 +273,7 @@ export function DashboardPage() {
                 <PanelHeader
                   icon={<CalendarDays />}
                   title="Audit activity"
-                  meta={`last ${data.charts.days} days`}
+                  meta={windowLabel}
                 />
                 <PanelBody className="flex-1 min-h-0 flex flex-col">
                   <ActivityChart activity={data.charts.activity} days={data.charts.days} />

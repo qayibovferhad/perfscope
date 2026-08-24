@@ -23,6 +23,7 @@ export * from './lib/schedule.js'
 export * from './lib/targets.js'
 export * from './lib/measurement.js'
 export * from './lib/alerts.js'
+export * from './lib/overviewRange.js'
 
 // ─── API client ─────────────────────────────────────────────────────────────
 export * from './api/client.js'

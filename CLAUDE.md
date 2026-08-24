@@ -56,7 +56,7 @@ pnpm install
 ```
 
 ```bash
-pnpm test    # Vitest — shared (rating, formatters, forecast) + web-dashboard units
+pnpm test    # Vitest — shared (rating, formatters, forecast), backend (libs + parsers + lhr-transform), web-dashboard units
 pnpm e2e     # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
 pnpm --filter @perfscope/web-dashboard lint   # ESLint, incl. FSD layer-boundary rules (0 errors is the bar)
 ```
@@ -122,6 +122,29 @@ Socket events (server → client): `analysis:progress`, `analysis:partial`, `ana
 - **Share links**: `POST /api/history/:id/share` mints a 32-hex token, `GET /api/public/report/:token` serves the stored result unauthenticated, `/report/:token` renders it read-only.
 - **Field data**: `crux.service.ts` queries the Chrome UX Report (URL level, falling back to origin) so real-user p75s sit next to the lab numbers.
 
+### Hardening (production only)
+
+`GET /health` answers `{ status, uptime, database, version }` — the database is *reported*,
+never a 503, because the app serves empty shapes without Mongo on purpose. `helmet` is
+mounted with `crossOriginResourcePolicy: 'cross-origin'`: its `same-origin` default would
+block `/rum.js` on every site that installed the snippet. `compression` sits above the
+routers because a stored audit result is hundreds of KB.
+
+`lib/ssrf.ts` refuses any URL that **resolves** into the server's own network — audit
+targets, the auth-audit browser, alert webhooks and sitemap scans. It is off in development
+(auditing `http://localhost:5173` is a first-class use) and on when `NODE_ENV=production`;
+`ALLOW_PRIVATE_TARGETS=true` turns it off again for an intranet install.
+
+### Dashboard window
+
+`/dashboard` asks for a window either as `?days=` (the presets) or `?from=&to=` (the date
+picker). Both are resolved by **shared `resolveOverviewRange`** — the client labels the page
+with it, the server turns it into a Mongo range — so the tiles and the charts can never name
+a different window from the one they counted. Days are `YYYY-MM-DD` strings, UTC, because
+History buckets by UTC day. The picker is `shared/ui/date-range-picker.tsx` (from scratch,
+portalled); the site filter is a Radix `Select` and needs a sentinel value for "all sites"
+because Radix reads `''` as nothing-selected.
+
 ### Auth-Audit flow
 
 For auditing login-protected pages, there is a separate two-phase flow:
@@ -156,7 +179,7 @@ The `projects` feature groups audits by website and route. A `projectId` can be 
 - `services/auditPipeline.ts` — `attachPreviousRun` + `enrichWithAi` + `persistAudit` (+ budget check); used by the socket handler, nightly audits and the REST controller alike. Anything written onto `result` here is stored by `persistAudit`, which is what makes the live view, a reopened history row, the public report and the CLI agree without any of them re-deriving it
 - `services/auditQueue.ts` — concurrency cap + priority for every audit
 - `services/budget.service.ts`, `mailer.service.ts`, `crux.service.ts`, `ai.service.ts`, `authAuditSession.ts`
-- `lib/` — `url.ts` (`isValidUrl`, `hostOf`, `sameOrigin`, `normalizeUrl`, `escapeRegex`, `hostPrefixRegex`), `chrome.ts` (launch flags), `errors.ts`
+- `lib/` — `url.ts` (`isValidUrl`, `hostOf`, `sameOrigin`, `normalizeUrl`, `escapeRegex`, `hostPrefixRegex`), `ssrf.ts` (private-network guard — **production only**, see below), `medianRun.ts`, `chrome.ts` (launch flags), `errors.ts`
 - `models/` — Mongoose schemas: `User`, `Website`, `History`, `CompareHistory`, `CompetitorSession`
 - `routes/` — auth, website CRUD + budgets, history + share links, public report, compare history, auth-audit sessions, competitor sessions, CrUX, CLI auth, legacy analyze
 
@@ -189,11 +212,37 @@ Path alias: `@/` resolves to `apps/web-dashboard/src/`. Entities expose `index.t
 
 ### Auth
 
-Dual auth: email/password (bcrypt + JWT, 30-day expiry) and Google OAuth. Google is not a
-browser-only flow: the page sends Google's access token to `POST /api/auth/google`, which
-verifies it with Google (audience must match `GOOGLE_CLIENT_ID`, address must be verified),
-upserts the `User` **by email** so a password account and a Google sign-in are one account,
-and returns the same `{ token, user }` as `/auth/login`. The JWT is stored in Zustand (`authStore`) with `persist` middleware (localStorage). The Socket.io connection sends the token in `handshake.auth.token`; `analysis.handler.ts` extracts `userId` from it to tag history entries. REST routes use `requireAuth` middleware (`middleware/auth.middleware.ts`) which validates the `Authorization: Bearer <token>` header.
+Dual auth: email/password (bcrypt) and Google OAuth. Google is not a browser-only flow: the
+page sends Google's access token to `POST /api/auth/google`, which verifies it with Google
+(audience must match `GOOGLE_CLIENT_ID`, address must be verified), upserts the `User` **by
+email** so a password account and a Google sign-in are one account, and returns the same
+`AuthResponse` as `/auth/login`.
+
+**Sessions are a pair** (`services/authTokens.service.ts`): a 30-minute access JWT — still
+verified with no database read, so `requireAuth` is unchanged — plus a 30-day opaque refresh
+token, stored **hashed** in `RefreshToken` and **rotated on every use**. Presenting a spent
+refresh token revokes its whole family: it is either a replay or a copy someone else holds,
+and there is no way to tell. `POST /auth/refresh` renews, `/auth/logout` ends one session,
+`/auth/logout-all` ends the rest (Settings → Signed-in devices); a password change or reset
+ends them too. An already-issued access token cannot be un-issued, so revocation takes effect
+within 30 minutes — deliberate, in exchange for no per-request database read.
+
+Every client renews rather than expiring: the dashboard's axios interceptor refreshes once on
+a 401 and replays the request (single-flight — concurrent 401s must not each spend the
+rotating token), `packages/shared`'s `createApiClient` does the same for the extension, and
+the CLI checks the JWT's `exp` locally before each command (`packages/cli/src/session.js`;
+CI can supply `PERFSCOPE_REFRESH_TOKEN`). `POST /auth/cli/complete` mints the CLI a session of
+its own rather than copying the browser's.
+
+Forgot-password lives in `services/passwordReset.service.ts`: hashed single-use token, one
+hour, and the endpoint answers identically for a real address, a Google-only account and an
+unknown one — it is the one form anyone can post to. With no SMTP configured the link is
+logged (never in production), which is what makes the flow testable locally.
+
+The pair is stored in Zustand (`authStore`, persisted to localStorage). The Socket.io
+connection sends the access token in `handshake.auth.token`; `analysis.handler.ts` extracts
+`userId` from it to tag history entries. REST routes use `requireAuth`
+(`middleware/auth.middleware.ts`), which validates the `Authorization: Bearer <token>` header.
 
 ### Styling
 

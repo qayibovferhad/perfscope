@@ -8,7 +8,13 @@ import { StatCard } from '@/shared/ui/stat-card';
  * `avgScore` and `needsAttention` are computed by the same backend helper the websites
  * summary strip uses, so the two screens cannot disagree about what a site scores.
  */
-export function TotalsStrip({ totals, days }: { totals: OverviewTotals; days: number }) {
+export function TotalsStrip({ totals, days, label }: {
+  totals: OverviewTotals;
+  days: number;
+  /** How the window is named on this page — passed in rather than derived, because a range
+   *  picked as two dates has no "N days" name worth showing beside a count. */
+  label?: string;
+}) {
   // Two across on a phone, not one. Four full-width cards carrying one number each were
   // most of a screen of scrolling before the page said anything; paired, the whole strip
   // is a glance and the numbers are still large enough to read.
@@ -27,7 +33,11 @@ export function TotalsStrip({ totals, days }: { totals: OverviewTotals; days: nu
       <StatCard
         // Named after the window on screen. "Audits this week" beside a 90-day range is a
         // label that quietly contradicts the control the reader just used.
-        label={days === 7 ? 'Audits this week' : `Audits · ${days} days`}
+        // Named after the window the picker shows, whatever shape it has — "7 days" for a
+        // preset, "3 Aug – 19 Aug" for a range. The old "Audits this week" special case went
+        // with the three-button control: it read well and stopped being true the moment a
+        // window could end anywhere but today.
+        label={`Audits · ${label ?? `${days} days`}`}
         value={totals.auditsInWindow}
         icon={<Activity className="w-5 h-5" />}
       />
