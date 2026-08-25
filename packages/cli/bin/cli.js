@@ -427,6 +427,29 @@ function printBudgetTable(rows) {
   console.log('');
 }
 
+/**
+ * A public link to the stored report.
+ *
+ * The audit is already persisted with its `analysisId`, and `/history/:id/share` mints (or
+ * returns) a token for exactly that id — so this is one request, not an upload. Failure is
+ * not fatal: a missing link is a less useful comment, and taking a build red over a link
+ * would be absurd.
+ */
+async function mintShareLink(analysisId, opts, apiKey) {
+  try {
+    const apiUrl = opts.apiUrl.replace(/\/$/, '');
+    const { token } = unwrap(await axios.post(`${apiUrl}/api/history/${analysisId}/share`, {}, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      timeout: 10_000,
+    }));
+    if (!token) return null;
+    const appUrl = await resolveAppUrl(opts.appUrl);
+    return `${appUrl}/report/${token}`;
+  } catch {
+    return null;
+  }
+}
+
 async function ciCmd(opts) {
   const target = (opts.url || '').trim();
   if (!target) {
@@ -483,6 +506,12 @@ async function ciCmd(opts) {
   const failures = evaluateBudget(result, budget);
   const passed   = failures.length === 0;
 
+  // A public link, when asked for. Off by default: minting one turns a private audit into
+  // a URL anybody with it can read, and that is a decision for whoever wires up the
+  // pipeline — not something a build step should do to every run on its own.
+  const reportUrl = opts.share ? await mintShareLink(result.id, opts, apiKey) : null;
+  if (reportUrl) say(chalk.dim(`  report: ${reportUrl}`));
+
   if (opts.json) {
     printJson({
       url: targetUrl,
@@ -492,7 +521,16 @@ async function ciCmd(opts) {
       metrics: result.metrics,
       budget,
       passed,
+      // The whole table, not just what broke: a report that lists only failures cannot say
+      // "4 of 5 thresholds passed", and a PR comment has to.
+      checks: rows,
       failures,
+      // What moved since the last run of this URL. Already on the result — the CI reader is
+      // the one person who most wants "and it was 82 yesterday".
+      previous: result.previous
+        ? { scores: result.previous.scores ?? null, metrics: result.previous.metrics ?? null }
+        : null,
+      reportUrl,
       aiInsights: result.aiInsights ?? null,
     });
   } else {
@@ -638,6 +676,8 @@ program
   .option('--json',                       'Emit machine-readable JSON instead of a table')
   .option('--warn-only',                  'Report breaches but always exit 0')
   .option('--no-tunnel',                  'Disable auto-tunneling for local URLs')
+  .option('--share',                      'Mint a public report link and print it (for PR comments)')
+  .option('--app-url <url>',               'PerfScope app URL, for the --share link', 'https://app.perfscope.com')
   .addHelpText('after', `
 ${chalk.bold('Exit codes:')}
   ${chalk.dim('0')}  budget passed (or --warn-only)
