@@ -46,6 +46,13 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    # The budget step below is our own action, and it writes back: a check run on the commit
+    # and, on a pull request, one comment it keeps updating. Both are refused silently
+    # without these — a token's default permissions depend on a repository setting.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     services:
       mongo:
         image: mongo:7
@@ -108,31 +115,40 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: pnpm e2e
 
-      - name: Check the dashboard's own performance budget
-        # Dogfooding: the CLI audits the dev server it just booted, through the same
-        # socket pipeline the app uses. Budgets are deliberately loose — a GitHub runner
-        # is slower and noisier than any real host, so this is a smoke test for a
-        # catastrophic regression, not a performance gate.
-        #
-        # The token is read out of `data`: every route answers `{success, data}` since the
-        # envelope was unified, and reading `.token` off the envelope silently produced an
-        # empty string — which is why this step had been failing with "could not obtain a
-        # token" long before anyone looked at it.
-        env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+      - name: Create the account the budget check audits as
+        id: ci-account
+        # A refresh token rather than an access token: access tokens live 30 minutes, and a
+        # pipeline that pauses on a queued runner would find it expired. The CLI mints its
+        # own per run. Read out of `data` — every route answers `{success, data}`.
         run: |
-          TOKEN=$(curl -s -X POST http://localhost:3101/api/auth/register \
+          BODY=$(curl -s -X POST http://localhost:3101/api/auth/register \
             -H 'Content-Type: application/json' \
-            -d '{"name":"CI","email":"ci-budget@example.com","password":"ci-password"}' \
-            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const b=JSON.parse(d);console.log(b.data?.token??b.token??'')}catch{console.log('')}})")
+            -d '{"name":"CI","email":"ci-budget@example.com","password":"ci-password"}')
+          REFRESH=$(node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{const b=JSON.parse(d);console.log(b.data?.refreshToken??'')}catch{console.log('')}})" <<< "$BODY")
+          if [ -z "$REFRESH" ]; then echo "could not obtain a session"; echo "$BODY" | head -c 400; exit 1; fi
+          echo "::add-mask::$REFRESH"
+          echo "refresh-token=$REFRESH" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$TOKEN" ]; then echo "could not obtain a token"; exit 1; fi
-
-          PERFSCOPE_API_KEY="$TOKEN" node packages/cli/bin/cli.js ci \
-            --url http://localhost:5173 \
-            --api-url http://localhost:3101 \
-            --budget "performance=20,lcp=15000,cls=0.5" \
-            --no-tunnel
+      - name: Check the dashboard's own performance budget
+        # Dogfooding, twice over: the CLI audits the dev server it just booted, through the
+        # same socket pipeline the app uses — and it does it through *our own action*, so
+        # the thing we ship to other people's pipelines is the thing that runs in ours.
+        #
+        # `cli-path` runs the CLI from this checkout instead of npm, which is what makes the
+        # action testable here before a release. Budgets are deliberately loose: a GitHub
+        # runner is slower and noisier than any real host, so this is a smoke test for a
+        # catastrophic regression, not a performance gate.
+        # No PUPPETEER_EXECUTABLE_PATH here: the CLI launches no browser. The backend does,
+        # and it was started with it above.
+        uses: ./packages/action
+        with:
+          url: http://localhost:5173
+          api-url: http://localhost:3101
+          budget: performance=20,lcp=15000,cls=0.5
+          tunnel: 'false'
+          refresh-token: ${{ steps.ci-account.outputs.refresh-token }}
+          cli-path: packages/cli/bin/cli.js
+          check-name: PerfScope budget (dashboard)
 
       - name: Show server logs on failure
         if: failure()
