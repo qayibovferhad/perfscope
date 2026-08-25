@@ -288,6 +288,8 @@ importers:
         specifier: ^24.43.1
         version: 24.43.1(typescript@6.0.3)
 
+  packages/action: {}
+
   packages/cli:
     dependencies:
       axios:

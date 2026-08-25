@@ -16,8 +16,23 @@ perfscope/
 │   └── chrome-extension/   @perfscope/chrome-extension — WXT + React + Tailwind
 └── packages/
     ├── shared/             @perfscope/shared — common TS types, API client factory, design tokens
-    └── cli/                @perfscope/cli — `perfscope` command-line auditing companion
+    ├── cli/                @perfscope/cli — `perfscope` command-line auditing companion
+    └── action/             GitHub Action — run a budget on every PR and report it there
 ```
+
+## On every pull request
+
+```yaml
+- uses: qayibovferhad/perfscope/packages/action@main
+  with:
+    url: https://staging.example.com
+    budget: performance=80,lcp=2500,cls=0.1
+    refresh-token: ${{ secrets.PERFSCOPE_REFRESH_TOKEN }}
+```
+
+One comment that keeps itself up to date, a check run on the commit, and a build that goes
+red when a page slows down — with each metric's move since the previous audit of the same
+URL beside it. See [packages/action](packages/action) for the inputs and the caveats.
 
 ## Quickstart
 

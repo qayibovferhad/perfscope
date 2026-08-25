@@ -1,0 +1,136 @@
+name: 'PerfScope budget'
+description: 'Audit a URL with Lighthouse, fail the build on a performance budget, and report it on the pull request.'
+author: 'PerfScope'
+
+branding:
+  icon: 'activity'
+  color: 'green'
+
+# A composite action, not a JavaScript one: a JS action has to ship a bundled `dist/`
+# committed to the repo, and everything this needs is the published CLI plus three REST
+# calls. Composite keeps the CLI's own output, annotations and exit code in the log exactly
+# as they read when somebody runs the same command locally.
+inputs:
+  url:
+    description: 'URL to audit. A localhost URL is tunnelled by the CLI unless tunnel is false.'
+    required: true
+  budget:
+    description: 'Inline budget, e.g. "performance=80,lcp=2500". Omit to use perfscope.json.'
+    required: false
+    default: ''
+  budget-file:
+    description: 'Path to a budget JSON. Auto-detects perfscope.json / .perfscope.json.'
+    required: false
+    default: ''
+  api-key:
+    description: 'PerfScope access token. Prefer refresh-token in CI — an access token expires in 30 minutes.'
+    required: false
+    default: ''
+  refresh-token:
+    description: 'PerfScope refresh token. The CLI mints its own short-lived access token per run.'
+    required: false
+    default: ''
+  api-url:
+    description: 'PerfScope API base URL.'
+    required: false
+    default: 'https://api.perfscope.com'
+  app-url:
+    description: 'PerfScope app URL, used to build the public report link.'
+    required: false
+    default: 'https://app.perfscope.com'
+  timeout:
+    description: 'Audit timeout in milliseconds.'
+    required: false
+    default: '180000'
+  warn-only:
+    description: 'Report a breach but never fail the build.'
+    required: false
+    default: 'false'
+  tunnel:
+    description: 'Tunnel a localhost URL so the audit runner can reach it.'
+    required: false
+    default: 'true'
+  share:
+    description: 'Mint a public report link and put it in the comment. Off by default — it makes the report readable by anyone holding the link.'
+    required: false
+    default: 'false'
+  comment:
+    description: 'Post (and keep updating) one comment on the pull request. Needs pull-requests: write.'
+    required: false
+    default: 'true'
+  check:
+    description: 'Create a check run on the commit. Needs checks: write.'
+    required: false
+    default: 'true'
+  check-name:
+    description: 'Name of the check run — give each audited URL its own if you audit several.'
+    required: false
+    default: 'PerfScope budget'
+  github-token:
+    description: 'Token used to comment and to create the check run.'
+    required: false
+    default: ${{ github.token }}
+  cli-version:
+    description: 'Version of @perfscope/cli to run.'
+    required: false
+    default: 'latest'
+  cli-path:
+    description: 'Run a CLI from disk instead of npm — how this repository dogfoods its own action.'
+    required: false
+    default: ''
+
+outputs:
+  passed:
+    description: 'true when every threshold was met.'
+    value: ${{ steps.report.outputs.passed }}
+  performance:
+    description: 'The performance score that was measured.'
+    value: ${{ steps.report.outputs.performance }}
+  report-url:
+    description: 'Public report link, when share was enabled.'
+    value: ${{ steps.report.outputs['report-url'] }}
+  result-file:
+    description: 'Path to the raw JSON the CLI produced.'
+    value: ${{ steps.report.outputs['result-file'] }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run the PerfScope budget
+      id: audit
+      shell: bash
+      env:
+        PERFSCOPE_API_KEY: ${{ inputs.api-key }}
+        PERFSCOPE_REFRESH_TOKEN: ${{ inputs.refresh-token }}
+      run: |
+        set +e
+        CLI="npx --yes @perfscope/cli@${{ inputs.cli-version }}"
+        if [ -n "${{ inputs.cli-path }}" ]; then CLI="node ${{ inputs.cli-path }}"; fi
+
+        ARGS=(ci --url "${{ inputs.url }}" --api-url "${{ inputs.api-url }}" --app-url "${{ inputs.app-url }}" --timeout "${{ inputs.timeout }}" --json)
+        [ -n "${{ inputs.budget }}" ]      && ARGS+=(--budget "${{ inputs.budget }}")
+        [ -n "${{ inputs.budget-file }}" ] && ARGS+=(--budget-file "${{ inputs.budget-file }}")
+        [ "${{ inputs.warn-only }}" = "true" ] && ARGS+=(--warn-only)
+        [ "${{ inputs.tunnel }}" = "false" ]   && ARGS+=(--no-tunnel)
+        [ "${{ inputs.share }}" = "true" ]     && ARGS+=(--share)
+
+        # stdout is the JSON and only the JSON — the CLI puts everything human-facing on
+        # stderr for exactly this reason, so the log still reads normally.
+        $CLI "${ARGS[@]}" > perfscope-result.json
+        CODE=$?
+        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+        exit 0
+
+    - name: Report it on the pull request
+      id: report
+      shell: bash
+      env:
+        PERFSCOPE_RESULT_FILE: perfscope-result.json
+        PERFSCOPE_EXIT_CODE: ${{ steps.audit.outputs.exit-code }}
+        PERFSCOPE_WARN_ONLY: ${{ inputs.warn-only }}
+        PERFSCOPE_COMMENT: ${{ inputs.comment }}
+        PERFSCOPE_CHECK: ${{ inputs.check }}
+        PERFSCOPE_CHECK_NAME: ${{ inputs.check-name }}
+        PERFSCOPE_GITHUB_TOKEN: ${{ inputs.github-token }}
+        PERFSCOPE_URL: ${{ inputs.url }}
+      run: node ${{ github.action_path }}/run.mjs
