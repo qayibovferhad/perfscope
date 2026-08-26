@@ -23,6 +23,7 @@ import { describeFlowStep, type FlowDefinition, type FlowProgress, type FlowRunR
 import { CHROME_ARGS } from '../lib/chrome.js';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { auditQueue } from './lighthouse.service.js';
+import type { AuditPriority } from './auditQueue.js';
 import { buildFlowStepResult } from './flow-transform.js';
 import { AppError } from '../lib/errors.js';
 import type { AuthSessionData } from './authAuditSession.js';
@@ -50,6 +51,8 @@ const VIEWPORT = {
 
 export interface FlowRunOptions {
   onProgress?: (progress: Omit<FlowProgress, 'flowRunId'>) => void;
+  /** A person waiting on a page outranks a schedule; the queue knows the difference. */
+  priority?: AuditPriority;
   /** A saved session for this origin, injected before the first navigation — flows live
    *  behind logins more often than cold pages do. */
   session?: AuthSessionData | null;
@@ -151,7 +154,7 @@ export async function runFlow(definition: Definition, opts: FlowRunOptions = {})
   return auditQueue.run(
     () => executeFlow(definition, opts),
     {
-      priority: 'interactive',
+      priority: opts.priority ?? 'interactive',
       onQueue: (position) => opts.onProgress?.({
         step: -1,
         total: definition.steps.length,

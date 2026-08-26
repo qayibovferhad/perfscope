@@ -7,6 +7,7 @@ import { Flow } from '../models/Flow.model.js';
 import { FlowRun } from '../models/FlowRun.model.js';
 import { parseFlowInput } from '../services/flowInput.js';
 import { findSessionFor } from '../services/sessionStore.js';
+import { checkFlowTargets } from '../services/flowSchedule.service.js';
 import { userIdFromToken } from '../middleware/auth.middleware.js';
 import { isDbReady } from '../config/database.js';
 import { isFetchableTarget } from '../lib/ssrf.js';
@@ -71,6 +72,10 @@ export function registerFlowSocket(io: TypedServer): void {
         // origin equality, never by prefix.
         const session = isDbReady() ? await findSessionFor(userId, definition.url) : null;
 
+        // Logged like an analysis is: a flow is a minutes-long server-side job, and a run
+        // that failed on a selector left no trace anywhere but the client's error panel.
+        console.log(`[Flow] Started "${definition.name}" (${definition.url})`);
+
         const result = await runFlow(definition, {
           session,
           onProgress: (progress) => socket.emit('flow:progress', { ...progress, flowRunId }),
@@ -85,11 +90,25 @@ export function registerFlowSocket(io: TypedServer): void {
             formFactor: result.formFactor, steps: result.steps, durationMs: result.durationMs,
           });
           storedId = String(saved._id);
+
+          // Checked on a manual run as well as a scheduled one: a target that only fires
+          // overnight is a target somebody discovers a day late.
+          const stored = await Flow.findById(flowId);
+          if (stored) {
+            await checkFlowTargets(stored, { ...result, id: storedId })
+              .catch((err: unknown) => {
+                // A failed alert must not fail the run the reader is watching.
+                console.warn('[Flow] target check failed:', (err as Error).message);
+                return [];
+              });
+          }
         }
 
+        console.log(`[Flow] Finished "${result.name}" in ${result.durationMs}ms (${result.steps.length} steps)`);
         socket.emit('flow:complete', { ...result, id: storedId, flowId });
       } catch (err) {
         const step = (err as { step?: number }).step;
+        console.warn(`[Flow] Failed: ${err instanceof Error ? err.message : String(err)}`);
         socket.emit('flow:error', {
           flowRunId,
           message: err instanceof Error ? err.message : 'The flow could not run',

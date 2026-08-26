@@ -177,9 +177,20 @@ competing audits is not a measurement. Runs are stored in their own `FlowRun` co
 never in `History` — budgets, `hasResult`, previous-run comparison and the dashboard averages
 all assume a navigation audit.
 
+**They run on their own and they can fail a promise.** `Flow.schedule` is one time a day
+(not the website automation's slots/spread: running the same journey six times measures the
+site's noise, not the journey), picked up by `cron/flowRuns.cron.ts` with a `lastScheduledAt`
+re-entrancy guard — the cron ticks every minute and a flow takes minutes. `Flow.targets` are
+ceilings over the **measured interactions only**; the navigation step is an ordinary audit
+and the site's own budgets already cover it. A miss raises `flow.breach` through the same
+`dispatchAlert` everything else uses, which means it needs a Website to file against —
+resolved from the flow's URL by `findWebsiteByHost`, exactly as a persisted audit is. A flow
+on an untracked URL still reports its failures and simply files nothing.
+
 Backend: `services/flow.service.ts` (runner), `flow-transform.ts`, `flowInput.ts`
-(validation — a bad step is rejected, never repaired), `socket/flow.handler.ts`,
-`routes/flow.routes.ts`. Frontend: `features/flows` + `pages/flows`.
+(validation — a bad step is rejected, never repaired), `flowSchedule.service.ts`,
+`socket/flow.handler.ts`, `routes/flow.routes.ts`. Frontend: `features/flows` +
+`pages/flows`.
 
 ### Dashboard window
 

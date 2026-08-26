@@ -7,7 +7,7 @@ import { Flow } from '../models/Flow.model.js';
 import { FlowRun } from '../models/FlowRun.model.js';
 import { parseFlowInput } from '../services/flowInput.js';
 import { intParam } from '../lib/params.js';
-import type { FlowDefinition, FlowRunResult } from '@perfscope/shared';
+import { collectFlowTargetFailures, type FlowDefinition, type FlowRunResult } from '@perfscope/shared';
 
 export const flowRouter: Router = Router();
 
@@ -25,7 +25,10 @@ const flowId = (req: { params: Record<string, unknown> }) => String(req.params['
 /** The wire shape, with the ids the client addresses things by. */
 function toDefinition(doc: {
   _id: unknown; websiteId: unknown; name: string; url: string; steps: FlowDefinition['steps'];
-  snapshotAtEnd: boolean; formFactor: 'mobile' | 'desktop'; createdAt: Date; updatedAt: Date;
+  snapshotAtEnd: boolean; formFactor: 'mobile' | 'desktop';
+  schedule?: { enabled: boolean; time: string };
+  targets?: { inp: number | null; tbt: number | null; cls: number | null };
+  createdAt: Date; updatedAt: Date;
 }): FlowDefinition {
   return {
     id: String(doc._id),
@@ -35,6 +38,10 @@ function toDefinition(doc: {
     steps: doc.steps,
     snapshotAtEnd: doc.snapshotAtEnd,
     formFactor: doc.formFactor,
+    // Documents written before these existed read as undefined; the client renders the same
+    // defaults the model would have given them.
+    schedule: doc.schedule ?? { enabled: false, time: '03:00' },
+    targets:  doc.targets  ?? { inp: null, tbt: null, cls: null },
     createdAt: doc.createdAt?.toISOString(),
     updatedAt: doc.updatedAt?.toISOString(),
   };
@@ -69,6 +76,10 @@ flowRouter.get('/flows', asyncHandler<AuthedRequest>(async (req, res) => {
             // "How many steps have something failing" is the one number a list row can carry
             // that means the same thing for every mode.
             failedSteps: last.steps.filter((step) => step.audits.length > 0).length,
+            // Computed here rather than stored on the run: targets can change after a run,
+            // and a card showing the verdict of a threshold nobody has any more is worse
+            // than showing none.
+            missedTargets: collectFlowTargetFailures(last.steps, flow.targets).length,
           }
         : null,
     };

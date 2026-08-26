@@ -12,7 +12,10 @@ function reason(err: unknown): string | undefined {
   return typeof data?.error === 'string' && data.error.trim() ? data.error : undefined;
 }
 
-export type FlowInput = Pick<FlowDefinition, 'name' | 'url' | 'steps' | 'snapshotAtEnd' | 'formFactor' | 'websiteId'>;
+export type FlowInput = Pick<
+  FlowDefinition,
+  'name' | 'url' | 'steps' | 'snapshotAtEnd' | 'formFactor' | 'websiteId' | 'schedule' | 'targets'
+>;
 
 export function useFlows() {
   const qc = useQueryClient();

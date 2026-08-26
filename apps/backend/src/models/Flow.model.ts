@@ -34,12 +34,29 @@ const flowSchema = new Schema(
     steps:     { type: [flowStepSchema], default: [] },
     snapshotAtEnd: { type: Boolean, default: true },
     formFactor: { type: String, enum: ['mobile', 'desktop'], default: 'desktop' },
+    /** One run a day, at a server-local HH:MM the cron matches — see FlowSchedule. */
+    schedule: {
+      enabled: { type: Boolean, default: false },
+      time:    { type: String,  default: '03:00' },
+    },
+    /** Ceilings over the measured interactions. Null is "not set" — the form sends every
+     *  field every time, and a blank one is how a target is removed. */
+    targets: {
+      inp: { type: Number, default: null },
+      tbt: { type: Number, default: null },
+      cls: { type: Number, default: null },
+    },
+    /** Bookkeeping for the cron's re-entrancy guard, never read by the client. */
+    lastScheduledAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
 
 /** The list page reads every flow of an account, newest first. */
 flowSchema.index({ userId: 1, updatedAt: -1 });
+
+/** The cron's own query: every enabled flow due at this minute, across all accounts. */
+flowSchema.index({ 'schedule.enabled': 1, 'schedule.time': 1 });
 
 export interface IFlow {
   _id:       Types.ObjectId;
@@ -50,6 +67,9 @@ export interface IFlow {
   steps:     FlowStep[];
   snapshotAtEnd: boolean;
   formFactor: 'mobile' | 'desktop';
+  schedule:  { enabled: boolean; time: string };
+  targets:   { inp: number | null; tbt: number | null; cls: number | null };
+  lastScheduledAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

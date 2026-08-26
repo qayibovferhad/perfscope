@@ -45,7 +45,9 @@ const check = (ok, what) => {
 async function clickText(page, selector, text) {
   const box = await page.evaluate((sel, pattern) => {
     const re = new RegExp(pattern);
-    const el = [...document.querySelectorAll(sel)].find(e => re.test(e.textContent ?? ''));
+    // Trimmed: a button with an icon has whitespace around its label, so an anchored
+    // pattern like /^Run$/ never matches the raw textContent.
+    const el = [...document.querySelectorAll(sel)].find(e => re.test((e.textContent ?? '').trim()));
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return r.width && r.height ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
@@ -102,7 +104,7 @@ try {
   const listed = await bodyText(page);
   check(/Fixture — open the panel/.test(listed), 'the flow is listed');
   check(/Open the panel/.test(listed), 'described by its measured step, not by its plumbing');
-  check(/Never run/.test(listed), 'and says it has never run');
+  check(/never run/i.test(listed), 'and says it has never run');
   await page.screenshot({ path: `${OUT}/flows-list.png` });
 
   // ─── Run it, through the button a person presses ───────────────────────────
@@ -118,13 +120,10 @@ try {
   await sleep(1500);
   check(/Running/i.test(await bodyText(page)), 'which reports progress while it runs');
 
-  // A flow is three Lighthouse gathers; two minutes is generous and bounded.
-  let report = '';
-  for (let i = 0; i < 120; i++) {
-    report = await bodyText(page);
-    if (/Interaction/.test(report) && /INP/.test(report)) break;
-    await sleep(1000);
-  }
+  // A flow is three Lighthouse gathers; three minutes is generous and bounded. The wait is
+  // on the report's own marker — text can match something else on the page.
+  await page.waitForSelector('[data-flow-mode="timespan"]', { timeout: 180_000 }).catch(() => {});
+  const report = await bodyText(page);
 
   check(/Page load/.test(report), 'the report shows the cold load');
   check(/Interaction/.test(report), 'the interaction it was written for');
@@ -155,7 +154,7 @@ try {
 
   await page.reload({ waitUntil: 'networkidle0' });
   await sleep(2000);
-  check(/Last run/.test(await bodyText(page)), 'and the list now says when it last ran');
+  check(/ran (just now|\d+)/i.test(await bodyText(page)), 'and the list now says when it last ran');
 
   // ─── Writing one in the editor ─────────────────────────────────────────────
   // The API path is covered above; this is the surface a person actually uses, and the
@@ -213,6 +212,76 @@ try {
   await page.screenshot({ path: `${OUT}/flow-editor.png` });
   await clickText(page, 'button', /Cancel/);
   await sleep(500);
+
+  // ─── The schedule and the targets ──────────────────────────────────────────
+  // A flow that only runs when somebody presses a button measures the day they pressed it.
+  const scheduled = await api(`/flows/${flow.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name: 'Fixture — open the panel',
+      url: `http://localhost:${PORT}/`,
+      steps: [
+        { action: 'click', selector: '#open', name: 'Open the panel' },
+        { action: 'waitFor', selector: '#panel', measure: false },
+      ],
+      schedule: { enabled: true, time: '04:30' },
+      // Below what the fixture's 300ms handler can possibly achieve, so the run misses it.
+      targets: { inp: 100, tbt: null, cls: null },
+    }),
+  });
+  check(scheduled.status === 200, `a flow can be given a schedule and targets (${scheduled.status})`);
+  const savedFlow = (await scheduled.json()).data;
+  check(savedFlow.schedule?.enabled === true && savedFlow.schedule?.time === '04:30',
+    'which come back on the definition');
+  check(savedFlow.targets?.inp === 100, 'targets too');
+
+  const badTime = await api(`/flows/${flow.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name: 'x', url: `http://localhost:${PORT}/`,
+      steps: [{ action: 'click', selector: '#open' }],
+      schedule: { enabled: true, time: '25:99' },
+    }),
+  });
+  check(badTime.status === 400, 'a malformed time is refused rather than quietly repaired');
+
+  await page.reload({ waitUntil: 'networkidle0' });
+  await sleep(2000);
+  const withSchedule = await bodyText(page);
+  check(/daily 04:30/.test(withSchedule), 'the card says when it runs');
+
+  // Run it again, now that it has a target it cannot meet.
+  const started = await clickText(page, 'button', /^Run$/);
+  check(started, 'the card offers Run after a reload');
+  await sleep(1500);
+  const running = /Running/i.test(await bodyText(page));
+  check(running, 'and the second run starts');
+
+  // Waited on the report's own marker rather than on page text. The first version watched
+  // for "INP" and moved on early, which reloaded the page mid-run: the run then finished
+  // and stored itself *after* the probe had already counted, and after cleanup had run —
+  // which is also how four orphan rows were left in Mongo.
+  await page.waitForSelector('[data-flow-mode="timespan"]', { timeout: 180_000 }).catch(() => {});
+
+  let runsAfter = { data: [] };
+  for (let i = 0; i < 30; i++) {
+    runsAfter = await api(`/flows/${flow.id}/runs`).then(r => r.json());
+    if (runsAfter.data.length >= 2) break;
+    await sleep(1000);
+  }
+  check(runsAfter.data.length === 2, `the second run is stored too (${runsAfter.data.length})`);
+
+  await page.reload({ waitUntil: 'networkidle0' });
+  await sleep(2200);
+  const verdict = await bodyText(page);
+  check(/1 target missed/.test(verdict), 'and the card leads with the target it missed');
+
+  // The trend only means something with more than one run behind it.
+  await clickText(page, 'button', /History/);
+  await sleep(1500);
+  check(/slowest interaction per run/.test(await bodyText(page)),
+    'the history panel plots the slowest interaction per run');
+  await page.screenshot({ path: `${OUT}/flow-targets.png` });
 
   const noisy = errors.filter(e => !/favicon|status of 401|status of 400/i.test(e.text));
   check(noisy.length === 0, `no console errors (${noisy.length})`);

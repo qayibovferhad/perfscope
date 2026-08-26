@@ -6,7 +6,7 @@
  * rejected rather than quietly repaired. A step with no selector does not "just not click";
  * it makes a flow that looks configured and measures the wrong thing.
  */
-import { MAX_FLOW_STEPS, type FlowActionKind, type FlowStep } from '@perfscope/shared';
+import { MAX_FLOW_STEPS, isValidTime, type FlowActionKind, type FlowStep } from '@perfscope/shared';
 import { AppError } from '../lib/errors.js';
 import { isValidUrl } from '../lib/url.js';
 
@@ -32,6 +32,31 @@ export interface FlowBody {
   snapshotAtEnd?: unknown;
   formFactor?: unknown;
   websiteId?: unknown;
+  schedule?: unknown;
+  targets?: unknown;
+}
+
+/** Bounds for the interaction targets, beside the fields they bound. Mirrors the shape
+ *  `websiteInput.ts` uses for site budgets — same reasoning, different metrics. */
+const TARGET_RANGE = {
+  inp: [10, 60_000],
+  tbt: [0, 60_000],
+  cls: [0.01, 5],
+} as const;
+
+/** Out-of-range reads as unset rather than erroring: the editor sends every field on every
+ *  save, and a blank one is how a target is removed. */
+function inRange(value: unknown, [min, max]: readonly [number, number]): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : null;
+}
+
+function parseSchedule(raw: unknown): { enabled: boolean; time: string } {
+  const schedule = (raw ?? {}) as Record<string, unknown>;
+  const time = typeof schedule['time'] === 'string' ? schedule['time'] : '03:00';
+  // Rejected, not repaired: a bad time is how an automation ends up looking configured and
+  // never firing — the exact failure `websiteInput` documents for site schedules.
+  if (!isValidTime(time)) throw new AppError(400, 'schedule.time must be HH:MM (00:00-23:59)');
+  return { enabled: schedule['enabled'] === true, time };
 }
 
 function parseStep(raw: unknown, index: number): FlowStep {
@@ -103,10 +128,18 @@ export function parseFlowInput(body: FlowBody) {
 
   const steps = body.steps.map(parseStep);
 
+  const targets = (body.targets ?? {}) as Record<string, unknown>;
+
   return {
     name,
     url,
     steps,
+    schedule: parseSchedule(body.schedule),
+    targets: {
+      inp: inRange(targets['inp'], TARGET_RANGE.inp),
+      tbt: inRange(targets['tbt'], TARGET_RANGE.tbt),
+      cls: inRange(targets['cls'], TARGET_RANGE.cls),
+    },
     snapshotAtEnd: body.snapshotAtEnd !== false,
     formFactor: body.formFactor === 'mobile' ? ('mobile' as const) : ('desktop' as const),
     ...(typeof body.websiteId === 'string' && /^[a-f\d]{24}$/i.test(body.websiteId)

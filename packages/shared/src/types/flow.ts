@@ -52,6 +52,43 @@ export interface FlowStep {
   measure?: boolean
 }
 
+/**
+ * When a flow runs on its own.
+ *
+ * One time a day rather than the website automation's slots/spread machinery: a flow is a
+ * scripted journey through a page, and running the same journey six times a day tells you
+ * about the site's noise, not about the journey. The nightly audit already answers "how is
+ * it now"; this answers "did what we changed today make the checkout slower".
+ */
+export interface FlowSchedule {
+  enabled: boolean
+  /** Server-local `HH:MM`, matched by the cron the same way nightly audits are. */
+  time:    string
+}
+
+/**
+ * What a flow promises about itself.
+ *
+ * Ceilings over the *measured interactions*, not over the page load — the navigation step
+ * is an ordinary audit and the site's own budgets already cover it. INP is the reason this
+ * exists: it is field-only everywhere else in the product (see `targets.ts`), so a flow is
+ * the only place a lab number can be held to a threshold.
+ */
+export interface FlowTargets {
+  inp?: number | null
+  tbt?: number | null
+  cls?: number | null
+}
+
+/** A target a run missed, with the step that missed it. */
+export interface FlowTargetFailure {
+  metric: 'inp' | 'tbt' | 'cls'
+  /** The worst measured step for this metric — the one worth naming in an alert. */
+  step:   string
+  value:  number
+  target: number
+}
+
 export interface FlowDefinition {
   id:        string
   userId?:   string
@@ -65,10 +102,12 @@ export interface FlowDefinition {
    *  left behind. Cheap — a snapshot takes no timing — and usually the point of the flow. */
   snapshotAtEnd?: boolean
   formFactor?: 'mobile' | 'desktop'
+  schedule?:  FlowSchedule
+  targets?:   FlowTargets
   createdAt?: string
   updatedAt?: string
   /** Set by the API when listing: when this flow last ran, and how it went. */
-  lastRun?:  { id: string; at: string; failedSteps: number } | null
+  lastRun?:  { id: string; at: string; failedSteps: number; missedTargets: number } | null
 }
 
 /** The measurement modes, named as Lighthouse names them. */
@@ -148,6 +187,45 @@ export const FLOW_MODE_CATEGORIES: Record<FlowStepMode, Array<keyof FlowStepResu
 
 /** Steps a flow may hold. Past this it is a test suite, and it belongs in one. */
 export const MAX_FLOW_STEPS = 20
+
+/** Which metrics a flow may hold to a target, and which way the comparison runs. Every one
+ *  is a ceiling — there is no "at least this much interaction delay". */
+export const FLOW_TARGET_METRICS = ['inp', 'tbt', 'cls'] as const
+export type FlowTargetMetric = typeof FLOW_TARGET_METRICS[number]
+
+/**
+ * Which targets a run missed.
+ *
+ * Judged against the **worst measured step**, not the average: a flow whose second click
+ * takes 900ms has a problem, and averaging it with four fast ones is how that disappears.
+ * Only timespan steps are considered — a navigation's TBT belongs to the site's own budget,
+ * and a snapshot has no timing at all.
+ */
+export function collectFlowTargetFailures(
+  steps: Array<Pick<FlowStepResult, 'name' | 'mode' | 'metrics'>>,
+  targets: FlowTargets | undefined,
+): FlowTargetFailure[] {
+  if (!targets) return []
+
+  const failures: FlowTargetFailure[] = []
+  for (const metric of FLOW_TARGET_METRICS) {
+    const target = targets[metric]
+    if (typeof target !== 'number' || !(target > 0)) continue
+
+    let worst: { step: string; value: number } | null = null
+    for (const step of steps) {
+      if (step.mode !== 'timespan') continue
+      const value = step.metrics[metric]
+      if (typeof value !== 'number') continue
+      if (!worst || value > worst.value) worst = { step: step.name, value }
+    }
+
+    if (worst && worst.value > target) {
+      failures.push({ metric, step: worst.step, value: worst.value, target })
+    }
+  }
+  return failures
+}
 
 /** How a step describes itself when it was not given a name. */
 export function describeFlowStep(step: FlowStep): string {

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Footprints, History, Pencil, Play, Plus, Trash2 } from 'lucide-react';
-import type { FlowDefinition } from '@perfscope/shared';
+import { Check, Clock, Footprints, History, Pencil, Play, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { fmtMs, type FlowDefinition, type FlowRunResult } from '@perfscope/shared';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
 import { Button } from '@/shared/ui/button';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Sparkline } from '@/shared/ui/chart/Sparkline';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { timeAgo } from '@/shared/lib/time';
 import { getHostname } from '@/entities/website';
@@ -21,6 +22,29 @@ import {
  * definition somebody wrote, and has its own history. Putting the second behind a tab of
  * the first would make it look like a mode of the analyzer, which it is not.
  */
+
+/**
+ * The slowest measured interaction of each run, oldest first.
+ *
+ * The worst step rather than the average, for the same reason the target check uses it: one
+ * slow click is the finding, and averaging it with four fast ones is how it disappears.
+ * Runs with no timespan step (a flow that only navigates) contribute nothing rather than a
+ * zero, which would read as an instant interaction.
+ */
+function inpTrend(runs: FlowRunResult[]): number[] {
+  return [...runs]
+    .reverse()
+    .map(run => run.steps
+      .filter(step => step.mode === 'timespan' && typeof step.metrics.inp === 'number')
+      .reduce((worst, step) => Math.max(worst, step.metrics.inp!), 0))
+    .filter(value => value > 0);
+}
+
+/** How many interaction targets a flow actually sets — a card cannot say "on target" for a
+ *  flow that promised nothing. */
+const targetCount = (flow: FlowDefinition) =>
+  [flow.targets?.inp, flow.targets?.tbt, flow.targets?.cls].filter(v => typeof v === 'number' && v > 0).length;
+
 export function FlowsPage() {
   const { flows, isPending, isError, create, update, remove } = useFlows();
   const run = useFlowRun();
@@ -77,13 +101,35 @@ export function FlowsPage() {
                 </p>
                 <p className="text-[12.5px] text-ld-text-2 mt-[6px]">{describeSteps(flow.steps)}</p>
 
-                <p className="text-[11.5px] text-ld-text-3 mt-[8px]">
-                  {flow.lastRun
-                    ? <>Last run {timeAgo(flow.lastRun.at)} · {flow.lastRun.failedSteps === 0
-                        ? 'nothing failing'
-                        : `${flow.lastRun.failedSteps} step${flow.lastRun.failedSteps === 1 ? '' : 's'} with findings`}</>
-                    : 'Never run'}
-                </p>
+                <div className="flex items-center gap-[8px] flex-wrap mt-[8px]">
+                  {/* The verdict first: a card whose flow is over its interaction target is
+                      the one worth opening, and "3 steps with findings" does not say that. */}
+                  {flow.lastRun && flow.lastRun.missedTargets > 0 && (
+                    <span className="inline-flex items-center gap-[5px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold
+                                     border border-ld-rose-line bg-ld-rose-wash text-ld-rose">
+                      <TriangleAlert className="w-[11px] h-[11px]" />
+                      {flow.lastRun.missedTargets} target{flow.lastRun.missedTargets === 1 ? '' : 's'} missed
+                    </span>
+                  )}
+                  {targetCount(flow) > 0 && flow.lastRun?.missedTargets === 0 && (
+                    <span className="inline-flex items-center gap-[5px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold
+                                     border border-ld-accent-line bg-ld-accent-wash text-ld-accent">
+                      <Check className="w-[11px] h-[11px]" /> on target
+                    </span>
+                  )}
+                  {flow.schedule?.enabled && (
+                    <span className="inline-flex items-center gap-[5px] font-mono text-[11px] text-ld-text-3">
+                      <Clock className="w-[11px] h-[11px]" /> daily {flow.schedule.time}
+                    </span>
+                  )}
+                  <span className="text-[11.5px] text-ld-text-3">
+                    {flow.lastRun
+                      ? <>ran {timeAgo(flow.lastRun.at)}{flow.lastRun.failedSteps > 0
+                          ? ` · ${flow.lastRun.failedSteps} step${flow.lastRun.failedSteps === 1 ? '' : 's'} with findings`
+                          : ''}</>
+                      : 'never run'}
+                  </span>
+                </div>
 
                 <div className="flex items-center gap-[8px] mt-[12px] flex-wrap">
                   <Button
@@ -150,6 +196,16 @@ export function FlowsPage() {
             <Panel>
               <PanelHeader icon={<History />} title="Earlier runs" meta={`${runs.length}`} />
               <PanelBody>
+                {/* The trend, oldest to newest: a single run says what the interaction costs
+                    today, and the only way to see that a release made it worse is the line. */}
+                {inpTrend(runs).length > 1 && (
+                  <div className="flex items-center gap-[10px] mb-[10px] pb-[10px] border-b border-ld-border">
+                    <Sparkline values={inpTrend(runs)} id={`inp-${historyOf}`} width={120} height={30} />
+                    <span className="text-[11.5px] text-ld-text-3">
+                      slowest interaction per run · newest {fmtMs(inpTrend(runs).at(-1)!)}
+                    </span>
+                  </div>
+                )}
                 <ul className="flex flex-col gap-[6px]">
                   {runs.map(entry => (
                     <li key={entry.id}>

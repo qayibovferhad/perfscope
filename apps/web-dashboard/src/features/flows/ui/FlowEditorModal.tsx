@@ -8,6 +8,7 @@ import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { Input } from '@/shared/ui/input';
 import { Button } from '@/shared/ui/button';
 import { Toggle } from '@/shared/ui/toggle';
+import { TimePicker } from '@/shared/ui/time-picker';
 import { Field } from '@/shared/ui/field';
 import { Segmented } from '@/shared/ui/segmented';
 import {
@@ -46,6 +47,11 @@ const spec = (action: FlowActionKind) => ACTIONS.find(a => a.value === action)!;
 
 const EMPTY_STEP: FlowStep = { action: 'click', selector: '', measure: true };
 
+/** Named for what they measure rather than by their acronym alone — a flow's targets are
+ *  read by whoever writes the flow, not only by whoever already knows the metrics. */
+const TARGET_LABEL = { inp: 'INP target', tbt: 'TBT target', cls: 'CLS target' } as const;
+const TARGET_PLACEHOLDER = { inp: '200 ms', tbt: '300 ms', cls: '0.10' } as const;
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -62,6 +68,9 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
   const [steps, setSteps] = useState<FlowStep[]>([{ ...EMPTY_STEP }]);
   const [snapshotAtEnd, setSnapshotAtEnd] = useState(true);
   const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>('desktop');
+  const [scheduled, setScheduled] = useState(false);
+  const [time, setTime] = useState('03:00');
+  const [targets, setTargets] = useState<{ inp: string; tbt: string; cls: string }>({ inp: '', tbt: '', cls: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -75,6 +84,13 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
     setSteps(flow?.steps?.length ? flow.steps.map(s => ({ ...s })) : [{ ...EMPTY_STEP }]);
     setSnapshotAtEnd(flow?.snapshotAtEnd !== false);
     setFormFactor(flow?.formFactor === 'mobile' ? 'mobile' : 'desktop');
+    setScheduled(flow?.schedule?.enabled === true);
+    setTime(flow?.schedule?.time ?? '03:00');
+    setTargets({
+      inp: flow?.targets?.inp != null ? String(flow.targets.inp) : '',
+      tbt: flow?.targets?.tbt != null ? String(flow.targets.tbt) : '',
+      cls: flow?.targets?.cls != null ? String(flow.targets.cls) : '',
+    });
     setError('');
   }, [open, flow]);
 
@@ -100,6 +116,14 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
         steps,
         snapshotAtEnd,
         formFactor,
+        schedule: { enabled: scheduled, time },
+        // An empty box is "no target", which the server stores as null — the same contract
+        // the site budgets use, so clearing one is just clearing the field.
+        targets: {
+          inp: targets.inp.trim() ? Number(targets.inp) : null,
+          tbt: targets.tbt.trim() ? Number(targets.tbt) : null,
+          cls: targets.cls.trim() ? Number(targets.cls) : null,
+        },
         ...(flow?.websiteId ? { websiteId: flow.websiteId } : {}),
       });
       onClose();
@@ -249,6 +273,36 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
           <span className="text-[11.5px] text-ld-text-3">
             Accessibility and best practices on whatever the flow left on screen.
           </span>
+        </div>
+
+        {/* ── When it runs, and what it promises ───────────────────────────── */}
+        <div className="flex flex-col gap-[12px] rounded-[12px] border border-ld-border bg-ld-surface-2 p-[12px]">
+          <div className="flex items-center gap-[14px] flex-wrap">
+            <Toggle label="Run this flow every day" enabled={scheduled} onChange={setScheduled} />
+            <span className="text-[12.5px] text-ld-text-2">Run every day</span>
+            {scheduled && <TimePicker value={time} onChange={setTime} />}
+          </div>
+
+          <div className="flex items-end gap-[10px] flex-wrap">
+            {(['inp', 'tbt', 'cls'] as const).map((metric) => (
+              <Field key={metric} label={TARGET_LABEL[metric]} className="w-[128px]">
+                {(id) => (
+                  <Input
+                    id={id}
+                    value={targets[metric]}
+                    onChange={e => setTargets(t => ({ ...t, [metric]: e.target.value }))}
+                    placeholder={TARGET_PLACEHOLDER[metric]}
+                    inputMode="decimal"
+                    className="h-[34px] text-[13px] font-mono"
+                  />
+                )}
+              </Field>
+            ))}
+            <p className="flex-1 min-w-[200px] text-[11.5px] text-ld-text-3 pb-[6px]">
+              Ceilings over the <b>measured interactions</b> — the page load has the site's own
+              budget. A run over one raises an alert on the site this URL belongs to.
+            </p>
+          </div>
         </div>
 
         {error && (

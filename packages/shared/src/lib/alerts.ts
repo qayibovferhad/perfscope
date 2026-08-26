@@ -12,6 +12,10 @@ export const ALERT_EVENT_LABEL: Record<string, string> = {
   'budget.recovered': 'Target recovered',
   'audit.regression': 'Regression',
   'rum.breach':       'Field target missed',
+  // A flow's targets are about an interaction, not about a page load, and the incident list
+  // is read by someone deciding what to open — "Interaction slower" says which of the two.
+  'flow.breach':      'Interaction slower',
+  'flow.recovered':   'Interaction recovered',
 }
 
 /** The stored name when there is no label for it — better than an empty chip. */
