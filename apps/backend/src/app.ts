@@ -19,8 +19,10 @@ import { notificationsRouter } from './routes/notifications.routes.js';
 import { cliAuthRouter }           from './routes/cliAuth.routes.js';
 import { rumRouter } from './routes/rum.routes.js';
 import { deployRouter } from './routes/deploy.routes.js';
+import { flowRouter } from './routes/flow.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
+import { registerFlowSocket } from './socket/flow.handler.js';
 import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
 import { isDbReady } from './config/database.js';
 import { errorMiddleware } from './lib/errors.js';
@@ -54,6 +56,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   });
 
   registerAnalysisSocket(io);
+  registerFlowSocket(io);
 
   // ── Middleware ───────────────────────────────────────────────────────────
   /**
@@ -107,6 +110,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', authRouter);
   app.use('/api', websiteRouter);
   app.use('/api', deployRouter);
+  app.use('/api', flowRouter);
   app.use('/api', analyzerRouter);
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);

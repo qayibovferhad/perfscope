@@ -13,6 +13,7 @@ const LoginPage             = lazy(() => import('@/pages/login/LoginPage').then(
 const RegisterPage          = lazy(() => import('@/pages/register/RegisterPage').then(m => ({ default: m.RegisterPage })));
 const ForgotPasswordPage    = lazy(() => import('@/pages/forgot-password/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage     = lazy(() => import('@/pages/reset-password/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const FlowsPage             = lazy(() => import('@/pages/flows/FlowsPage').then(m => ({ default: m.FlowsPage })));
 const AnalyzerPage          = lazy(() => import('@/pages/analyzer/AnalyzerPage').then(m => ({ default: m.AnalyzerPage })));
 const ComparisonPage        = lazy(() => import('@/pages/compare/ComparisonPage').then(m => ({ default: m.ComparisonPage })));
 const DashboardPage         = lazy(() => import('@/pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="/dashboard"       element={<DashboardRoute><DashboardPage /></DashboardRoute>} />
         <Route path="/app"             element={<DashboardRoute><AnalyzerPage /></DashboardRoute>} />
         <Route path="/compare"         element={<DashboardRoute><ComparisonPage /></DashboardRoute>} />
+        <Route path="/flows"           element={<DashboardRoute><FlowsPage /></DashboardRoute>} />
         <Route path="/history"         element={<DashboardRoute><HistoryPage /></DashboardRoute>} />
         <Route path="/compare-history" element={<DashboardRoute><CompareHistoryPage /></DashboardRoute>} />
         <Route path="/websites"        element={<DashboardRoute><WebsitesPage /></DashboardRoute>} />

@@ -56,12 +56,18 @@ pnpm install
 ```
 
 ```bash
-pnpm test    # Vitest — shared (rating, formatters, forecast), backend (libs + parsers + lhr-transform), web-dashboard units
-pnpm e2e     # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
-pnpm --filter @perfscope/web-dashboard lint   # ESLint, incl. FSD layer-boundary rules (0 errors is the bar)
+pnpm test        # 336 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
+                 # node:test in cli and action. `probes/` is deliberately NOT part of this.
+pnpm e2e         # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
+pnpm typecheck   # every workspace, including the ones whose build is not tsc
+pnpm lint        # every workspace. 0 errors is the bar; ~35 warnings are deliberate
+
+# Hand-run, minutes each, needing a real Chrome / Gemini key / Mongo:
+node e2e/<name>.probe.mjs                     # browser-level probes
+cd apps/backend && npx tsx probes/<name>.mts  # service-level probes
 ```
 
-CI (`.github/workflows/ci.yml`) runs build + lint + unit tests, and a separate `e2e` job with a Mongo service. Two CI-only gotchas are already encoded there: puppeteer's Chrome download fails on runners (skipped, system Chrome via `setup-chrome` + `PUPPETEER_EXECUTABLE_PATH`), and `turbo dev` hangs without a TTY (the job calls the package dev scripts directly).
+CI (`.github/workflows/ci.yml`) runs build + typecheck + lint + unit tests, and a separate `e2e` job with a Mongo service that also audits the dashboard through PerfScope's own GitHub Action. Two CI-only gotchas are already encoded there: puppeteer's Chrome download fails on runners (skipped, system Chrome via `setup-chrome` + `PUPPETEER_EXECUTABLE_PATH`), and `turbo dev` hangs without a TTY (the job calls the package dev scripts directly).
 
 ## Environment Setup
 
@@ -98,7 +104,9 @@ perfscope/
 │   ├── web-dashboard/     (@perfscope/web-dashboard — Vite + React 19 + TypeScript)
 │   └── chrome-extension/  (@perfscope/chrome-extension — WXT + React + Tailwind)
 └── packages/
-    └── shared/            (@perfscope/shared — common TS types + API client factory)
+    ├── shared/            (@perfscope/shared — common TS types + API client factory)
+    ├── cli/               (@perfscope/cli — the `perfscope` command; plain JS, published standalone)
+    └── action/            (GitHub Action — runs `perfscope ci` and reports it on the PR)
 ```
 
 ### Analysis pipeline (the core flow)
@@ -122,6 +130,20 @@ Socket events (server → client): `analysis:progress`, `analysis:partial`, `ana
 - **Share links**: `POST /api/history/:id/share` mints a 32-hex token, `GET /api/public/report/:token` serves the stored result unauthenticated, `/report/:token` renders it read-only.
 - **Field data**: `crux.service.ts` queries the Chrome UX Report (URL level, falling back to origin) so real-user p75s sit next to the lab numbers.
 
+### CI and the GitHub Action
+
+`packages/action/` is a **composite** action: it runs `perfscope ci --json` as its own step
+(so the CLI's output, annotations and exit code read exactly as they do locally) and then
+`run.mjs`, which posts one sticky PR comment per audited URL and a check run. Three things
+there are not obvious and are covered by tests: the check goes on the PR's **head sha**, not
+the merge commit `GITHUB_SHA` names; `warn-only` reports `neutral` rather than red; and a
+fork PR's read-only token means the comment is skipped, never fatal. The comment's marker is
+keyed on the URL, which is what lets one workflow audit several pages.
+
+Our own `.github/workflows/ci.yml` uses it (`uses: ./packages/action` with `cli-path`), so
+the action is exercised on every push. **`@perfscope/cli` is not published to npm yet**, so
+outside this repo `cli-path` is required — `packages/action/README.md` says so.
+
 ### Hardening (production only)
 
 `GET /health` answers `{ status, uptime, database, version }` — the database is *reported*,
@@ -134,6 +156,30 @@ routers because a stored audit result is hundreds of KB.
 targets, the auth-audit browser, alert webhooks and sitemap scans. It is off in development
 (auditing `http://localhost:5173` is a first-class use) and on when `NODE_ENV=production`;
 `ALLOW_PRIVATE_TARGETS=true` turns it off again for an intranet install.
+
+### User flows — measuring after the load
+
+`/flows` runs a definition (a URL plus steps) through Lighthouse's flow API: one cold
+navigation, then **each measured step inside its own timespan**, then a snapshot. One
+timespan around the whole flow would report a single INP for five interactions and could not
+say which was slow, which is the only question the feature answers.
+
+The modes decide everything downstream, so nothing may assume a shape: a **timespan** has
+INP/TBT/CLS and no LCP; a **snapshot** has no timing at all and its `performance: 0` is the
+*absence* of a score, never a score (`FLOW_MODE_METRICS`/`FLOW_MODE_CATEGORIES` in shared are
+what the server stores by and the client draws by). `flow-transform.ts` drops the rest.
+
+Two things that are load-bearing and non-obvious: after an interaction the runner waits two
+animation frames plus a settle (`settleAfterInteraction`) **inside** the timespan — INP is
+input to *next paint*, and closing the window at `page.click()`'s resolution reports no INP
+at all; and flows share `auditQueue` with audits, because a flow measuring INP against two
+competing audits is not a measurement. Runs are stored in their own `FlowRun` collection,
+never in `History` — budgets, `hasResult`, previous-run comparison and the dashboard averages
+all assume a navigation audit.
+
+Backend: `services/flow.service.ts` (runner), `flow-transform.ts`, `flowInput.ts`
+(validation — a bad step is rejected, never repaired), `socket/flow.handler.ts`,
+`routes/flow.routes.ts`. Frontend: `features/flows` + `pages/flows`.
 
 ### Dashboard window
 
@@ -180,15 +226,15 @@ The `projects` feature groups audits by website and route. A `projectId` can be 
 - `services/auditQueue.ts` — concurrency cap + priority for every audit
 - `services/budget.service.ts`, `mailer.service.ts`, `crux.service.ts`, `ai.service.ts`, `authAuditSession.ts`
 - `lib/` — `url.ts` (`isValidUrl`, `hostOf`, `sameOrigin`, `normalizeUrl`, `escapeRegex`, `hostPrefixRegex`), `ssrf.ts` (private-network guard — **production only**, see below), `medianRun.ts`, `chrome.ts` (launch flags), `errors.ts`
-- `models/` — Mongoose schemas: `User`, `Website`, `History`, `CompareHistory`, `CompetitorSession`
-- `routes/` — auth, website CRUD + budgets, history + share links, public report, compare history, auth-audit sessions, competitor sessions, CrUX, CLI auth, legacy analyze
+- `models/` — Mongoose schemas: `User`, `Website`, `History`, `CompareHistory`, `CompetitorSession`, `Deploy`, `AlertLog`, `RumEvent`, `AiRecommendation`/`AiActionLog`, `CliAuthCode`, and the two that make sessions revocable — `RefreshToken`, `PasswordReset` (both store a **hash**, never the token)
+- `routes/` — auth (+ refresh/logout/password reset), website CRUD + budgets + route discovery, deploys, history + share links, public report, compare history, advice, auth-audit sessions, competitor sessions, CrUX, RUM, onboarding, overview, notifications, CLI auth, legacy analyze
 
 ### Frontend layout (`apps/web-dashboard/src/`) — Feature-Sliced Design
 
 Six FSD layers; imports flow strictly downward (`app` → `pages` → `widgets` → `features` → `entities` → `shared`). Slices use `ui/` (components), `model/` (hooks + Zustand stores), `api/` (slice network code), `lib/` (helpers) segments.
 
 - `app/` — `App.tsx` (routes), `main.tsx` (providers + token wiring), `ErrorBoundary`, `styles/index.css`
-- `pages/` — route-level pages; page-local components live in the page's own `ui/` (e.g. `pages/websites/ui/WebsiteCard.tsx`)
+- `pages/` — route-level pages; page-local components live in the page's own `ui/` (e.g. `pages/websites/ui/WebsiteCard.tsx`). The signed-out set (`login`, `register`, `forgot-password`, `reset-password`) shares `shared/ui/auth-card.tsx` — a page may not import another page's `ui/`, which is why that shell lives in `shared`
 - `widgets/` — self-contained blocks: `dashboard-layout` (sidebar shell), `analyzer-results`, `analyzer-header`, `history-websites-overview`, `cross-website-picker`, `footer`
 - `features/` — user scenarios:
   - `analyzer/` — analysis UI; `model/useAnalysis` owns socket lifecycle, `model/analysisStore` (Zustand) persists last result across routes
@@ -243,6 +289,19 @@ The pair is stored in Zustand (`authStore`, persisted to localStorage). The Sock
 connection sends the access token in `handshake.auth.token`; `analysis.handler.ts` extracts
 `userId` from it to tag history entries. REST routes use `requireAuth`
 (`middleware/auth.middleware.ts`), which validates the `Authorization: Bearer <token>` header.
+
+### Accessibility
+
+`apps/backend/probes/app-a11y.probe.mts` audits the eight signed-in routes (`MOBILE=1` for
+412px). It seeds a throwaway account with data first — empty states hide everything — and
+opens `/app` through `/history?open=<id>` so the *report* is measured, not an empty form. All
+eight are at 100; when adding UI, run it rather than guessing.
+
+Two rules it exists to enforce: **never put `opacity` on a `--ld-*` text token** (they are
+tuned to clear 4.5:1 exactly, so dimming drops them below AA — icons and hover-reveals are
+fine), and **every form control gets a real label** via `shared/ui/field.tsx`'s `Field`,
+which owns the `useId`/`htmlFor`/`aria-describedby` wiring. An icon-only button or link needs
+an `aria-label`; an `aria-label` on a control with visible text must *contain* that text.
 
 ### Styling
 

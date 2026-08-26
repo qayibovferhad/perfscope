@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { CalendarClock, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
+import { CalendarClock, Footprints, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
 
 /**
  * The workspace's navigation, in one place.
@@ -23,6 +23,7 @@ export const NAV: NavItem[] = [
   // Run
   { to: '/app',        icon: Gauge,            label: 'New Audit'   },
   { to: '/compare',    icon: GitCompareArrows, label: 'Compare'     },
+  { to: '/flows',      icon: Footprints,       label: 'User flows'  },
   // Manage
   { to: '/websites',   icon: LayoutGrid,       label: 'My Websites' },
   // Review

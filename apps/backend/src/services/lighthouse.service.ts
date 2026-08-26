@@ -128,7 +128,14 @@ export interface AnalyzeOptions {
 }
 
 /** Global admission control — see AuditQueue for why this is a correctness feature. */
-const auditQueue = new AuditQueue(config.maxConcurrentAudits);
+/**
+ * The one admission gate for anything that owns a Chrome.
+ *
+ * Exported because user flows go through it too (`flow.service.ts`): a flow measuring INP
+ * while two audits fight it for cores is not a measurement, and a second queue would let
+ * exactly that happen while both of them believed they were capped.
+ */
+export const auditQueue = new AuditQueue(config.maxConcurrentAudits);
 
 /**
  * Everything the trace parsers can get out of one main-thread Lighthouse run.

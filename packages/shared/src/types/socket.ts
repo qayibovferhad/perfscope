@@ -4,6 +4,7 @@ import type {
   CategoryPartial,
   AuditFormFactor,
 } from './analysis.js'
+import type { FlowDefinition, FlowProgress, FlowRunResult } from './flow.js'
 
 /**
  * The Socket.io contract, as both ends must agree on it.
@@ -90,12 +91,33 @@ export interface AnalysisErrorPayload {
   code?: string
 }
 
+/** Start a stored flow, or a definition that has not been saved yet (the editor's Try it). */
+export interface FlowStartPayload {
+  flowId?: string
+  /** An unsaved definition. Ignored when `flowId` is given — a saved flow is the record. */
+  flow?: Pick<FlowDefinition, 'name' | 'url' | 'steps' | 'snapshotAtEnd' | 'formFactor'>
+}
+
+export interface FlowErrorPayload {
+  flowRunId: string
+  message:   string
+  /** Which step failed, when one did — a selector that never appeared names itself. */
+  step?:     number
+}
+
 export interface ServerToClientEvents {
   'analysis:progress': (data: AnalysisProgress) => void
   'analysis:partial':  (data: CategoryPartial)  => void
   'analysis:complete': (result: AnalysisResult) => void
   'analysis:insights': (data: AnalysisInsightsPayload) => void
   'analysis:error':    (data: AnalysisErrorPayload) => void
+  /**
+   * A flow runs one step at a time and each step is a Lighthouse gather, so progress is
+   * genuinely step-shaped rather than a percentage invented from a timer.
+   */
+  'flow:progress':     (data: FlowProgress) => void
+  'flow:complete':     (result: FlowRunResult) => void
+  'flow:error':        (data: FlowErrorPayload) => void
 }
 
 /** What the client may send. */
@@ -104,4 +126,5 @@ export interface ClientToServerEvents {
   /** Handled by the server; no client emits it today. */
   'analysis:cancel':  (data: AnalysisCancelPayload) => void
   'auth-audit:start': (data: AuthAuditStartPayload) => void
+  'flow:start':       (data: FlowStartPayload) => void
 }

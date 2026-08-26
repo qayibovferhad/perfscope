@@ -195,7 +195,7 @@ try {
   }
 
   // ─── Every other route ─────────────────────────────────────────────────────
-  for (const route of ['/websites', '/history', '/compare', '/automation', '/settings', '/scheduled']) {
+  for (const route of ['/websites', '/history', '/compare', '/flows', '/automation', '/settings', '/scheduled']) {
     await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle0' });
     await sleep(1200);
     const bad = await bleeding(page);

@@ -128,6 +128,11 @@ export async function cleanupUser(email) {
       await db.collection('histories').deleteMany({ userId: { $in: ids.map(String) } });
       await db.collection('websites').deleteMany({ userId: { $in: ids } });
       await db.collection('competitorsessions').deleteMany({ userId: { $in: ids } });
+      // Flows and their reports, and the sessions the auth work added: a probe that leaves
+      // rows behind is a probe that slowly makes the next one's counts wrong.
+      await db.collection('flows').deleteMany({ userId: { $in: ids } });
+      await db.collection('flowruns').deleteMany({ userId: { $in: ids } });
+      await db.collection('refreshtokens').deleteMany({ userId: { $in: ids } });
       await db.collection('users').deleteMany({ _id: { $in: ids } });
     }
   } finally {

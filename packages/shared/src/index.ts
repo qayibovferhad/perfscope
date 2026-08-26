@@ -9,6 +9,7 @@ export * from './types/crux.js'
 export * from './types/rum.js'
 export * from './types/onboarding.js'
 export * from './types/overview.js'
+export * from './types/flow.js'
 export * from './types/compare.js'
 export * from './types/socket.js'
 
