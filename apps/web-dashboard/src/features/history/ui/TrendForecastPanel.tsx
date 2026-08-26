@@ -108,7 +108,7 @@ export function TrendForecastPanel({ url, entries }: Props) {
 
       {/* ── Footer ──────────────────────────────────────── */}
       <div className="px-[24px] py-[12px] border-t border-ld-border bg-ld-surface-2">
-        <span className="font-mono text-[11px] text-ld-text-3 opacity-70">
+        <span className="font-mono text-[11px] text-ld-text-3">
           Straight-line projection from past runs — it assumes nothing else changes.
           {!budgets && ' Set targets on the site\u2019s page to get crossing dates.'}
         </span>

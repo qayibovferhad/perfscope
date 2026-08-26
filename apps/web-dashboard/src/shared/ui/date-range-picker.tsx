@@ -182,7 +182,10 @@ export function DateRangePicker({ range, presets, onPreset, onRange, className }
         ref={triggerRef}
         type="button"
         onClick={toggle}
-        aria-label="Time range"
+        // The visible text has to be *part of* the accessible name, or the two disagree and
+        // a voice-control user saying "click 30 days" hits nothing. Lighthouse calls this
+        // label-content-name-mismatch, and it was the dashboard's only failing audit.
+        aria-label={`Time range: ${rangeLabel(range, presets, today)}`}
         aria-expanded={open}
         className={cn(
           'inline-flex items-center gap-[7px] h-[32px] px-[11px] rounded-[10px] cursor-pointer',

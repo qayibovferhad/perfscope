@@ -228,7 +228,7 @@ export function WaterfallComparison({
 
         <div className="flex justify-between pl-10 pr-20">
           {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i} className="text-[8px] tabular-nums text-ld-text-3 opacity-60">
+            <span key={i} className="text-[8px] tabular-nums text-ld-text-3">
               {fmtMs((i / 4) * totalMs)}
             </span>
           ))}

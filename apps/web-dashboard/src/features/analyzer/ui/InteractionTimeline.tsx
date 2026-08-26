@@ -345,7 +345,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
         <div className="flex flex-col items-center justify-center py-[48px] gap-[8px]">
           <MousePointerClick className="w-[32px] h-[32px] text-ld-text-3 opacity-30" />
           <p className="text-[13px] text-ld-text-3">No interaction events detected in this trace.</p>
-          <p className="text-[11px] text-ld-text-3 opacity-60">
+          <p className="text-[11px] text-ld-text-3">
             EventDispatch events were not captured during the Lighthouse run.
           </p>
         </div>
@@ -429,7 +429,7 @@ export const InteractionTimeline = memo(function InteractionTimeline({
                   {label}
                 </span>
               ))}
-              <span className="ml-auto font-mono text-[9.5px] text-ld-text-3 opacity-60 italic">
+              <span className="ml-auto font-mono text-[9.5px] text-ld-text-3 italic">
                 Click zone → zoom FlameChart
               </span>
             </div>

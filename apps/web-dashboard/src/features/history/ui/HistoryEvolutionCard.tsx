@@ -38,7 +38,7 @@ export function HistoryEvolutionCard({ url, entries, action }: Props) {
         <div className="flex items-center gap-[16px] flex-wrap">
           <MarkDeployButton url={url} />
           {action ?? (
-            <span className="font-mono text-[11px] text-ld-text-3 opacity-60">
+            <span className="font-mono text-[11px] text-ld-text-3">
               Judged vs the previous run: &gt;{SCORE_NOISE_POINTS} score points, or &gt;{REGRESSION_PCT}% on LCP/TBT
             </span>
           )}

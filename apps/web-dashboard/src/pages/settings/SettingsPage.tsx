@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '@/features/auth';
 import type { AuthUser } from '@/entities/user';
 import { apiClient, fetchJson } from '@/shared/api/client';
+import { Field } from '@/shared/ui/field';
 
 interface ProfileForm  { name: string }
 interface PasswordForm { currentPassword: string; newPassword: string; confirmPassword: string }
@@ -87,13 +88,13 @@ function DigestSection() {
 
         {enabled && (
           <div className="flex items-end gap-[14px] flex-wrap pt-[4px]">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12.5px] font-semibold text-ld-text-2">Day</label>
+            <Field label="Day">
+              {(id) => (
               <Select
                 value={String(day)}
                 onValueChange={v => { const d = Number(v); setDay(d); void save({ day: d }); }}
               >
-                <SelectTrigger className="h-9 w-[140px] text-[13px] text-ld-text bg-ld-bg-2 border-ld-border-strong rounded-[10px]">
+                <SelectTrigger id={id} className="h-9 w-[140px] text-[13px] text-ld-text bg-ld-bg-2 border-ld-border-strong rounded-[10px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-ld-bg-2 border-ld-border">
@@ -108,9 +109,13 @@ function DigestSection() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12.5px] font-semibold text-ld-text-2">Time</label>
+              )}
+            </Field>
+
+            {/* The time picker is two selects of its own, so the label names the pair
+                rather than pointing at one half of it. */}
+            <div className="flex flex-col gap-1.5" role="group" aria-label="Time">
+              <span className="text-[12.5px] font-semibold text-ld-text-2">Time</span>
               <TimePicker value={time} onChange={(t) => { setTime(t); void save({ time: t }); }} />
             </div>
           </div>
@@ -152,29 +157,26 @@ function ProfileSection({ user, setAuth }: ProfileSectionProps) {
       <PanelHeader icon={<UserIcon />} title="Profile" />
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[14px] p-[18px]">
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-semibold text-ld-text-2">Display name</label>
-          <Input
-            {...register('name', {
-              required:  'Display name is required',
-              maxLength: { value: 60, message: 'Max 60 characters' },
-            })}
-            placeholder="Your name"
-            icon={<UserIcon />}
-            error={!!errors.name}
-          />
-          {errors.name && (
-            <span className="text-[11px] px-1 text-ld-rose">{errors.name.message}</span>
+        <Field label="Display name" error={errors.name?.message}>
+          {(id) => (
+            <Input
+              id={id}
+              {...register('name', {
+                required:  'Display name is required',
+                maxLength: { value: 60, message: 'Max 60 characters' },
+              })}
+              placeholder="Your name"
+              icon={<UserIcon />}
+              error={!!errors.name}
+            />
           )}
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-semibold text-ld-text-2">Email</label>
-          <Input value={user?.email ?? ''} icon={<Mail />} disabled readOnly />
-          <span className="text-[11px] px-1 text-ld-text-3">
-            Your email is tied to your account and cannot be changed here.
-          </span>
-        </div>
+        <Field label="Email" hint="Your email is tied to your account and cannot be changed here.">
+          {/* The field Lighthouse flagged: disabled and read-only, with no placeholder to
+              fall back on, so it had no accessible name at all. */}
+          {(id) => <Input id={id} value={user?.email ?? ''} icon={<Mail />} disabled readOnly />}
+        </Field>
 
         {error && <SaveError>{error}</SaveError>}
 
@@ -221,55 +223,55 @@ function PasswordSection() {
       <PanelHeader icon={<ShieldCheck />} title="Password" />
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[14px] p-[18px]">
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-semibold text-ld-text-2">Current password</label>
-          <Input
-            {...register('currentPassword')}
-            type="password"
-            placeholder="Current password"
-            icon={<KeyRound />}
-            autoComplete="current-password"
-          />
-          <span className="text-[11px] px-1 text-ld-text-3">
-            Leave empty if you signed up with Google and have not set a password yet.
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-semibold text-ld-text-2">New password</label>
-          <Input
-            {...register('newPassword', {
-              required:  'New password is required',
-              minLength: { value: 6, message: 'Min 6 characters' },
-            })}
-            type="password"
-            placeholder="New password"
-            icon={<KeyRound />}
-            error={!!errors.newPassword}
-            autoComplete="new-password"
-          />
-          {errors.newPassword && (
-            <span className="text-[11px] px-1 text-ld-rose">{errors.newPassword.message}</span>
+        <Field
+          label="Current password"
+          hint="Leave empty if you signed up with Google and have not set a password yet."
+        >
+          {(id) => (
+            <Input
+              id={id}
+              {...register('currentPassword')}
+              type="password"
+              placeholder="Current password"
+              icon={<KeyRound />}
+              autoComplete="current-password"
+            />
           )}
-        </div>
+        </Field>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[12.5px] font-semibold text-ld-text-2">Confirm new password</label>
-          <Input
-            {...register('confirmPassword', {
-              required: 'Please repeat the new password',
-              validate: (v) => v === newPassword || 'Passwords do not match',
-            })}
-            type="password"
-            placeholder="Repeat new password"
-            icon={<KeyRound />}
-            error={!!errors.confirmPassword}
-            autoComplete="new-password"
-          />
-          {errors.confirmPassword && (
-            <span className="text-[11px] px-1 text-ld-rose">{errors.confirmPassword.message}</span>
+        <Field label="New password" error={errors.newPassword?.message}>
+          {(id) => (
+            <Input
+              id={id}
+              {...register('newPassword', {
+                required:  'New password is required',
+                minLength: { value: 6, message: 'Min 6 characters' },
+              })}
+              type="password"
+              placeholder="New password"
+              icon={<KeyRound />}
+              error={!!errors.newPassword}
+              autoComplete="new-password"
+            />
           )}
-        </div>
+        </Field>
+
+        <Field label="Confirm new password" error={errors.confirmPassword?.message}>
+          {(id) => (
+            <Input
+              id={id}
+              {...register('confirmPassword', {
+                required: 'Please repeat the new password',
+                validate: (v) => v === newPassword || 'Passwords do not match',
+              })}
+              type="password"
+              placeholder="Repeat new password"
+              icon={<KeyRound />}
+              error={!!errors.confirmPassword}
+              autoComplete="new-password"
+            />
+          )}
+        </Field>
 
         {error && <SaveError>{error}</SaveError>}
 

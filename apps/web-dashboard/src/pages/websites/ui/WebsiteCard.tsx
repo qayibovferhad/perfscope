@@ -80,9 +80,12 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           <ArrowRight className="w-[21px] h-[21px] col-start-1 row-start-1 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[17px] font-bold tracking-[-0.01em] text-ld-text truncate transition-colors duration-200 group-hover:text-ld-accent">
+          {/* h2, not h3: the page title is the h1 and there is nothing between it and a
+              card, so h3 skipped a level — which is what a screen reader's heading list
+              reads as a missing section. */}
+          <h2 className="text-[17px] font-bold tracking-[-0.01em] text-ld-text truncate transition-colors duration-200 group-hover:text-ld-accent">
             {site.name || hostname}
-          </h3>
+          </h2>
           <span className="flex items-center gap-[6px] font-mono text-[12.5px] text-ld-text-3 mt-[3px]">
             <Link2 className="w-3 h-3 shrink-0" />
             <span className="truncate">{hostname}</span>
@@ -173,7 +176,10 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
 
         <Button variant="outline" size="icon" asChild onClick={e => e.stopPropagation()}
                 className={isList ? '' : 'ml-auto'}>
-          <a href={site.url} target="_blank" rel="noopener noreferrer">
+          {/* An icon is not a name. Both of these announced as "link" and "button" and
+              nothing else — the one thing a screen reader user cannot work around. */}
+          <a href={site.url} target="_blank" rel="noopener noreferrer"
+             aria-label={`Open ${hostname} in a new tab`}>
             <ExternalLink />
           </a>
         </Button>
@@ -182,6 +188,7 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
           variant="outline"
           size="icon"
           onClick={onDelete}
+          aria-label={`Delete ${site.name || hostname}`}
           className="hover:text-ld-rose"
         >
           <Trash2 />

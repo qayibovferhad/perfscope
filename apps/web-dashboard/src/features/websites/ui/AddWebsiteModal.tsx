@@ -6,6 +6,7 @@ import { Modal, ModalHeader } from '@/shared/ui/modal';
 import { normalizeUrl } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
+import { Field } from '@/shared/ui/field';
 import { useWebsites } from '@/entities/website';
 import { SessionCaptureModal } from '@/features/auth-audit';
 
@@ -81,42 +82,45 @@ export function AddWebsiteModal({ open, onClose }: Props) {
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-[18px] mt-[22px]">
 
-          <div className="flex flex-col gap-[7px]">
-            <label className="text-[13px] font-semibold text-ld-text flex items-center justify-between gap-[10px]">
-              Site name
+          <Field
+            label="Site name"
+            hint="A friendly label — defaults to the domain if left blank."
+            aside={
               <span className="font-mono font-normal text-[10px] tracking-[.08em] uppercase text-ld-text-3 px-[7px] py-[2px] rounded-full border border-ld-border">
                 optional
               </span>
-            </label>
-            <Input
-              {...nameReg}
-              ref={(el) => { nameReg.ref(el); nameRef.current = el; }}
-              icon={<User />}
-              placeholder="My Portfolio"
-            />
-            <span className="text-[11.5px] text-ld-text-3">A friendly label — defaults to the domain if left blank.</span>
-          </div>
-
-          <div className="flex flex-col gap-[7px]">
-            <label className="text-[13px] font-semibold text-ld-text">Website URL</label>
-            <Input
-              {...register('url', {
-                required: 'URL is required',
-                pattern: {
-                  value: /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/i,
-                  message: 'Enter a valid URL, e.g. https://example.com',
-                },
-                onChange: () => clearErrors('url'),
-              })}
-              icon={<Globe />}
-              error={!!errors.url}
-              mono
-              placeholder="https://example.com"
-            />
-            {errors.url && (
-              <span className="text-[11.5px] text-ld-rose">{errors.url.message}</span>
+            }
+          >
+            {(id) => (
+              <Input
+                id={id}
+                {...nameReg}
+                ref={(el) => { nameReg.ref(el); nameRef.current = el; }}
+                icon={<User />}
+                placeholder="My Portfolio"
+              />
             )}
-          </div>
+          </Field>
+
+          <Field label="Website URL" error={errors.url?.message}>
+            {(id) => (
+              <Input
+                id={id}
+                {...register('url', {
+                  required: 'URL is required',
+                  pattern: {
+                    value: /^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$/i,
+                    message: 'Enter a valid URL, e.g. https://example.com',
+                  },
+                  onChange: () => clearErrors('url'),
+                })}
+                icon={<Globe />}
+                error={!!errors.url}
+                mono
+                placeholder="https://example.com"
+              />
+            )}
+          </Field>
 
           <button
             type="button"

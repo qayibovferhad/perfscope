@@ -136,7 +136,10 @@ export function EvolutionChartPanel({ entries, deploys = [] }: {
           <i className="w-[10px] h-[10px] rounded-full border-2 border-ld-rose bg-ld-rose-fill block not-italic" />
           Regression
         </span>
-        <span className="ml-auto inline-flex items-center gap-[5px] text-[10px] text-ld-text-3 opacity-60">
+        {/* No `opacity` here: --ld-text-3 is tuned to clear 4.5:1 exactly, so dimming it
+            drops the hint below AA — which is what Lighthouse flagged on this page. A
+            quieter shade is a token's job, never the compositor's. */}
+        <span className="ml-auto inline-flex items-center gap-[5px] text-[10px] text-ld-text-3">
           <Info className="w-[11px] h-[11px]" /> Hover a point to inspect
         </span>
       </div>

@@ -15,7 +15,7 @@ function Breadcrumb() {
           >
             {label}
           </Link>
-          <span className="text-ld-text-3 opacity-50 text-[16px]">›</span>
+          <span className="text-ld-text-3 text-[16px]">›</span>
         </span>
       ))}
       <div className="flex items-center gap-1.5">

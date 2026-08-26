@@ -83,7 +83,7 @@ export function CliAuthPage() {
           </div>
         )}
 
-        <p className="text-[11px] text-ld-text-3 opacity-50">You can close this tab.</p>
+        <p className="text-[11px] text-ld-text-3">You can close this tab.</p>
       </div>
     </div>
   );

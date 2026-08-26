@@ -302,7 +302,7 @@ function CLSTracker({ currentCls, totalCls }: { currentCls: number; totalCls: nu
           transition={{ duration: 0.10, ease: 'linear' }}
         />
       </div>
-      <div className="flex justify-between font-mono text-[8px] text-ld-text-3 opacity-50">
+      <div className="flex justify-between font-mono text-[8px] text-ld-text-3">
         <span>0.000</span>
         <span>Total: {fmtCls(totalCls)}</span>
       </div>
@@ -372,7 +372,7 @@ function ShiftScrubber({
       {/* Axis */}
       <div className="flex justify-between">
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="font-mono text-[8px] tabular-nums text-ld-text-3 opacity-50">
+          <span key={i} className="font-mono text-[8px] tabular-nums text-ld-text-3">
             {fmtSec((i / 4) * totalMs)}
           </span>
         ))}
@@ -556,7 +556,7 @@ export function CLSVisualizer({
             {label}
           </span>
         ))}
-        <span className="font-mono text-[9px] text-ld-text-3 opacity-50">
+        <span className="font-mono text-[9px] text-ld-text-3">
           · Hover an element to highlight · Scrub to trace CLS buildup
         </span>
       </div>

@@ -364,7 +364,7 @@ function TimeAxis({
       {/* Tick labels */}
       <div className="flex justify-between pt-[6px]">
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="text-[8px] tabular-nums text-ld-text-3 opacity-60">
+          <span key={i} className="text-[8px] tabular-nums text-ld-text-3">
             {fmtSec2((i / 4) * totalMs)}
           </span>
         ))}
