@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { hmrSingleton } from '@/shared/lib/hmrSingleton';
+import { activeTeamId } from '@/shared/model/teamStore';
 import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
@@ -22,12 +23,18 @@ export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 let _getToken: () => string | null = () => null;
 export function configureSocketToken(getter: () => string | null) { _getToken = getter; }
 
-/** A fresh, unconnected socket carrying the current auth token. */
+/**
+ * A fresh, unconnected socket carrying the current auth token — and the team it is working
+ * in, because an audit a member starts belongs to the account they are looking at. A socket
+ * has no per-message headers, so the handshake is the only place this can be said, which is
+ * also why switching teams has to build a new one (`resetSocket`).
+ */
 export function createSocket(): AppSocket {
-  const token = _getToken();
+  const token  = _getToken();
+  const teamId = activeTeamId();
   return io(BACKEND_URL, {
     autoConnect: false,
-    auth: token ? { token } : {},
+    auth: { ...(token ? { token } : {}), ...(teamId ? { teamId } : {}) },
   });
 }
 
@@ -39,6 +46,22 @@ export function createSocket(): AppSocket {
  */
 export function getSocket(): AppSocket {
   return hmrSingleton('socket', () => createSocket());
+}
+
+/**
+ * Drop the shared socket so the next `getSocket()` builds one.
+ *
+ * Switching teams changes the handshake, and a live connection cannot be re-handshaken —
+ * it would keep running as the previous account, storing that account's audits. Called by
+ * the team switcher, right before it clears the query cache.
+ */
+export function resetSocket(): void {
+  const existing = (globalThis as Record<string, unknown>)['__perfscope_singletons__'] as
+    Record<string, unknown> | undefined;
+  const socket = existing?.['socket'] as AppSocket | undefined;
+  socket?.removeAllListeners();
+  socket?.disconnect();
+  if (existing) delete existing['socket'];
 }
 
 // ─── Dev only ────────────────────────────────────────────────────────────────

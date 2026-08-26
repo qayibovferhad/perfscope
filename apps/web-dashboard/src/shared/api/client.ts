@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useStorageStore } from '@/shared/model/storageStore';
+import { activeTeamId } from '@/shared/model/teamStore';
 
 let _getToken: () => string | null = () => null;
 export function configureApiToken(getter: () => string | null) { _getToken = getter; }
@@ -44,9 +45,18 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+/** Named once here and mirrored by the backend's `teamScope.ts`. */
+const TEAM_HEADER = 'X-Team-Id';
+
 apiClient.interceptors.request.use((config) => {
   const token = _getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Which account this request is about. Read from the store per request rather than
+  // captured once: switching teams has to change the very next call, including ones already
+  // queued behind a token refresh.
+  const teamId = activeTeamId();
+  if (teamId) config.headers[TEAM_HEADER] = teamId;
   return config;
 });
 

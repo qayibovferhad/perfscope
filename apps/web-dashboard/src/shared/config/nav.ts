@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { CalendarClock, Footprints, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings } from 'lucide-react';
+import { CalendarClock, Footprints, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings, Users } from 'lucide-react';
 
 /**
  * The workspace's navigation, in one place.
@@ -35,5 +35,6 @@ export const NAV: NavItem[] = [
   { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled reports' },
   { to: '/extension',  icon: Puzzle,           label: 'Extension'   },
   // Account
+  { to: '/team',       icon: Users,            label: 'Teams'       },
   { to: '/settings',   icon: Settings,         label: 'Settings'    },
 ];

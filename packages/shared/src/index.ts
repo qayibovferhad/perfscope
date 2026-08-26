@@ -12,6 +12,7 @@ export * from './types/overview.js'
 export * from './types/flow.js'
 export * from './types/compare.js'
 export * from './types/socket.js'
+export * from './types/team.js'
 
 // ─── Lib ────────────────────────────────────────────────────────────────────
 export * from './lib/rating.js'

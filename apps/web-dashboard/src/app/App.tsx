@@ -25,6 +25,8 @@ const ScheduledPage         = lazy(() => import('@/pages/scheduled/ScheduledPage
 const AutomationPage        = lazy(() => import('@/pages/automation/AutomationPage').then(m => ({ default: m.AutomationPage })));
 const ExtensionSettingsPage = lazy(() => import('@/pages/extension/ExtensionSettingsPage').then(m => ({ default: m.ExtensionSettingsPage })));
 const SettingsPage          = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const TeamPage              = lazy(() => import('@/pages/team/TeamPage').then(m => ({ default: m.TeamPage })));
+const InvitePage            = lazy(() => import('@/pages/invite/InvitePage').then(m => ({ default: m.InvitePage })));
 const CliAuthPage           = lazy(() => import('@/pages/cli-auth/CliAuthPage').then(m => ({ default: m.CliAuthPage })));
 const PublicReportPage      = lazy(() => import('@/pages/report/PublicReportPage').then(m => ({ default: m.PublicReportPage })));
 
@@ -108,6 +110,10 @@ export default function App() {
         <Route path="/scheduled"       element={<DashboardRoute><ScheduledPage /></DashboardRoute>} />
         <Route path="/extension"       element={<DashboardRoute><ExtensionSettingsPage /></DashboardRoute>} />
         <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
+        <Route path="/team"            element={<DashboardRoute><TeamPage /></DashboardRoute>} />
+        {/* Outside the guard: whoever follows an invitation may not have an account yet,
+            and a login screen with no idea what it is for is how an invitation dies. */}
+        <Route path="/invite/:token"   element={<InvitePage />} />
         <Route path="/cli-auth"        element={<CliAuthPage />} />
         <Route path="/report/:token"   element={<PublicReportPage />} />
 

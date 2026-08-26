@@ -56,7 +56,7 @@ pnpm install
 ```
 
 ```bash
-pnpm test        # 336 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
+pnpm test        # 398 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
                  # node:test in cli and action. `probes/` is deliberately NOT part of this.
 pnpm e2e         # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
 pnpm typecheck   # every workspace, including the ones whose build is not tsc
@@ -192,6 +192,32 @@ Backend: `services/flow.service.ts` (runner), `flow-transform.ts`, `flowInput.ts
 `socket/flow.handler.ts`, `routes/flow.routes.ts`. Frontend: `features/flows` +
 `pages/flows`.
 
+### Teams — one account, more than one person
+
+`/team` shares an account rather than moving data into a container: a team has an **owner**,
+and a member's request is resolved to the owner's `userId` before any query runs
+(`middleware/teamScope.ts`, mounted **above** the routers because they share the bare `/api`
+mount). Nothing else in the codebase changed — no `teamId` column, no migration, and no
+query that can forget to filter by team. `requireAuth` reads back the `scopeUserId` the
+middleware wrote; sockets get the same treatment through `socket/scope.ts`, since a
+handshake is the only place a socket can carry it.
+
+The consequences are worth stating because they look like bugs otherwise: **deleting a team
+deletes no data** (it only removes everyone else's access), the owner cannot leave their own
+team, and `req.actorId` — not `req.userId` — is the person, which is why `team.routes.ts` is
+the one router that reads it. Roles are `owner`/`member`/`viewer`, ordered in
+`shared/types/team.ts`; the viewer guard refuses any non-GET except `/teams` and `/invites`,
+so a viewer can still accept an invitation and leave.
+
+Invitations are links, not emails (SMTP is optional here): a 32-byte token stored **hashed**
+like every other bearer credential, single use, seven days, and shown exactly once — a
+listing can revoke one but can never hand it back. Membership is cached for 15s per
+(user, team) so an ordinary request still costs no database read; a role change or removal
+drops the cache immediately.
+
+Probes: `e2e/teams.probe.mjs` (the scoping claim, over real HTTP) and
+`e2e/teams-ui.probe.mjs` (the switcher, the invite page, the read-only affordance).
+
 ### Dashboard window
 
 `/dashboard` asks for a window either as `?days=` (the presets) or `?from=&to=` (the date
@@ -303,10 +329,10 @@ connection sends the access token in `handshake.auth.token`; `analysis.handler.t
 
 ### Accessibility
 
-`apps/backend/probes/app-a11y.probe.mts` audits the eight signed-in routes (`MOBILE=1` for
+`apps/backend/probes/app-a11y.probe.mts` audits the nine signed-in routes (`MOBILE=1` for
 412px). It seeds a throwaway account with data first — empty states hide everything — and
 opens `/app` through `/history?open=<id>` so the *report* is measured, not an empty form. All
-eight are at 100; when adding UI, run it rather than guessing.
+nine are at 100; when adding UI, run it rather than guessing.
 
 Two rules it exists to enforce: **never put `opacity` on a `--ld-*` text token** (they are
 tuned to clear 4.5:1 exactly, so dimming drops them below AA — icons and hover-reveals are

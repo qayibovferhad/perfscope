@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AuthResponse } from '@perfscope/shared';
-import { useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { GoogleButton, googleAuthEnabled } from '@/features/auth';
 import { motion } from 'framer-motion';
@@ -20,6 +20,10 @@ interface FormValues {
 export function RegisterPage() {
   const { user, setAuth } = useAuthStore();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // An explicit ?redirect wins, exactly as it does on the login page — an invitation link
+  // sends people here and has to get them back to it.
+  const redirectTo = params.get('redirect') || '/dashboard';
 
   const [showPass,  setShowPass]  = useState(false);
   const [serverErr, setServerErr] = useState('');
@@ -31,15 +35,15 @@ export function RegisterPage() {
   } = useForm<FormValues>();
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   async function onSubmit(data: FormValues) {
     setServerErr('');
     try {
       const res = await apiClient.post<AuthResponse>('/auth/register', data);
       setAuth(res.data.user, res.data.token, res.data.refreshToken);
-      navigate('/dashboard', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })
         ?.response?.data?.error ?? 'Registration failed';
@@ -49,7 +53,7 @@ export function RegisterPage() {
 
   function onGoogleSuccess({ user, token, refreshToken }: AuthResponse) {
     setAuth(user, token, refreshToken);
-    navigate('/dashboard', { replace: true });
+    navigate(redirectTo, { replace: true });
   }
 
   return (

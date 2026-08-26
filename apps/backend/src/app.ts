@@ -20,10 +20,12 @@ import { cliAuthRouter }           from './routes/cliAuth.routes.js';
 import { rumRouter } from './routes/rum.routes.js';
 import { deployRouter } from './routes/deploy.routes.js';
 import { flowRouter } from './routes/flow.routes.js';
+import { teamRouter } from './routes/team.routes.js';
 import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import { registerFlowSocket } from './socket/flow.handler.js';
 import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
+import { attachTeamScope, TEAM_HEADER } from './middleware/teamScope.js';
 import { isDbReady } from './config/database.js';
 import { errorMiddleware } from './lib/errors.js';
 import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
@@ -77,9 +79,15 @@ export function createApp(): { app: Application; httpServer: Server } {
    */
   app.use(compression());
 
-  // The storage header has to be listed explicitly: a browser cannot read a custom
-  // response header across origins unless the server exposes it.
-  app.use(cors({ origin: config.clientUrl, exposedHeaders: [STORAGE_HEADER] }));
+  // Two headers that only work if they are named. `exposedHeaders`: a browser cannot read
+  // a custom *response* header across origins unless the server exposes it. `allowedHeaders`:
+  // naming any request header at all replaces cors' reflect-whatever-was-asked default, so
+  // the three the client already sent have to be listed again beside the team one.
+  app.use(cors({
+    origin: config.clientUrl,
+    exposedHeaders: [STORAGE_HEADER],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', TEAM_HEADER],
+  }));
   app.use(express.json());
   app.use(markStorageState);
 
@@ -107,7 +115,17 @@ export function createApp(): { app: Application; httpServer: Server } {
   // permissive CORS because both are called from other origins.
   app.use(rumRouter);
 
+  /**
+   * Which account a request acts on, resolved once for every router below.
+   *
+   * Above the routers rather than inside one: they all share the bare `/api` mount, so a
+   * `router.use()` here would leak into every router registered after it — the trap that
+   * once broke CLI login. It runs before `requireAuth` and hands it `scopeUserId`.
+   */
+  app.use('/api', attachTeamScope);
+
   app.use('/api', authRouter);
+  app.use('/api', teamRouter);
   app.use('/api', websiteRouter);
   app.use('/api', deployRouter);
   app.use('/api', flowRouter);

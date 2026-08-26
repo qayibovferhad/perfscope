@@ -5,6 +5,9 @@ import { AppError } from '../lib/errors.js';
 
 export interface AuthRequest extends Request {
   userId?: string;
+  /** Set by `attachTeamScope` when the request names a team this user belongs to: the
+   *  owner's id, which is what the handlers below hand to every query. */
+  scopeUserId?: string;
 }
 
 /**
@@ -40,7 +43,9 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
     // Assigned only when there is one: `exactOptionalPropertyTypes` treats an explicit
     // `undefined` as different from an absent property.
     const userId = userIdFromToken(header.slice(7));
-    if (userId) req.userId = userId;
+    // The team's owner when working inside one — see teamScope.ts. Resolved upstream so
+    // that a member's request reads the same documents the owner's would.
+    if (userId) req.userId = req.scopeUserId ?? userId;
   }
   next();
 }
@@ -55,7 +60,7 @@ export function requireAuth(req: AuthRequest, _res: Response, next: NextFunction
   }
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as { sub: string };
-    req.userId = payload.sub;
+    req.userId = req.scopeUserId ?? payload.sub;
     return next();
   } catch (err) {
     // Expired is the common case (30d tokens) — the client shows a "session expired"

@@ -15,7 +15,7 @@ import { hasSession, extractSessionData } from '../services/authAuditSession.js'
 import { findWebsiteByHost } from '../services/websiteLookup.js';
 import { recordLoginWall, dropStaleSession } from '../services/loginWall.service.js';
 import { findSessionFor, persistCapturedSession } from '../services/sessionStore.js';
-import { userIdFromToken } from '../middleware/auth.middleware.js';
+import { socketScope } from './scope.js';
 import { isValidUrl } from '../lib/url.js';
 import { isFetchableTarget } from '../lib/ssrf.js';
 import { SessionExpiredError } from '../lib/errors.js';
@@ -289,9 +289,12 @@ export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
-    const userId = userIdFromToken((socket.handshake.auth as { token?: string }).token);
+    // The account this connection works on — the team's owner when it named one. Awaited
+    // inside each handler so a connection that only listens costs no database read.
+    const scopeId = socketScope(socket.handshake.auth);
 
     socket.on('analysis:start', async (payload) => {
+      const userId = await scopeId();
       const { url } = payload;
       const formFactor = parseFormFactor(payload.formFactor);
 
@@ -339,6 +342,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('auth-audit:start', async (payload) => {
+      const userId = await scopeId();
       const { sessionId, url, context } = payload;
       const formFactor = parseFormFactor(payload.formFactor);
 

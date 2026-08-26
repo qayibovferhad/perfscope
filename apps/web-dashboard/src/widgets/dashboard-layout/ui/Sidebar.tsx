@@ -7,6 +7,8 @@ import { signOut, useAuthStore } from '@/features/auth';
 import { useWebsites, getHostname } from '@/entities/website';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './RunningAudits';
+import { TeamSwitcher } from '@/features/teams';
+import { useCanEdit } from '@/shared/model/teamStore';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '@/shared/config/nav';
 import { usePaletteStore } from '@/shared/model/paletteStore';
@@ -34,6 +36,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
     }
     return [...websites].sort((a, b) => (lastAuditAt[b.url] ?? 0) - (lastAuditAt[a.url] ?? 0));
   }, [websites, allHistory]);
+
+  // A viewer's writes are refused by the server; disabling the primary action says so
+  // before they fill a form in, which is the difference between a rule and a dead end.
+  const canEdit = useCanEdit();
 
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -83,12 +89,22 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
         )}
       </div>
 
+      {/* Directly under the brand, because it re-labels everything below it: which account's
+          sites, history and flows this sidebar is listing. Renders nothing for someone who
+          is in no team — most people never see it. */}
+      <TeamSwitcher />
+
       {/* Above the primary action and the nav: an audit in flight is the most
           time-sensitive thing on the screen, and it is why someone came back. */}
       <RunningAudits onNavigate={onClose} />
 
       {/* Add Website */}
-      <Button className="w-full" onClick={() => { onAddWebsite(); onClose?.(); }}>
+      <Button
+        className="w-full"
+        onClick={() => { onAddWebsite(); onClose?.(); }}
+        disabled={!canEdit}
+        title={canEdit ? undefined : 'You have view-only access to this team'}
+      >
         <Plus className="w-[17px] h-[17px]" />
         Add Website
       </Button>

@@ -40,7 +40,7 @@ const MOBILE = process.env['MOBILE'] === '1';
 
 const ROUTES = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ['/dashboard', '/app', '/compare', '/flows', '/websites', '/history', '/automation', '/settings'];
+  : ['/dashboard', '/app', '/compare', '/flows', '/websites', '/history', '/automation', '/team', '/settings'];
 
 /** A token for a throwaway account, signed the way the middleware reads it (`sub`). */
 function signToken(payload: Record<string, unknown>): string {

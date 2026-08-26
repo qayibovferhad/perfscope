@@ -8,7 +8,7 @@ import { FlowRun } from '../models/FlowRun.model.js';
 import { parseFlowInput } from '../services/flowInput.js';
 import { findSessionFor } from '../services/sessionStore.js';
 import { checkFlowTargets } from '../services/flowSchedule.service.js';
-import { userIdFromToken } from '../middleware/auth.middleware.js';
+import { socketScope } from './scope.js';
 import { isDbReady } from '../config/database.js';
 import { isFetchableTarget } from '../lib/ssrf.js';
 import { AppError } from '../lib/errors.js';
@@ -30,12 +30,15 @@ type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServe
  */
 export function registerFlowSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
-    const userId = userIdFromToken((socket.handshake.auth as { token?: string }).token);
+    // The team's owner when this connection named one — a flow a member runs belongs to
+    // the account they are working in, exactly as its sites and audits do.
+    const scopeId = socketScope(socket.handshake.auth);
 
     socket.on('flow:start', async (payload) => {
       const flowRunId = uuidv4();
 
       try {
+        const userId = await scopeId();
         if (!userId) throw new AppError(401, 'Sign in to run a flow');
 
         // Either a saved flow or the editor's unsaved draft. A saved one wins: it is the
