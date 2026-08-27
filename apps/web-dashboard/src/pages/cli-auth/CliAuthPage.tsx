@@ -11,17 +11,15 @@ export function CliAuthPage() {
   const [params]        = useSearchParams();
   const { token, user } = useAuthStore();
   const navigate        = useNavigate();
-  const [state, setState] = useState<State>('sending');
-  const [errMsg, setErrMsg] = useState('');
-
   const code = params.get('code');
 
+  // A link with no code is already an error when the page first renders — it was an
+  // effect, so the page flashed "Connecting to CLI…" before saying so.
+  const [state, setState] = useState<State>(code ? 'sending' : 'error');
+  const [errMsg, setErrMsg] = useState(code ? '' : 'Missing login code. Run `perfscope login` again.');
+
   useEffect(() => {
-    if (!code) {
-      setState('error');
-      setErrMsg('Missing login code. Run `perfscope login` again.');
-      return;
-    }
+    if (!code) return;
 
     if (!token) {
       navigate(`/login?redirect=${encodeURIComponent(`/cli-auth?code=${code}`)}`, { replace: true });

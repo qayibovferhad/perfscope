@@ -29,6 +29,9 @@ export function ResetPasswordPage() {
   const [showPass, setShowPass] = useState(false);
   const [serverErr, setServerErr] = useState('');
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  // react-hook-form keeps field values outside React on purpose, so `watch` cannot be
+  // memoized; that is the library's design, not something to work around here.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const password = watch('password');
 
   async function onSubmit({ password: next }: FormValues) {

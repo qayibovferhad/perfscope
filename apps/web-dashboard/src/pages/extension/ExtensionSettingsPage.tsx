@@ -56,17 +56,17 @@ export function ExtensionSettingsPage() {
             </a>
           </Button>
 
-          {connected === true ? (
+          {connected ? (
             <div className="inline-flex items-center gap-[9px] text-[13.5px] font-semibold text-ld-accent-2 px-[16px] py-[9px] rounded-full border border-ld-accent-line bg-ld-accent-soft">
               <CheckCircle2 className="w-4 h-4" />
               Extension connected to this account
             </div>
-          ) : connected === false ? (
+          ) : (
             <div className="inline-flex items-center gap-[9px] text-[13.5px] font-semibold text-ld-text-3 px-[16px] py-[9px] rounded-full border border-ld-border">
               <Circle className="w-4 h-4" />
               Not connected yet
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 

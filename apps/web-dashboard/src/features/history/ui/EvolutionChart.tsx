@@ -7,9 +7,6 @@ import { fmtMs } from '@/shared/lib/format';
 import { CHART, AXIS_PROPS, GRID_PROPS, CURSOR_PROPS, MONO } from '@/shared/ui/chart';
 import { fmtDay } from '@/shared/lib/time';
 
-// Re-exported so existing importers keep resolving it from here.
-export { isRegression };
-
 /**
  * LCP and TBT over successive runs.
  *

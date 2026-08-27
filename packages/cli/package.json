@@ -41,7 +41,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "test": "node --test src/budget.test.js",
     "typecheck": "node --check bin/cli.js && node --check src/budget.js"
   }

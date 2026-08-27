@@ -29,7 +29,12 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
   const [launching, setLaunching] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
 
-  // On open: verify stored session is still alive on the backend
+  // On open: verify the stored session is still alive on the backend.
+  //
+  // The modal is mounted for the life of the page and reused for every URL, so opening it
+  // is an event rather than a render — and the reset shares this effect with an async check
+  // that could not leave it anyway.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return;
     setUrl(initialUrl);
@@ -52,6 +57,7 @@ export function AuthAuditModal({ open, initialUrl = '', onClose, onSetUrl, onAut
         setStep('setup');
       });
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleOpenBrowser(e: FormEvent) {
     e.preventDefault();

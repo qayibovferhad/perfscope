@@ -1,4 +1,4 @@
-import { useState, useEffect }      from 'react';
+import { useState }                 from 'react';
 import { useDebounced }             from '@/shared/lib/useDebounced';
 import {
   Globe, Plus, Loader2,
@@ -65,8 +65,14 @@ export function WebsitesPage() {
   // Debounced so typing doesn't fire a request per keystroke.
   const debouncedQ = useDebounced(search.trim());
 
-  // A new filter invalidates the current page number.
-  useEffect(() => { setPage(1); }, [debouncedQ]);
+  // A new filter invalidates the current page number. Adjusted during the render that
+  // first sees the new query rather than in an effect afterwards: the effect version
+  // rendered page 3 of the new result set for one frame before resetting it.
+  const [pagedQ, setPagedQ] = useState(debouncedQ);
+  if (pagedQ !== debouncedQ) {
+    setPagedQ(debouncedQ);
+    setPage(1);
+  }
 
   const { data: pageData, isPending, isFetching, isError, refetch } = useWebsitesPage({
     q: debouncedQ, page, limit: PAGE_SIZE,

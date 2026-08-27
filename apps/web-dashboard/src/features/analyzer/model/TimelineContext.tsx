@@ -32,6 +32,9 @@ export function TimelineProvider({ children, sharedMotionMs }: TimelineProviderP
   );
 }
 
+// A context's hook belongs beside its provider; splitting them to please fast refresh
+// hides who owns the value.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTimelineContext(): TimelineContextValue | null {
   return useContext(TimelineCtx);
 }

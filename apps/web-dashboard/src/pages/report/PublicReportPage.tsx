@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { Activity, Loader2, FileQuestion, Monitor, Smartphone } from 'lucide-react';
 import { fetchJson } from '@/shared/api/client';
@@ -8,22 +8,24 @@ import { StatePanel } from '@/shared/ui/state-panel';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
 import type { AnalysisResult } from '@/entities/analysis';
 
-type State =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; result: AnalysisResult };
-
-/** Read-only audit report behind an unguessable share token — no login required. */
+/**
+ * Read-only audit report behind an unguessable share token — no login required.
+ *
+ * Fetched through React Query like every other screen, rather than from an effect into
+ * local state: this is the one page that had its own loading/error machinery, and it also
+ * meant a revoked link retried nothing and cached nothing.
+ */
 export function PublicReportPage() {
   const { token } = useParams<{ token: string }>();
-  const [state, setState] = useState<State>({ status: 'loading' });
 
-  useEffect(() => {
-    if (!token) { setState({ status: 'error' }); return; }
-    fetchJson<AnalysisResult>(`/public/report/${token}`)
-      .then(result => setState({ status: 'ready', result }))
-      .catch(() => setState({ status: 'error' }));
-  }, [token]);
+  const { data: result, isPending, isError } = useQuery<AnalysisResult>({
+    queryKey: ['public-report', token],
+    enabled:  !!token,
+    queryFn:  () => fetchJson<AnalysisResult>(`/public/report/${token}`),
+  });
+
+  // A missing token is not a pending request — there is nothing to wait for.
+  const status = !token || isError ? 'error' : isPending ? 'loading' : 'ready';
 
   return (
     <div className="min-h-screen bg-ld-bg">
@@ -51,13 +53,13 @@ export function PublicReportPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        {state.status === 'loading' && (
+        {status === 'loading' && (
           <div className="min-h-[50vh] grid place-items-center">
             <Loader2 className="w-6 h-6 animate-spin text-ld-text-3" />
           </div>
         )}
 
-        {state.status === 'error' && (
+        {status === 'error' && (
           <div className="min-h-[50vh] grid place-items-center">
             <StatePanel
               variant="error"
@@ -74,15 +76,15 @@ export function PublicReportPage() {
           </div>
         )}
 
-        {state.status === 'ready' && (
+        {status === 'ready' && result && (
           <>
             <div className="flex items-center gap-2 mb-6 text-[13px] text-ld-text-2">
-              {state.result.formFactor === 'mobile'
+              {result.formFactor === 'mobile'
                 ? <Smartphone className="w-4 h-4 text-ld-text-3" />
                 : <Monitor className="w-4 h-4 text-ld-text-3" />}
-              Read-only report shared from PerfScope · audited {new Date(state.result.timestamp).toLocaleString('en-US')}
+              Read-only report shared from PerfScope · audited {new Date(result.timestamp).toLocaleString('en-US')}
             </div>
-            <AnalyzerResultsPanel data={state.result} />
+            <AnalyzerResultsPanel data={result} />
           </>
         )}
       </main>

@@ -3,12 +3,6 @@ import type { AuthResponse } from '@perfscope/shared';
 import { apiClient } from '@/shared/api/client';
 import { Button } from '@/shared/ui/button';
 
-/**
- * Google sign-in is optional infrastructure: without a configured client id the
- * useGoogleLogin hook throws and takes the whole login page down with it, so
- * pages must gate rendering on this flag.
- */
-export const googleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 interface Props {
   /** A real session: the user *and* the token every later request is signed with. */

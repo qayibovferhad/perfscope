@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { addDays, daysBetween, dayKeyOf, type OverviewRange } from '@perfscope/shared';
+import { daysBetween, dayKeyOf, type OverviewRange } from '@perfscope/shared';
 import { cn } from '@/shared/lib/utils';
+import { MONTHS, shortDay, rangeLabel, type RangePreset } from '@/shared/lib/dateRange';
 
 /**
  * Pick a window: a preset, or two clicks on a calendar.
@@ -24,16 +25,6 @@ import { cn } from '@/shared/lib/utils';
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-export interface RangePreset {
-  days:  number;
-  label: string;
-}
-
 /** The month a day key belongs to, as `[year, monthIndex]`. */
 const monthOf = (day: string): [number, number] => {
   const [y, m] = day.split('-').map(Number) as [number, number, number];
@@ -52,23 +43,6 @@ const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, mon
 
 /** "1 day", "30 days" — a control that reads "1 days" looks like a placeholder. */
 const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
-
-/** "24 Aug" / "24 Aug 2025" — the year only when it is not this one, which is most of the
- *  time not worth the width. */
-function shortDay(day: string, thisYear: string): string {
-  const [y, m, d] = day.split('-') as [string, string, string];
-  const month = MONTHS[Number(m) - 1]?.slice(0, 3) ?? m;
-  return `${Number(d)} ${month}${y === thisYear ? '' : ` ${y}`}`;
-}
-
-/** What the trigger says: a preset by name, or the range itself. */
-export function rangeLabel(range: OverviewRange, presets: RangePreset[], today: string): string {
-  const preset = range.to === today && presets.find(p => p.days === range.days);
-  if (preset) return preset.label;
-  return range.from === range.to
-    ? shortDay(range.from, today.slice(0, 4))
-    : `${shortDay(range.from, today.slice(0, 4))} – ${shortDay(range.to, today.slice(0, 4))}`;
-}
 
 interface Props {
   range:    OverviewRange;
@@ -300,6 +274,3 @@ export function DateRangePicker({ range, presets, onPreset, onRange, className }
     </>
   );
 }
-
-/** Re-exported for callers that build a preset's range themselves. */
-export { addDays };

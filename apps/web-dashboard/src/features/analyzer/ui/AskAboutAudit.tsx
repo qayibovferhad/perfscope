@@ -95,10 +95,12 @@ export function AskAboutAudit({ subjects }: Props) {
     };
   }, [open]);
 
-  // New exchange arrives below the fold of a growing log — keep it in view.
+  // New exchange arrives below the fold of a growing log — keep it in view. Keyed on the
+  // count, not the array: `activeExchanges` is rebuilt every render, so depending on it
+  // scrolled the log on every render rather than when something was added to it.
   useEffect(() => {
     if (open) logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [activeExchanges, open]);
+  }, [activeExchanges.length, open]);
 
   if (!active) return null;
 

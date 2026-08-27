@@ -83,6 +83,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeCtx.Provider value={{ theme, toggle }}>{children}</ThemeCtx.Provider>;
 }
 
+// The hook is this provider's public surface, not a stray helper that wandered in —
+// same call as TimelineContext.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   return useContext(ThemeCtx);
 }

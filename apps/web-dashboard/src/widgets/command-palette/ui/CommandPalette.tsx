@@ -54,12 +54,22 @@ export function CommandPalette() {
 
   // Every opening starts blank. A palette that remembers the last thing typed makes the
   // second use a deletion before it can be a search.
-  useEffect(() => {
+  //
+  // Both of these adjust state during the render that first sees the change, rather than
+  // in an effect after it: an effect would paint the previous query — and a highlight
+  // pointing into a list that no longer has that row — for one frame first.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) { setQuery(''); setActive(0); }
-  }, [open]);
+  }
 
   // The highlight has to stay inside the list; typing narrows it from under the cursor.
-  useEffect(() => { setActive(0); }, [query]);
+  const [lastQuery, setLastQuery] = useState(query);
+  if (lastQuery !== query) {
+    setLastQuery(query);
+    setActive(0);
+  }
 
   useEffect(() => {
     listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });

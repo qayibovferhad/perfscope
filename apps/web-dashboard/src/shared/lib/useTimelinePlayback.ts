@@ -32,9 +32,12 @@ export function useTimelinePlayback({ totalMs, onTick }: {
   const totalRef    = useRef(totalMs);
   const onTickRef   = useRef(onTick);
 
+  // All three after the commit, for the same reason: a render React discards must not be
+  // able to leave the running interval pointing at a duration or a callback that never
+  // reached the screen. The interval and `seek` only ever fire after a commit.
   useEffect(() => { speedRef.current = speed; }, [speed]);
-  totalRef.current  = totalMs;
-  onTickRef.current = onTick;
+  useEffect(() => { totalRef.current = totalMs; }, [totalMs]);
+  useEffect(() => { onTickRef.current = onTick; });
 
   const stop = useCallback(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }

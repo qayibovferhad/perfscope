@@ -75,12 +75,17 @@ export function TimelineWaterfall({
     rows, axisMs, leftW, motionMs, networkOffset: ctx?.networkOffset,
   });
 
+  // The panels publish their axis into the shared timeline context so a scrub in one
+  // moves all of them. Writing through a context-held ref is the whole point of that
+  // context — the compiler sees a mutation of something it did not create.
+  /* eslint-disable react-hooks/immutability -- see above */
   useEffect(() => {
     if (ctx) {
       ctx.maxTiming.current     = maxTiming;
       ctx.networkOffset.current = networkOffsetMs;
     }
   }, [ctx, maxTiming, networkOffsetMs]);
+  /* eslint-enable react-hooks/immutability */
 
   const handleScrubInternal = useCallback((ms: number) => {
     motionMs.set(ms);

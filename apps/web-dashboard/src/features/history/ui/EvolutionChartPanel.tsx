@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { TrendingUp, AlertTriangle, GitCommit, Info } from 'lucide-react';
 import type { HistoryEntry } from '@/entities/history';
 import type { Deploy } from '@perfscope/shared';
-import { EvolutionChart, isRegression } from './EvolutionChart';
+import { isRegression } from '@perfscope/shared';
+import { EvolutionChart } from './EvolutionChart';
 import { fmtMs } from '@/shared/lib/format';
 import { fmtDay } from '@/shared/lib/time';
 

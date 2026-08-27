@@ -77,6 +77,9 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
   // Reset from the flow every time the modal opens, not once on mount: the same modal
   // instance edits every row in the list, and keeping the previous one's steps would let
   // somebody save them onto a different flow.
+  // A `key` at the call site would remount it mid-animation, and eight setters adjusted
+  // during render read far worse than one open-time reset.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return;
     setName(flow?.name ?? '');
@@ -93,6 +96,7 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
     });
     setError('');
   }, [open, flow]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const patch = (index: number, changes: Partial<FlowStep>) =>
     setSteps(prev => prev.map((step, i) => (i === index ? { ...step, ...changes } : step)));

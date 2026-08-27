@@ -6,7 +6,7 @@
   "scripts": {
     "build": "wxt build",
     "dev": "wxt",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "postinstall": "wxt prepare",
     "typecheck": "tsc --noEmit",
     "zip": "wxt zip"

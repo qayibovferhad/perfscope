@@ -1,12 +1,6 @@
-import { Monitor, Smartphone } from 'lucide-react';
 import type { AuditFormFactor } from '@perfscope/shared';
-import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
-
-/** One definition of the device choice, so the analyzer and compare offer the same audit. */
-export const DEVICE_MODES: SegmentOption<AuditFormFactor>[] = [
-  { value: 'desktop', label: 'Desktop', icon: Monitor,    title: 'Audit as a desktop browser' },
-  { value: 'mobile',  label: 'Mobile',  icon: Smartphone, title: 'Emulate a phone (412×823) — what Google ranks on' },
-];
+import { Segmented } from '@/shared/ui/segmented';
+import { DEVICE_MODES } from '../auditModes';
 
 interface Props {
   value:     AuditFormFactor;

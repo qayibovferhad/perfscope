@@ -5,7 +5,7 @@
   "description": "GitHub Action — run a PerfScope budget and report it on the pull request",
   "type": "module",
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "test": "node --test src/*.test.js",
     "typecheck": "node --check run.mjs && node --check src/report.js && node --check src/post.js"
   }

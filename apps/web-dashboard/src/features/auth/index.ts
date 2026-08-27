@@ -6,5 +6,6 @@
  */
 export { useAuthStore } from './model/authStore';
 export { signOut } from './model/signOut';
-export { GoogleButton, googleAuthEnabled } from './ui/GoogleButton';
+export { GoogleButton } from './ui/GoogleButton';
+export { googleAuthEnabled } from './lib/googleAuth';
 export { ProtectedRoute } from './ui/ProtectedRoute';

@@ -1,14 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-export function useExtensionConnected() {
-  const [connected, setConnected] = useState<boolean | null>(null);
+const KEY = 'perfscope-auth';
 
-  useEffect(() => {
-    setConnected(localStorage.getItem('perfscope-auth') !== null);
-    const handler = () => setConnected(localStorage.getItem('perfscope-auth') !== null);
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
-
-  return connected;
+/**
+ * Whether the extension's token bridge has anything to sync — i.e. whether this browser
+ * is signed in to the dashboard.
+ *
+ * `localStorage` is an external store, so it is read through the hook meant for one
+ * rather than mirrored into state from an effect. That also removes the first frame the
+ * effect version rendered as `null`: the answer is available synchronously.
+ */
+export function useExtensionConnected(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener('storage', onChange);
+      return () => window.removeEventListener('storage', onChange);
+    },
+    () => localStorage.getItem(KEY) !== null,
+    // Server snapshot: this app never renders on a server, but the hook requires the
+    // shape and "not connected" is the safe answer.
+    () => false,
+  );
 }

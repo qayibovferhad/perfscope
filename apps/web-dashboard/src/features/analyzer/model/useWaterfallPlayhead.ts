@@ -32,16 +32,31 @@ export function useWaterfallPlayhead({ rows, axisMs, leftW, motionMs, networkOff
 
   // Read at tick time so a resize or a new audit does not need to resubscribe.
   const axisMsRef = useRef(axisMs);
-  axisMsRef.current = axisMs;
 
   const rowRefs  = useRef<(HTMLDivElement | null)[]>([]);
   const ttfbRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dlRefs   = useRef<(HTMLDivElement | null)[]>([]);
   const shimRefs = useRef<(HTMLDivElement | null)[]>([]);
-  rowRefs.current.length  = rows.length;
-  ttfbRefs.current.length = rows.length;
-  dlRefs.current.length   = rows.length;
-  shimRefs.current.length = rows.length;
+
+  /**
+   * After the commit, not during the render.
+   *
+   * These five lines used to run in the render body, which is only safe while every render
+   * is committed — a render React throws away (it does that routinely: Strict Mode, a
+   * higher-priority update, a suspended sibling) would have left the axis length and the
+   * ref arrays describing a waterfall that was never on screen. Nothing reads them before
+   * the commit anyway: the subscriber below and the ResizeObserver both start after one.
+   *
+   * `useLayoutEffect` because the row refs are attached during the commit — truncating
+   * here drops exactly the rows that are no longer rendered, and does it before paint.
+   */
+  useLayoutEffect(() => {
+    axisMsRef.current = axisMs;
+    rowRefs.current.length  = rows.length;
+    ttfbRefs.current.length = rows.length;
+    dlRefs.current.length   = rows.length;
+    shimRefs.current.length = rows.length;
+  });
 
   useLayoutEffect(() => {
     if (!rootRef.current) return;

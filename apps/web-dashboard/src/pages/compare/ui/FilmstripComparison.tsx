@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, SIDE_DOT, SIDE_VAR, sideOf } from './sides';
 import { Film } from 'lucide-react';
@@ -40,7 +40,13 @@ const FrameImage = memo(function FrameImage({
   dimmed?: boolean; eager?: boolean;
 }) {
   const [status, setStatus] = useState<ImgStatus>(() => src ? 'loading' : 'error');
-  useEffect(() => { setStatus(src ? 'loading' : 'error'); }, [src]);
+  // A different src is a different image: reset while rendering it, so the new frame is
+  // never shown for one paint carrying the previous one's 'loaded'.
+  const [lastSrc, setLastSrc] = useState(src);
+  if (lastSrc !== src) {
+    setLastSrc(src);
+    setStatus(src ? 'loading' : 'error');
+  }
 
   return (
     <div style={{ width, height }} className="relative overflow-hidden shrink-0">

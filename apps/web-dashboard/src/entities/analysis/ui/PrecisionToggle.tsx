@@ -1,14 +1,6 @@
-import { Zap, Crosshair } from 'lucide-react';
-import { Segmented, type SegmentOption } from '@/shared/ui/segmented';
+import { Segmented } from '@/shared/ui/segmented';
 import type { AuditPrecision } from '@perfscope/shared';
-
-/** One definition of the measurement choice, so the analyzer and compare offer the same
- *  audit — a comparison run at a different precision than the analyzer's is not comparable
- *  with it, and the difference was invisible because compare had no control at all. */
-export const PRECISION_MODES: SegmentOption<AuditPrecision>[] = [
-  { value: 'single', label: 'Fast',    icon: Zap,       title: 'One measurement — quickest, but a single run swings by ±10 points' },
-  { value: 'median', label: 'Precise', icon: Crosshair, title: 'Measure three times and report the median run — ~3× slower, far less noise' },
-];
+import { PRECISION_MODES } from '../auditModes';
 
 interface Props {
   value:      AuditPrecision;

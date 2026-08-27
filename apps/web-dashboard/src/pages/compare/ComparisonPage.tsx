@@ -54,6 +54,9 @@ export function ComparisonPage() {
   // the save responds — the same skeleton-then-content contract the analyzer uses.
   const [verdict, setVerdict] = useState<{ text: string | null; pending: boolean }>({ text: null, pending: false });
 
+  // Reads a module singleton the websites page wrote before navigating here, and *clears*
+  // it in the same call: a one-shot handoff from outside React, which is what effects are for.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     const preload = consumeComparePreload();
     if (!preload) return;
@@ -62,6 +65,7 @@ export function ComparisonPage() {
     setTargetUrl(preload.target.url ?? '');
     setCompetitorUrl(preload.competitor.url ?? '');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const isRunning  = target.isLoading || competitor.isLoading;
   const bothLoaded = target.isSuccess  && competitor.isSuccess;
@@ -98,6 +102,9 @@ export function ComparisonPage() {
         // skeleton rather than leaving it pulsing over a comparison that is otherwise fine.
         .catch(() => setVerdict({ text: null, pending: false }));
     }
+    // `origin` is read only to decide what to cite and must not re-trigger a save; the
+    // `savedRef` guard is what makes this once-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bothLoaded, target.data, competitor.data]);
 
   const isBlank = (u: string) => u.trim() === '' || u.trim() === 'https://';

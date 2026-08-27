@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { AuthResponse, DigestPreference } from '@perfscope/shared';
 import { useForm } from 'react-hook-form';
 import { KeyRound, Loader2, LogOut, Mail, ShieldCheck, User as UserIcon } from 'lucide-react';
-import { useSaveState, SaveError, SavedChip } from './ui/saveState';
+import { useSaveState } from './ui/useSaveState';
+import { SaveError, SavedChip } from './ui/saveState';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { Toggle } from '@/shared/ui/toggle';
@@ -203,6 +204,8 @@ function PasswordSection() {
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
+  // Same as the reset-password form: `watch` is un-memoizable by design.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const newPassword = watch('newPassword');
 
   async function onSubmit({ currentPassword, newPassword: next }: PasswordForm) {

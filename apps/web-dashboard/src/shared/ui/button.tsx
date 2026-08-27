@@ -71,4 +71,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
+// `buttonVariants` is the shadcn/cva contract: other components style themselves as
+// buttons by calling it, so it cannot move out of this file.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants }

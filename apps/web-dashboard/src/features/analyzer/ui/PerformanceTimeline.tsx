@@ -219,12 +219,17 @@ export function PerformanceTimeline({ timelineData }: { timelineData: TimelineDa
 
   const timelineCtx = useTimelineContext();
 
+  // The panels publish their axis into the shared timeline context so a scrub in one
+  // moves all of them. Writing through a context-held ref is the whole point of that
+  // context — the compiler sees a mutation of something it did not create.
+  /* eslint-disable react-hooks/immutability -- see above */
   useEffect(() => {
     if (timelineCtx) {
       timelineCtx.maxTiming.current     = maxTiming;
       timelineCtx.networkOffset.current = networkOffsetMs;
     }
   }, [timelineCtx, maxTiming, networkOffsetMs]);
+  /* eslint-enable react-hooks/immutability */
 
   const motionMs = useMotionValue(0);
 

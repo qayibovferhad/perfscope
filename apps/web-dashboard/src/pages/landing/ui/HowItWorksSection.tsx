@@ -67,6 +67,9 @@ export function HowItWorksSection() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, []);
 
+  // The animation starts when an IntersectionObserver says the section is on screen: the
+  // browser is the source of that event, and the no-observer fallback starts it the same way.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const el = stepsRef.current;
     if (!el) return;
@@ -81,6 +84,7 @@ export function HowItWorksSection() {
     io.observe(el);
     return () => { io.disconnect(); stop(); };
   }, [goStep, play, stop]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <section className="py-[clamp(72px,11vw,140px)]" id="how">
