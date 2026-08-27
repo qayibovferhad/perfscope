@@ -9,6 +9,8 @@ import { cn } from '@/shared/lib/utils';
 import { vitalBand, findFrameAt, BAND_TILE, BAND_LABEL } from '@/entities/analysis';
 import type { CLSData, CLSShiftElement, TimelineData, TimelineFrame } from '@/entities/analysis';
 import { fmtSec, fmtSec2, fmtCls } from '@/shared/lib/format';
+import { FramePreview } from './CLSFramePreview';
+import { shiftFix } from '../lib/shiftFix';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Steps of the rose scale, named for what this chart uses them as. A previous comment
@@ -16,53 +18,14 @@ import { fmtSec, fmtSec2, fmtCls } from '@/shared/lib/format';
 // attribute is parsed as a CSS value, so var() resolves and follows the theme. Verified.
 
 const ROSE     = 'var(--ld-rose)';
-const ROSE_A   = 'var(--ld-rose-line)';
 const ROSE_G   = 'var(--ld-rose-fill)';
 const ROSE_B   = 'var(--ld-rose-strong)';
-
-const PREVIEW_W = 380;
-const PREVIEW_H = 264;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BAND_VAR = { good: 'var(--ld-accent-2)', warn: 'var(--ld-amber)', poor: 'var(--ld-rose)' } as const;
 /** Thresholds come from the shared vitals table, never retyped here. */
 const clsScoreColor = (score: number) => BAND_VAR[vitalBand('cls', score)];
-
-/**
- * The fix for a shift, from its root cause and selector.
- *
- * This was called `aiSuggestion` and rendered under an "AI suggestion" heading, and it is
- * not AI — it is the rule table below, which is exactly why it is worth keeping: it is
- * instant, free, and right about the handful of causes that produce nearly every shift.
- * With real Gemini commentary now sitting a few sections up the same report, the label was
- * the only dishonest part, so the label is what went.
- */
-function shiftFix(selector: string, snippet: string, score: number, rootCause?: string): string {
-  if (score < 0.005)
-    return 'Low impact shift. Focus on higher priority stability issues first.';
-  if (rootCause === 'unsized-media')
-    return 'Set explicit width and height attributes on the media element so the browser can reserve space before it loads.';
-  if (rootCause === 'web-font')
-    return 'Use font-display: optional or preload the font to prevent text-swap layout shifts.';
-  if (rootCause === 'injected-iframe')
-    return 'Add explicit width and height to the iframe or reserve its space with a fixed-size wrapper before injection.';
-
-  const s = (selector + ' ' + snippet).toLowerCase();
-  if (/\bimg\b/.test(s) && !/width=|height=|aspect-ratio/.test(s))
-    return 'Set explicit width and height attributes on this image so the browser can reserve space before it loads.';
-  if (/iframe/.test(s))
-    return 'Add width and height to the iframe; browsers cannot reserve space for unknown-size embeds.';
-  if (/\bad[-_ ]|advertisement|adsense|adslot/.test(s))
-    return 'Reserve a fixed min-height for this ad container before the ad script injects content.';
-  if (/font|woff|webfont/.test(s))
-    return 'Use font-display: optional or preload the font to prevent text-swap layout shifts.';
-  if (/video|player/.test(s))
-    return 'Wrap this video in an aspect-ratio container so layout is reserved before the player renders.';
-  if (/hero|banner|header/.test(s))
-    return 'Lock this hero/banner to a fixed height or aspect-ratio so page flow is stable during load.';
-  return 'Set an explicit aspect-ratio or min-height so the browser reserves space before dynamic content arrives.';
-}
 
 // ─── CLS score chip ───────────────────────────────────────────────────────────
 
@@ -167,115 +130,6 @@ const CulpritItem = memo(function CulpritItem({
 }, (prev, next) =>
   prev.isHovered === next.isHovered && prev.element.selector === next.element.selector,
 );
-
-// ─── Frame preview with SVG overlay ──────────────────────────────────────────
-
-function FramePreview({
-  frame, hoveredElement, cls, shakeControls,
-}: {
-  frame: TimelineFrame;
-  hoveredElement: CLSShiftElement | null;
-  cls: number;
-  shakeControls: ReturnType<typeof useAnimation>;
-}) {
-  const hasRect = hoveredElement !== null && hoveredElement.rect !== undefined;
-
-  return (
-    <motion.div animate={shakeControls} className="w-full">
-      <div
-        className="relative overflow-hidden rounded-[10px] border bg-ld-surface aspect-[380/264] transition-[box-shadow,border-color] duration-[250ms]"
-        style={{
-          borderColor: hoveredElement ? ROSE : 'var(--ld-border)',
-          boxShadow:   hoveredElement ? `0 0 24px ${ROSE_B}` : 'none',
-        }}
-      >
-        {/* Screenshot or skeleton */}
-        {frame.data ? (
-          <img
-            src={frame.data}
-            alt="page frame"
-            draggable={false}
-            className="w-full h-full object-contain block"
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col">
-            {/* Faux browser bar */}
-            <div className="h-[30px] bg-ld-surface-2 border-b border-ld-border flex items-center gap-[6px] px-[10px] shrink-0">
-              <span className="block h-[9px] w-[60px] rounded-[3px] bg-ld-border-strong" />
-              <span className="block h-[9px] w-[30px] rounded-[3px] bg-ld-border-strong ml-auto" />
-              <span className="block h-[9px] w-[30px] rounded-[3px] bg-ld-border-strong" />
-            </div>
-            {/* Skeleton body */}
-            <div className="flex-1 px-[12px] py-[10px] grid gap-[8px] content-start">
-              <span className="block h-[9px] w-[50%] rounded-[3px] bg-ld-surface-hover" />
-              <span className="block h-[9px] w-[80%] rounded-[3px] bg-ld-surface-hover" />
-              <span className="block h-[54px] w-full rounded-[8px] bg-ld-surface-hover" />
-              <span className="block h-[9px] w-[65%] rounded-[3px] bg-ld-surface-hover" />
-              <span className="block h-[9px] w-[40%] rounded-[3px] bg-ld-surface-hover" />
-            </div>
-          </div>
-        )}
-
-        {/* SVG heatmap overlay */}
-        {hasRect && hoveredElement?.rect && (
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none [filter:drop-shadow(0_0_8px_var(--ld-rose-strong))]"
-            viewBox={`0 0 ${PREVIEW_W} ${PREVIEW_H}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <rect x={0} y={0} width={PREVIEW_W} height={PREVIEW_H} fill="rgba(0,0,0,0.30)" />
-            <motion.rect
-              x={hoveredElement.rect.leftPct   * PREVIEW_W}
-              y={hoveredElement.rect.topPct    * PREVIEW_H}
-              width={hoveredElement.rect.widthPct  * PREVIEW_W}
-              height={hoveredElement.rect.heightPct * PREVIEW_H}
-              fill={ROSE_A} stroke={ROSE} strokeWidth={2.5} rx={3}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            />
-            <motion.rect
-              x={hoveredElement.rect.leftPct   * PREVIEW_W - 4}
-              y={hoveredElement.rect.topPct    * PREVIEW_H - 4}
-              width={hoveredElement.rect.widthPct  * PREVIEW_W + 8}
-              height={hoveredElement.rect.heightPct * PREVIEW_H + 8}
-              fill="none" stroke={ROSE} strokeWidth={1} rx={6}
-              strokeDasharray="6 4"
-              animate={{ opacity: [0.8, 0.2, 0.8], strokeDashoffset: [0, -20] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-            />
-          </svg>
-        )}
-
-        {/* No-rect fallback */}
-        {hoveredElement && !hasRect && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 flex items-center justify-center p-[24px] pointer-events-none"
-          >
-            <div className="px-[16px] py-[10px] rounded-[12px] text-center bg-ld-surface border border-ld-rose-fill shadow-ld-shadow-card">
-              <p className="text-[10px] font-medium text-ld-text-3">
-                Visual coordinates unavailable for this element
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Frame footer */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-[8px] py-[4px] bg-[rgba(0,0,0,.65)]">
-          <span className="font-mono text-[9px] tabular-nums text-ld-text-3">
-            {fmtSec2(frame.timing)}
-          </span>
-          <span className="font-mono text-[9px] font-bold" style={{ color: clsScoreColor(cls) }}>
-            CLS {fmtCls(cls)}
-          </span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 // ─── CLS Tracker ─────────────────────────────────────────────────────────────
 

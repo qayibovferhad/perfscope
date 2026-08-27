@@ -197,7 +197,8 @@ await page.evaluateOnNewDocument(
 );
 
 interface Failure { id: string; title: string; items: number; nodes: string[] }
-interface Row { name: string; score: number | null; failures: Failure[]; missing: string[]; bleeds: string[] }
+interface Drawn { interactionPins: number; longTaskZones: number; waterfallRows: number; pinOpensDetail: boolean }
+interface Row { name: string; score: number | null; failures: Failure[]; missing: string[]; bleeds: string[]; drawn: Drawn }
 const rows: Row[] = [];
 
 try {
@@ -216,6 +217,29 @@ try {
       return needles.filter((n) => text.includes(n.toLowerCase()));
     }, PANELS.map((p) => p.needle));
     const missing = PANELS.filter((p) => !present.includes(p.needle)).map((p) => p.label);
+
+    /**
+     * A panel heading proves the component mounted; it does not prove the component drew
+     * anything. The three that render imperatively (D3 pins, the shift overlay, the
+     * waterfall's own rows) can mount and paint an empty box, so they are counted.
+     */
+    const drawn = await page.evaluate(() => ({
+      interactionPins: document.querySelectorAll('g.pin').length,
+      longTaskZones:   document.querySelectorAll('g.blocking-zone-g').length,
+      waterfallRows:   document.querySelectorAll('[title^="http"]').length,
+    }));
+
+    // And one behaviour, because the pins are drawn by hand and wired by hand: clicking
+    // one has to open its breakdown.
+    await page.evaluate(() => {
+      document.querySelector('g.pin')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    // The ring is repainted from React state, so it is the whole chain in one assertion:
+    // the hand-wired click handler, the state it sets, and the effect that draws it back.
+    const pinOpensDetail = await page.evaluate(() =>
+      [...document.querySelectorAll('circle.selected-ring')].some((c) => c.getAttribute('opacity') === '1')
+      && (document.querySelector('main') as HTMLElement | null)?.innerText.includes('Presentation') === true);
 
     const bleeds = await bleeding(page);
 
@@ -237,7 +261,10 @@ try {
         };
       });
 
-    rows.push({ name, score: score === null ? null : Math.round(score * 100), failures, missing, bleeds });
+    rows.push({
+      name, score: score === null ? null : Math.round(score * 100),
+      failures, missing, bleeds, drawn: { ...drawn, pinOpensDetail },
+    });
   }
 } finally {
   await browser.close();
@@ -251,6 +278,9 @@ try {
 for (const row of rows) {
   console.log(`\n  ── ${row.name} ──`);
   console.log(`  panels drawn : ${PANELS.length - row.missing.length}/${PANELS.length}${row.missing.length ? ` · not drawn: ${row.missing.join(', ')}` : ''}`);
+  console.log(`  drawn        : ${row.drawn.interactionPins} interaction pins · ` +
+    `${row.drawn.longTaskZones} long-task zones · ${row.drawn.waterfallRows} waterfall rows · ` +
+    `clicking a pin ${row.drawn.pinOpensDetail ? 'opens its breakdown' : 'DOES NOTHING'}`);
   console.log(`  accessibility: ${row.score}`);
   for (const failure of row.failures) {
     console.log(`    ${failure.id} — ${failure.title} (${failure.items})`);
