@@ -113,7 +113,14 @@ perfscope/
 
 ### Analysis pipeline (the core flow)
 
-Analysis is driven over **WebSocket**; the REST endpoint (`analyzer.routes.ts`) survives only because the Chrome extension and CLI login flow use it.
+Analysis is driven over **WebSocket**. `POST /api/analyze` (`analyzer.routes.ts`) still
+works and no first-party client uses it any more — the extension moved to the socket — but
+it is a published endpoint and `createApiClient().analyzeUrl` is part of the shared
+package's surface, so removing it is a deliberate call rather than refactor fallout. It
+raises its *own* connection past the server-wide `HTTP_TIMEOUT_MS` (70s), which is why an
+audit longer than that no longer reports failure to the caller while carrying on
+server-side. Verified 2026-08-28: seven concurrent REST audits behind a cap of two all
+answered 200, the slowest after 141s.
 
 1. Frontend `startAnalysis(url, callbacks, { projectId, formFactor, precision })` → emits `analysis:start`.
 2. `socket/analysis.handler.ts` **generates the analysisId itself** and forwards only progress/partials carrying that id — concurrent audits share the service's EventEmitter, so unfiltered listeners leak other users' progress. It also auto-injects a saved session when the target is **same-origin** with a stored one (prefix matching would leak a session to `example.com.evil.test`).
