@@ -56,11 +56,13 @@ pnpm install
 ```
 
 ```bash
-pnpm test        # 398 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
+pnpm test        # 403 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
                  # node:test in cli and action. `probes/` is deliberately NOT part of this.
 pnpm e2e         # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
 pnpm typecheck   # every workspace, including the ones whose build is not tsc
-pnpm lint        # every workspace. 0 errors is the bar; ~35 warnings are deliberate
+pnpm lint        # every workspace, `--max-warnings 0`. The ~35 "deliberate" warnings were
+                 # decided one at a time (2026-08-27): the real ones fixed, the rest carrying
+                 # an `eslint-disable` with its reason at the site. Zero is now the gate.
 
 # Hand-run, minutes each, needing a real Chrome / Gemini key / Mongo:
 node e2e/<name>.probe.mjs                     # browser-level probes
