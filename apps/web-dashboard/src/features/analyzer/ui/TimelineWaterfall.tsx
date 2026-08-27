@@ -133,7 +133,7 @@ export function TimelineWaterfall({
             <Network />
           </span>
 
-          <h3 className="text-[16.5px] font-bold text-ld-text tracking-tight">Network Waterfall</h3>
+          <h2 className="text-[16.5px] font-bold text-ld-text tracking-tight">Network Waterfall</h2>
           <span className="font-mono text-[12px] text-ld-text-3">{rows.length} req · {fmtMs(wfMs)}</span>
 
           {/* Controls */}
@@ -254,6 +254,9 @@ export function TimelineWaterfall({
             <input
               ref={rangeRef}
               type="range"
+              // Invisible by design (it sits over the drawn track), which also means no
+              // visible text can name it.
+              aria-label="Scrub the load timeline"
               defaultValue={0}
               min={0}
               max={maxTiming}

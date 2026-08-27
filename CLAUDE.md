@@ -334,11 +334,29 @@ connection sends the access token in `handshake.auth.token`; `analysis.handler.t
 opens `/app` through `/history?open=<id>` so the *report* is measured, not an empty form. All
 nine are at 100; when adding UI, run it rather than guessing.
 
-Two rules it exists to enforce: **never put `opacity` on a `--ld-*` text token** (they are
+`apps/backend/probes/report-a11y.probe.mts` audits the *deep* report — the sweep above seeds
+`/app` from an AI fixture, and `trimForAi` drops `timelineData`/`dependencyGraph`/`bundles`,
+so the waterfall, flame chart, dependency chain, treemap and layout-shift visualiser were
+never in the DOM it measured. This one runs a real audit, stores an older copy so the delta
+layer renders, turns the comparison switch on (it is off by default) and reports three things
+at 1350px and 412px: **how many of the 14 panels drew** (a 100 over four panels is not a
+result), the accessibility snapshot, and what bleeds past the right edge. 13/14 locally —
+field data needs `CRUX_API_KEY`. It found the report at 95, now 100.
+
+Four rules these enforce: **never put `opacity` on a `--ld-*` text token** (they are
 tuned to clear 4.5:1 exactly, so dimming drops them below AA — icons and hover-reveals are
-fine), and **every form control gets a real label** via `shared/ui/field.tsx`'s `Field`,
-which owns the `useId`/`htmlFor`/`aria-describedby` wiring. An icon-only button or link needs
-an `aria-label`; an `aria-label` on a control with visible text must *contain* that text.
+fine); **every form control gets a real label** via `shared/ui/field.tsx`'s `Field`,
+which owns the `useId`/`htmlFor`/`aria-describedby` wiring — an icon-only button or link needs
+an `aria-label`, and an `aria-label` on a control with visible text must *contain* that text;
+**panel and section titles are `h2`** (`PanelHeader`, the analyzer's `SectionTitle`, the audit
+list's header) under each page's single `h1`, with anything nested inside a panel at `h3` —
+`AlertTitle` is a `<p>`, not a heading, because `role="alert"` is what announces it; and a
+**range input that is invisible or has its thumb redrawn carries its own `aria-label`** (both
+scrub tracks and `shared/ui/scrubber.tsx`), since there is no visible text for one to point at.
+
+Layout on a phone is `e2e/mobile-layout.probe.mjs`, which asserts proportion and reachability
+rather than only overflow. Its selectors name elements: when a component changes tag, check the
+counts it prints — an `every()` over an empty list passes.
 
 ### Styling
 

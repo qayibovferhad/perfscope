@@ -24,9 +24,17 @@ const Alert = React.forwardRef<
 ));
 Alert.displayName = 'Alert';
 
-const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+/**
+ * A paragraph, not a heading — which is what the ref type here always claimed.
+ *
+ * It used to render an `<h5>`. Every panel title in the app is an `<h2>`, so an alert
+ * dropped into a report jumped two levels and Lighthouse reported `heading-order` on the
+ * report screen. The box carries `role="alert"`, which is what announces it; a heading
+ * would only add a rung to the outline that leads nowhere.
+ */
+const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <h5 ref={ref} className={cn('mb-1 font-semibold leading-none tracking-tight', className)} {...props} />
+    <p ref={ref} className={cn('mb-1 font-semibold leading-none tracking-tight', className)} {...props} />
   ),
 );
 AlertTitle.displayName = 'AlertTitle';

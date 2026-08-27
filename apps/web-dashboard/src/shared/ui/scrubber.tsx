@@ -9,6 +9,7 @@ import { cn } from '@/shared/lib/utils';
  */
 export function Scrubber({
   value, max, onChange, step = 1, color = 'var(--ld-accent)', className,
+  label = 'Scrub the timeline',
 }: {
   value: number;
   max: number;
@@ -17,6 +18,12 @@ export function Scrubber({
   step?: number;
   /** CSS color of the filled track and thumb ring — e.g. `var(--ld-rose)` for the CLS view. */
   color?: string;
+  /**
+   * Accessible name. The native thumb and track are suppressed and redrawn, so there is
+   * never visible text beside this control for a label to point at — every copy of it was
+   * an unnamed slider.
+   */
+  label?: string;
   className?: string;
 }) {
   const pct = `${max > 0 ? Math.min((value / max) * 100, 100) : 0}%`;
@@ -24,6 +31,7 @@ export function Scrubber({
     <div className={cn('relative flex-1 min-w-0', className)}>
       <input
         type="range"
+        aria-label={label}
         min={0}
         max={max}
         step={step}

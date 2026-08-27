@@ -58,7 +58,7 @@ export function TimelineWaterfallSkeleton() {
           <span className="w-[34px] h-[34px] rounded-[9px] grid place-items-center bg-ld-surface-2 border border-ld-border [&_svg]:w-[17px] [&_svg]:h-[17px] text-ld-accent shrink-0">
             <Network />
           </span>
-          <h3 className="text-[16.5px] font-bold text-ld-text tracking-tight">Network Waterfall</h3>
+          <h2 className="text-[16.5px] font-bold text-ld-text tracking-tight">Network Waterfall</h2>
           <span className="font-mono text-[12px] text-ld-text-3">collecting requests…</span>
 
           <div className="flex items-center gap-[8px]">

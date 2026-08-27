@@ -175,7 +175,9 @@ function CriticalTable({ resources }: { resources: ParsedResources }) {
               <th className="text-left px-[12px] py-[8px] font-medium text-ld-text-3">Resource</th>
               <th className="text-left px-[12px] py-[8px] font-medium text-ld-text-3 w-[80px]">Type</th>
               <th className="text-right px-[12px] py-[8px] font-medium text-ld-text-3 w-[90px]">Size</th>
-              <th className="w-[40px]" />
+              {/* The advice column carries an icon and no visible title, but an empty
+                  `th` is not a header — every `td` under it was headerless. */}
+              <th className="w-[40px]"><span className="sr-only">Advice</span></th>
             </tr>
           </thead>
           <tbody>

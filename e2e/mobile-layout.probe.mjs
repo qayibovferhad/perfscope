@@ -63,6 +63,21 @@ const bleeding = (page) => page.evaluate(() => {
     .map(({ e, r }) => `${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).slice(0, 2).join('.')} → ${Math.round(r.right)}px`);
 });
 
+/**
+ * The first visit to a lazily-loaded route makes Vite discover a dependency it has not
+ * optimised yet, and it answers by reloading the whole page — which detaches the frame
+ * under whatever is measuring it. A dev-server artefact, not the app: measure again once
+ * it has settled rather than reporting the reload as a layout failure.
+ */
+const settle = async (page, fn) => {
+  try { return await fn(); }
+  catch (err) {
+    if (!/detached Frame|Execution context was destroyed/i.test(String(err))) throw err;
+    await sleep(1500);
+    return fn();
+  }
+};
+
 await waitForServers();
 const { token, user, email } = await registerUser();
 await fetch(`${BACKEND_URL}/api/websites`, {
@@ -173,8 +188,11 @@ try {
 
   // A header that wraps is fine; one that shreds a title into a narrow column is not.
   const headers = await page.evaluate(() => {
-    const titles = [...document.querySelectorAll('span')]
-      .filter((s) => s.className.includes('font-bold') && s.textContent && s.textContent.length > 12);
+    // `h2` as well as `span`: panel titles became real headings during the accessibility
+    // pass, and a selector that only knew about spans would have kept passing over an
+    // empty list — the count below is printed so that shows up as zero rather than green.
+    const titles = [...document.querySelectorAll('span, h2')]
+      .filter((s) => String(s.className).includes('font-bold') && s.textContent && s.textContent.length > 12);
     return titles.map((t) => {
       const r = t.getBoundingClientRect();
       const lines = Math.round(r.height / 20);
@@ -195,10 +213,10 @@ try {
   }
 
   // ─── Every other route ─────────────────────────────────────────────────────
-  for (const route of ['/websites', '/history', '/compare', '/flows', '/automation', '/settings', '/scheduled']) {
+  for (const route of ['/websites', '/history', '/compare', '/flows', '/team', '/automation', '/settings', '/scheduled']) {
     await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle0' });
     await sleep(1200);
-    const bad = await bleeding(page);
+    const bad = await settle(page, () => bleeding(page));
     check(bad.length === 0, `${route} fits the screen (${bad.join(', ') || 'clean'})`);
   }
 

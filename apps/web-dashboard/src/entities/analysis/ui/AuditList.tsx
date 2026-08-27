@@ -260,9 +260,11 @@ export function AuditList({ audits, previous, aiPending, openAuditId }: {
     <div>
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-[12px] mb-[14px] flex-wrap">
-        <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 m-0">
+        {/* The same level as the report's other section titles — this is the last and
+            longest section on the screen, and it was the one with no heading at all. */}
+        <h2 className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 m-0">
           Opportunities &amp; diagnostics
-        </p>
+        </h2>
 
         {/* Critical count pill */}
         {critCount > 0 ? (

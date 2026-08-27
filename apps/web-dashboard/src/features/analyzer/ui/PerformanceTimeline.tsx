@@ -155,6 +155,7 @@ const ScrubberSection = memo(function ScrubberSection({ maxTiming, metrics, moti
         <input
           ref={rangeRef}
           type="range"
+          aria-label="Scrub the load timeline"
           defaultValue={0}
           min={0}
           max={maxTiming}

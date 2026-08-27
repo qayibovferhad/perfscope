@@ -24,7 +24,12 @@ export function PanelHeader({ icon, title, meta, children, className }: PanelHea
       <span className="w-[32px] h-[32px] rounded-[9px] grid place-items-center bg-ld-accent-soft border border-ld-accent-line [&_svg]:w-[15px] [&_svg]:h-[15px] [&_svg]:text-[var(--ld-accent)] shrink-0">
         {icon}
       </span>
-      <span className="text-[14px] font-bold text-ld-text tracking-tight flex-1 min-w-[140px]">{title}</span>
+      {/* A heading, not a span: this is the name of the block below it, and a report is
+          two dozen panels deep — without headings a screen reader has no way to move
+          between them. `h2` everywhere rather than a per-call level, because the pages
+          that hold panels all put an `h1` at the top and nothing in between; a level a
+          caller can choose is a level that drifts. */}
+      <h2 className="text-[14px] font-bold text-ld-text tracking-tight flex-1 min-w-[140px]">{title}</h2>
       {meta && (
         <span className="font-mono text-[11px] text-ld-text-3 tabular-nums">{meta}</span>
       )}

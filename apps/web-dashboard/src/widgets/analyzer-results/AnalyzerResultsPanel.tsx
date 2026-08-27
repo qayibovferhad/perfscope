@@ -26,11 +26,16 @@ import type { AnalysisResult } from '@/entities/analysis';
 
 // ─── Internals ────────────────────────────────────────────────────────────────
 
+/**
+ * The report's own outline. A heading rather than a styled paragraph: this screen is the
+ * longest in the product and these five words are the only way to skip through it.
+ * `h2`, level with `PanelHeader` — the page's `h1` is above them both.
+ */
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">
+    <h2 className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">
       {children}
-    </p>
+    </h2>
   );
 }
 
