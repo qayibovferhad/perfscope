@@ -4,6 +4,12 @@ Every route the backend serves, what it is for, and whether it needs a token. Ke
 `apps/backend/src/routes/routes.contract.test.ts`, which fails when a route is added, moved
 or removed without this file changing.
 
+**Machine-readable:** [`openapi.json`](openapi.json) (OpenAPI 3.1) is generated from these
+tables and the `@perfscope/shared` types — run `pnpm openapi` in `apps/backend` after changing
+either, and `apps/backend/openapi/operations.ts` says which type each route answers with. CI
+fails on a stale spec, and `e2e/openapi-conformance.probe.mjs` validates real responses
+against it.
+
 ## Conventions
 
 **Envelope.** Every `/api` route answers `{ "success": true, "data": … }` or

@@ -56,7 +56,7 @@ pnpm install
 ```
 
 ```bash
-pnpm test        # 403 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
+pnpm test        # 512 unit tests across 5 workspaces — vitest in shared/backend/web-dashboard,
                  # node:test in cli and action. `probes/` is deliberately NOT part of this.
 pnpm e2e         # Puppeteer smoke over 10 routes + a live Lighthouse run; servers must already be running
 pnpm typecheck   # every workspace, including the ones whose build is not tsc
@@ -206,6 +206,25 @@ when a route is added, moved or removed without the table changing. Adding a rou
 adding its row. `GET /api/public/badge/:token` answers shields.io's endpoint schema off the
 existing share token, so a README badge needs no new credential and revoking the share
 turns it off.
+
+**`docs/api/openapi.json` is generated, never edited** — `pnpm openapi` in `apps/backend`
+reads the operations from that README's tables and the schemas from `@perfscope/shared`;
+`apps/backend/openapi/operations.ts` is the one hand-written input (which shared type each
+route answers with, and the build refuses a name shared does not export). Schemas allow
+additional properties on purpose: Mongoose documents carry `__v`/`updatedAt`, and a server
+adding a field must not read as a broken contract. `openapi.contract.test.ts` holds the
+operation list to the README, CI runs `openapi --check` for the schemas, and
+`e2e/openapi-conformance.probe.mjs` validates live responses against it and renders the
+public report page, which crashed on every shared link while it read `{ result, sharedAt }`
+as the result.
+
+**Indexes are built by `connectDatabase`, not by Mongoose.** With `bufferCommands` off,
+Mongoose's automatic index build runs at model compile — before `connect()` — and fails
+without a word; a fresh database (every Docker install until 2026-09-15) had none. Adding an
+index to a schema needs nothing more, but do not remove the explicit `createIndexes` pass.
+**Crons claim each tick** in `CronLease` (`lib/cronLease.ts`, bucket rounded to the nearest
+period) so a second backend replica does not rerun them; `registerCron` needs a `periodMs`
+matching its expression. What else a replica meets is the table in `docs/deploy/DOCKER.md`.
 
 **`/metrics` is Prometheus text, written by hand in `lib/metrics.ts`** (no client library
 for a dozen numbers the server already keeps). Counters carry *bounded* labels only —

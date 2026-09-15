@@ -8,8 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "lint": "eslint . --max-warnings 0",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json && tsc -p openapi/tsconfig.json",
+    "test": "vitest run",
+    "openapi": "tsx openapi/build.mts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -41,6 +42,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/uuid": "^10.0.0",
     "socket.io-client": "^4.8.3",
+    "ts-json-schema-generator": "^2.9.0",
     "tsx": "^4.19.3",
     "typescript": "~6.0.2",
     "vitest": "^4.1.10"

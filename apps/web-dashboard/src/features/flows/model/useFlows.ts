@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { FlowDefinition, FlowRunResult } from '@perfscope/shared';
+import type { FlowDefinition, FlowInput, FlowRunResult } from '@perfscope/shared';
 import { apiClient, fetchJson } from '@/shared/api/client';
 import { toast } from '@/shared/ui/toast';
 
@@ -12,10 +12,7 @@ function reason(err: unknown): string | undefined {
   return typeof data?.error === 'string' && data.error.trim() ? data.error : undefined;
 }
 
-export type FlowInput = Pick<
-  FlowDefinition,
-  'name' | 'url' | 'steps' | 'snapshotAtEnd' | 'formFactor' | 'websiteId' | 'schedule' | 'targets'
->;
+export type { FlowInput };
 
 export function useFlows() {
   const qc = useQueryClient();

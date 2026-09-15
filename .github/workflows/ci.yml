@@ -44,6 +44,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: OpenAPI spec is current
+        # docs/api/openapi.json is generated from the README's route tables and the shared
+        # types. The unit tests check the operation list; this checks the schemas, which
+        # means compiling @perfscope/shared — seconds, so it is a step and not a test.
+        run: pnpm --filter @perfscope/backend openapi --check
+
   e2e:
     runs-on: ubuntu-latest
     # The budget step below is our own action, and it writes back: a check run on the commit

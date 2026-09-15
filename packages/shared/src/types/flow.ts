@@ -110,6 +110,15 @@ export interface FlowDefinition {
   lastRun?:  { id: string; at: string; failedSteps: number; missedTargets: number } | null
 }
 
+/**
+ * What a client sends to create or replace a flow (`POST /api/flows`, `PUT /api/flows/:id`)
+ * — the definition without anything the server owns.
+ */
+export type FlowInput = Pick<
+  FlowDefinition,
+  'name' | 'url' | 'steps' | 'snapshotAtEnd' | 'formFactor' | 'websiteId' | 'schedule' | 'targets'
+>
+
 /** The measurement modes, named as Lighthouse names them. */
 export type FlowStepMode = 'navigation' | 'timespan' | 'snapshot'
 
