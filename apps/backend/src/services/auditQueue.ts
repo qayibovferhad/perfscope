@@ -1,4 +1,9 @@
+import { increment, observeDuration } from '../lib/metrics.js';
+
 export type AuditPriority = 'interactive' | 'background';
+
+/** What is occupying a slot. Flows share this queue with audits — see flow.service. */
+export type AuditKind = 'audit' | 'flow';
 
 interface Waiter {
   priority: AuditPriority;
@@ -37,12 +42,25 @@ export class AuditQueue {
    */
   async run<T>(
     task: () => Promise<T>,
-    opts: { priority?: AuditPriority; onQueue?: (position: number) => void } = {},
+    opts: { priority?: AuditPriority; kind?: AuditKind; onQueue?: (position: number) => void } = {},
   ): Promise<T> {
     await this.acquire(opts.priority ?? 'interactive', opts.onQueue);
+
+    // Counted here rather than at the four call sites: this is the one gate every audit
+    // and every flow passes through, so a new entry point cannot forget to be measured.
+    // The clock starts after admission — queue time is the queue's story, and mixing it
+    // into the run time would make a busy server look like a slow one.
+    const kind = opts.kind ?? 'audit';
+    const startedAt = Date.now();
     try {
-      return await task();
+      const result = await task();
+      increment('perfscope_runs_total', 'Audits and flows executed', { kind, result: 'ok' });
+      return result;
+    } catch (err) {
+      increment('perfscope_runs_total', 'Audits and flows executed', { kind, result: 'error' });
+      throw err;
     } finally {
+      observeDuration('perfscope_run_duration_seconds', 'Audit and flow run duration', (Date.now() - startedAt) / 1000, { kind });
       this.release();
     }
   }

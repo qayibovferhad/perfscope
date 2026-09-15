@@ -19,6 +19,7 @@ import { socketScope } from './scope.js';
 import { isValidUrl } from '../lib/url.js';
 import { isFetchableTarget } from '../lib/ssrf.js';
 import { SessionExpiredError } from '../lib/errors.js';
+import { log } from '../lib/logger.js';
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -199,7 +200,7 @@ async function runAudit({
   // Stopped before it started — see `cancelAheadBySocket`. Nothing has been emitted yet, so
   // there is nothing to take back: the client asked for silence and gets it.
   if (consumeCancelAhead(socket)) {
-    console.log(`[Socket] Audit ${analysisId.slice(0, 8)} stopped before it began`);
+    log.info('Socket', 'audit stopped before it began', { analysisId });
     clearInFlight(socket, analysisId);
     return;
   }
@@ -231,7 +232,7 @@ async function runAudit({
     const ownerProjectId = await resolveProjectId(userId, result.url);
 
     recordLoginWall(userId, result.url, result.authRedirectDetected)
-      .catch(err => console.warn('[Website] Login-wall flag failed:', err));
+      .catch(err => log.warn('Website', 'login-wall flag failed', { err }));
 
     // Enrich, then persist — the stored audit keeps the commentary the way it always did,
     // and the live client receives it as its own event. `enrichWithAi` never throws for an
@@ -255,17 +256,17 @@ async function runAudit({
     });
 
     persistAudit(result, userId, ownerProjectId)
-      .catch(err => console.warn('[History] Save failed:', err));
+      .catch(err => log.warn('History', 'save failed', { err }));
   } catch (err) {
     if (err instanceof SessionExpiredError) {
       await dropStaleSession(userId, url, err.loginUrl)
-        .catch((e: unknown) => console.warn('[Socket] Failed to drop stale session:', e));
+        .catch((err: unknown) => log.warn('Socket', 'failed to drop stale session', { err }));
     }
 
     // A stopped audit is not a failed one. The throw is how the cancellation reached this
     // frame, and the client that asked for it has already moved on.
     if (wasCancelled(socket, analysisId)) {
-      console.log(`[Socket] Audit ${analysisId.slice(0, 8)} stopped by the client`);
+      log.info('Socket', 'audit stopped by the client', { analysisId });
       cancelledByThisSocket.get(socket)?.delete(analysisId);
       return;
     }
@@ -287,7 +288,7 @@ async function runAudit({
 
 export function registerAnalysisSocket(io: TypedServer): void {
   io.on('connection', (socket: TypedSocket) => {
-    console.log(`[Socket] Connected: ${socket.id}`);
+    log.debug('Socket', 'connected', { socketId: socket.id });
 
     // The account this connection works on — the team's owner when it named one. Awaited
     // inside each handler so a connection that only listens costs no database read.
@@ -300,7 +301,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       if (await rejectUnusableUrl(socket, url)) return;
 
-      console.log(`[Socket] Analysis started: ${url}`);
+      log.info('Socket', 'analysis started', { url });
 
       const runs = payload.precision === 'median' ? MEDIAN_RUNS : 1;
 
@@ -309,8 +310,8 @@ export function registerAnalysisSocket(io: TypedServer): void {
       let savedSession = null;
       if (userId) {
         savedSession = await findSessionFor(userId, url)
-          .catch(err => { console.warn('[Socket] Failed to load saved session:', err); return null; });
-        if (savedSession) console.log(`[Socket] Using saved session for ${url}`);
+          .catch(err => { log.warn('Socket', 'failed to load saved session', { err }); return null; });
+        if (savedSession) log.info('Socket', 'using saved session', { url });
       }
 
       await runAudit({
@@ -361,7 +362,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
 
       if (userId) {
         persistCapturedSession(userId, url, sessionData, context === 'competitor' ? 'competitor' : 'own')
-          .catch(err => console.warn('[Socket] Failed to persist captured session:', err));
+          .catch(err => log.warn('Socket', 'failed to persist captured session', { err }));
       }
 
       await runAudit({
@@ -374,7 +375,7 @@ export function registerAnalysisSocket(io: TypedServer): void {
     });
 
     socket.on('disconnect', (reason: string) => {
-      console.log(`[Socket] Disconnected: ${socket.id} (${reason})`);
+      log.debug('Socket', 'disconnected', { socketId: socket.id, reason });
     });
   });
 }

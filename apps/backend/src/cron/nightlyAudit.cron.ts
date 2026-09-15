@@ -12,7 +12,7 @@ function currentHHMM(): string {
 export function registerNightlyCron(): void {
   registerCron({
     expression: '* * * * *',
-    tag:        '[NightlyAudit]',
+    tag:        'NightlyAudit',
     announce:   'Scheduled audit running every minute — triggers per website scheduleTime.',
     run:        () => NightlyAuditService.runAllEnabled(currentHHMM()),
   });

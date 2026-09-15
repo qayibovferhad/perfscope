@@ -17,7 +17,7 @@ function currentHHMM(): string {
 export function registerFlowCron(): void {
   registerCron({
     expression: '* * * * *',
-    tag:        '[FlowSchedule]',
+    tag:        'FlowSchedule',
     announce:   'Scheduled user flows running every minute — triggers per flow schedule time.',
     run:        () => runScheduledFlows(currentHHMM()),
   });

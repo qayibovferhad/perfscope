@@ -11,6 +11,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
+import { log } from './logger.js';
 
 /** How often to look for browsers that lost their owner. */
 const ORPHAN_SWEEP_MS = 10 * 60_000;
@@ -77,7 +78,7 @@ export function reapOrphanedChrome(): number {
     } catch { /* process vanished or is not ours to read */ }
   }
 
-  if (killed > 0) console.warn(`[Chrome] Reaped ${killed} orphaned browser(s) left by a previous run`);
+  if (killed > 0) log.warn('Chrome', 'reaped orphaned browsers left by a previous run', { killed });
   return killed;
 }
 
@@ -107,7 +108,7 @@ export function installChromeReaper(): void {
     });
   }
   process.on('uncaughtException', (err) => {
-    console.error('[Chrome] Reaping browsers after uncaught exception:', err);
+    log.error('Chrome', 'reaping browsers after uncaught exception', { err });
     reapAll();
     process.exit(1);
   });

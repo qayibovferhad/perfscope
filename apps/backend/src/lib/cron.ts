@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { isDbReady } from '../config/database.js';
+import { log } from './logger.js';
 
 /**
  * Register a scheduled job with the two guards every one of ours needs.
@@ -19,7 +20,7 @@ import { isDbReady } from '../config/database.js';
 export function registerCron(
   { expression, tag, announce, run }: {
     expression: string;
-    /** Log prefix for failures, e.g. '[Digest]'. */
+    /** Log scope for failures, e.g. 'Digest' — the logger adds the brackets. */
     tag: string;
     /** One line at startup saying what is now scheduled. */
     announce: string;
@@ -28,9 +29,8 @@ export function registerCron(
 ): void {
   cron.schedule(expression, () => {
     if (!isDbReady()) return;
-    run().catch((err: unknown) =>
-      console.error(`${tag} Unhandled error in cron:`, (err as Error).message));
+    run().catch((err: unknown) => log.error(tag, 'unhandled error in cron', { err }));
   });
 
-  console.log(`[Cron] ${announce}`);
+  log.info('Cron', announce);
 }

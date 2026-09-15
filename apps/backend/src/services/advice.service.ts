@@ -14,6 +14,7 @@ import {
   fmtMs, fmtMetric, targetProgress, readTargetValue, TARGET_DIRECTION, forecastMetric,
   type TargetMetric, type TargetProgress, type ForecastMetric,
 } from '@perfscope/shared';
+import { log } from '../lib/logger.js';
 
 const FORECAST_METRICS: ForecastMetric[] = ['performance', 'lcp', 'tbt', 'cls'];
 
@@ -281,7 +282,7 @@ export async function getAdvice(
 
   const context = await buildContext(userId, scope, target);
   return AiService.getAdvice(context).catch((err: unknown) => {
-    console.error('[AI] Advice failed:', err);
+    log.error('AI', 'advice failed', { err });
     return null;
   });
 }

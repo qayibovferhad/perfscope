@@ -1,3 +1,5 @@
+import { log } from './logger.js';
+
 /**
  * Every artifact parser answers malformed input with `null`, and every caller treats
  * that as "this page has no such data" — the right degradation for a missing artifact,
@@ -6,6 +8,6 @@
  * produced empty panels on every audit with not one log line anywhere.
  */
 export function parseFailed(parser: string, err: unknown): null {
-  console.warn(`[parse:${parser}] failed — treating as "no data":`, err);
+  log.warn('parse', 'parser failed — treating as "no data"', { parser, err });
   return null;
 }

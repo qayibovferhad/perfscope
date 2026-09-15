@@ -6,6 +6,7 @@ import { optionalAuth, type AuthRequest } from '../middleware/auth.middleware.js
 import { isValidUrl } from '../lib/url.js';
 import { assertPublicTarget } from '../lib/ssrf.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
+import { log } from '../lib/logger.js';
 
 export const analyzerRouter: Router = Router();
 
@@ -57,7 +58,7 @@ analyzerRouter.post('/analyze', optionalAuth, asyncHandler<AuthRequest>(async (r
       await persistAudit(result, req.userId, projectId);
       savedToHistory = true;
     } catch (err) {
-      console.error('[Analyzer] History save failed:', (err as Error).message);
+      log.error('Analyzer', 'history save failed', { err });
     }
   }
 

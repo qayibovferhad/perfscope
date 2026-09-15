@@ -22,6 +22,7 @@ import { runFlow } from './flow.service.js';
 import { findWebsiteByHost } from './websiteLookup.js';
 import { findSessionFor } from './sessionStore.js';
 import { dispatchAlert } from './alerts.service.js';
+import { log } from '../lib/logger.js';
 
 /**
  * How long after a scheduled run the same flow may not run again.
@@ -134,10 +135,10 @@ export async function runScheduledFlows(
 
       await checkFlowTargets(flow, { ...result, id: String(stored._id) });
       ran++;
-      console.log(`[FlowSchedule] Ran "${flow.name}" (${result.durationMs}ms)`);
+      log.info('FlowSchedule', 'ran flow', { flow: flow.name, ms: result.durationMs });
     } catch (err) {
       // One flow's broken selector must not stop the others due at the same minute.
-      console.error(`[FlowSchedule] "${flow.name}" failed:`, (err as Error).message);
+      log.error('FlowSchedule', 'flow failed', { flow: flow.name, err });
     }
   }
 

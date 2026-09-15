@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI, type GenerateContentResult } from '@google/generative-ai';
 import { createHash } from 'node:crypto';
 import { config } from '../../config/index.js';
+import { log } from '../../lib/logger.js';
 
 /** Identical prompt in, identical text out — so retries and re-saves cost nothing. */
 const CACHE_TTL_MS = 6 * 60 * 60_000;
@@ -118,8 +119,6 @@ function tallyFor(label: string): UsageTally {
   return t;
 }
 
-const fmtK = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-
 /** Per-label usage so far — for probes and any future admin surface. */
 export function aiUsageSnapshot(): Record<string, UsageTally> {
   return Object.fromEntries([...usageTotals].map(([k, v]) => [k, { ...v }]));
@@ -186,7 +185,7 @@ export async function generate(prompt: string, opts: GenerateOptions = {}): Prom
         throw err;
       }
       tallyFor(label).retries += 1;
-      console.warn(`[AI] ${label}: ${describeError(err)} — retrying once in ${RETRY_BACKOFF_MS}ms`);
+      log.warn('AI', 'call failed — retrying once', { call: label, reason: describeError(err), backoffMs: RETRY_BACKOFF_MS });
       await sleep(RETRY_BACKOFF_MS);
     }
   }
@@ -198,11 +197,17 @@ export async function generate(prompt: string, opts: GenerateOptions = {}): Prom
     t.calls    += 1;
     t.inTokens += usage.promptTokenCount;
     t.outTokens += usage.candidatesTokenCount;
-    console.log(
-      `[AI] usage ${label}: ${fmtK(usage.promptTokenCount)} in / ${fmtK(usage.candidatesTokenCount)} out` +
-      ` (total ${t.calls} calls + ${t.cacheHits} cached, ${fmtK(t.inTokens)} in / ${fmtK(t.outTokens)} out` +
-      `${t.retries || t.failures ? `, ${t.retries} retried / ${t.failures} failed` : ''})`,
-    );
+    log.info('AI', 'usage', {
+      call:       label,
+      inTokens:   usage.promptTokenCount,
+      outTokens:  usage.candidatesTokenCount,
+      totalCalls: t.calls,
+      cacheHits:  t.cacheHits,
+      totalIn:    t.inTokens,
+      totalOut:   t.outTokens,
+      retries:    t.retries,
+      failures:   t.failures,
+    });
   }
 
   // Models fence JSON even when told not to; strip it once, here, for everyone.
@@ -227,7 +232,7 @@ export function parseJson<T>(text: string, label: string): T | null {
   try {
     return JSON.parse(text) as T;
   } catch {
-    console.error(`[AI] Failed to parse ${label} JSON:`, text.slice(0, 200));
+    log.error('AI', 'failed to parse JSON', { call: label, text: text.slice(0, 200) });
     return null;
   }
 }

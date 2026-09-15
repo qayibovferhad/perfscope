@@ -5,6 +5,7 @@ import { escapeRegex, hostOf } from '../lib/url.js';
 import { pruneToLimit } from '../lib/mongo.js';
 import { citableFacts } from '../lib/compareVerdictEvidence.js';
 import { AiService } from './ai.service.js';
+import { log } from '../lib/logger.js';
 
 /**
  * Best-effort: the id is only sent when the side actually came from a live socket run
@@ -99,7 +100,7 @@ export const CompareHistoryService = {
     const aiVerdict = await AiService
       .getCompareVerdict({ sourceUrl, targetUrl, source, competitor, sourceFacts, competitorFacts })
       .catch((err: unknown) => {
-        console.error('[AI] Compare verdict failed:', err);
+        log.error('AI', 'compare verdict failed', { err });
         return null;
       });
 

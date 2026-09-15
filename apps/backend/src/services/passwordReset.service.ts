@@ -24,6 +24,7 @@ import { User } from '../models/User.model.js';
 import { Mailer } from './mailer.service.js';
 import { revokeAllForUser } from './authTokens.service.js';
 import { AppError } from '../lib/errors.js';
+import { log } from '../lib/logger.js';
 
 /** Long enough to fetch the mail and follow it, short enough that an old message in an
  *  inbox is not a standing key to the account. */
@@ -87,11 +88,11 @@ export async function requestPasswordReset(email: string, ): Promise<void> {
   if (Mailer.isAvailable()) {
     await Mailer.send(address, 'Reset your PerfScope password', text);
   } else if (config.nodeEnv !== 'production') {
-    console.log(`[PasswordReset] No SMTP configured — reset link for ${address}:\n  ${link}`);
+    log.info('PasswordReset', `no SMTP configured — reset link for ${address}:\n  ${link}`);
   } else {
     // Production with no mailer: the user is waiting for a mail that cannot arrive, and
     // that is an operator problem worth a loud line rather than a silent success.
-    console.error('[PasswordReset] SMTP is not configured — a reset was requested and could not be delivered');
+    log.error('PasswordReset', 'SMTP is not configured — a reset was requested and could not be delivered');
   }
 }
 

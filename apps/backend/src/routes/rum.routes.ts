@@ -5,6 +5,7 @@ import cors from 'cors';
 import { RUM_COLLECTOR_JS } from '../services/rumCollector.js';
 import { Website } from '../models/Website.model.js';
 import { RumEvent } from '../models/RumEvent.model.js';
+import { log } from '../lib/logger.js';
 
 export const rumRouter: Router = Router();
 
@@ -128,7 +129,7 @@ rumRouter.post('/api/rum', publicCors, beaconBody, async (req: Request, res: Res
 
     return res.end();
   } catch (err) {
-    console.warn('[RUM] Ingest failed:', err);
+    log.warn('RUM', 'ingest failed', { err });
     return res.end();
   }
 });

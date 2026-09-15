@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { config } from '../config/index.js';
+import { log } from '../lib/logger.js';
 
 let transporter: Transporter | null | undefined;
 
@@ -7,7 +8,7 @@ let transporter: Transporter | null | undefined;
 function getTransporter(): Transporter | null {
   if (transporter !== undefined) return transporter;
   if (!config.smtp.host) {
-    console.warn('[Mailer] SMTP_HOST not set — email alerts disabled');
+    log.warn('Mailer', 'SMTP_HOST not set — email alerts disabled');
     transporter = null;
     return transporter;
   }

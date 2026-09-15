@@ -17,6 +17,7 @@ import { discoverRoutes } from '../services/sitemap.service.js';
 import { isDbReady } from '../config/database.js';
 import { requireStorageForWrites } from '../middleware/storage.middleware.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
+import { log } from '../lib/logger.js';
 
 export const websiteRouter: Router = Router();
 
@@ -260,7 +261,7 @@ websiteRouter.post('/websites/:id/automation/run', asyncHandler<AuthedRequest>(a
 
   // Fire and forget — respond immediately, the audit runs in the background.
   NightlyAuditService.runForWebsite(String(req.params['id']), req.userId).catch((err: unknown) => {
-    console.error('[ManualAudit] Failed:', (err as Error).message);
+    log.error('ManualAudit', 'manual audit failed', { err });
   });
 
   ok(res, { message: 'Audit started in background' });

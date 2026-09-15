@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { log } from '../lib/logger.js';
 
 /**
  * A query issued while the connection is down must fail, not wait.
@@ -21,7 +22,7 @@ export function isDbReady(): boolean {
 
 export async function connectDatabase(uri: string): Promise<void> {
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
-  console.log('[Database] MongoDB connected');
+  log.info('Database', 'MongoDB connected');
 }
 
 /**

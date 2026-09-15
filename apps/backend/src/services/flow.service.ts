@@ -155,6 +155,7 @@ export async function runFlow(definition: Definition, opts: FlowRunOptions = {})
     () => executeFlow(definition, opts),
     {
       priority: opts.priority ?? 'interactive',
+      kind: 'flow',
       onQueue: (position) => opts.onProgress?.({
         step: -1,
         total: definition.steps.length,

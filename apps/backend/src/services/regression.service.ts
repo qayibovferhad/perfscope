@@ -4,6 +4,7 @@ import { getPreviousRun } from './previousRun.service.js';
 import { diffResources, resourceDiffHasChanges, formatResourceDiff, snapshotOf } from '../lib/resourceDiff.js';
 import type { PreviousRun } from './previousRun.service.js';
 import type { OwningSite } from './websiteLookup.js';
+import { log } from '../lib/logger.js';
 
 /**
  * Alerts on a run that got materially worse than the one before it.
@@ -72,7 +73,7 @@ export async function checkRegressions(
   );
   if (findings.length === 0) return;
 
-  console.warn(`[Regressions] ${result.url} regressed: ${findings.map(f => f.metric).join(', ')}`);
+  log.warn('Regressions', 'regression detected', { url: result.url, metrics: findings.map(f => f.metric) });
 
   // A regression is measured against the run before it, so it cannot stay "true" the way
   // a breach does — a page that stays slow stops regressing. Point-in-time, rate-limited.

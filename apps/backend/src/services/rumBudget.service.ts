@@ -2,6 +2,7 @@ import { fmtMs, fmtCls, type RumMetricKey } from '@perfscope/shared';
 import { Website, type IWebsite } from '../models/Website.model.js';
 import { getRumSummary } from './rum.service.js';
 import { dispatchAlert, hasAlertChannel, ALERT_CHANNEL_FILTER } from './alerts.service.js';
+import { log } from '../lib/logger.js';
 
 /**
  * Budgets, evaluated against what real visitors got rather than against a lab run.
@@ -86,7 +87,7 @@ async function checkFieldBudgets(site: IWebsite): Promise<void> {
     return;
   }
 
-  console.warn(`[RUM targets] ${site.url} missed in the field: ${failures.map(f => f.metric).join(', ')}`);
+  log.warn('RUM targets', 'missed in the field', { url: site.url, metrics: failures.map(f => f.metric) });
 
   await dispatchAlert(site, {
     kind:   'field target missed',
@@ -110,6 +111,6 @@ export async function checkAllFieldBudgets(): Promise<void> {
 
   for (const site of sites) {
     await checkFieldBudgets(site)
-      .catch((err: unknown) => console.warn('[RUM budgets] Check failed for', site.url, err));
+      .catch((err: unknown) => log.warn('RUM budgets', 'check failed', { url: site.url, err }));
   }
 }

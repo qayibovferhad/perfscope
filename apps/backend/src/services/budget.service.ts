@@ -2,6 +2,7 @@ import { hasResult, collectTargetFailures, describeBudgetFailure, type BudgetFai
 import type { IWebsite } from '../models/Website.model.js';
 import { dispatchAlert } from './alerts.service.js';
 import type { OwningSite } from './websiteLookup.js';
+import { log } from '../lib/logger.js';
 
 /**
  * Which targets this result misses.
@@ -71,7 +72,7 @@ export async function checkBudgets(result: AnalysisResult, site: OwningSite): Pr
 
   site.lastBudgetBreach = breach;
   await site.save();
-  console.warn(`[Budgets] ${result.url} broke ${failures.map(f => f.metric).join(', ')}`);
+  log.warn('Budgets', 'budget broken', { url: result.url, metrics: failures.map(f => f.metric) });
 
   // A breach persists across runs, so it is an incident: announced once, then silent
   // until it recovers. Repeating it nightly is how alerting gets muted.

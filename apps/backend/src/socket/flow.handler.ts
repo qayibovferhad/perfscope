@@ -12,6 +12,7 @@ import { socketScope } from './scope.js';
 import { isDbReady } from '../config/database.js';
 import { isFetchableTarget } from '../lib/ssrf.js';
 import { AppError } from '../lib/errors.js';
+import { log } from '../lib/logger.js';
 
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -77,7 +78,7 @@ export function registerFlowSocket(io: TypedServer): void {
 
         // Logged like an analysis is: a flow is a minutes-long server-side job, and a run
         // that failed on a selector left no trace anywhere but the client's error panel.
-        console.log(`[Flow] Started "${definition.name}" (${definition.url})`);
+        log.info('Flow', 'started', { flow: definition.name, url: definition.url });
 
         const result = await runFlow(definition, {
           session,
@@ -101,17 +102,17 @@ export function registerFlowSocket(io: TypedServer): void {
             await checkFlowTargets(stored, { ...result, id: storedId })
               .catch((err: unknown) => {
                 // A failed alert must not fail the run the reader is watching.
-                console.warn('[Flow] target check failed:', (err as Error).message);
+                log.warn('Flow', 'target check failed', { err });
                 return [];
               });
           }
         }
 
-        console.log(`[Flow] Finished "${result.name}" in ${result.durationMs}ms (${result.steps.length} steps)`);
+        log.info('Flow', 'finished', { flow: result.name, ms: result.durationMs, steps: result.steps.length });
         socket.emit('flow:complete', { ...result, id: storedId, flowId });
       } catch (err) {
         const step = (err as { step?: number }).step;
-        console.warn(`[Flow] Failed: ${err instanceof Error ? err.message : String(err)}`);
+        log.warn('Flow', 'failed', { err });
         socket.emit('flow:error', {
           flowRunId,
           message: err instanceof Error ? err.message : 'The flow could not run',

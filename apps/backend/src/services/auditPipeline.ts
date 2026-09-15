@@ -12,6 +12,7 @@ import { getOtherRoutesVendors } from './crossPageVendors.service.js';
 import { getRumSummaryForUrl } from './rum.service.js';
 import { getLatestCompetitorComparison } from './competitorContext.service.js';
 import type { AuditSource, AnalysisResult, AiMetricNotes, AiPageAnalysis, PreviousRunSummary } from '@perfscope/shared';
+import { log } from '../lib/logger.js';
 
 /** How many resources get their own AI tip. */
 const AI_ADVICE_LIMIT = 6;
@@ -204,7 +205,7 @@ export async function enrichWithAi(
   const [analysis, adviceMap] = await Promise.all([
     depth === 'deep'
       ? AiService.analysePage(result, previous, recommendationHistory, fieldData, otherRoutesVendors, rumData, competitor).catch((err: unknown) => {
-          console.error('[AI] Page analysis failed:', err);
+          log.error('AI', 'page analysis failed', { err });
           return null;
         })
       // 'standard' still wants the headline fixes, and nothing reads the rest of the
@@ -214,12 +215,12 @@ export async function enrichWithAi(
             ? { diagnosis: '', fixes: [text], metrics: {}, waterfall: null, audits: {} }
             : null)
           .catch((err: unknown) => {
-            console.error('[AI] Insights failed:', err);
+            log.error('AI', 'insights failed', { err });
             return null;
           }),
     heaviest.length > 0
       ? AiService.getResourceAdvice(heaviest).catch((err: unknown) => {
-          console.error('[AI] Resource advice failed:', err);
+          log.error('AI', 'resource advice failed', { err });
           return new Map<string, string>();
         })
       : Promise.resolve(new Map<string, string>()),
@@ -321,8 +322,8 @@ export async function persistAudit(
 
   await Promise.all([
     checkBudgets(result, site).catch((err: unknown) =>
-      console.warn('[Budgets] Check failed:', err)),
+      log.warn('Budgets', 'check failed', { err })),
     checkRegressions(result, userId, site).catch((err: unknown) =>
-      console.warn('[Regressions] Check failed:', err)),
+      log.warn('Regressions', 'check failed', { err })),
   ]);
 }

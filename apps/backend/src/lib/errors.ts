@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { log } from './logger.js';
 
 /**
  * Raised when an audit that injected a saved login session still landed on a
@@ -84,7 +85,7 @@ export function errorMiddleware(
   // A handler that already answered and then threw must not answer twice; the
   // response is out, so all that is left to do is record it.
   if (res.headersSent) {
-    console.error(`[${req.method} ${req.originalUrl}] threw after responding:`, err);
+    log.error('http', 'handler threw after responding', { method: req.method, path: req.path, err });
     return;
   }
 
@@ -98,6 +99,6 @@ export function errorMiddleware(
   }
 
   const failure = err instanceof HandlerFailure ? err : null;
-  console.error(`[${req.method} ${req.originalUrl}]`, failure?.cause ?? err);
+  log.error('http', 'request failed', { method: req.method, path: req.path, err: failure?.cause ?? err });
   res.status(500).json({ success: false, error: failure?.clientMessage ?? 'Server error' });
 }

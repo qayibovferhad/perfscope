@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { log } from '../lib/logger.js';
 
 function optionalEnv(key: string, fallback: string): string {
   return process.env[key] ?? fallback;
@@ -44,6 +45,46 @@ export const config = {
    */
   maxConcurrentAudits: Math.max(1, parseInt(optionalEnv('MAX_CONCURRENT_AUDITS', '2'), 10) || 2),
 
+  /**
+   * How much gets logged, and in what shape. `text` is the human format this server always
+   * printed; `json` is one object per line, which is the only form a log collector can
+   * filter. Production defaults to json/info, a laptop to text/debug — see lib/logger.ts.
+   */
+  logLevel:    optionalEnv('LOG_LEVEL', optionalEnv('NODE_ENV', 'development') === 'production' ? 'info' : 'debug'),
+  logFormat:   (optionalEnv('LOG_FORMAT', optionalEnv('NODE_ENV', 'development') === 'production' ? 'json' : 'text') === 'json'
+    ? 'json' : 'text') as 'json' | 'text',
+
+  /**
+   * How many reverse proxies sit in front of this server.
+   *
+   * With this unset Express reports the *proxy's* address as `req.ip`, so a containerised
+   * install logs its own nginx for every request. `1` means "trust the last hop", which is
+   * the deployment's own nginx; trusting the whole `X-Forwarded-For` chain would let a
+   * caller write any address it likes into the log. `false` (the development default) is
+   * correct when nothing is in front.
+   */
+  trustProxy:  (() => {
+    const raw = optionalEnv('TRUST_PROXY', optionalEnv('NODE_ENV', 'development') === 'production' ? '1' : '0');
+    const hops = parseInt(raw, 10);
+    return Number.isFinite(hops) && hops > 0 ? hops : false;
+  })(),
+
+  /**
+   * Guards `/metrics` when set. Unset is the ordinary case: the dashboard's nginx does not
+   * proxy that path, so on the standard deployment the endpoint exists only inside the
+   * compose network. An install that publishes the backend port wants this.
+   */
+  metricsToken: process.env['METRICS_TOKEN'],
+
+  /** Error reporting is disabled unless this is set. See lib/errorReporting.ts. */
+  sentryDsn:   process.env['SENTRY_DSN'],
+
+  /**
+   * Which build is running. Stamped into the image at release time and reported by
+   * `/health`; also the release an error is filed against.
+   */
+  appVersion:  optionalEnv('APP_VERSION', process.env['npm_package_version'] ?? '1.0.0'),
+
   /** Email alerts are disabled unless SMTP_HOST is set. */
   smtp: {
     host:   process.env['SMTP_HOST'],
@@ -57,9 +98,9 @@ export const config = {
 
 export function validateConfig(): void {
   if (!config.geminiApiKey) {
-    console.warn('[Config] GEMINI_API_KEY not found — AI insights will be disabled');
+    log.warn('Config', 'GEMINI_API_KEY not found — AI insights will be disabled');
   }
   if (!config.googleClientId) {
-    console.warn('[Config] GOOGLE_CLIENT_ID not set — Google sign-in still works, but tokens cannot be checked against this app');
+    log.warn('Config', 'GOOGLE_CLIENT_ID not set — Google sign-in still works, but tokens cannot be checked against this app');
   }
 }

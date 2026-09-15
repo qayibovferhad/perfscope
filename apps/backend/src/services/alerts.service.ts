@@ -4,6 +4,7 @@ import { isFetchableTarget } from '../lib/ssrf.js';
 import { postJson } from '../lib/http.js';
 import { AlertLog, type IAlertDelivery } from '../models/AlertLog.model.js';
 import type { IWebsite } from '../models/Website.model.js';
+import { log } from '../lib/logger.js';
 
 /**
  * One delivery path for every alert the backend raises, plus the policy that keeps it
@@ -166,7 +167,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
   if (!channels || !hasAlertChannel(site)) return false;
 
   if (!(await shouldSend(site, alert))) {
-    console.log(`[Alerts] Suppressed ${alert.event} for ${alert.url} (already notified)`);
+    log.info('Alerts', 'suppressed (already notified)', { event: alert.event, url: alert.url });
     return false;
   }
 
@@ -181,7 +182,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
       { timeoutMs: ALERT_NOTE_TIMEOUT_MS },
     )
     .catch((err: unknown) => {
-      console.warn(`[Alerts] AI note failed (${alert.event}):`, err);
+      log.warn('Alerts', 'AI note failed', { event: alert.event, err });
       return null;
     });
 
@@ -200,7 +201,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
     await Mailer.send(channels.alertEmail, subject, text, html)
       .then(() => delivery.push({ channel: 'email', ok: true, error: null }))
       .catch((err: unknown) => {
-        console.warn(`[Alerts] Email failed (${alert.event}):`, err);
+        log.warn('Alerts', 'email failed', { event: alert.event, err });
         delivery.push({ channel: 'email', ok: false, error: String((err as Error)?.message ?? err) });
       });
   }
@@ -218,7 +219,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
     await postWebhook(channels.webhookUrl, body)
       .then(() => delivery.push({ channel: 'webhook', ok: true, error: null }))
       .catch((err: unknown) => {
-        console.warn(`[Alerts] Webhook failed (${alert.event}):`, err);
+        log.warn('Alerts', 'webhook failed', { event: alert.event, err });
         delivery.push({ channel: 'webhook', ok: false, error: String((err as Error)?.message ?? err) });
       });
   }
@@ -238,7 +239,7 @@ export async function dispatchAlert(site: IWebsite, alert: Alert): Promise<boole
     lines:      alert.lines,
     ...(aiNote ? { aiNote } : {}),
     delivery,
-  }).catch((err: unknown) => console.warn('[Alerts] Could not record alert:', err));
+  }).catch((err: unknown) => log.warn('Alerts', 'could not record alert', { err }));
 
   return true;
 }

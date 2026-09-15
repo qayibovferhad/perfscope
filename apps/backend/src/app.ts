@@ -25,9 +25,12 @@ import { cruxRouter }              from './routes/crux.routes.js';
 import { registerAnalysisSocket } from './socket/analysis.handler.js';
 import { registerFlowSocket } from './socket/flow.handler.js';
 import { markStorageState, STORAGE_HEADER } from './middleware/storage.middleware.js';
+import { requestLog } from './middleware/requestLog.middleware.js';
 import { attachTeamScope, TEAM_HEADER } from './middleware/teamScope.js';
 import { isDbReady } from './config/database.js';
 import { errorMiddleware } from './lib/errors.js';
+import { renderMetrics } from './lib/metrics.js';
+import { registerRuntimeCollectors } from './lib/runtimeMetrics.js';
 import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
 import type { InterServerEvents, SocketData } from './types/socket.js';
 
@@ -42,10 +45,17 @@ import type { InterServerEvents, SocketData } from './types/socket.js';
 const HTTP_TIMEOUT_MS = 70_000;
 
 export function createApp(): { app: Application; httpServer: Server } {
+  registerRuntimeCollectors();
+
   const app = express();
   const httpServer = createServer(app);
 
   httpServer.setTimeout(HTTP_TIMEOUT_MS);
+
+  // Whose address `req.ip` is. Behind the deployment's nginx the real client is the last
+  // entry of X-Forwarded-For, and Express will not read it without being told how many
+  // hops to trust — see config.trustProxy for why it is a count and not `true`.
+  app.set('trust proxy', config.trustProxy);
 
   // ── Socket.io ────────────────────────────────────────────────────────────
   const io = new SocketServer<
@@ -61,6 +71,14 @@ export function createApp(): { app: Application; httpServer: Server } {
   registerFlowSocket(io);
 
   // ── Middleware ───────────────────────────────────────────────────────────
+  /**
+   * The request log, and the id every line written under it carries.
+   *
+   * First in the chain on purpose: a request rejected by CORS or answered by a 404 is
+   * still a request somebody made, and those are exactly the ones a report is about.
+   */
+  app.use(requestLog);
+
   /**
    * Security headers.
    *
@@ -106,8 +124,28 @@ export function createApp(): { app: Application; httpServer: Server } {
       status:    'ok',
       uptime:    Math.round(process.uptime()),
       database:  isDbReady() ? 'up' : 'down',
-      version:   process.env['npm_package_version'] ?? '1.0.0',
+      // Which build is answering. `APP_VERSION` is baked into the image at release time
+      // (a tag, or `main-<sha>`), and is the only way to tell from outside whether a
+      // deploy actually replaced the running container.
+      version:   config.appVersion,
     });
+  });
+
+  /**
+   * Metrics, for whatever scrapes them.
+   *
+   * **Not proxied by the dashboard's nginx** — it forwards `/api`, `/socket.io`, `/rum.js`
+   * and `/health`, and nothing else — so on the standard deployment this is reachable only
+   * from inside the compose network. `METRICS_TOKEN` is there for an install that does
+   * expose it; unset, the endpoint is open, which is correct exactly as long as the port
+   * is not.
+   */
+  app.get('/metrics', (req, res) => {
+    if (config.metricsToken && req.headers.authorization !== `Bearer ${config.metricsToken}`) {
+      res.status(401).type('text/plain').send('unauthorized\n');
+      return;
+    }
+    res.type('text/plain; version=0.0.4').send(renderMetrics());
   });
 
   // ── Routes ───────────────────────────────────────────────────────────────

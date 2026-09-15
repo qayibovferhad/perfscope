@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { AiRecommendationModel } from '../models/AiRecommendation.model.js';
 import type { AnalysisResult } from '@perfscope/shared';
+import { log } from '../lib/logger.js';
 
 /**
  * What `analysePage` sees about a fix it (or an earlier audit) already gave for this page.
@@ -186,6 +187,6 @@ export async function reconcileRecommendations(
       );
     }
   } catch (err: unknown) {
-    console.warn('[AI] Recommendation tracking failed:', err);
+    log.warn('AI', 'recommendation tracking failed', { err });
   }
 }

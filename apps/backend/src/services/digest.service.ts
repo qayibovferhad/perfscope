@@ -7,6 +7,7 @@ import { HistoryModel } from '../models/History.model.js';
 import { AlertLog } from '../models/AlertLog.model.js';
 import { Mailer } from './mailer.service.js';
 import { AiService } from './ai.service.js';
+import { log } from '../lib/logger.js';
 
 /**
  * Weekly summary of what happened across a user's sites.
@@ -176,7 +177,7 @@ export async function sendDigest(userId: string, now = new Date()): Promise<bool
     regressions: data.regressions, breaches: data.breaches,
     slowest: data.slowest.map(r => ({ url: r.url, score: r.score, lcp: r.lcp })),
   }).catch((err: unknown) => {
-    console.warn('[Digest] AI summary failed:', err);
+    log.warn('Digest', 'AI summary failed', { err });
     return null;
   });
 
@@ -187,7 +188,7 @@ export async function sendDigest(userId: string, now = new Date()): Promise<bool
   await Mailer.send(user.email, subject, text, html);
   await User.updateOne({ _id: userId }, { 'digest.lastSentAt': now }).catch(() => {});
 
-  console.log(`[Digest] Sent to ${user.email} (${data.audits} audits, avg ${data.avgScore ?? 'n/a'})`);
+  log.info('Digest', 'sent', { to: user.email, audits: data.audits, avgScore: data.avgScore ?? null });
   return true;
 }
 
@@ -208,6 +209,6 @@ export async function runDueDigests(now = new Date()): Promise<void> {
     if (last && now.getTime() - new Date(last).getTime() < WEEK_MS / 2) continue;
 
     await sendDigest(String(user._id), now)
-      .catch((err: unknown) => console.warn('[Digest] Failed for', String(user._id), err));
+      .catch((err: unknown) => log.warn('Digest', 'failed for user', { userId: String(user._id), err }));
   }
 }

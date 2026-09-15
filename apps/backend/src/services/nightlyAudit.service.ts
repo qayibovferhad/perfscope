@@ -3,6 +3,7 @@ import { routesDueAt } from '@perfscope/shared';
 import { Website } from '../models/Website.model.js';
 import { lighthouseService } from './lighthouse.service.js';
 import { attachPreviousRun, enrichWithAi, persistAudit } from './auditPipeline.js';
+import { log } from '../lib/logger.js';
 
 // Milliseconds between each audit within a nightly run — avoids saturating the host.
 const AUDIT_DELAY_MS = 15_000;
@@ -34,7 +35,7 @@ async function runSingleAudit(
   sessionData?: { cookies: unknown[]; localStorage: Record<string, string> } | null,
 ): Promise<void> {
   try {
-    console.log(`[NightlyAudit] Auditing ${fullUrl}`);
+    log.info('NightlyAudit', 'auditing', { url: fullUrl });
 
     // Unattended runs feed trends, budgets and regression detection, so they pay
     // the extra minutes for a median instead of trusting one noisy sample. They
@@ -51,9 +52,9 @@ async function runSingleAudit(
     await enrichWithAi(result, { previous });
     await persistAudit(result, userId, projectId, 'scheduled');
 
-    console.log(`[NightlyAudit] Done — perf score: ${result.scores.performance}`);
+    log.info('NightlyAudit', 'done', { url: fullUrl, performance: result.scores.performance });
   } catch (err) {
-    console.error(`[NightlyAudit] Failed for ${fullUrl}:`, (err as Error).message);
+    log.error('NightlyAudit', 'audit failed', { url: fullUrl, err });
   }
 }
 
@@ -94,7 +95,7 @@ async function enabledWebsites() {
   try {
     return await Website.find({ 'automation.enabled': true }).lean();
   } catch (err) {
-    console.error('[NightlyAudit] Failed to query websites:', (err as Error).message);
+    log.error('NightlyAudit', 'failed to query websites', { err });
     return [];
   }
 }
@@ -132,27 +133,27 @@ export const NightlyAuditService = {
 
     if (due.length === 0) return;
 
-    console.log(`[NightlyAudit] Starting run (${label}) — ${due.length} website(s) due.`);
+    log.info('NightlyAudit', 'starting run', { slot: label, due: due.length });
 
     for (const { website, routes } of due) {
       const baseUrl = website.url.replace(/\/$/, '');
       const key     = `${website._id.toString()}:${label}`;
 
       if (inFlight.has(key)) {
-        console.log(`[NightlyAudit] ${website.name || baseUrl} — ${label} still running, skipping this tick.`);
+        log.info('NightlyAudit', 'slot still running, skipping this tick', { website: website.name || baseUrl, slot: label });
         continue;
       }
       inFlight.add(key);
 
       try {
-        console.log(`[NightlyAudit] ${website.name || baseUrl} @ ${label} — ${routes.length} route(s): ${routes.join(', ')}`);
+        log.info('NightlyAudit', 'auditing routes', { website: website.name || baseUrl, slot: label, routes });
         await auditRoutes(website, routes, website.userId.toString());
       } finally {
         inFlight.delete(key);
       }
     }
 
-    console.log(`[NightlyAudit] Run complete (${label}).`);
+    log.info('NightlyAudit', 'run complete', { slot: label });
   },
 
   /**

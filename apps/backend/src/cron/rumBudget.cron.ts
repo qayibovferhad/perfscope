@@ -9,7 +9,7 @@ import { registerCron } from '../lib/cron.js';
 export function registerRumBudgetCron(): void {
   registerCron({
     expression: '0 * * * *',
-    tag:        '[RUM budgets]',
+    tag:        'RUM budgets',
     announce:   'Field budget check running hourly.',
     run:        checkAllFieldBudgets,
   });

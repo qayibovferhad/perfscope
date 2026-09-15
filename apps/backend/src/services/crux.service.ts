@@ -1,6 +1,7 @@
 import { config } from '../config/index.js';
 import { postJson } from '../lib/http.js';
 import type { AuditFormFactor, CruxData, CruxMetric, CruxMetricKey } from '@perfscope/shared';
+import { log } from '../lib/logger.js';
 
 /**
  * Chrome UX Report (CrUX) — real-user FIELD data to sit next to Lighthouse's LAB numbers.
@@ -126,7 +127,7 @@ async function queryRecord(
 
     if (res.status === 404) return { status: 'no-data' };
     if (!res.ok) {
-      console.error(`[CrUX] API responded ${res.status} for ${body['url'] ?? body['origin']}`);
+      log.error('CrUX', 'API responded with an error', { status: res.status, target: body['url'] ?? body['origin'] });
       return { status: 'error' };
     }
 
@@ -134,7 +135,7 @@ async function queryRecord(
     if (!json.record) return { status: 'no-data' };
     return { status: 'ok', record: json.record };
   } catch (err) {
-    console.error('[CrUX] request failed', err);
+    log.error('CrUX', 'request failed', { err });
     return { status: 'error' };
   }
 }
@@ -160,7 +161,7 @@ export const CruxService = {
     const apiKey = config.cruxApiKey;
     if (!apiKey) {
       if (!warnedDisabled) {
-        console.warn('[CrUX] CRUX_API_KEY not set — real-user field data disabled');
+        log.warn('CrUX', 'CRUX_API_KEY not set — real-user field data disabled');
         warnedDisabled = true;
       }
       return null;
@@ -177,7 +178,7 @@ export const CruxService = {
     try {
       origin = new URL(url).origin;
     } catch {
-      console.error(`[CrUX] invalid url: ${url}`);
+      log.error('CrUX', 'invalid url', { url });
       return null;
     }
 

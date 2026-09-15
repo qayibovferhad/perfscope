@@ -8,7 +8,7 @@ import { registerCron } from '../lib/cron.js';
 export function registerDigestCron(): void {
   registerCron({
     expression: '* * * * *',
-    tag:        '[Digest]',
+    tag:        'Digest',
     announce:   'Weekly digest checker running every minute — sends on each user’s chosen day/time.',
     run:        runDueDigests,
   });

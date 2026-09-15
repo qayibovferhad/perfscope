@@ -6,6 +6,7 @@
 import type { AnalysisResult } from '@perfscope/shared';
 import { extractIdentifiers } from '../aiRecommendation.service.js';
 import { generate, parseJson, VOICE } from './client.js';
+import { log } from '../../lib/logger.js';
 
 /**
  * Everything a fix could legitimately cite by name — filenames, libraries, CLS
@@ -82,7 +83,7 @@ Answer ONLY with JSON: {"corrected": {${flagged.map(f => `"${f.key}": string`).j
 
   const parsed = await generate(prompt, { json: true, label: 'text critique' })
     .then(raw => parseJson<{ corrected?: Record<string, unknown> }>(raw, 'text critique'))
-    .catch((err: unknown) => { console.error('[AI] Text critique failed:', err); return null; });
+    .catch((err: unknown) => { log.error('AI', 'text critique failed', { err }); return null; });
   if (!parsed?.corrected) return corrections;
 
   for (const f of flagged) {
