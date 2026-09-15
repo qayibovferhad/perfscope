@@ -153,3 +153,65 @@ jobs:
       - name: Show server logs on failure
         if: failure()
         run: tail -n 100 /tmp/backend.log /tmp/web.log
+
+  images:
+    # Keeps the Dockerfiles honest. They are not exercised by any other job, and a
+    # Dockerfile rots quietly: a new workspace, a moved path or a script rename breaks the
+    # build months after the commit that caused it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          # The tag the compose file names, so the smoke test below can start the stack
+          # with --no-build instead of building everything a second time.
+          tags: perfscope-backend:local
+          load: true
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build the dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web-dashboard/Dockerfile
+          tags: perfscope-web:local
+          load: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Start the stack
+        # The compose file builds by default; point it at the images just built so this
+        # step does not repeat the work. `--env-file` is required — compose interpolates
+        # `${...}` from its own environment and from `.env`, never from a service env_file.
+        run: |
+          printf 'JWT_SECRET=ci-secret\nPUBLIC_URL=http://localhost:8080\nWEB_PORT=8080\n' > .env.docker
+          docker compose --env-file .env.docker -f docker-compose.prod.yml up -d --no-build
+
+      - name: Smoke-test it through nginx
+        # Everything over the published port, the way a browser reaches it: nginx serving
+        # the bundle, proxying /health to the backend, and a registration that only answers
+        # if the backend reached the container's Mongo.
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:8080/_healthz && break
+            sleep 2
+          done
+          set -x
+          curl -sf http://localhost:8080/_healthz
+          curl -sf http://localhost:8080/health | tee /dev/stderr | grep -q '"database":"up"'
+          curl -sf http://localhost:8080/env.js | grep -q '__PERFSCOPE_ENV__'
+          curl -sf -o /dev/null -w '%{http_code}\n' http://localhost:8080/history | grep -q 200
+          curl -sf -X POST http://localhost:8080/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"CI","email":"ci-images@example.com","password":"ci-password"}' | grep -q '"success":true'
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose --env-file .env.docker -f docker-compose.prod.yml logs --tail 80

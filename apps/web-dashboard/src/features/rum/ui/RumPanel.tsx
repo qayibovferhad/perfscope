@@ -12,6 +12,7 @@ import { CopySnippet } from '@/shared/ui/copy-snippet';
 import { Monitor, Smartphone, Globe } from 'lucide-react';
 import { useRum, useRumTrend, useIssueRumKey } from '../model/useRum';
 import { RumTrendChart } from './RumTrendChart';
+import { backendUrl } from '@/shared/config/runtimeEnv';
 
 const pct = (n: number) => Math.round(n * 100);
 
@@ -166,7 +167,7 @@ const RANGES = [
  * it runs on the customer's site, where /api resolves to their own server. Same origin
  * the socket client uses.
  */
-const API_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101').replace(/\/$/, '');
+const API_ORIGIN = backendUrl;
 
 export interface LabMetrics {
   lcp?: number;

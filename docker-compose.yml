@@ -2,9 +2,13 @@
 # PerfScope — local infrastructure only.
 #
 # This compose file deliberately does NOT containerize the backend or the web
-# apps: they run on the host via `pnpm dev` because the Lighthouse pipeline
-# needs a host Chrome instance (Puppeteer spawns real Chrome processes per
-# worker thread), and hot-reload/dev tooling works best outside a container.
+# apps: they run on the host via `pnpm dev` because auditing http://localhost
+# is a first-class development case (the containerised stack refuses it — the
+# SSRF guard is on with NODE_ENV=production), the auth-audit flow needs a real
+# desktop to log in on, and hot-reload works best outside a container.
+#
+# For the deployment — both apps in images, Chromium inside the backend one —
+# see `docker-compose.prod.yml` and `docs/deploy/DOCKER.md`.
 #
 # Usage:
 #   docker compose up -d    # start MongoDB

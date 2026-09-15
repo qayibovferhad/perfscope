@@ -1,9 +1,8 @@
 import { io, type Socket } from 'socket.io-client';
 import { hmrSingleton } from '@/shared/lib/hmrSingleton';
 import { activeTeamId } from '@/shared/model/teamStore';
+import { backendUrl as BACKEND_URL } from '@/shared/config/runtimeEnv';
 import type { ServerToClientEvents, ClientToServerEvents } from '@perfscope/shared';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3101';
 
 /**
  * The socket, carrying the contract from @perfscope/shared so event names and payloads

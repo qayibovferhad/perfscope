@@ -1,0 +1,157 @@
+name: Release images
+
+# Publishes the two runnable images to this repository's own container registry.
+#
+# GHCR rather than Docker Hub: the images belong to the repo, `GITHUB_TOKEN` can already
+# push to it, and nobody has to hold another account's credentials. Nothing here deploys —
+# see the `deploy` job at the bottom, which does nothing until a host is configured.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  # A release can also be cut by hand, which is what you want the first time.
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # Two independent images; a failure in one should still tell you about the other.
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            dockerfile: apps/backend/Dockerfile
+          - name: web
+            dockerfile: apps/web-dashboard/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # Lowercased by the action — a repository owner with capitals is not a valid
+          # image name, and the failure is a push rejection at the end of a long build.
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.name }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=main-,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=PerfScope ${{ matrix.name }}
+            org.opencontainers.image.description=Lighthouse-based web performance analyzer
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # `/health` reports this, which is how you confirm a deploy replaced the
+          # container rather than restarting the old one. Only the backend image reads it;
+          # passing it to both keeps the matrix identical.
+          build-args: |
+            APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || format('main-{0}', github.sha) }}
+          # linux/amd64 only, deliberately. arm64 would have to be emulated on a GitHub
+          # runner — apt-installing Chromium under QEMU takes the better part of an hour —
+          # and no known target runs arm. Add `platforms: linux/amd64,linux/arm64` and a
+          # setup-qemu-action step when one does.
+          platforms: linux/amd64
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
+      - name: Summarise
+        run: |
+          {
+            echo "### ${{ matrix.name }} image"
+            echo
+            echo "Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo
+            echo "Tags:"
+            echo '${{ steps.meta.outputs.tags }}' | sed 's/^/- `/;s/$/`/'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    # Pull the new images on a host over SSH and restart the stack there.
+    #
+    # Skipped entirely until `DEPLOY_HOST` is set as a repository *variable* (Settings →
+    # Variables), with `DEPLOY_SSH_KEY` as a secret. That is deliberate: a deploy job that
+    # fails on every push because nobody has provisioned a server is worse than one that
+    # says it has nothing to do.
+    needs: publish
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check whether a host is configured
+        id: target
+        run: |
+          if [ -z "${{ vars.DEPLOY_HOST }}" ]; then
+            echo "No DEPLOY_HOST variable — nothing to deploy to." >> "$GITHUB_STEP_SUMMARY"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.target.outputs.configured == 'true'
+
+      - name: Deploy over SSH
+        if: steps.target.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/perfscope' }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('main-{0}', github.sha) }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY" || { echo "DEPLOY_HOST is set but DEPLOY_SSH_KEY is not"; exit 1; }
+          install -m 600 /dev/stdin ~/deploy_key <<< "$DEPLOY_SSH_KEY"
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # The compose file and the host's own .env.docker live on the host; only the
+          # image tag travels. `--env-file` is required — compose interpolates `${...}`
+          # from its own environment and from `.env`, never from a service's env_file.
+          ssh -i ~/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd $DEPLOY_PATH \
+             && export IMAGE_TAG=$IMAGE_TAG \
+             && docker compose --env-file .env.docker -f docker-compose.deploy.yml pull \
+             && docker compose --env-file .env.docker -f docker-compose.deploy.yml up -d \
+             && docker image prune -f"
+
+      - name: Confirm the running build
+        if: steps.target.outputs.configured == 'true'
+        env:
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('main-{0}', github.sha) }}
+        # The point of stamping APP_VERSION into the image: a restart of the *old*
+        # container also answers 200, so "it is up" proves nothing on its own.
+        run: |
+          if [ -z "$PUBLIC_URL" ]; then echo "No PUBLIC_URL variable — skipping the version check."; exit 0; fi
+          for i in $(seq 1 30); do
+            RUNNING=$(curl -sf "$PUBLIC_URL/health" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' || true)
+            if [ "$RUNNING" = "$IMAGE_TAG" ]; then echo "deployed: $RUNNING"; exit 0; fi
+            sleep 4
+          done
+          echo "health reports '${RUNNING:-nothing}', expected '$IMAGE_TAG'"
+          exit 1

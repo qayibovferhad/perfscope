@@ -10,6 +10,7 @@ import { ThemeProvider } from '@/shared/ui/theme/ThemeProvider';
 import { Toaster } from '@/shared/ui/toast';
 import { configureApiToken, configureTokenRefresh, configureUnauthorizedHandler, isTransientError } from '@/shared/api/client';
 import { configureSocketToken } from '@/shared/api/socket';
+import { googleClientId } from '@/shared/config/runtimeEnv';
 import { useAuthStore } from '@/features/auth';
 import { useAnalysisStore } from '@/features/analyzer';
 import { useAuthAuditStore } from '@/features/auth-audit';
@@ -104,7 +105,7 @@ useAuthStore.subscribe((state) => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+      <GoogleOAuthProvider clientId={googleClientId}>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
             <BrowserRouter>

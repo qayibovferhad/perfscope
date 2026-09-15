@@ -21,6 +21,15 @@
       for `display=swap`, so text paints immediately in the fallback and swaps when the
       webfont lands, rather than sitting invisible.
     -->
+    <!--
+      Deployment configuration, before any module runs.
+
+      The container writes this file at start-up from its environment, so one image serves
+      any install (backend URL, Google client id). On a laptop it is the no-op placeholder
+      in public/ and the VITE_* build vars are used instead — see
+      src/shared/config/runtimeEnv.ts.
+    -->
+    <script src="/env.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

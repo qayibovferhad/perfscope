@@ -18,6 +18,8 @@ packages/shared/dist/
 .env
 .env.local
 .env.*.local
+# Deployment configuration for docker-compose.prod.yml (the .example stays tracked).
+.env.docker
 
 # Editor / system
 .DS_Store

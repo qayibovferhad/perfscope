@@ -1,0 +1,180 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PerfScope — the whole product in containers.
+#
+#   cp .env.docker.example .env.docker     # JWT_SECRET is required, the rest optional
+#   docker compose --env-file .env.docker -f docker-compose.prod.yml up -d --build
+#   open http://localhost:8080
+#
+# `--env-file` is not optional and not decoration: compose interpolates `${...}` from its
+# own environment and from `.env` alone — a `env_file:` entry inside a service reaches the
+# container but never the file you are reading. Without the flag JWT_SECRET resolves empty
+# and the `:?` below stops the stack rather than signing tokens with nothing.
+#
+# `docker-compose.yml` (no -f) stays what it always was: MongoDB only, for `pnpm dev` on
+# the host. This file is the deployment, and the two differ in more than packaging —
+# NODE_ENV=production turns the SSRF guard ON, so this install refuses to audit a URL that
+# resolves into its own network. Auditing an intranet is what ALLOW_PRIVATE_TARGETS is for.
+#
+# Deliberately one instance of the backend. Several in-memory Maps are per-process state —
+# the CLI login codes, the rate limiter, the live auth-audit browser handles, the AI prompt
+# cache — so two replicas behind a load balancer would each hold half the truth. Scaling
+# the audit throughput is MAX_CONCURRENT_AUDITS and CPU, not replicas.
+# ─────────────────────────────────────────────────────────────────────────────
+# A project name of its own, and container names to match. `docker-compose.yml` already
+# owns `perfscope` and a container called `perfscope-mongo`: sharing either would mean
+# starting this stack silently recreates the development MongoDB — same volume, but
+# without its published 27017, which is how a host `pnpm dev` loses its database.
+name: perfscope-prod
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: perfscope-prod-mongo
+    restart: unless-stopped
+    # No published port: only the backend talks to it, over the compose network. Publishing
+    # 27017 on a host with a public interface is how an unauthenticated Mongo ends up on
+    # the internet.
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Backups ──────────────────────────────────────────────────────────────
+  # A dump a day into a named volume, fourteen days kept. It is a `mongo:7` container
+  # because that image already has mongodump, and it reaches the database over the compose
+  # network rather than a published port.
+  #
+  # This is a *local* window, not an off-site backup: the archives sit on the same host and
+  # the same disk as the data. Copying them somewhere else is the operator's job and is the
+  # one thing that makes them survive the machine — docs/deploy/BACKUP.md says how, and
+  # says plainly that nothing here does it.
+  mongo-backup:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/perfscope
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - mongo-backups:/backups
+      - ./scripts/mongo-backup.sh:/usr/local/bin/mongo-backup.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/mongo-backup.sh"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # Off-host copies, off by default.
+  #
+  # `docker compose --profile offsite -f docker-compose.prod.yml up -d` starts it; without
+  # the profile it does not exist. The archives beside the database protect against a bad
+  # migration; only this protects against losing the machine, and it is opt-in because it
+  # needs a bucket and credentials that nobody has by default.
+  #
+  # S3-compatible, not S3: BACKUP_S3_ENDPOINT points it at MinIO, R2, Spaces or anything
+  # else that speaks the same API — which is also how it was tested (see BACKUP.md).
+  backup-offsite:
+    # `:latest` because AWS publishes no `:2` tag on Docker Hub, only `:latest` and full
+    # versions — an image that does not exist fails at `up`, not at review.
+    image: amazon/aws-cli:latest
+    profiles: ["offsite"]
+    restart: unless-stopped
+    environment:
+      # Plain `${...:-}`, not `${...:?}`: compose interpolates the whole file even for an
+      # `up` that does not include this profile, so a required-variable marker here would
+      # stop every ordinary start. The script below refuses to run without them instead.
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION:-us-east-1}
+    volumes:
+      # Read-only: this container copies archives out and must never be able to delete one.
+      - mongo-backups:/backups:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        BUCKET="${BACKUP_S3_BUCKET:-}"
+        [ -n "$$BUCKET" ] || { echo "[backup-offsite] BACKUP_S3_BUCKET is not set - nothing to sync to"; exit 1; }
+        [ -n "$${AWS_ACCESS_KEY_ID:-}" ] || { echo "[backup-offsite] BACKUP_S3_ACCESS_KEY is not set"; exit 1; }
+        PREFIX="${BACKUP_S3_PREFIX:-perfscope}"
+        ENDPOINT="${BACKUP_S3_ENDPOINT:-}"
+        INTERVAL="${BACKUP_SYNC_INTERVAL_HOURS:-6}"
+        [ -n "$$ENDPOINT" ] && ARGS="--endpoint-url $$ENDPOINT" || ARGS=""
+        echo "[backup-offsite] syncing /backups to s3://$$BUCKET/$$PREFIX every $${INTERVAL}h"
+        while true; do
+          # `sync`, not `cp`: it uploads what is new and leaves what is already there, so a
+          # restart does not re-upload the whole window. Deletions are NOT mirrored — the
+          # local retention is 14 days and the remote copy is the one that should outlive it.
+          if aws $$ARGS s3 sync /backups "s3://$$BUCKET/$$PREFIX" --exclude '*.partial'; then
+            echo "[backup-offsite] $$(date -u +%Y-%m-%dT%H:%M:%SZ) synced"
+          else
+            echo "[backup-offsite] $$(date -u +%Y-%m-%dT%H:%M:%SZ) FAILED - will retry"
+          fi
+          sleep $$((INTERVAL * 3600))
+        done
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: perfscope-backend:local
+    container_name: perfscope-prod-backend
+    restart: unless-stopped
+    # PID 1 has to reap the Chrome processes every audit spawns; without it a long-running
+    # container accumulates zombies. The image's dumb-init does this, and `init: true` also
+    # covers the case where someone overrides the entrypoint.
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: "3101"
+      MONGODB_URI: mongodb://mongo:27017/perfscope
+      # The browser's origin, for CORS and the Socket.io handshake. Requests arrive through
+      # the web container's nginx, so this is the address people type — not the service name.
+      CLIENT_URL: ${PUBLIC_URL:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:?set it in .env.docker and pass --env-file .env.docker}
+      # Each audit owns a Chrome, and audits that compete for CPU report worse numbers than
+      # the page deserves. Keep this at or below the container's core count.
+      MAX_CONCURRENT_AUDITS: ${MAX_CONCURRENT_AUDITS:-2}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      CRUX_API_KEY: ${CRUX_API_KEY:-}
+      ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-PerfScope Alerts <alerts@perfscope.local>}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Not published by default: nginx reaches it on the compose network, and the REST API
+    # is otherwise open to anything that can reach the host. Uncomment to point the
+    # extension or the CLI straight at it.
+    # ports:
+    #   - "3101:3101"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web-dashboard/Dockerfile
+    image: perfscope-web:local
+    container_name: perfscope-prod-web
+    restart: unless-stopped
+    environment:
+      # Empty means same-origin: this container's nginx proxies /api, /socket.io and
+      # /rum.js to the backend. Set it only when the API is served from another host.
+      BACKEND_URL: ${BACKEND_URL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  mongo-data:
+  mongo-backups:

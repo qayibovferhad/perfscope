@@ -1,0 +1,48 @@
+# Build context for both images is the repo ROOT (the workspace deps are symlinks into
+# packages/shared, so a per-app context cannot resolve them). Everything the images do
+# not need is excluded here rather than in each Dockerfile.
+
+node_modules
+**/node_modules
+
+# Build output — the images build their own, and copying a host build in would ship
+# whatever was last compiled on a laptop.
+dist
+**/dist
+build
+**/build
+.output
+**/.output
+.wxt
+**/.wxt
+*.tsbuildinfo
+
+# Secrets. Config reaches the containers through compose env vars.
+.env
+**/.env
+.env.docker
+.env.local
+**/.env.*.local
+
+.git
+.github
+.turbo
+**/.turbo
+docs
+scripts
+*.md
+
+# e2e is a workspace package: its package.json has to be in the context or a filtered
+# `pnpm install --frozen-lockfile` reports the lockfile as out of date with the workspace.
+# Nothing else in there is built into an image.
+e2e/*
+!e2e/package.json
+
+# Nothing in the image runs the extension or the action.
+apps/chrome-extension/.output
+apps/chrome-extension/.wxt
+
+*.log
+.DS_Store
+.idea
+.vscode

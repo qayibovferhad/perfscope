@@ -2,6 +2,7 @@ import puppeteer, { type Browser } from 'puppeteer';
 import { trackChrome, killChrome } from '../lib/chromeReaper.js';
 import { VISIBLE_CHROME_ARGS as CHROME_ARGS } from '../lib/chrome.js';
 import { v4 as uuidv4 } from 'uuid';
+import { AppError } from '../lib/errors.js';
 
 
 export interface AuthSessionData {
@@ -24,7 +25,32 @@ interface AuthSession {
 
 const sessions = new Map<string, AuthSession>();
 
+/**
+ * Refuse early where a visible browser cannot exist, with a reason.
+ *
+ * This flow's whole premise is that a person watches a Chrome window and logs in, so it
+ * needs a display — which a container does not have. Without this the launch fails deep
+ * inside Puppeteer and the API answers "Failed to launch browser", which reads like a
+ * broken install rather than a feature that cannot work here. Running Chrome under a
+ * virtual display would be worse: the window would exist with nobody able to type into
+ * it, so the session would capture nothing and the audit would land on the login page.
+ *
+ * Only Linux is checked: macOS and Windows have no DISPLAY variable and always have a
+ * desktop.
+ */
+function assertDisplayAvailable(): void {
+  if (process.platform !== 'linux') return;
+  if (process.env['DISPLAY'] || process.env['WAYLAND_DISPLAY']) return;
+  throw new AppError(
+    503,
+    'Auditing behind a login needs a Chrome window you can log into, and this server has no display. ' +
+    'Run PerfScope on a desktop machine for this flow, or set DISPLAY if one is available.',
+  );
+}
+
 export async function createAuthAuditSession(url: string): Promise<string> {
+  assertDisplayAvailable();
+
   const browser = await puppeteer.launch({
     headless: false,
     args: CHROME_ARGS,
