@@ -273,7 +273,10 @@ authRouter.patch('/auth/digest', requireAuth, asyncHandler<AuthedRequest>(async 
   const user = await User.findByIdAndUpdate(req.userId, update, { new: true });
   if (!user) throw new AppError(404, 'User not found');
 
-  ok(res, user.digest);
+  // The same projection as GET: `lastSentAt` is the cron's bookkeeping, not a preference.
+  const { enabled, day, time } = user.digest ?? DEFAULT_DIGEST;
+  const data: DigestPreference = { enabled, day, time };
+  ok(res, data);
 }));
 
 // PATCH /api/auth/password — change (or, for Google-only accounts, set) the password

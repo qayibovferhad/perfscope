@@ -1,4 +1,4 @@
-import type { PerformanceScores, CoreWebVitals } from './analysis.js'
+import type { AnalysisResult, PerformanceScores, CoreWebVitals } from './analysis.js'
 
 /** Who asked for a run: a person, or the site's timetable. */
 export type AuditSource = 'manual' | 'scheduled'
@@ -12,6 +12,13 @@ export interface HistoryEntry {
   metrics:   CoreWebVitals
   /** Absent on audits stored before the distinction existed — those were all manual. */
   source?:   AuditSource
+}
+
+/** `GET /api/public/report/:token` — the stored result behind a share link. */
+export interface PublicReport {
+  result:   AnalysisResult
+  /** When the audit was stored (the History row's `createdAt`) — not when the link was minted. */
+  sharedAt: string
 }
 
 export interface ProjectAuditEntry extends HistoryEntry {

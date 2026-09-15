@@ -9,7 +9,7 @@ import {
   requireStorage, requireStorageForWrites, emptyOnNoStorage,
 } from '../middleware/storage.middleware.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
-import { rateScore } from '@perfscope/shared';
+import { rateScore, type AnalysisResult, type PublicReport } from '@perfscope/shared';
 
 export const historyRouter: Router = Router();
 
@@ -100,7 +100,11 @@ historyRouter.get(
     const doc = await HistoryModel.findOne({ shareToken: token }).lean();
     if (!doc?.fullResult) throw new AppError(404, 'Report not found');
 
-    ok(res, { result: doc.fullResult, sharedAt: doc.createdAt });
+    const report: PublicReport = {
+      result:   doc.fullResult as AnalysisResult,
+      sharedAt: new Date(doc.createdAt).toISOString(),
+    };
+    ok(res, report);
   }, 'Failed to load report'),
 );
 

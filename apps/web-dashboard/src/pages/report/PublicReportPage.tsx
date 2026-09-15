@@ -6,7 +6,7 @@ import { ThemeToggle } from '@/shared/ui/theme/ThemeToggle';
 import { Button } from '@/shared/ui/button';
 import { StatePanel } from '@/shared/ui/state-panel';
 import { AnalyzerResultsPanel } from '@/widgets/analyzer-results';
-import type { AnalysisResult } from '@/entities/analysis';
+import type { PublicReport } from '@perfscope/shared';
 
 /**
  * Read-only audit report behind an unguessable share token — no login required.
@@ -18,11 +18,16 @@ import type { AnalysisResult } from '@/entities/analysis';
 export function PublicReportPage() {
   const { token } = useParams<{ token: string }>();
 
-  const { data: result, isPending, isError } = useQuery<AnalysisResult>({
+  // The server wraps the result as `{ result, sharedAt }`. This page read the wrapper as
+  // the result itself, and every shared link crashed into the error boundary — so the wire
+  // type is shared now rather than restated here. `e2e/openapi-conformance.probe.mjs`
+  // renders this page for that reason.
+  const { data, isPending, isError } = useQuery<PublicReport>({
     queryKey: ['public-report', token],
     enabled:  !!token,
-    queryFn:  () => fetchJson<AnalysisResult>(`/public/report/${token}`),
+    queryFn:  () => fetchJson<PublicReport>(`/public/report/${token}`),
   });
+  const result = data?.result;
 
   // A missing token is not a pending request — there is nothing to wait for.
   const status = !token || isError ? 'error' : isPending ? 'loading' : 'ready';
