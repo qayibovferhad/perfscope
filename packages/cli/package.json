@@ -1,14 +1,16 @@
 {
   "name": "@perfscope/cli",
   "version": "1.0.0",
-  "description": "PerfScope CLI \u2014 lightweight performance auditing companion",
+  "description": "PerfScope CLI — lightweight performance auditing companion",
   "type": "module",
   "bin": {
     "perfscope": "./bin/cli.js"
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "!src/*.test.js",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"

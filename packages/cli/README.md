@@ -133,3 +133,29 @@ when the backend is local too.
 | `perfscope logout` | Remove saved credentials |
 | `perfscope whoami` | Show the signed-in account |
 | `perfscope --url <url>` | Audit and print a full report (`--output json\|minimal`) |
+
+## Releasing
+
+Not published to npm yet — which is why `packages/action` requires `cli-path` for anyone
+outside this repository. Everything for the first publish is in place:
+
+```bash
+cd packages/cli
+npm pack --dry-run            # 13 files, ~23 kB: bin/, src/ without its test, README, LICENSE
+```
+
+A release is a tag of its own, `cli-v<version>`, because the CLI and the Docker images are
+released on different days:
+
+```bash
+# bump "version" in package.json first — the workflow refuses a tag that disagrees with it
+git tag cli-v1.0.0 && git push origin cli-v1.0.0
+```
+
+`.github/workflows/publish-cli.yml` then runs the tests, checks the tag against the
+manifest, prints the tarball contents and publishes with provenance. It needs an `NPM_TOKEN`
+repository secret; without one it reports that nothing was published and exits cleanly
+rather than failing.
+
+Once it is on npm, drop `cli-path` from the action's README and from our own
+`.github/workflows/ci.yml`.

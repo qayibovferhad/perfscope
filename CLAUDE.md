@@ -85,14 +85,52 @@ NODE_ENV=development
 
 **Web Dashboard** — `apps/web-dashboard/.env`:
 ```
-VITE_BACKEND_URL=http://localhost:3101   # defaults to this if omitted
+VITE_BACKEND_URL=http://localhost:3101   # defaults to this in dev, same-origin in a build
 VITE_GOOGLE_CLIENT_ID=<oauth client id>
 ```
+
+Both are read through `shared/config/runtimeEnv.ts`, which prefers
+`window.__PERFSCOPE_ENV__` (written into `/env.js` at container start) over these build
+vars — so a deployment configures them without a rebuild. Nothing else in the dashboard may
+read `import.meta.env` for either value.
 
 Optional keys all degrade silently when unset — the feature simply turns off, it never crashes:
 `GEMINI_API_KEY` (AI insights) · `GOOGLE_CLIENT_ID` (Google sign-in still works without it, but tokens are not checked against this app) · `CRUX_API_KEY` (real-user field data) · `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (budget alert emails) · `MAX_CONCURRENT_AUDITS` (default 2) · `MONGODB_URI` (history persistence) · `VITE_GOOGLE_CLIENT_ID` (the login page hides Google auth without it).
 
-`docker compose up -d` starts MongoDB only — the apps stay on the host because Lighthouse drives host Chrome.
+`docker compose up -d` starts MongoDB only — for development the apps stay on the host,
+because auditing `http://localhost` is a first-class case there and the auth-audit flow
+needs a desktop to log in on.
+
+**The deployment is `docker-compose.prod.yml`** (`docs/deploy/DOCKER.md`): both apps in
+images, Chromium inside the backend one, started with
+`docker compose --env-file .env.docker -f docker-compose.prod.yml up -d --build`. Four
+things there are decisions rather than defaults. The **`--env-file` flag is required** —
+compose interpolates `${...}` from its own environment and from `.env`, never from a
+service's `env_file`, so without it `JWT_SECRET` is empty. The prod stack carries **its own
+project and container names**, because sharing `perfscope-mongo` meant starting it silently
+recreated the development MongoDB without its published 27017. The dashboard image holds
+**no `VITE_*` values**: `docker/40-runtime-env.sh` writes `/env.js` at container start and
+`shared/config/runtimeEnv.ts` reads `window.__PERFSCOPE_ENV__` before the build vars, so one
+image serves any install — and nginx proxies `/api`, `/socket.io`, `/rum.js` and `/health`,
+which is why `BACKEND_URL` is normally empty (same-origin). Chromium comes from **Debian's
+apt**, not Puppeteer's download (`PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium`), because apt
+resolves the shared libraries the bare binary does not. Two features behave differently in a
+container on purpose: `NODE_ENV=production` turns the SSRF guard on, so the stack refuses to
+audit itself, and the auth-audit flow answers **503 with a reason** — it needs a Chrome
+window a person can log into, and a virtual display would capture an empty session instead.
+CI's `images` job builds both and smoke-tests the stack through nginx.
+
+**Publishing is `.github/workflows/release.yml`, deploying is `docker-compose.deploy.yml`**
+(`docs/deploy/RELEASE.md`). Pushes to `main` publish `main`/`main-<sha>` to GHCR, a `v*` tag
+publishes semver plus `latest`, `linux/amd64` only (arm64 would apt-install Chromium under
+QEMU on a runner). The deploy file **pulls** rather than builds, so a host needs nothing but
+Docker, that file and a `.env.docker`; it sets no `container_name`, because a fixed
+`perfscope-mongo` is the dev compose's name and would recreate it. `IMAGE_TAG` has no
+default — a deploy names its build, and `latest` reinstalling an old image is the failure
+that prevents. Every image is stamped with `APP_VERSION` (build arg → `/health`.version):
+the old container also answers 200, so the deploy job polls for the *version* to confirm a
+release, not for a 200. The SSH deploy job is skipped entirely unless the `DEPLOY_HOST`
+repository variable is set. Rollback is `IMAGE_TAG=<previous> … up -d`.
 
 ## Architecture
 
@@ -160,6 +198,37 @@ never a 503, because the app serves empty shapes without Mongo on purpose. `helm
 mounted with `crossOriginResourcePolicy: 'cross-origin'`: its `same-origin` default would
 block `/rum.js` on every site that installed the snippet. `compression` sits above the
 routers because a stored audit result is hundreds of KB.
+
+**`docs/api/README.md` is the route reference, and `src/routes/routes.contract.test.ts`
+keeps it true** — it reads every `xRouter.get('/path')` (with a newline-spanning regex,
+because half the routes put the path on its own line), applies app.ts's mounts, and fails
+when a route is added, moved or removed without the table changing. Adding a route means
+adding its row. `GET /api/public/badge/:token` answers shields.io's endpoint schema off the
+existing share token, so a README badge needs no new credential and revoking the share
+turns it off.
+
+**`/metrics` is Prometheus text, written by hand in `lib/metrics.ts`** (no client library
+for a dozen numbers the server already keeps). Counters carry *bounded* labels only —
+status class, not status; no path, or one series per share link. `lib/runtimeMetrics.ts`
+reads the queue, the process and the AI tallies at scrape time. The dashboard's nginx
+answers `/metrics` with **404**, deliberately: the SPA fallback would otherwise serve
+index.html with a 200 and a scraper would call the service healthy while reading HTML.
+
+**Logging is `lib/logger.ts` and nothing else.** `log.info(scope, message, fields)` prints
+`[Scope] message` on a laptop and one JSON object per line with `LOG_FORMAT=json` (the
+container default), so the format a person reads and the format a collector parses are the
+same call site. Fields, not interpolation, wherever the value is a thing — `{ url }` stays
+queryable. Field names matching `token|password|secret|cookie|authorization|apikey|jwt|
+session` are **redacted at any depth**, which is load-bearing: the auth-audit flow holds
+real login cookies. `middleware/requestLog.middleware.ts` logs one line per request and puts
+a request id in an `AsyncLocalStorage`, so *every* line written under that request carries it
+— including from three calls deep. `log.error` also files the error when `SENTRY_DSN` is set
+(`lib/errorReporting.ts`, dynamically imported so an install without a DSN never loads the
+SDK); there is deliberately no second "report this" call to forget. The only `console.*`
+left in the backend are two in `lighthouse.worker.ts`, which must stay import-free.
+Backups: the `mongo-backup` compose service dumps daily into a volume, `BACKUP_ONCE=1` takes
+one now, and `docs/deploy/BACKUP.md` says plainly that a local window is not an off-site
+backup. Full notes: `docs/deploy/OBSERVABILITY.md`.
 
 `lib/ssrf.ts` refuses any URL that **resolves** into the server's own network — audit
 targets, the auth-audit browser, alert webhooks and sitemap scans. It is off in development

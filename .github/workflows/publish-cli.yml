@@ -1,0 +1,67 @@
+name: Publish CLI
+
+# `@perfscope/cli` to npm, on a tag of its own — `cli-v1.0.0`, not `v1.0.0`, because the
+# CLI and the images are released on different days for different reasons and one tag
+# cannot mean both.
+#
+# Nothing here publishes by accident: the tag has to be created deliberately, the version
+# in it has to match package.json, and without an NPM_TOKEN secret the job says so and
+# stops rather than failing.
+on:
+  push:
+    tags: ['cli-v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # For npm provenance — the published package carries a signed statement of which
+      # workflow and which commit built it.
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: node --test src/budget.test.js
+
+      - name: Check the tag against package.json
+        # A tag that disagrees with the manifest publishes the wrong number and cannot be
+        # taken back — npm does not allow re-publishing a version.
+        if: startsWith(github.ref, 'refs/tags/cli-v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "tag $TAG_VERSION, package.json $PKG_VERSION"
+          [ "$TAG_VERSION" = "$PKG_VERSION" ] || { echo "::error::tag and package.json disagree"; exit 1; }
+
+      - name: Check what would be published
+        run: npm pack --dry-run
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "No NPM_TOKEN secret — nothing was published." >> "$GITHUB_STEP_SUMMARY"
+            echo "Add it in Settings → Secrets and run this workflow again." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm publish --provenance --access public
+          echo "Published @perfscope/cli $(node -p "require('./package.json').version")" >> "$GITHUB_STEP_SUMMARY"

@@ -9,6 +9,7 @@ import {
   requireStorage, requireStorageForWrites, emptyOnNoStorage,
 } from '../middleware/storage.middleware.js';
 import { AppError, asyncHandler } from '../lib/errors.js';
+import { rateScore } from '@perfscope/shared';
 
 export const historyRouter: Router = Router();
 
@@ -22,6 +23,68 @@ const SHARE_TOKEN_RE    = /^[a-f0-9]{32}$/;
 // Deleting an audit or minting a share link needs a database; listing does not — with no
 // database there is simply no history, which every listing here reports as an empty list.
 historyRouter.use(['/history', '/projects'], requireStorageForWrites);
+
+/** What the badge says on the left, per category. */
+const BADGE_LABEL = {
+  performance:   'performance',
+  accessibility: 'accessibility',
+  seo:           'seo',
+  bestPractices: 'best practices',
+} as const;
+
+/**
+ * Shields' named colours, from the same 90/50 bands the app draws with — a badge that
+ * disagreed with the report it links to would be worse than no badge.
+ */
+const BADGE_COLOR = {
+  good:                'brightgreen',
+  'needs-improvement': 'yellow',
+  poor:                'red',
+} as const;
+
+/**
+ * GET /api/public/badge/:token — a README badge for a shared report.
+ *
+ * Answers shields.io's "endpoint" schema, so the badge is a shields URL pointing back
+ * here: the rendering, caching and CDN are theirs, and this stays four numbers.
+ *
+ *   ![PerfScope](https://img.shields.io/endpoint?url=https://host/api/public/badge/<token>)
+ *
+ * Same token as the shared report and the same reasoning: unguessable, revocable by
+ * deleting the share, and a wrong shape is a 404 rather than a hint. `?category=seo`
+ * badges one of the other three.
+ *
+ * `label` and `message` rather than a picture: shields wants the values, and a served
+ * SVG could not be themed by the caller or cached by their CDN.
+ */
+historyRouter.get(
+  '/public/badge/:token',
+  requireStorage,
+  asyncHandler(async (req: Request, res: Response) => {
+    const token = String(req.params['token'] ?? '');
+    if (!SHARE_TOKEN_RE.test(token)) throw new AppError(404, 'Report not found');
+
+    const raw = String(req.query['category'] ?? 'performance');
+    const category = (['performance', 'accessibility', 'seo', 'bestPractices'] as const)
+      .find(c => c === raw);
+    if (!category) throw new AppError(400, 'Unknown category');
+
+    const doc = await HistoryModel.findOne({ shareToken: token }).lean();
+    if (!doc?.fullResult) throw new AppError(404, 'Report not found');
+
+    const score = Math.round(doc.fullResult.scores?.[category] ?? 0);
+    // Shields caches by its own rules; this says how long its CDN may hold the value.
+    // Ten minutes: long enough that a README on a busy repo costs nothing, short enough
+    // that a fresh audit shows up while somebody is still looking.
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.json({
+      schemaVersion: 1,
+      label: BADGE_LABEL[category],
+      message: String(score),
+      color: BADGE_COLOR[rateScore(score)],
+    });
+  }, 'Failed to build badge'),
+);
 
 // GET /api/public/report/:token — no auth; the unguessable token IS the credential.
 // Mounted before the router-wide requireAuth below — it is the one public route here.
