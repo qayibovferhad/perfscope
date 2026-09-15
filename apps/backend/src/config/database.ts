@@ -23,6 +23,33 @@ export function isDbReady(): boolean {
 export async function connectDatabase(uri: string): Promise<void> {
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
   log.info('Database', 'MongoDB connected');
+  await ensureIndexes();
+}
+
+/**
+ * Build every schema's indexes, now that there is a connection to build them on.
+ *
+ * Mongoose normally does this by itself when a model is compiled — but it waits for the
+ * connection only while `bufferCommands` is on. With it off (above), every model compiled
+ * at import time, which is all of them, tried to create its indexes before `connect()` and
+ * failed with nothing logged. A database that already had them never noticed; a fresh one —
+ * every Docker install — ran with no unique email, no History compound indexes, no share
+ * token lookup and no TTL on refresh tokens, reset links or CLI codes.
+ *
+ * `createIndexes` only adds what is missing, never drops, so running it on every connect is
+ * safe. A failure is logged per model and does not stop the server: the likeliest cause is
+ * existing data violating a new unique index, and that needs a person, not a crash loop.
+ */
+async function ensureIndexes(): Promise<void> {
+  const results = await Promise.allSettled(
+    mongoose.modelNames().map(async (name) => {
+      await mongoose.model(name).createIndexes();
+      return name;
+    }),
+  );
+  const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [{ model: mongoose.modelNames()[i], err: r.reason }] : []));
+  for (const { model, err } of failed) log.error('Database', 'index build failed', { model, err });
+  log.info('Database', 'indexes ensured', { models: results.length - failed.length, failed: failed.length });
 }
 
 /**

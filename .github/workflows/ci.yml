@@ -212,6 +212,19 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"name":"CI","email":"ci-images@example.com","password":"ci-password"}' | grep -q '"success":true'
 
+      - name: The fresh database got its indexes
+        # With bufferCommands off, Mongoose's own index build runs before the connection
+        # exists and fails silently — a fresh install once ran with none (no unique email,
+        # no TTLs). This database is empty at start, so it is exactly that case.
+        run: |
+          docker compose --env-file .env.docker -f docker-compose.prod.yml exec -T mongo \
+            mongosh --quiet perfscope --eval '
+              const has = (c, key) => db[c].getIndexes().some(i => JSON.stringify(i.key) === JSON.stringify(key));
+              const missing = [["users", {email: 1}], ["histories", {shareToken: 1}], ["refreshtokens", {expiresAt: 1}], ["cronleases", {expiresAt: 1}]]
+                .filter(([c, k]) => !has(c, k));
+              if (missing.length) { printjson(missing); quit(1); }
+              print("indexes present");'
+
       - name: Show container logs on failure
         if: failure()
         run: docker compose --env-file .env.docker -f docker-compose.prod.yml logs --tail 80
