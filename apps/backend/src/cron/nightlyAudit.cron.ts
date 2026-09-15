@@ -1,5 +1,5 @@
 import { NightlyAuditService } from '../services/nightlyAudit.service.js';
-import { registerCron } from '../lib/cron.js';
+import { registerCron, MINUTE_MS } from '../lib/cron.js';
 
 function currentHHMM(): string {
   const now = new Date();
@@ -14,6 +14,7 @@ export function registerNightlyCron(): void {
     expression: '* * * * *',
     tag:        'NightlyAudit',
     announce:   'Scheduled audit running every minute — triggers per website scheduleTime.',
+    periodMs:   MINUTE_MS,
     run:        () => NightlyAuditService.runAllEnabled(currentHHMM()),
   });
 }

@@ -1,5 +1,5 @@
 import { runScheduledFlows } from '../services/flowSchedule.service.js';
-import { registerCron } from '../lib/cron.js';
+import { registerCron, MINUTE_MS } from '../lib/cron.js';
 
 /**
  * Scheduled flows, on the same per-minute tick the nightly audits use.
@@ -19,6 +19,7 @@ export function registerFlowCron(): void {
     expression: '* * * * *',
     tag:        'FlowSchedule',
     announce:   'Scheduled user flows running every minute — triggers per flow schedule time.',
+    periodMs:   MINUTE_MS,
     run:        () => runScheduledFlows(currentHHMM()),
   });
 }

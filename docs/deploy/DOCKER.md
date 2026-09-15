@@ -38,12 +38,21 @@ Running that Chrome under a virtual display would be worse — a window nobody c
 captures no session, and the audit then lands on the login page. Use a desktop install for
 that flow.
 
-**One backend, deliberately.** Several pieces of state are per-process: the CLI login
-codes, the rate limiter, the live auth-audit browser handles, the AI prompt cache. Two
-replicas behind a load balancer would each hold half the truth. Audit throughput scales
-with `MAX_CONCURRENT_AUDITS` and CPU, not replicas — and that knob is a measurement
-setting, not just a resource limit: audits that compete for CPU report worse numbers than
-the page deserves.
+**One backend is the supported shape; more is possible with sticky sessions.** Audit
+throughput scales with `MAX_CONCURRENT_AUDITS` and CPU, not replicas — and that knob is a
+measurement setting, not just a resource limit: audits that compete for CPU report worse
+numbers than the page deserves. For availability rather than throughput, what a second
+replica meets (checked 2026-09-15):
+
+| State | Behind two replicas |
+|---|---|
+| Scheduled jobs (nightly audits, flows, digests, field budgets) | **Safe.** Each tick is claimed in `CronLease` (`lib/cronLease.ts`); only the instance whose insert lands runs it. |
+| CLI login codes | **Safe.** Stored in `CliAuthCode`; memory is only the no-database fallback. |
+| Socket.io (live audits, flows) | **Needs sticky sessions.** Clients start on long-polling and upgrade, and an audit reports to the socket on the instance running it — route by client (e.g. nginx `ip_hash`). |
+| RUM rate limiter | Per instance, so the effective limit is N × 600 beacons/min per key. |
+| Team membership cache | Per instance, 15 s: a removal made on one replica takes up to 15 s on the other. |
+| AI prompt, CrUX and RUM-key caches | Per instance; a miss costs a call, never a wrong answer. |
+| Auth-audit browser handles | Per instance, and the flow is unavailable in a container anyway (above). |
 
 ## Configuration is runtime, not build-time
 
@@ -101,6 +110,11 @@ Image sizes: backend 1.25 GB (Chromium is most of it), web 51 MB.
 
 ## Still open
 
-A **deploy pipeline** — registry, host, TLS, backups — is not here; it needs a target to
-deploy to. `/health` is the readiness endpoint; structured logs, error reporting and Mongo
-backups are not wired.
+A **host**: a domain, TLS and somewhere to run. The registry and the deploy job are
+[RELEASE.md](RELEASE.md), logs/metrics/errors are [OBSERVABILITY.md](OBSERVABILITY.md) and
+dumps are [BACKUP.md](BACKUP.md).
+
+**Indexes on a fresh database** were missing until 2026-09-15: with `bufferCommands` off,
+Mongoose's own index build ran before the connection existed and failed silently, so this
+stack's first Mongo had none — no unique email, no TTLs. `connectDatabase` now builds them
+after connecting, and CI's `images` job asserts they exist.

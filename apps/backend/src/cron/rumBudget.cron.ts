@@ -1,5 +1,5 @@
 import { checkAllFieldBudgets } from '../services/rumBudget.service.js';
-import { registerCron } from '../lib/cron.js';
+import { registerCron, HOUR_MS } from '../lib/cron.js';
 
 /**
  * Hourly. Field p75 moves slowly, but a bad deploy should not wait until tomorrow to be
@@ -11,6 +11,7 @@ export function registerRumBudgetCron(): void {
     expression: '0 * * * *',
     tag:        'RUM budgets',
     announce:   'Field budget check running hourly.',
+    periodMs:   HOUR_MS,
     run:        checkAllFieldBudgets,
   });
 }
