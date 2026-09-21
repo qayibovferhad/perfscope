@@ -30,11 +30,16 @@ interface Props {
   /** Opens the login-capture flow. Shown on the expired badge, which is otherwise a
    *  dead end: the session cannot be repaired from anywhere else on this page. */
   onFixSession:  () => void;
+  /** Same flow, reached deliberately: "the page I want to audit is behind a login".
+   *  It lives here rather than in the page header because it configures the *next run*,
+   *  exactly like the device profile and the precision beside it — the header is about
+   *  the result already on screen. */
+  onLockedPage:  () => void;
 }
 
 export function AnalyzerSearchForm({
   url, setUrl, suggestions, isPending, authSessionId, sessionStatus, progress,
-  formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession,
+  formFactor, onFormFactor, precision, onPrecision, onSubmit, onFixSession, onLockedPage,
   startedAt, onCancel,
 }: Props) {
   // `data-print="hide"`: a form is an invitation to type, and the printed report already
@@ -81,6 +86,24 @@ export function AnalyzerSearchForm({
             ariaLabel="Audit device profile"
           />
           <PrecisionToggle value={precision} onChange={onPrecision} disabled={isPending} />
+
+          {/* The third run option. Only when there is no session to speak of: with one
+              saved the badge to the left says so, and an expired one already offers its
+              own Fix button rather than two doors to the same modal. */}
+          {sessionStatus === 'none' && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-[10px]"
+              onClick={onLockedPage}
+              disabled={isPending}
+              title="Audit a page behind a login — capture the session first"
+            >
+              <Lock className="w-[13px] h-[13px]" />
+              Locked page
+            </Button>
+          )}
         </div>
       </div>
 

@@ -28,3 +28,5 @@ export { TimelineWaterfall } from './ui/TimelineWaterfall';
 export { TimelineWaterfallSkeleton } from './ui/TimelineWaterfallSkeleton';
 /** The canonical "filename from URL" — the compare page labels resources with it too. */
 export { resourceFilename } from './lib/waterfall';
+export { PendingSections } from './ui/PendingSections';
+export { hasSeenAi } from './lib/aiSeen';

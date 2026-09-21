@@ -18,6 +18,9 @@ import { AnalyzerHeader } from '@/widgets/analyzer-header';
 import { AnalyzerSearchForm } from '@/features/analyzer';
 import { StreamingScores } from '@/features/analyzer';
 import { StreamingMetrics } from '@/features/analyzer';
+import { PendingSections } from '@/features/analyzer';
+import { hasSeenAi } from '@/features/analyzer';
+import { AiCard } from '@/shared/ui/ai-card';
 import { AuthAuditModal, useAuthAuditStore } from '@/features/auth-audit';
 import { usePrefetchStore, useAuditModeStore, useRunningAuditsStore, type AuditFormFactor } from '@/entities/analysis';
 import { useWebsites, useUrlSuggestions, sessionState } from '@/entities/website';
@@ -38,6 +41,9 @@ export function AnalyzerPage() {
     ?? lastUrl
     ?? '');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  // Read once on mount: it only ever flips from false to true, and it does so while a run
+  // is finishing — re-reading it mid-run would add the card under the reader's eyes.
+  const [aiEverSeen] = useState(hasSeenAi);
   const { formFactor, setFormFactor, precision, setPrecision } = useAuditModeStore();
   const { sessionId: authSessionId } = useAuthAuditStore();
   const { websites } = useWebsites();
@@ -223,7 +229,6 @@ export function AnalyzerPage() {
         onImage={() => void handleImage()}
         onCopyImage={handleCopyImage}
         onPdf={() => window.print()}
-        onAuthModal={() => setAuthModalOpen(true)}
         onShare={handleShare}
         shareState={shareState}
       />
@@ -244,6 +249,7 @@ export function AnalyzerPage() {
         onPrecision={setPrecision}
         onSubmit={handleSubmit}
         onFixSession={() => setAuthModalOpen(true)}
+        onLockedPage={() => setAuthModalOpen(true)}
       />
 
       {isError && (
@@ -277,6 +283,12 @@ export function AnalyzerPage() {
             <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Scores</p>
             <StreamingScores partials={partials} />
           </section>
+
+          {/* In the place it will occupy in the finished report, writing itself — but
+              only where the promise is kept. An install with no `GEMINI_API_KEY` renders
+              no AI at all in the finished report, and a skeleton that resolves into
+              nothing is exactly the placeholder every AI surface here refuses to be. */}
+          {aiEverSeen && <AiCard pending className="mt-[18px]" />}
           <section>
             <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Core Web Vitals</p>
             <StreamingMetrics partials={partials} />
@@ -285,6 +297,9 @@ export function AnalyzerPage() {
             <p className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3 mt-[30px] mb-[14px]">Network Waterfall</p>
             <TimelineWaterfallSkeleton />
           </section>
+
+          {/* And the rest of it, named rather than faked — see PendingSections. */}
+          <PendingSections />
         </div>
       )}
 

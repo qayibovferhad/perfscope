@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AsyncStatus } from '@/shared/lib/types';
 import { startAnalysis, joinAnalysis, emitAuthAuditStart, mergeAnalysisInsights, cancelAnalysis, type AuditPrecision } from '@/entities/analysis';
+import { markAiSeen } from '../lib/aiSeen';
 import { useAnalysisStore } from './analysisStore';
 import { useRunningAuditsStore } from '@/entities/analysis';
 import { toast } from '@/shared/ui/toast';
@@ -103,6 +104,11 @@ export function useAnalysis() {
     if (!prev.data || prev.data.id !== data.analysisId) return;
 
     const next = mergeAnalysisInsights(prev.data, data);
+
+    // Remember that this install actually produces commentary. The analyzer promises an
+    // AI card while a run is in flight and may only do so where the promise is kept —
+    // see `lib/aiSeen`.
+    if (next.aiInsights) markAiSeen();
 
     // aiPending drops here whether or not anything came back: an empty payload is the
     // server saying it has nothing to add, which is an answer, not a reason to keep waiting.

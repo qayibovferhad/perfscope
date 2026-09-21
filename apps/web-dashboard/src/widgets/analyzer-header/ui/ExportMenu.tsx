@@ -8,6 +8,8 @@ export interface ExportMenuProps {
   onCopyImage: () => Promise<boolean>;
   onPdf:       () => void;
   className?:  string;
+  /** Replaces the trigger's own classes — for a caller that joins it to another button. */
+  triggerClassName?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface ExportMenuProps {
  * they are one intention — "give me this to show someone" — differing only in what the
  * recipient can open.
  */
-export function ExportMenu({ onJson, onImage, onCopyImage, onPdf, className }: ExportMenuProps) {
+export function ExportMenu({ onJson, onImage, onCopyImage, onPdf, className, triggerClassName }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -66,7 +68,7 @@ export function ExportMenu({ onJson, onImage, onCopyImage, onPdf, className }: E
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="group text-[13.5px] px-[14px] py-[9px] h-auto rounded-[10px] [&_svg]:w-[15px] [&_svg]:h-[15px]"
+        className={triggerClassName ?? 'group text-[13.5px] px-[14px] py-[9px] h-auto rounded-[10px] [&_svg]:w-[15px] [&_svg]:h-[15px]'}
       >
         <Download className="text-ld-text-3 group-hover:text-ld-accent transition-colors" />
         Export

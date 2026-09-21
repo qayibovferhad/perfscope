@@ -14,6 +14,7 @@ import { Segmented } from '@/shared/ui/segmented';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/shared/ui/select';
+import { useWebsites, getHostname } from '@/entities/website';
 import type { FlowInput } from '../model/useFlows';
 
 /**
@@ -47,6 +48,10 @@ const spec = (action: FlowActionKind) => ACTIONS.find(a => a.value === action)!;
 
 const EMPTY_STEP: FlowStep = { action: 'click', selector: '', measure: true };
 
+/** Radix reads an empty string as "nothing selected", so "no site" needs a value of its
+ *  own — the same sentinel the dashboard's site filter uses. */
+const NO_SITE = 'none';
+
 /** Named for what they measure rather than by their acronym alone — a flow's targets are
  *  read by whoever writes the flow, not only by whoever already knows the metrics. */
 const TARGET_LABEL = { inp: 'INP target', tbt: 'TBT target', cls: 'CLS target' } as const;
@@ -65,6 +70,7 @@ interface Props {
 export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null }: Props) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
+  const { websites } = useWebsites();
   const [steps, setSteps] = useState<FlowStep[]>([{ ...EMPTY_STEP }]);
   const [snapshotAtEnd, setSnapshotAtEnd] = useState(true);
   const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>('desktop');
@@ -98,6 +104,26 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
   }, [open, flow]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /**
+   * Which tracked site this flow belongs to.
+   *
+   * Derived from the starting URL rather than stored beside it, because the server does
+   * the same thing with the URL when a flow misses a target: `findWebsiteByHost` is what
+   * decides where `flow.breach` is filed. A separate picker that could disagree with the
+   * URL would mean a flow whose alerts land on a different site than its form claims.
+   *
+   * So the select below *sets* the URL, and typing a tracked host picks the site — one
+   * fact on screen, in two readable forms.
+   */
+  const host = getHostname(url, '');
+  const site = host ? websites.find(w => getHostname(w.url, '') === host) ?? null : null;
+
+  function chooseSite(value: string) {
+    if (value === NO_SITE) { setUrl(''); return; }
+    const picked = websites.find(w => w._id === value);
+    if (picked) setUrl(picked.url);
+  }
+
   const patch = (index: number, changes: Partial<FlowStep>) =>
     setSteps(prev => prev.map((step, i) => (i === index ? { ...step, ...changes } : step)));
 
@@ -128,7 +154,10 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
           tbt: targets.tbt.trim() ? Number(targets.tbt) : null,
           cls: targets.cls.trim() ? Number(targets.cls) : null,
         },
-        ...(flow?.websiteId ? { websiteId: flow.websiteId } : {}),
+        // The relation, resolved from the URL on screen. Explicitly null when the URL
+        // belongs to no tracked site: a flow moved off a site must not keep filing its
+        // breaches against the old one.
+        websiteId: site?._id ?? null,
       });
       onClose();
     } catch (err) {
@@ -151,13 +180,55 @@ export function FlowEditorModal({ open, onClose, flow, onSave, failedStep = null
 
       <div className="flex flex-col gap-[14px] mt-[18px]">
         <div className="grid grid-cols-2 gap-[12px] max-sm:grid-cols-1">
+          <Field label="Website">
+            {(id) => (
+              <Select value={site?._id ?? NO_SITE} onValueChange={chooseSite}>
+                <SelectTrigger
+                  id={id}
+                  className="h-[38px] rounded-[10px] border-ld-border bg-ld-surface text-[13px] shadow-none"
+                >
+                  <SelectValue placeholder="Not a tracked site" />
+                </SelectTrigger>
+                <SelectContent className="bg-ld-surface border-ld-border max-h-[260px]">
+                  <SelectItem value={NO_SITE} className="text-[13px] cursor-pointer text-ld-text-2">
+                    Not a tracked site
+                  </SelectItem>
+                  {websites.map(w => (
+                    <SelectItem
+                      key={w._id}
+                      value={w._id}
+                      className="text-[13px] font-mono cursor-pointer text-ld-text focus:bg-ld-accent-soft focus:text-ld-accent"
+                    >
+                      {getHostname(w.url)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </Field>
           <Field label="Name">
             {(id) => <Input id={id} value={name} onChange={e => setName(e.target.value)} placeholder="Checkout — open the coupon panel" />}
           </Field>
-          <Field label="Starting URL">
-            {(id) => <Input id={id} value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/checkout" />}
-          </Field>
         </div>
+
+        <Field
+          label="Starting URL"
+          // Says what the relation above is for, where it is made — a flow on a tracked
+          // site reports its missed targets through that site's alerts, and one on an
+          // untracked URL simply reports them on the page.
+          hint={site
+            ? `Missed targets are filed against ${getHostname(site.url)}`
+            : 'Pick a website above, or type any URL — an untracked flow reports its findings here only'}
+        >
+          {(id) => (
+            <Input
+              id={id}
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://example.com/checkout"
+            />
+          )}
+        </Field>
 
         <div className="flex flex-col gap-[8px]">
           <div className="flex items-center justify-between">

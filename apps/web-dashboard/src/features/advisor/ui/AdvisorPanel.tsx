@@ -1,4 +1,4 @@
-import { Sparkles, ChevronRight, RefreshCw, ArrowRight } from 'lucide-react';
+import { Sparkles, ChevronRight, ChevronLeft, RefreshCw, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
@@ -60,20 +60,32 @@ export function AdvisorPanel() {
       <motion.button
         type="button"
         onClick={toggle}
-        aria-label="Show advisor"
+        aria-label="Show AI advisor"
         animate={{ opacity: open ? 0 : 1 }}
         transition={{ duration: open ? 0.1 : 0.2, delay: open ? 0 : 0.18 }}
         // Both buttons stay mounted throughout the cross-fade (see the comment above) —
         // `inert` on whichever one is currently invisible keeps it out of tab order,
         // click-through, and screen readers, not just out of the mouse's way.
         inert={open}
-        className="absolute inset-y-0 left-0 w-[46px] hover:bg-ld-surface-hover
-                   flex flex-col items-center gap-3 pt-4 transition-colors"
+        // Below 1536px the panel starts closed, so for most people this rail *is* the
+        // advisor — and as a grey strip with one word turned on its side, it read as the
+        // edge of the page. Tinted, with the AI sparkle in its own tile, a dot when there
+        // is something to read and an arrow saying which way it opens.
+        className="absolute inset-y-0 left-0 w-[46px] bg-ld-accent-wash hover:bg-ld-accent-soft
+                   flex flex-col items-center gap-3 pt-[14px] pb-[14px] transition-colors"
       >
-        <Sparkles className="w-[18px] h-[18px] text-ld-accent" />
-        <span className="text-[11px] font-semibold tracking-[.14em] uppercase text-ld-text-3 [writing-mode:vertical-rl]">
-          Advisor
+        <span className="relative w-[30px] h-[30px] rounded-[10px] grid place-items-center border border-ld-accent-line bg-ld-accent-soft shrink-0">
+          <Sparkles className="w-[15px] h-[15px] text-ld-accent" />
+          {/* Something is waiting to be read. Not a count: the advisor says one thing at
+              a time, and a number would imply a queue. */}
+          {!isPending && advice && (
+            <span className="absolute -top-[3px] -right-[3px] w-[9px] h-[9px] rounded-full bg-ld-accent ring-2 ring-[var(--ld-surface)]" />
+          )}
         </span>
+        <span className="text-[11px] font-semibold tracking-[.14em] uppercase text-ld-accent [writing-mode:vertical-rl]">
+          AI advisor
+        </span>
+        <ChevronLeft className="w-[14px] h-[14px] text-ld-text-3 mt-auto" />
       </motion.button>
 
       {/* Expanded panel */}

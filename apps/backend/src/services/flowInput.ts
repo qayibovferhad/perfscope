@@ -142,8 +142,18 @@ export function parseFlowInput(body: FlowBody) {
     },
     snapshotAtEnd: body.snapshotAtEnd !== false,
     formFactor: body.formFactor === 'mobile' ? ('mobile' as const) : ('desktop' as const),
+    /**
+     * The link to a tracked site, which the editor derives from the flow's URL.
+     *
+     * Explicit `null` is kept rather than dropped: the PUT replaces the whole definition,
+     * and a flow whose URL has moved off a tracked site must lose the link — otherwise it
+     * goes on filing its missed targets against a site it no longer measures. Anything
+     * that is neither an id nor null is simply absent, as before.
+     */
     ...(typeof body.websiteId === 'string' && /^[a-f\d]{24}$/i.test(body.websiteId)
       ? { websiteId: body.websiteId }
-      : {}),
+      : body.websiteId === null
+        ? { websiteId: null }
+        : {}),
   };
 }

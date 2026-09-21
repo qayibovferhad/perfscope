@@ -103,4 +103,11 @@ describe('parseFlowInput — the rest of the definition', () => {
     expect(parseFlowInput({ ...base, steps: [click], websiteId: '6a8dfcb581013fc9ef1ef72d' }))
       .toHaveProperty('websiteId', '6a8dfcb581013fc9ef1ef72d');
   });
+
+  it('unlinks on an explicit null, so a flow moved off a site stops alerting through it', () => {
+    // The editor derives the link from the flow's URL, so "no tracked site" has to be
+    // sayable — dropped, the PUT would leave the old link in place for ever.
+    expect(parseFlowInput({ ...base, steps: [click], websiteId: null }))
+      .toHaveProperty('websiteId', null);
+  });
 });
