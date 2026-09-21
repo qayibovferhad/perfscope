@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, Globe, LogOut, Plus, Search, Trash2, X } from 'lucide-react';
+import { ChevronRight, Globe, LogOut, Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { ConfirmModal } from '@/shared/ui/modal';
 import { signOut, useAuthStore } from '@/features/auth';
@@ -8,17 +8,15 @@ import { useWebsites, getHostname } from '@/entities/website';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './RunningAudits';
 import { TeamSwitcher } from '@/features/teams';
-import { useCanEdit } from '@/shared/model/teamStore';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '@/shared/config/nav';
 import { usePaletteStore } from '@/shared/model/paletteStore';
 
 interface SidebarProps {
   onClose?: () => void;
-  onAddWebsite: () => void;
 }
 
-export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
+export function Sidebar({ onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const user = useAuthStore(s => s.user);
@@ -36,10 +34,6 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
     }
     return [...websites].sort((a, b) => (lastAuditAt[b.url] ?? 0) - (lastAuditAt[a.url] ?? 0));
   }, [websites, allHistory]);
-
-  // A viewer's writes are refused by the server; disabling the primary action says so
-  // before they fill a form in, which is the difference between a rule and a dead end.
-  const canEdit = useCanEdit();
 
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -98,16 +92,10 @@ export function Sidebar({ onClose, onAddWebsite }: SidebarProps) {
           time-sensitive thing on the screen, and it is why someone came back. */}
       <RunningAudits onNavigate={onClose} />
 
-      {/* Add Website */}
-      <Button
-        className="w-full"
-        onClick={() => { onAddWebsite(); onClose?.(); }}
-        disabled={!canEdit}
-        title={canEdit ? undefined : 'You have view-only access to this team'}
-      >
-        <Plus className="w-[17px] h-[17px]" />
-        Add Website
-      </Button>
+      {/* No "Add Website" here any more. A full-width primary button directly under the
+          workspace switcher made the sidebar open with two competing emphases before the
+          navigation it exists for, and it advertised a one-off action on every screen. It
+          lives where sites are managed: the websites page's own header. */}
 
       {/*
         The palette's only advertisement. A shortcut nobody is told about is a shortcut

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Plus, Globe, ExternalLink, Activity, BarChart3,
-  Clock, Route, GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert, Target,
+  GitCompareArrows, CheckSquare, Lock, ShieldCheck, ShieldAlert, Target,
 } from 'lucide-react';
 import { useProjectAudits, type ProjectAuditEntry } from '@/features/projects';
 import { CrossWebsitePicker }   from '@/widgets/cross-website-picker';
@@ -15,7 +15,7 @@ import { fetchHistoryResult }   from '@/entities/history';
 import { useAnalysisStore }     from '@/features/analyzer';
 import { useWebsites }          from '@/entities/website';
 import { Button }               from '@/shared/ui/button';
-import { StatCard }             from '@/shared/ui/stat-card';
+import { InstrumentBand, Readout } from '@/shared/ui/instrument';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { TabBar }               from '@/shared/ui/tab-bar';
 import { RouteGroupCard }       from '@/features/projects';
@@ -26,7 +26,7 @@ import { hasResult }            from '@perfscope/shared';
 import { CompareBar }           from './ui/CompareBar';
 import { ProjectDetailSkeleton } from './ui/ProjectDetailSkeleton';
 import { timeAgo }              from '@/features/projects';
-import { AvgBadge, type AnalysisResult } from '@/entities/analysis';
+import { AvgBadge, scoreBand, type AnalysisResult } from '@/entities/analysis';
 
 type ProjectTab = 'audits' | 'field' | 'targets';
 
@@ -303,13 +303,27 @@ export function ProjectDetailPage() {
         )}
         </div>{/* end header section */}
 
-        {/* ── Summary strip ─────────────────────────────── */}
-        <div className="grid grid-cols-1 min-[680px]:grid-cols-2 min-[920px]:grid-cols-4 gap-[14px]">
-          <StatCard label="Total Audits"  value={stats.totalAudits}   icon={<BarChart3 className="w-5 h-5" />} />
-          <StatCard label="Unique Routes" value={stats.uniqueRoutes}  icon={<Route     className="w-5 h-5" />} />
-          <StatCard label="Avg Score"     value={stats.totalAudits ? stats.avgPerformance : '—'} icon={<Activity className="w-5 h-5" />} />
-          <StatCard label="Last Audit"    value={timeAgo(stats.lastAuditAt)} icon={<Clock className="w-5 h-5" />} compact />
-        </div>
+        {/* ── The site's reading ───────────────────────────
+             Four equal tiles made "we ran 12 audits" look like the same kind of fact as
+             "this site averages 46". The score is the subject; the counts say what it was
+             averaged over. */}
+        <InstrumentBand
+          reading={{
+            value: stats.totalAudits ? stats.avgPerformance : null,
+            tone: stats.totalAudits ? scoreBand(stats.avgPerformance) : 'neutral',
+            label: 'Avg score',
+            caption: stats.totalAudits
+              ? `over ${stats.totalAudits} audit${stats.totalAudits === 1 ? '' : 's'}`
+              : 'never audited',
+            ariaLabel: stats.totalAudits
+              ? `Average score ${stats.avgPerformance} out of 100`
+              : 'Never audited',
+          }}
+        >
+          <Readout label="Audits" value={stats.totalAudits} tone="accent" tint />
+          <Readout label="Routes" value={stats.uniqueRoutes} sub="measured separately" tone="teal" tint />
+          <Readout label="Last audit" value={timeAgo(stats.lastAuditAt)} />
+        </InstrumentBand>
 
         {/* ── Tabs ──────────────────────────────────────────
              Lab runs and field data answer different questions — "what did our test

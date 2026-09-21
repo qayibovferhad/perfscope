@@ -11,7 +11,7 @@ import { ConfirmModal } from '@/shared/ui/modal';
 import { timeAgo } from '@/shared/lib/time';
 import { getHostname } from '@/entities/website';
 import {
-  FlowEditorModal, FlowRunReport, useFlows, useFlowRun, useFlowRuns, describeSteps,
+  FlowEditorModal, FlowRunReport, useFlows, useFlowRun, useFlowRuns, describeSteps, StepChain,
 } from '@/features/flows';
 
 /**
@@ -72,21 +72,27 @@ export function FlowsPage() {
         }
       />
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-[18px] max-lg:grid-cols-1">
+      {/* With no flows at all, the invitation gets the whole page: penned into the left
+          column beside an empty report pane, it read as a failed widget. */}
+      {!isPending && !isError && flows.length === 0 && (
+        <StatePanel
+          icon={<Footprints />}
+          title="No flows yet"
+          description="A flow is a page plus the things you do to it. The first one usually takes two steps: open the thing people complain about, and see what it costs."
+          action={<Button onClick={openNew}><Plus className="w-[16px] h-[16px]" /> New flow</Button>}
+        />
+      )}
+
+      <div
+        className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-[18px] max-lg:grid-cols-1 ${
+          !isPending && !isError && flows.length === 0 ? 'hidden' : ''
+        }`}
+      >
         {/* ─── The flows ─────────────────────────────────────────────────── */}
         <div className="flex flex-col gap-[12px]">
           {isPending && [0, 1].map(i => <Skeleton key={i} className="h-[104px] rounded-[16px]" />)}
 
           {isError && <QueryErrorPanel what="your flows" />}
-
-          {!isPending && !isError && flows.length === 0 && (
-            <StatePanel
-              icon={<Footprints />}
-              title="No flows yet"
-              description="A flow is a page plus the things you do to it. The first one usually takes two steps: open the thing people complain about, and see what it costs."
-              action={<Button onClick={openNew}><Plus className="w-[16px] h-[16px]" /> New flow</Button>}
-            />
-          )}
 
           {flows.map(flow => (
             <Panel key={flow.id}>
@@ -99,7 +105,14 @@ export function FlowsPage() {
                 <p className="font-mono text-[11.5px] text-ld-text-3 truncate" title={flow.url}>
                   {getHostname(flow.url)}{new URL(flow.url).pathname}
                 </p>
-                <p className="text-[12.5px] text-ld-text-2 mt-[6px]">{describeSteps(flow.steps)}</p>
+                {/* The journey drawn, not narrated — a flow is its shape, and a sentence
+                    of arrows hid how much of one was plumbing. */}
+                <StepChain
+                  steps={flow.steps}
+                  snapshotAtEnd={flow.snapshotAtEnd}
+                  className="mt-[10px]"
+                />
+                <p className="sr-only">{describeSteps(flow.steps)}</p>
 
                 <div className="flex items-center gap-[8px] flex-wrap mt-[8px]">
                   {/* The verdict first: a card whose flow is over its interaction target is

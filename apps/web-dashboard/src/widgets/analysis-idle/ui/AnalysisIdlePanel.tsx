@@ -3,6 +3,7 @@ import { Gauge, GitCompareArrows, Globe, Plus, ArrowRight } from 'lucide-react';
 import type { Website } from '@/entities/website';
 import { getHostname } from '@/entities/website';
 import { Button } from '@/shared/ui/button';
+import { Dial } from '@/shared/ui/instrument';
 import { cn } from '@/shared/lib/utils';
 
 type Variant = 'analyze' | 'compare';
@@ -66,37 +67,39 @@ export function AnalysisIdlePanel({ variant, sites, onPick, state = 'idle' }: Pr
   const Icon   = variant === 'compare' ? GitCompareArrows : Gauge;
 
   return (
-    <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden">
+    <div className="ps-grid-field ps-marks rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden">
 
-      {/* Focal point: one icon, one headline, one line of intent */}
-      <div className="px-[28px] pt-[40px] pb-[32px] flex flex-col items-center text-center gap-[16px]">
-        <span className={cn(
-          'w-[56px] h-[56px] rounded-full grid place-items-center',
-          failed
-            ? 'bg-ld-surface-2 border border-ld-border text-ld-text-3'
-            : 'bg-ld-grad shadow-ld-glow text-[#04130d]',
-        )}>
-          <Icon className="w-[24px] h-[24px]" />
-        </span>
+      {/* An instrument waiting for a reading, rather than a welcome card: the same dial
+          the scores will be drawn in, with its needle at rest. Left-aligned, because a
+          centred column of three centred lines is the shape every empty screen in every
+          dashboard has, and this one is seen between every audit. */}
+      <div className="px-[28px] py-[34px] max-sm:px-[18px] flex items-center gap-[26px] max-sm:flex-col max-sm:text-center max-sm:gap-[18px]">
+        <Dial
+          value={null}
+          size="lg"
+          tone={failed ? 'neutral' : 'accent'}
+          decorative
+          glyph={<Icon className={cn('w-[24px] h-[24px]', failed && 'text-ld-text-3')} />}
+        />
 
-        <div>
+        <div className="min-w-0">
           <p className="text-[18px] font-bold text-ld-text">{copy.title}</p>
-          <p className="text-[13.5px] text-ld-text-2 mt-[6px] max-w-[320px] mx-auto leading-[1.5]">{copy.body}</p>
-        </div>
+          <p className="text-[13.5px] text-ld-text-2 mt-[6px] max-w-[46ch] leading-[1.5]">{copy.body}</p>
 
-        {/* What you'll get — a hint, not an explanation */}
-        {!failed && (
-          <div className="flex flex-wrap items-center justify-center gap-[8px] mt-[2px]">
-            {BADGES[variant].map((label) => (
-              <span
-                key={label}
-                className="font-mono text-[11px] text-ld-text-3 px-[11px] py-[5px] rounded-full border border-ld-border bg-ld-bg-2"
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        )}
+          {/* What the run will report, as the dial's legend — mono, quiet, one line. */}
+          {!failed && (
+            <div className="flex flex-wrap items-center gap-[8px] mt-[14px] max-sm:justify-center">
+              {BADGES[variant].map((label) => (
+                <span
+                  key={label}
+                  className="font-mono text-[11px] text-ld-text-3 px-[11px] py-[5px] rounded-full border border-ld-border bg-ld-bg-2"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick start from a tracked site */}

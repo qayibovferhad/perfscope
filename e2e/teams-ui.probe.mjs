@@ -98,6 +98,10 @@ try {
   check(afterJoin.includes('Probe Crew'), 'and the sidebar switches to the team just joined');
   check(afterJoin.includes('view'), 'which is marked view-only');
 
+  // On /websites, not in the sidebar: the Add Website button moved to the page that
+  // manages sites when the sidebar stopped advertising it on every screen.
+  await guestPage.goto(`${WEB_URL}/websites`, { waitUntil: 'networkidle2' });
+  await new Promise(r => setTimeout(r, 1200));
   const addDisabled = await guestPage.$$eval('button', (buttons) =>
     buttons.some(b => b.textContent?.includes('Add Website') && b.disabled));
   check(addDisabled, "a viewer's primary action is disabled, not left to fail with a 403");

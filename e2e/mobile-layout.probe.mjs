@@ -109,11 +109,17 @@ try {
   await page.click('button[aria-label="Close sidebar"]');
   await sleep(500);
 
-  const totals = await page.$$eval('main .grid > div', (els) => {
-    const tops = els.slice(0, 4).map((e) => Math.round(e.getBoundingClientRect().top));
+  // The four stat cards became one instrument band — a dial and three readings. The
+  // claim is unchanged in spirit: the readings pair up rather than stacking into a
+  // screen of scrolling before the page says anything.
+  const totals = await page.$$eval('main [data-readout]', (els) => {
+    const tops = els.map((e) => Math.round(e.getBoundingClientRect().top));
     return { rows: new Set(tops).size, count: tops.length };
   }).catch(() => ({ rows: 0, count: 0 }));
-  check(totals.count >= 4 && totals.rows === 2, `the four stat cards sit two-up, not stacked (${totals.rows} rows)`);
+  check(totals.count >= 3 && totals.rows === 2, `the dashboard readings sit two-up, not stacked (${totals.count} readings over ${totals.rows} rows)`);
+
+  const dial = await page.$$eval('main svg[viewBox="0 0 100 100"]', (els) => els.length).catch(() => 0);
+  check(dial >= 1, `the account's dial drew (${dial})`);
   check((await bleeding(page)).length === 0, 'nothing on the dashboard bleeds past the edge');
   await page.screenshot({ path: `${OUT}/dashboard.png` });
 

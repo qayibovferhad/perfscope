@@ -33,7 +33,7 @@ export function PublicReportPage() {
   const status = !token || isError ? 'error' : isPending ? 'loading' : 'ready';
 
   return (
-    <div className="min-h-screen bg-ld-bg">
+    <div className="ps-grid-field-lg min-h-screen bg-ld-bg">
       {/* Minimal public header */}
       <header className="border-b border-ld-border bg-ld-surface">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">

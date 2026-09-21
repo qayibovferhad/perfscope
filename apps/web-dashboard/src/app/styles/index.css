@@ -513,6 +513,87 @@
   .ps-toast-bar { animation-timing-function: steps(4, end); }
 }
 
+/* ── Instrument layer ─────────────────────────────────────────────────────────
+
+   The app is a measuring instrument, and every page now says so with the same three
+   ornaments rather than with a different arrangement of the same rounded box: a ruler
+   under the page title, a graph-paper field behind the page's leading numbers, and crop
+   marks on the blocks that carry a reading.
+
+   All three are CSS rather than DOM: a ruler is ~40 ticks and a field is a lattice, and
+   both appear on every route — as elements they would be a thousand nodes doing nothing.
+
+   The lattice is deliberately near-invisible (4.5% dark, 5% light). It has to read as
+   paper *behind* the numbers; at the alpha where you notice it on its own it competes
+   with the data drawn on top, which is the failure this whole pass is trying to undo. */
+:root {
+  --ps-grid:        rgba(180, 230, 205, 0.045);
+  --ps-grid-strong: rgba(180, 230, 205, 0.085);
+}
+[data-theme="light"] {
+  --ps-grid:        rgba(8, 50, 36, 0.05);
+  --ps-grid-strong: rgba(8, 50, 36, 0.09);
+}
+
+/* The ruler. Two gradients: a minor tick every 9px, a major one (taller, accent-tinted)
+   every fifth. It fades out to the right instead of stopping — a ruler that ends in a
+   hard edge reads as a broken border, and the fade is what makes it ornament. */
+.ps-ruler {
+  height: 11px;
+  background-image:
+    repeating-linear-gradient(90deg, var(--ld-border-strong) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(90deg, rgba(var(--ld-accent-rgb), 0.35) 0 1px, transparent 1px 45px);
+  background-size: 100% 5px, 100% 10px;
+  background-position: 0 100%, 0 100%;
+  background-repeat: repeat-x;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 100%);
+}
+
+/* Graph paper. 22px lattice, with the fade applied on the element so a field can sit
+   inside a panel without a visible seam where it ends. */
+.ps-grid-field {
+  background-image:
+    linear-gradient(0deg,  var(--ps-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ps-grid) 1px, transparent 1px);
+  background-size: 22px 22px, 22px 22px;
+}
+
+/* The same lattice over a whole screen rather than inside a panel: wider cells, and
+   drawn against the page background, where the panel-weight lines vanish entirely. */
+.ps-grid-field-lg {
+  background-image:
+    linear-gradient(0deg,  var(--ps-grid-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ps-grid-strong) 1px, transparent 1px);
+  background-size: 38px 38px, 38px 38px;
+}
+
+/* Crop marks — four L-shaped corners, drawn with two gradients per corner so a block
+   gets them without four absolutely-positioned spans. Sits on ::before of the block. */
+.ps-marks { position: relative; }
+.ps-marks::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--ld-border-strong), var(--ld-border-strong)),
+    linear-gradient(var(--ld-border-strong), var(--ld-border-strong)),
+    linear-gradient(var(--ld-border-strong), var(--ld-border-strong)),
+    linear-gradient(var(--ld-border-strong), var(--ld-border-strong));
+  background-size: 9px 1px, 1px 9px, 9px 1px, 1px 9px;
+  background-position: left top, left top, right bottom, right bottom;
+  background-repeat: no-repeat;
+}
+
+/* The needle sweep on a gauge that has no value to animate to — a live reading waiting
+   for its number, used while an audit is running. */
+@keyframes ps-sweep { to { transform: rotate(360deg); } }
+.ps-sweep { animation: ps-sweep 2.4s linear infinite; transform-origin: 50% 50%; }
+@media (prefers-reduced-motion: reduce) {
+  .ps-sweep { animation: none; }
+}
+
 /* ── Print ────────────────────────────────────────────────────────────────────
 
    "Export as PDF" is the browser's own print pipeline, which means the app has to

@@ -39,11 +39,9 @@ const ALL_SITES = 'all';
 /** Placeholders that occupy the same space as the real strip and panels, so a slow
  *  overview reads as loading rather than as a page that drew nothing. */
 function TotalsStripSkeleton() {
-  return (
-    <div className="grid grid-cols-4 gap-[14px] mb-[22px] max-sm:grid-cols-2">
-      {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-[78px] rounded-[16px]" />)}
-    </div>
-  );
+  // One slab, the shape of the instrument band that replaces it — four small boxes here
+  // and one wide field a moment later is a page that visibly rearranges itself.
+  return <Skeleton className="h-[136px] rounded-[18px] mb-[26px] max-[880px]:h-[220px]" />;
 }
 
 function PanelSkeleton({ className }: { className: string }) {

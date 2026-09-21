@@ -3,16 +3,16 @@ import { useDebounced }             from '@/shared/lib/useDebounced';
 import {
   Globe, Plus, Loader2,
   LayoutGrid, List, Search,
-  CheckSquare, Gauge, AlertTriangle, Layers,
 } from 'lucide-react';
 import { Button }                    from '@/shared/ui/button';
 import { Input }                     from '@/shared/ui/input';
 import { Segmented }                 from '@/shared/ui/segmented';
 import { Page, PageHeader }          from '@/shared/ui/page';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
-import { StatCard }                  from '@/shared/ui/stat-card';
+import { InstrumentBand, Readout }   from '@/shared/ui/instrument';
 import { useWebsites }              from '@/entities/website';
-import { BAND_TILE, BAND_TEXT }     from '@/entities/analysis';
+import { useCanEdit }               from '@/shared/model/teamStore';
+import { scoreBand }                from '@/entities/analysis';
 import { useWebsitesPage, useWebsitesSummary } from '@/features/websites';
 import { useWebsiteScores }         from '@/features/websites';
 import { useWebsiteActions }        from '@/features/websites';
@@ -24,33 +24,11 @@ import type { Website }             from '@/entities/website';
 
 const PAGE_SIZE = 12;
 
-// ── Local summary tile ────────────────────────────────────────────────────────
-// A thin adapter over the shared StatCard — this page had re-implemented the whole
-// tile with its own (slightly drifted) padding and type scale. Only the variant→band
-// class mapping is local; the markup is the shared one.
-
-type SumVariant = 'default' | 'good' | 'warn';
-
-function SumCard({ icon, value, label, variant = 'default' }: {
-  icon:     React.ReactNode;
-  value:    number | string;
-  label:    string;
-  variant?: SumVariant;
-}) {
-  return (
-    <StatCard
-      icon={icon}
-      value={value}
-      label={label}
-      {...(variant !== 'default' ? { iconClassName: BAND_TILE[variant], valueClassName: BAND_TEXT[variant] } : {})}
-    />
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function WebsitesPage() {
   const { remove }                   = useWebsites();
+  const canEdit                      = useCanEdit();
   const { getInfo }                  = useWebsiteScores();
   const { quickAudit, startCompare } = useWebsiteActions();
 
@@ -96,8 +74,6 @@ export function WebsitesPage() {
 
   return (
     <Page>
-      {/* No "Add website" action here: the sidebar carries it on every page, and having
-          both put two identical primary buttons on screen at once, competing. */}
       <PageHeader
         eyebrow="My websites"
         title={<>
@@ -107,17 +83,55 @@ export function WebsitesPage() {
           </em>
         </>}
         description="Audit, compare and keep an eye on every site in one place."
+        // The action belongs to the page that manages sites, not to the sidebar of every
+        // page. Disabled rather than absent for a viewer: "you cannot do this here" is a
+        // better answer than a button that 403s.
+        actions={
+          <Button
+            onClick={() => setModalOpen(true)}
+            disabled={!canEdit}
+            title={canEdit ? undefined : 'You have view-only access to this team'}
+          >
+            <Plus className="w-[17px] h-[17px]" /> Add Website
+          </Button>
+        }
       />
 
-      {/* ── Summary strip — account-wide counts from the server. Independent of
-             the filter, so it stays put even when a search matches nothing ─ */}
+      {/* ── The account's reading — one dial and the counts that qualify it.
+             Independent of the filter, so it stays put even when a search matches
+             nothing ───────────────────────────────────────────────────────── */}
       {summary && summary.total > 0 && (
-        <div className="grid grid-cols-4 gap-[14px] mb-[26px] max-sm:grid-cols-2 max-[520px]:grid-cols-1">
-          <SumCard icon={<Layers        className="w-[19px] h-[19px]" />} value={summary.total}   label="Total sites" />
-          <SumCard icon={<CheckSquare   className="w-[19px] h-[19px]" />} value={summary.audited} label="Audited" variant="good" />
-          <SumCard icon={<Gauge         className="w-[19px] h-[19px]" />} value={summary.audited ? summary.avgScore : '—'} label="Avg score" />
-          <SumCard icon={<AlertTriangle className="w-[19px] h-[19px]" />} value={summary.needsAttention} label="Needs attention" variant={summary.needsAttention > 0 ? 'warn' : 'default'} />
-        </div>
+        <InstrumentBand
+          className="mb-[26px]"
+          reading={{
+            value: summary.audited ? summary.avgScore : null,
+            tone: summary.audited ? scoreBand(summary.avgScore) : 'neutral',
+            label: 'Avg score',
+            caption: summary.audited
+              ? `across ${summary.audited} audited ${summary.audited === 1 ? 'site' : 'sites'}`
+              : 'nothing audited yet',
+            ariaLabel: summary.audited
+              ? `Average score ${summary.avgScore} out of 100`
+              : 'No site audited yet',
+          }}
+        >
+          <Readout label="Tracked" value={summary.total} tone="accent" tint />
+          <Readout
+            label="Audited"
+            value={summary.audited}
+            sub={`of ${summary.total} tracked`}
+            fill={summary.total ? summary.audited / summary.total : 0}
+            tone={summary.audited === summary.total ? 'good' : 'teal'}
+            tint
+          />
+          <Readout
+            label="Needs attention"
+            value={summary.needsAttention}
+            tone={summary.needsAttention > 0 ? 'poor' : 'neutral'}
+            tint={summary.needsAttention > 0}
+            sub={summary.needsAttention > 0 ? 'scoring below 50' : 'nothing below 50'}
+          />
+        </InstrumentBand>
       )}
 
       {/* ── Toolbar — stays mounted while filtering so an empty result set

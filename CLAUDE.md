@@ -455,6 +455,34 @@ Layout on a phone is `e2e/mobile-layout.probe.mjs`, which asserts proportion and
 rather than only overflow. Its selectors name elements: when a component changes tag, check the
 counts it prints — an `every()` over an empty list passes.
 
+### The instrument layer — what the pages are built out of
+
+Every page used to open the same way: eyebrow, title, description, four equal stat cards,
+then panels. Consistent, and identical, which is why no screen had a character of its own.
+`shared/ui/instrument.tsx` is the vocabulary that replaced the middle of that:
+
+- **`Dial`** — a 270° gauge with a printed scale, the product's signature object. It is the
+  form a *headline* reading takes (the dashboard's average, a category score, a compare
+  side); `entities/analysis`'s `ScoreRing` stays the compact closed ring for a score in a
+  list row, and the two shapes are deliberately different. `pending` sweeps a needle for a
+  reading that has not landed — used instead of a spinner while an audit streams.
+- **`Readout`** — one number over a labelled tick baseline, with an optional `fill` when the
+  value sits on a scale. Carries `data-readout`, which `e2e/mobile-layout.probe.mjs` selects.
+- **`InstrumentBand`** — a dial plus its readouts on graph paper; the dashboard, the websites
+  list and a project all open with one, so none of them re-invents the strip.
+- **`Ruler` / `.ps-ruler`, `.ps-grid-field(-lg)`, `.ps-marks`** — the texture: a tick strip
+  under every page title (drawn by `PageHeader`), a lattice behind a page's leading numbers,
+  crop marks on the block that carries a reading. All CSS gradients, not DOM.
+- **`entities/analysis`'s `ScoreRail`** — a score placed on Lighthouse's own 0/50/90 scale.
+  It holds the thresholds because they *are* the band definition; `shared` may not.
+
+`PageHeader` numbers each route from `NAV` (`01 ── DASHBOARD`), so reordering the sidebar
+renumbers the headers. A route with no nav entry gets no number; pass `index` to override.
+
+Look at pages rather than reading them: `cd apps/backend && npx tsx probes/ui-shots.probe.mts`
+screenshots every signed-in route (`MOBILE=1`, `FULL=1`, `OUT=`), seeded the same way the
+accessibility sweep next door seeds.
+
 ### Styling
 
 Pure Tailwind with a custom CSS variable design system. Variables are defined in `apps/web-dashboard/src/app/styles/index.css` under `:root` / `[data-theme="light"]` selectors and prefixed with `--ps-`. Inline styles using these vars are the norm for interactive color changes (hover states, active nav items). `ThemeProvider` manages the `data-theme` attribute on `<html>`.

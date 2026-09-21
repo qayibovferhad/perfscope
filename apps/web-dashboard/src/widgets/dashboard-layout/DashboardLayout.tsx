@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { AddWebsiteModal } from '@/features/websites';
 import { AdvisorPanel } from '@/features/advisor';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './ui/RunningAudits';
@@ -13,7 +12,6 @@ import { StorageBanner } from './ui/StorageBanner';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [modalOpen,  setModalOpen]  = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
 
@@ -35,7 +33,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Desktop sidebar */}
       <div className="hidden md:flex shrink-0" data-print="hide">
-        <Sidebar onAddWebsite={() => setModalOpen(true)} />
+        <Sidebar />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -56,13 +54,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="fixed left-0 top-0 bottom-0 z-50 md:hidden"
             >
-              <Sidebar onClose={() => setMobileOpen(false)} onAddWebsite={() => setModalOpen(true)} />
+              <Sidebar onClose={() => setMobileOpen(false)} />
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
-      <AddWebsiteModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

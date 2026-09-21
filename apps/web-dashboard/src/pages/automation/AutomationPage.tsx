@@ -6,6 +6,7 @@ import { useWebsites }                 from '@/entities/website';
 import { StatePanel, QueryErrorPanel } from '@/shared/ui/state-panel';
 import { WebsiteAutomationCard }       from './ui/WebsiteAutomationCard';
 import { UnconfiguredRow }             from './ui/UnconfiguredRow';
+import { DayTimetable }                from './ui/DayTimetable';
 import { SetupModal }                  from './ui/SetupModal';
 import type { Website }                from '@/entities/website';
 
@@ -78,6 +79,9 @@ export function AutomationPage() {
           description="Add a website first to configure nightly audits."
         />
       )}
+
+      {/* ── When any of it actually fires ──────────────────────────────────── */}
+      {!isLoading && !isError && configured.length > 0 && <DayTimetable sites={configured} />}
 
       {/* ── Configured ─────────────────────────────────────────────────────── */}
       {configured.length > 0 && (

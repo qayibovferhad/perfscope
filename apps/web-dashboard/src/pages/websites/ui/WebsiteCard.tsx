@@ -6,7 +6,7 @@ import { getHostname, sessionState } from '@/entities/website';
 import type { Website }    from '@/entities/website';
 import type { SiteScoreInfo } from '@/features/websites';
 import { Button }          from '@/shared/ui/button';
-import { ScoreRing }       from '@/entities/analysis';
+import { ScoreRing, ScoreRail } from '@/entities/analysis';
 import { SparkBars }       from './SparkBars';
 
 function timeAgo(iso: string): string {
@@ -91,8 +91,28 @@ export function WebsiteCard({ site, scoreInfo, isList, onAnalyze, onCompare, onD
             <span className="truncate">{hostname}</span>
           </span>
         </div>
+        {/* In a row, the rail is the row's whole point: twelve sites one under another
+            are twelve markers on the same scale, and a column of numerals is not. It goes
+            when the row is too narrow to place a marker honestly. */}
+        {isList && (
+          <ScoreRail
+            score={scoreInfo.avgScore}
+            previous={scoreInfo.recentScores.length > 1 ? scoreInfo.recentScores.at(-2) : null}
+            className="shrink-0 w-[190px] max-[900px]:hidden"
+          />
+        )}
         <ScoreRing score={scoreInfo.avgScore} size={isList ? 44 : 58} />
       </div>
+
+      {/* The same scale under the card's head, where there is room for it. The ring says
+          what the number is; the rail says which side of 50 and 90 it fell on. */}
+      {!isList && scoreInfo.avgScore !== null && (
+        <ScoreRail
+          score={scoreInfo.avgScore}
+          previous={scoreInfo.recentScores.length > 1 ? scoreInfo.recentScores.at(-2) : null}
+          className="mt-[14px] w-full"
+        />
+      )}
 
       {/* ── Meta — hidden in list mode ────────────────────────────── */}
       {!isList && (

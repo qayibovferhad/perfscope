@@ -9,3 +9,4 @@ export { useFlowRun } from './model/useFlowRun';
 export { FlowEditorModal } from './ui/FlowEditorModal';
 export { FlowRunReport } from './ui/FlowRunReport';
 export { describeSteps } from './lib';
+export { StepChain } from './ui/StepChain';

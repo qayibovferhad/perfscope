@@ -6,6 +6,7 @@ import { useSaveState } from './ui/useSaveState';
 import { SaveError, SavedChip } from './ui/saveState';
 import { Panel, PanelHeader } from '@/shared/ui/panel';
 import { Page, PageHeader } from '@/shared/ui/page';
+import { SectionIndex } from '@/shared/ui/section-index';
 import { Toggle } from '@/shared/ui/toggle';
 import { TimePicker } from '@/shared/ui/time-picker';
 import { Input } from '@/shared/ui/input';
@@ -25,21 +26,41 @@ export function SettingsPage() {
   const { user, setAuth } = useAuthStore();
 
   return (
-    <Page width="narrow">
+    <Page>
       <PageHeader
         eyebrow="Account"
         title="Settings"
         description="Manage your display name, sign-in password and weekly summary."
       />
-      <div className="flex flex-col gap-[18px]">
-        <ProfileSection user={user} setAuth={setAuth} />
-        <DigestSection />
-        <PasswordSection />
-        <SessionsSection />
+
+      {/* A rail and a column, not a stack. Four identical panels one under another gave
+          the page no structure to see: the only way to reach "signed-in devices" was to
+          scroll past everything else, and every section looked equally like the subject.
+          The column keeps the reading width the form fields were built for. */}
+      <div className="grid grid-cols-[176px_minmax(0,760px)] gap-[30px] items-start max-lg:grid-cols-1 max-lg:gap-0">
+        <SectionIndex sections={SECTIONS} className="max-lg:hidden" />
+
+        <div className="flex flex-col gap-[18px] min-w-0">
+          {/* `scroll-mt` so an anchored jump lands under the shell's top edge rather than
+              with the section title tucked behind it. */}
+          <section id="profile"  className="scroll-mt-[24px]"><ProfileSection user={user} setAuth={setAuth} /></section>
+          <section id="digest"   className="scroll-mt-[24px]"><DigestSection /></section>
+          <section id="password" className="scroll-mt-[24px]"><PasswordSection /></section>
+          <section id="devices"  className="scroll-mt-[24px]"><SessionsSection /></section>
+        </div>
       </div>
     </Page>
   );
 }
+
+/** The rail's entries, in the order the page renders them — one list, so a section
+ *  cannot be added to the page and quietly left out of its index. */
+const SECTIONS = [
+  { id: 'profile',  label: 'Profile'          },
+  { id: 'digest',   label: 'Weekly digest'    },
+  { id: 'password', label: 'Password'         },
+  { id: 'devices',  label: 'Signed-in devices' },
+];
 
 /* ── Weekly digest ────────────────────────────────────────────────────────── */
 

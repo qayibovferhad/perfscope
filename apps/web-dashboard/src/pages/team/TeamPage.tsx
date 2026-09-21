@@ -4,6 +4,7 @@ import type { TeamRole, TeamSummary } from '@perfscope/shared';
 import { canManage } from '@perfscope/shared';
 import { Page, PageHeader } from '@/shared/ui/page';
 import { Panel, PanelHeader, PanelBody } from '@/shared/ui/panel';
+import { Readout } from '@/shared/ui/instrument';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Field } from '@/shared/ui/field';
@@ -88,9 +89,34 @@ export function TeamPage() {
   return (
     <Page width="narrow">
       <PageHeader
+        eyebrow="Access"
         title="Teams"
         description="Let somebody else see the sites, audits and flows in this account."
       />
+
+      {/* A team is a small number of facts — who is in it, what you can do in it, and
+          how many links are still out there — and they were spread over three panels you
+          had to read in order to assemble. */}
+      {team && (
+        <div className="grid grid-cols-3 border border-ld-border rounded-[18px] ps-grid-field overflow-hidden mb-[14px] max-[560px]:grid-cols-1 max-[560px]:divide-y max-[560px]:divide-ld-border">
+          <Readout label="People" value={team.members} sub={team.name} tone="accent" tint />
+          <Readout
+            label="Your role"
+            value={team.role}
+            tone={team.role === 'owner' ? 'accent' : 'neutral'}
+            sub={team.role === 'viewer' ? 'read-only' : 'can run audits'}
+            className="border-l border-ld-border max-[560px]:border-l-0"
+          />
+          <Readout
+            label="Open invites"
+            value={canAdmin ? invites.length : '—'}
+            tone="teal"
+            tint={canAdmin && invites.length > 0}
+            sub={canAdmin ? 'single use · 7 days' : 'owners only'}
+            className="border-l border-ld-border max-[560px]:border-l-0"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-[14px]">
         {/* ── Which team ─────────────────────────────────────────────── */}

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { GitCompareArrows, Lock, Share2, Check } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { PageHeader } from '@/shared/ui/page';
 import { ExportMenu } from './ExportMenu';
 
 interface Props {
@@ -24,41 +25,39 @@ const iconCls = 'text-ld-text-3 group-hover:text-ld-accent transition-colors';
 
 export function AnalyzerHeader({ hasData, onExport, onImage, onCopyImage, onPdf, onAuthModal, onShare, shareState }: Props) {
   return (
-    <div className="flex items-start justify-between gap-5 flex-wrap mb-7">
-      {/* No wordmark here. The sidebar already carries the brand on every page, and a page
-          whose heading is the product's name tells you nothing about the page. */}
-      <div>
-        <h1 className="text-[clamp(26px,3.4vw,34px)] font-extrabold tracking-[-0.03em] text-ld-text leading-none">
-          New audit
-        </h1>
-        <p className="text-[15px] text-ld-text-2 mt-[6px]">Analyze any website's performance with Lighthouse.</p>
-      </div>
+    // The shared page header, like every other route: the analyzer used to print its own
+    // title block — same size, no channel, no rule — which made the app's most-visited
+    // screen the one that did not look like the app.
+    <PageHeader
+      eyebrow="Analyzer"
+      title="New audit"
+      description="Analyze any website's performance with Lighthouse."
+      actions={
+        <div className="flex items-center gap-2 flex-wrap" data-print="hide">
+          {hasData && (
+            <>
+              <Button variant="outline" onClick={onShare} className={btnCls}>
+                {shareState === 'copied'
+                  ? <><Check className="text-ld-accent" /> Link copied</>
+                  : <><Share2 className={iconCls} /> Share</>}
+              </Button>
+              <ExportMenu onJson={onExport} onImage={onImage} onCopyImage={onCopyImage} onPdf={onPdf} />
+            </>
+          )}
 
-      <div className="flex items-center gap-2 flex-shrink-0" data-print="hide">
-        {hasData && (
-          <>
-            <Button variant="outline" onClick={onShare} className={btnCls}>
-              {shareState === 'copied'
-                ? <><Check className="text-ld-accent" /> Link copied</>
-                : <><Share2 className={iconCls} /> Share</>}
-            </Button>
-            <ExportMenu onJson={onExport} onImage={onImage} onCopyImage={onCopyImage} onPdf={onPdf} />
-          </>
-        )}
+          <Button variant="outline" asChild className={btnCls}>
+            <Link to="/compare">
+              <GitCompareArrows className={iconCls} />
+              Compare Mode
+            </Link>
+          </Button>
 
-        <Button variant="outline" asChild className={btnCls}>
-          <Link to="/compare">
-            <GitCompareArrows className={iconCls} />
-            Compare Mode
-          </Link>
-        </Button>
-
-        <Button variant="outline" onClick={onAuthModal} className={btnCls}>
-          <Lock className={iconCls} />
-          Locked Page?
-        </Button>
-
-      </div>
-    </div>
+          <Button variant="outline" onClick={onAuthModal} className={btnCls}>
+            <Lock className={iconCls} />
+            Locked Page?
+          </Button>
+        </div>
+      }
+    />
   );
 }

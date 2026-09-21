@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Spinner } from '@/shared/ui/spinner';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Terminal, CheckCircle2, XCircle } from 'lucide-react';
+import { Dial } from '@/shared/ui/instrument';
 import { useAuthStore } from '@/features/auth';
 import { apiClient } from '@/shared/api/client';
 
@@ -36,17 +36,26 @@ export function CliAuthPage() {
   }, [token, code, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ld-bg-2 px-4">
+    <div className="ps-grid-field-lg min-h-screen flex items-center justify-center bg-ld-bg-2 px-4">
       <div className="flex flex-col items-center gap-[20px] max-w-[380px] w-full text-center">
 
-        <div className="w-[56px] h-[56px] rounded-[16px] bg-ld-surface border border-ld-border flex items-center justify-center shadow-ld-shadow-card">
-          {state === 'done'
-            ? <CheckCircle2 className="w-[26px] h-[26px] text-ld-accent" />
-            : state === 'error'
-            ? <XCircle className="w-[26px] h-[26px]" style={{ color: 'var(--ld-rose)' }} />
-            : <Terminal className="w-[26px] h-[26px] text-ld-accent" />
+        {/* The same dial the rest of the product reads scores on, standing in for a
+            spinner: while the code is in flight its needle sweeps, and it stops on the
+            outcome. One object for all three states, rather than an icon swap. */}
+        <Dial
+          value={null}
+          size="md"
+          tone={state === 'error' ? 'poor' : 'accent'}
+          pending={state === 'sending'}
+          decorative
+          glyph={
+            state === 'done'
+              ? <CheckCircle2 className="w-[24px] h-[24px] text-ld-accent" />
+              : state === 'error'
+              ? <XCircle className="w-[24px] h-[24px] text-ld-rose" />
+              : <Terminal className="w-[24px] h-[24px] text-ld-accent" />
           }
-        </div>
+        />
 
         {state === 'sending' && (
           <>
@@ -58,7 +67,6 @@ export function CliAuthPage() {
                   : 'Sending credentials to your terminal.'}
               </p>
             </div>
-            <Spinner size="lg" />
           </>
         )}
 

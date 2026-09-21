@@ -15,6 +15,7 @@ import { useAnalysisStore } from '@/features/analyzer';
 import type { HistoryTab, StatusFilter, SortKey, SortOrder } from '@/features/history';
 import { HistoryTabBar } from '@/features/history';
 import { HistoryDeepDiveTable } from '@/features/history';
+import { RunTape } from '@/features/history';
 import { HistoryEmptyState } from '@/features/history';
 import { HistoryWebsitesOverview } from '@/widgets/history-websites-overview';
 import { QueryErrorPanel } from '@/shared/ui/state-panel';
@@ -121,6 +122,11 @@ export function HistoryPage() {
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-[22px]"
           >
+            {/* What has been measured lately, before any one site is opened — the
+                question you actually arrive with. Draws nothing when the window is
+                empty, and never replaces the per-site cards below it. */}
+            {!url && allEntries.length > 0 && <RunTape entries={allEntries} />}
+
             {!url ? (
               <HistoryWebsitesOverview
                 allEntries={allEntries}

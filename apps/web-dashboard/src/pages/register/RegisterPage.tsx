@@ -3,8 +3,8 @@ import type { AuthResponse } from '@perfscope/shared';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { GoogleButton, googleAuthEnabled } from '@/features/auth';
-import { motion } from 'framer-motion';
-import { Activity, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
+import { AuthCard } from '@/shared/ui/auth-card';
 import { useAuthStore } from '@/features/auth';
 import { apiClient } from '@/shared/api/client';
 import { Input } from '@/shared/ui/input';
@@ -57,32 +57,8 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-ps-page">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full blur-[130px] bg-[image:var(--ld-blob-tl)]" />
-      <div className="pointer-events-none absolute right-0 top-0 w-[350px] h-[350px] rounded-full blur-[120px] bg-[image:var(--ld-blob-br)]" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="ps-panel relative z-10 flex flex-col gap-6 p-8 w-full max-w-[400px]"
-      >
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-2.5">
-          <Link to="/">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-[image:var(--ld-grad)] shadow-glow-accent-lg">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-          </Link>
-          <div className="text-center">
-            <h1 className="text-xl font-extrabold tracking-tight leading-none font-mono">
-              <span className="text-ps-heading">Perf</span>
-              <span className="ps-gradient-text">Scope</span>
-            </h1>
-            <p className="text-xs mt-1 text-ps-muted">Create a new account</p>
-          </div>
-        </div>
-
+    // The shared signed-out shell — see LoginPage: this page carried its own copy.
+    <AuthCard title="Create an account" subtitle="Create a new account">
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
           {/* Name */}
@@ -168,7 +144,6 @@ export function RegisterPage() {
             <GoogleButton onSuccess={onGoogleSuccess} onError={(msg) => setServerErr(msg)} />
           </>
         )}
-      </motion.div>
-    </div>
+    </AuthCard>
   );
 }

@@ -1,12 +1,17 @@
-import { LayoutGrid, Activity, AlertTriangle, Gauge } from 'lucide-react';
 import type { OverviewTotals } from '@perfscope/shared';
-import { StatCard } from '@/shared/ui/stat-card';
+import { scoreBand } from '@/entities/analysis';
+import { InstrumentBand, Readout } from '@/shared/ui/instrument';
 
 /**
- * The four numbers worth knowing before deciding what to do next.
+ * The account's headline reading, and the three counts that qualify it.
  *
- * `avgScore` and `needsAttention` are computed by the same backend helper the websites
- * summary strip uses, so the two screens cannot disagree about what a site scores.
+ * This was four identical stat cards — the same box, the same tile, the same type size,
+ * four across — which made the average score of every site the reader owns look exactly
+ * as important as how many audits happened to land in the window. It is not: it is the
+ * number the page exists to report, and the other three are its context.
+ *
+ * `avgScore` and `needsAttention` still come from the same backend helper the websites
+ * summary uses, so the two screens cannot disagree about what a site scores.
  */
 export function TotalsStrip({ totals, days, label }: {
   totals: OverviewTotals;
@@ -15,37 +20,48 @@ export function TotalsStrip({ totals, days, label }: {
    *  picked as two dates has no "N days" name worth showing beside a count. */
   label?: string;
 }) {
-  // Two across on a phone, not one. Four full-width cards carrying one number each were
-  // most of a screen of scrolling before the page said anything; paired, the whole strip
-  // is a glance and the numbers are still large enough to read.
+  const windowLabel = label ?? `${days} days`;
+  const measured = totals.audited > 0;
+
   return (
-    <div className="grid grid-cols-4 gap-[14px] mb-[26px] max-[1000px]:grid-cols-2">
-      <StatCard
-        label="Sites tracked"
-        value={totals.sites}
-        icon={<LayoutGrid className="w-5 h-5" />}
-      />
-      <StatCard
-        label={totals.audited ? `Avg score · ${totals.audited} audited` : 'Avg score'}
-        value={totals.audited ? totals.avgScore : '—'}
-        icon={<Gauge className="w-5 h-5" />}
-      />
-      <StatCard
-        // Named after the window on screen. "Audits this week" beside a 90-day range is a
-        // label that quietly contradicts the control the reader just used.
-        // Named after the window the picker shows, whatever shape it has — "7 days" for a
-        // preset, "3 Aug – 19 Aug" for a range. The old "Audits this week" special case went
-        // with the three-button control: it read well and stopped being true the moment a
-        // window could end anywhere but today.
-        label={`Audits · ${label ?? `${days} days`}`}
+    <InstrumentBand
+      className="mb-[26px]"
+      reading={{
+        value: measured ? totals.avgScore : null,
+        tone: measured ? scoreBand(totals.avgScore) : 'neutral',
+        label: 'Avg score',
+        caption: measured
+          ? `across ${totals.audited} audited ${totals.audited === 1 ? 'site' : 'sites'}`
+          : 'nothing audited yet',
+        ariaLabel: measured
+          ? `Average score ${totals.avgScore} out of 100`
+          : 'No site audited yet',
+      }}
+    >
+      <Readout label="Sites tracked" value={totals.sites} tone="accent" tint />
+      <Readout
+        // Named after the window on screen — "Audits this week" beside a 90-day range is
+        // a label that quietly contradicts the control the reader just used.
+        label="Audits"
         value={totals.auditsInWindow}
-        icon={<Activity className="w-5 h-5" />}
+        sub={windowLabel}
+        // Teal, not emerald: it is a different subject from the sites beside it, and three
+        // readings in one colour is the flatness this band was meant to fix.
+        tone="teal"
+        tint
       />
-      <StatCard
-        label="Sites below 50"
+      <Readout
+        label="Below 50"
         value={totals.needsAttention}
-        icon={<AlertTriangle className="w-5 h-5" />}
+        // Only tinted when there is something to be alarmed about: a rose field over a
+        // zero is an alarm that cries every morning.
+        tone={totals.needsAttention > 0 ? 'poor' : 'neutral'}
+        tint={totals.needsAttention > 0}
+        sub={totals.sites ? `of ${totals.sites} tracked` : undefined}
+        // A share of the account, not a bare count: two failing sites out of three is a
+        // different morning from two out of forty.
+        fill={totals.sites ? totals.needsAttention / totals.sites : 0}
       />
-    </div>
+    </InstrumentBand>
   );
 }

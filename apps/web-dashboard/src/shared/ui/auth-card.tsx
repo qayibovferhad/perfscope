@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
+import { Ruler } from '@/shared/ui/instrument';
 
 /**
  * The centred card the signed-out pages share.
@@ -19,7 +20,10 @@ export function AuthCard({ title, subtitle, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-ps-page">
+    // The lattice runs behind the whole screen here rather than behind one block: there
+    // is no page column to stand a field in, and a sign-in screen is the first thing
+    // anybody sees of the product — it may as well be measured paper.
+    <div className="ps-grid-field-lg min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-ps-page">
       <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full blur-[130px] bg-[image:var(--ld-blob-tl)]" />
       <div className="pointer-events-none absolute right-0 top-0 w-[350px] h-[350px] rounded-full blur-[120px] bg-[image:var(--ld-blob-br)]" />
 
@@ -40,7 +44,8 @@ export function AuthCard({ title, subtitle, children }: {
               <span className="text-ps-heading">Perf</span>
               <span className="ps-gradient-text">Scope</span>
             </h1>
-            <p className="text-xs mt-1 text-ps-muted">{subtitle}</p>
+            <Ruler className="mt-[10px] mb-[8px] w-[120px] mx-auto [mask-image:linear-gradient(90deg,transparent,#000_35%,#000_65%,transparent)]" />
+            <p className="text-xs text-ps-muted">{subtitle}</p>
           </div>
         </div>
 

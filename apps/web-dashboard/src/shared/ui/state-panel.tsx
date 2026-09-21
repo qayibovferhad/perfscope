@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/button';
+import { Dial, InstrumentField } from '@/shared/ui/instrument';
 
 export type StatePanelVariant = 'empty' | 'error';
 
@@ -48,41 +49,56 @@ export function StatePanel({
     );
   }
 
+  // ── Error ──────────────────────────────────────────────────────────────────
+  // Unchanged, and deliberately: an error is centred, tight and urgent. The empty state
+  // below is the opposite kind of screen — it is where somebody *starts*, and it used to
+  // be a small centred box adrift in a page of nothing, which is the single most
+  // template-looking screen in the product.
+  if (isError) {
+    return (
+      <div
+        className={cn(
+          'flex flex-col items-center justify-center text-center rounded-[16px] px-[22px] py-[38px]',
+          'border border-ld-border bg-ld-surface',
+          className,
+        )}
+      >
+        {shownIcon && (
+          <div className="w-12 h-12 rounded-[14px] grid place-items-center mb-[14px] border border-ld-border bg-ld-surface-2 text-ld-rose">
+            {shownIcon}
+          </div>
+        )}
+        <p className="text-[15px] font-semibold mb-[5px] text-ld-rose">{title}</p>
+        {description && (
+          <p className="text-[13px] text-ld-text-2 max-w-[46ch] leading-relaxed">{description}</p>
+        )}
+        {action && <div className="mt-[18px]">{action}</div>}
+      </div>
+    );
+  }
+
+  // ── Empty ──────────────────────────────────────────────────────────────────
+  // An instrument with nothing on it yet: the page's own field, and a dial whose needle
+  // has never moved. The caller's icon sits inside the dial rather than in a tile, so the
+  // blank state is recognisably the same object that will hold the reading later.
   return (
-    <div
-      className={cn(
-        // 52px of padding around a 14px title read as a large empty box with something
-        // small in the middle of it. The panel and its contents are in proportion now.
-        'flex flex-col items-center justify-center text-center rounded-[16px] px-[22px] py-[38px]',
-        'border border-ld-border bg-ld-surface',
-        className,
-      )}
-    >
-      {shownIcon && (
-        <div
-          className={cn(
-            'w-12 h-12 rounded-[14px] grid place-items-center mb-[14px] border',
-            // --ld-rose is a different hue per theme, so the tint has to come from tokens
-            // rather than a hardcoded rgba — hence a bordered tile instead of a wash.
-            isError
-              ? 'border-ld-border bg-ld-surface-2 text-ld-rose'
-              : 'border-ld-accent-line bg-ld-accent-soft text-ld-accent',
+    <InstrumentField className={cn('px-[30px] py-[34px] max-sm:px-[20px]', className)}>
+      <div className="flex items-center gap-[28px] max-sm:flex-col max-sm:text-center max-sm:gap-[18px]">
+        {/* `md`, not `lg`: half these panels sit in a page's narrow column, and a 116px
+            dial there left the sentence beside it breaking every four words. */}
+        <Dial value={null} size="md" tone="neutral" decorative glyph={shownIcon} />
+
+        <div className="min-w-0">
+          <p className="text-[17px] font-bold tracking-[-0.01em] text-ld-text">{title}</p>
+          {description && (
+            <p className="text-[13.5px] text-ld-text-2 max-w-[54ch] leading-relaxed mt-[7px]">
+              {description}
+            </p>
           )}
-        >
-          {shownIcon}
+          {action && <div className="mt-[18px] flex max-sm:justify-center">{action}</div>}
         </div>
-      )}
-
-      <p className={cn('text-[15px] font-semibold mb-[5px]', isError ? 'text-ld-rose' : 'text-ld-text')}>
-        {title}
-      </p>
-
-      {description && (
-        <p className="text-[13px] text-ld-text-2 max-w-[46ch] leading-relaxed">{description}</p>
-      )}
-
-      {action && <div className="mt-[18px]">{action}</div>}
-    </div>
+      </div>
+    </InstrumentField>
   );
 }
 

@@ -3,6 +3,7 @@ import { CompareSection } from './CompareSection';
 import { SIDE_TEXT, sideOf } from './sides';
 import type { CoreWebVitals } from '@/entities/analysis';
 import { fmtMs, fmtCls } from '@/shared/lib/format';
+import { Dial } from '@/shared/ui/instrument';
 
 /**
  * Everything this widget actually reads off a side — narrower than the full
@@ -16,8 +17,6 @@ export interface ScoreboardSide {
   metrics: Pick<CoreWebVitals, 'lcp' | 'fcp' | 'tbt' | 'si' | 'cls'>;
 }
 
-const CIRC = 2 * Math.PI * 72; // r=72 → ≈ 452.4
-
 const METRICS: { key: keyof ScoreboardSide['metrics']; abbr: string; label: string; fmt: (v: number) => string }[] = [
   { key: 'lcp', abbr: 'LCP', label: 'Largest Contentful Paint', fmt: fmtMs  },
   { key: 'fcp', abbr: 'FCP', label: 'First Contentful Paint',   fmt: fmtMs  },
@@ -28,30 +27,24 @@ const METRICS: { key: keyof ScoreboardSide['metrics']; abbr: string; label: stri
 
 // ─── Score gauge ──────────────────────────────────────────────────────────────
 
+/**
+ * The side's score, on the product's dial.
+ *
+ * It was a closed ring here and a 270° dial everywhere else, which made the one screen
+ * that puts two scores next to each other the screen where a score looked like a
+ * different kind of object. The side colours carry the distinction instead — emerald for
+ * yours, amber for theirs — which is the distinction this page is actually about.
+ */
 function Gauge({ score, side }: { score: number; side: 'you' | 'rival' }) {
-  const offset = CIRC * (1 - score / 100);
-  const isYou  = side === 'you';
+  const isYou = side === 'you';
   return (
-    <div className="relative w-[168px] h-[168px] mx-auto mb-[14px]">
-      <svg className="-rotate-90 w-[168px] h-[168px]" viewBox="0 0 168 168">
-        <circle cx="84" cy="84" r="72" fill="none" strokeWidth="11" className="stroke-ld-border" />
-        <circle
-          cx="84" cy="84" r="72" fill="none"
-          strokeWidth="11" strokeLinecap="round"
-          strokeDasharray={CIRC}
-          strokeDashoffset={offset}
-          className={[
-            'transition-[stroke-dashoffset] duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
-            isYou
-              ? 'stroke-ld-accent drop-shadow-[0_0_8px_var(--ld-accent-soft)]'
-              : 'stroke-ld-amber  drop-shadow-[0_0_8px_var(--ld-amber-soft)]',
-          ].join(' ')}
-        />
-      </svg>
-      <div className={`absolute inset-0 grid place-items-center font-mono text-[50px] font-semibold tracking-[-0.03em]
-        ${SIDE_TEXT[sideOf(isYou)]}`}>
-        {score}
-      </div>
+    <div className="w-[168px] mx-auto mb-[14px]">
+      <Dial
+        value={score}
+        size="xl"
+        tone={isYou ? 'accent' : 'warn'}
+        label={`${isYou ? 'Your' : 'Their'} performance score ${score} out of 100`}
+      />
     </div>
   );
 }
