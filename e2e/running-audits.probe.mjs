@@ -17,7 +17,7 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  WEB_URL, registerUser, cleanupUser, launchAuthedBrowser, waitForServers, sleep, bodyText,
+  WEB_URL, registerUser, cleanupUser, launchAuthedBrowser, waitForServers, sleep,
 } from './helpers.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -147,7 +147,9 @@ try {
   await page.mouse.click(cardBox.x, cardBox.y);
   await sleep(1800);
   check(new URL(page.url()).pathname === '/app', 'clicking the card goes to the analyzer');
-  check(/opportunities & diagnostics/i.test(await bodyText(page)), 'and the report is there rather than an empty form');
+  // The marker, not the prose: a page still measuring lists the sections it is about to
+  // draw, and "Opportunities & diagnostics" is one of their names.
+  check(!!(await page.$('[data-analysis-report="ready"]')), 'and the report is there rather than an empty form');
 
   console.log(`\n  (a second run, to check the pill and the clock while it is live)`);
   await page.evaluate(() => {
@@ -192,7 +194,7 @@ try {
     await sleep(500);
   }
   check(cleared, 'the pill disappears when the audit finishes');
-  check(/opportunities & diagnostics/i.test(await bodyText(page)), 'while the report lands as usual');
+  check(!!(await page.$('[data-analysis-report="ready"]')), 'while the report lands as usual');
 
   // ─── Stop, pressed the way a person presses it ─────────────────────────────
   // With a *real pointer*, and watching the wire. Both matter, and both were missing for

@@ -16,11 +16,25 @@ import { cn } from '@/shared/lib/utils';
  * not, and there is nowhere here to express the second.
  */
 
+/**
+ * Two caps, not one: the second is for the screens where the first leaves dead space.
+ *
+ * 1180px is the measure nearly every page is built for. On a 1920px monitor, though, the
+ * shell is a 288px sidebar, this column, and the advisor rail pinned to the right edge —
+ * so the cap left a couple of hundred pixels of nothing between the content and the rail,
+ * which reads as the page having stopped early rather than as a margin. At `2xl` the
+ * column takes some of that back; the advisor is also open by default at that size, and
+ * the two together close the band.
+ *
+ * Prose is unaffected: page descriptions and body copy carry their own `max-w-*` in
+ * characters, so a wider column widens tables, charts and panels — the things that were
+ * being squeezed — and not the line length anybody reads.
+ */
 const WIDTHS = {
   /** Lists, dashboards, reports — nearly everything. */
-  default: 'w-[min(1180px,100%)]',
+  default: 'w-[min(1180px,100%)] 2xl:w-[min(1320px,100%)]',
   /** Two audits side by side, where the columns need the room. */
-  wide:    'w-[min(1400px,100%)]',
+  wide:    'w-[min(1400px,100%)] 2xl:w-[min(1560px,100%)]',
   /**
    * Forms and prose, where a full-width line is too long to read comfortably.
    *
@@ -29,7 +43,7 @@ const WIDTHS = {
    * whole thing reads fine in isolation but shifts the content sideways the moment you
    * navigate to it, which is the problem this file exists to remove.
    */
-  narrow:  'w-[min(1180px,100%)]',
+  narrow:  'w-[min(1180px,100%)] 2xl:w-[min(1320px,100%)]',
 } as const;
 
 /** Applied to the children, not the column — see `narrow` above. */

@@ -9,6 +9,7 @@
  *   cd apps/backend && npx tsx probes/ui-shots.probe.mts [route ...]
  *     OUT=/some/dir   where the PNGs land (default: a temp dir, printed at the end)
  *     MOBILE=1        412px instead of 1350px
+ *     WIDTH=1920      any desktop width (the page column has a wider cap at 2xl)
  *     FULL=1          full-page rather than the first viewport
  */
 import puppeteer from 'puppeteer';
@@ -25,6 +26,7 @@ import { HistoryModel } from '../src/models/History.model.js';
 
 const WEB_URL = process.env['WEB_URL'] ?? 'http://localhost:5173';
 const MOBILE = process.env['MOBILE'] === '1';
+const WIDTH = Number(process.env['WIDTH'] ?? 1350);
 const FULL = process.env['FULL'] === '1';
 
 const OUT = process.env['OUT'] ?? mkdtempSync(join(tmpdir(), 'perfscope-shots-'));
@@ -83,7 +85,7 @@ const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
 const page = await browser.newPage();
 await page.setViewport(MOBILE
   ? { width: 412, height: 823, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
-  : { width: 1350, height: 940, deviceScaleFactor: 1 });
+  : { width: WIDTH, height: 940, deviceScaleFactor: 1 });
 
 await page.evaluateOnNewDocument(
   (state) => {
@@ -100,7 +102,7 @@ try {
     // panels after its data lands — a shot taken too early is a picture of a spinner.
     await new Promise((resolve) => setTimeout(resolve, route === '/app' ? 6000 : 2500));
 
-    const name = `${route.replace(/\//g, '') || 'root'}${MOBILE ? '.mobile' : ''}.png`;
+    const name = `${route.replace(/\//g, '') || 'root'}${MOBILE ? '.mobile' : WIDTH === 1350 ? '' : `.${WIDTH}`}.png`;
     await page.screenshot({ path: join(OUT, name) as `${string}.png`, fullPage: FULL });
     console.log(`  ${route.padEnd(14)} → ${name}`);
   }

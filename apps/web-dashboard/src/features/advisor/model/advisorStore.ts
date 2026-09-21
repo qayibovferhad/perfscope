@@ -27,14 +27,18 @@ interface AdvisorState {
 }
 
 /**
- * Open by default only where the panel is free.
+ * Open by default only where the panel is genuinely free.
  *
- * At 1536px and up it occupies space the layout was not using — `<Page>` caps content at
- * 1180px — so being open costs the page nothing. Below that it overlays, and landing on a
- * laptop with something covering the right-hand third is not a good first impression. One
- * click either way, and the choice sticks from then on.
+ * It used to be 1536px, on the reasoning that `<Page>` caps content at 1180 — but the
+ * sidebar is 288 and the open panel is 300, so at exactly 1536 the column was squeezed to
+ * 938px: *narrower* than the same page on a 1440px laptop. Crossing a breakpoint must not
+ * make the content smaller.
+ *
+ * 1800px is where all three fit at full width (288 + 1320 + 300 = 1908 at 1920, and the
+ * column simply gives a little back between the two). Below that the panel still opens on
+ * one click, over the page, and the choice sticks from then on.
  */
-const ROOMY = '(min-width: 1536px)';
+const ROOMY = '(min-width: 1800px)';
 
 export const useAdvisorStore = create<AdvisorState>()(
   persist(

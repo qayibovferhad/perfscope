@@ -97,6 +97,11 @@ export function AnalyzerResultsPanel({ data, aiPending, askEnabled, durationMs }
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="space-y-8"
+      // The marker a probe waits on. Waiting on prose is how one ends up matching the
+      // *running* page instead: the pending state now names the sections still to come
+      // ("Opportunities & diagnostics" among them), and a text poll took that for the
+      // finished report and measured a screen of skeletons.
+      data-analysis-report="ready"
     >
       {/* --ld-* rather than the leftover shadcn tokens: those follow the `dark` class, not
           `data-theme`, so this line was light-on-light wherever the two disagree. */}

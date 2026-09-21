@@ -163,10 +163,10 @@ try {
 
   // ─── A real report ─────────────────────────────────────────────────────────
   await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle0' });
-  for (let i = 0; i < 300; i++) {
-    if (/opportunities & diagnostics/i.test(await bodyText(page))) break;
-    await sleep(500);
-  }
+  // The report's own marker, not its prose: while a run is in flight the page names the
+  // sections it is still measuring, and a text poll matched that and went on to measure
+  // skeletons.
+  await page.waitForSelector('[data-analysis-report="ready"]', { timeout: 150_000 }).catch(() => {});
   await sleep(2500);
 
   const bleeds = await bleeding(page);

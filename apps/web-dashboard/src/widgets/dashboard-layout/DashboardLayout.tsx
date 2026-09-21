@@ -106,7 +106,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <main
             ref={mainRef}
             data-print="root"
-            className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] 2xl:pb-0"
+            // `pr` for the same reason as `pb`: below 2xl the advisor is an overlay, and a
+            // 46px rail pinned to the right edge was sitting on top of the last 36px of
+            // every page's column — measured at 1440px, where a panel's right border ran
+            // under it. The rail's width, so the content stops exactly where it starts.
+            className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] max-2xl:pr-[46px] max-md:pr-0 2xl:pb-0"
           >{children}</main>
           {/* Its own column rather than an overlay: a panel that sits on top of the page
               competes with it, and every page caps its width well short of the viewport. */}
