@@ -22,7 +22,10 @@ export function useAdvice(scope: AdviceScope = 'overview', url?: string) {
     // redraw the same words.
     staleTime: 10 * 60_000,
     refetchOnWindowFocus: false,
-    // Advice is the first thing to give up: never let it retry into a page that is fine.
-    retry: false,
+    // One retry, not none: the server now says 503 when Gemini itself failed (a timeout,
+    // a spent quota) rather than answering null, and the first of those is usually over by
+    // the time a second request lands. Still never more — advice is the first thing to
+    // give up, and a page that is otherwise fine must not fill with retries.
+    retry: 1,
   });
 }

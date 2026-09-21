@@ -15,6 +15,7 @@ import {
   type TargetMetric, type TargetProgress, type ForecastMetric,
 } from '@perfscope/shared';
 import { log } from '../lib/logger.js';
+import { AppError } from '../lib/errors.js';
 
 const FORECAST_METRICS: ForecastMetric[] = ['performance', 'lcp', 'tbt', 'cls'];
 
@@ -283,6 +284,10 @@ export async function getAdvice(
   const context = await buildContext(userId, scope, target);
   return AiService.getAdvice(context).catch((err: unknown) => {
     log.error('AI', 'advice failed', { err });
-    return null;
+    // Not null. `null` is this endpoint's word for "the advisor has nothing to say" — an
+    // answer the panel responds to by removing itself — and a Gemini timeout or a spent
+    // quota is not that. Answering null made a configured advisor vanish from the shell
+    // until something happened to refetch it, with nothing on screen to retry.
+    throw new AppError(503, 'The advisor could not be reached. It will be back — try again.');
   });
 }

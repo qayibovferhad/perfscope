@@ -27,12 +27,16 @@ export function AdvisorPanel() {
 
   // The subject comes from whichever page is mounted (see `useAdviceContext`), not from
   // matching the route here — the panel has no business knowing the route table.
-  const { data: advice, isPending, isFetching, refetch } =
+  const { data: advice, isPending, isFetching, isError, refetch } =
     useAdvice(context ? 'site' : 'overview', context?.url);
 
   // Nothing to show and nothing coming: no key configured, or the model had nothing to
   // say. Take the whole column back rather than leaving an empty frame.
-  if (!isPending && !advice) return null;
+  //
+  // A *failure* is not that, and must not look like it: the advisor disappearing from the
+  // shell because Gemini timed out is indistinguishable from the feature not existing, and
+  // there is nothing left on screen to retry from. The rail stays, and the panel says so.
+  if (!isPending && !advice && !isError) return null;
 
   // Both states stay mounted, cross-fading inside a width-animated shell — swapping
   // <button> for <aside> outright (the old code) is an instant DOM replacement with
@@ -80,6 +84,12 @@ export function AdvisorPanel() {
               a time, and a number would imply a queue. */}
           {!isPending && advice && (
             <span className="absolute -top-[3px] -right-[3px] w-[9px] h-[9px] rounded-full bg-ld-accent ring-2 ring-[var(--ld-surface)]" />
+          )}
+          {isError && (
+            <span
+              className="absolute -top-[3px] -right-[3px] w-[9px] h-[9px] rounded-full bg-ld-amber ring-2 ring-[var(--ld-surface)]"
+              title="The advisor could not be reached"
+            />
           )}
         </span>
         <span className="text-[11px] font-semibold tracking-[.14em] uppercase text-ld-accent [writing-mode:vertical-rl]">
@@ -156,6 +166,23 @@ export function AdvisorPanel() {
                 {context ? `About ${context.label}.` : 'Across every site you track.'}
               </p>
             </>
+          ) : isError ? (
+            // Quiet, and inside the panel: a toast for this would interrupt a page the
+            // reader came for, and a page-level error state would claim the dashboard is
+            // broken when one optional panel is.
+            <div className="flex flex-col items-start gap-[10px]">
+              <p className="text-[13px] font-semibold text-ld-text leading-snug">
+                The advisor could not be reached
+              </p>
+              <p className="text-[12px] text-ld-text-2 leading-relaxed">
+                Gemini did not answer this time — a timeout, or the key's quota for the
+                moment. Your audits are unaffected.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+                <RefreshCw className={cn('w-[13px] h-[13px]', isFetching && 'animate-spin')} />
+                {isFetching ? 'Asking…' : 'Try again'}
+              </Button>
+            </div>
           ) : null}
         </div>
       </motion.div>
