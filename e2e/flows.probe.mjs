@@ -125,9 +125,12 @@ try {
   await page.waitForSelector('[data-flow-mode="timespan"]', { timeout: 180_000 }).catch(() => {});
   const report = await bodyText(page);
 
-  check(/Page load/.test(report), 'the report shows the cold load');
-  check(/Interaction/.test(report), 'the interaction it was written for');
-  check(/Final state/.test(report), 'and the state it left behind');
+  // Case-insensitive: the report draws each step's mode as a label on the journey track,
+  // and the track sets it in small caps — "PAGE LOAD" is the same claim as "Page load",
+  // and asserting on the casing would be asserting on a stylesheet.
+  check(/page load/i.test(report), 'the report shows the cold load');
+  check(/interaction/i.test(report), 'the interaction it was written for');
+  check(/final state/i.test(report), 'and the state it left behind');
 
   // ─── The number no cold audit of this page can produce ─────────────────────
   const inp = report.match(/INP\s*\n?\s*([\d.]+)\s*(ms|s)/);
