@@ -48,15 +48,23 @@ export function AdvisorPanel() {
       animate={{ width: open ? 300 : 46 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        // `relative` unconditionally: the rail and the panel below are both absolutely
-        // positioned against this element at every breakpoint, not just where the panel
-        // sits in normal flow.
-        'relative shrink-0 border-l border-ld-border bg-ld-surface overflow-hidden',
-        // In flow where there is room for the column…
-        // …and over the page where there is not. Hidden entirely on a phone, where three
-        // columns do not fit and this is not what anyone came for.
-        'max-2xl:fixed max-2xl:right-0 max-2xl:top-0 max-2xl:bottom-0 max-2xl:z-40 max-2xl:shadow-2xl',
-        'max-md:hidden',
+        // One positioning mode at every width, pinned to the viewport's right edge.
+        //
+        // It used to take a column in the flex row at 2xl and up, and overlay below that.
+        // Two modes meant the advisor's visibility depended on how that row resolved, and
+        // on a wide desktop it could end up off the edge of an `overflow-hidden` ancestor
+        // — reported as "there is nothing on the right", and reproducible only by making
+        // the window *smaller*, which switched it to the overlay that worked. A panel
+        // whose job is to always be reachable may not depend on a layout negotiation.
+        //
+        // `main` reserves the rail's width (see DashboardLayout), so the page's content
+        // still stops where the rail starts.
+        'fixed right-0 top-0 bottom-0 z-40 shadow-2xl',
+        'border-l border-ld-border bg-ld-surface overflow-hidden',
+        // Below md the rail goes — 46px of a phone screen spent on a handle is not a trade
+        // worth making — but the panel still opens over the page from the command palette
+        // or a link, so only the closed state is hidden.
+        !open && 'max-md:hidden',
       )}
       aria-label="Advisor"
     >

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Menu, Sparkles } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { AdvisorPanel } from '@/features/advisor';
+import { AdvisorPanel, useAdvisorStore } from '@/features/advisor';
 import { NotificationBell } from '@/features/notifications';
 import { RunningAudits } from './ui/RunningAudits';
 import { useFinishedAuditToast } from './model/useFinishedAuditToast';
@@ -12,6 +12,10 @@ import { StorageBanner } from './ui/StorageBanner';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** What the advisor is currently taking on the right, so the page can stop before it.
+   *  Only where there is room: below 2xl an opened panel deliberately overlays the page
+   *  rather than squeezing it, which is the trade a laptop wants. */
+  const advisorOpen = useAdvisorStore(s => s.open);
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
 
@@ -89,6 +93,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             {/* The sidebar's version of this is inside the drawer, which on a phone is
                 closed — so the topbar carries its own, compact. */}
             <RunningAudits variant="compact" />
+            {/* The advisor's entry point on a phone. Below `md` the panel has no rail —
+                46px of a phone screen spent on a handle is not a trade worth making — so
+                without this the feature was simply unreachable at narrow widths, which is
+                also what a laptop at 150% browser zoom is. */}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => useAdvisorStore.getState().setOpen(true)}
+              aria-label="AI advisor"
+            >
+              <Sparkles className="w-5 h-5 text-ld-accent" />
+            </Button>
             <NotificationBell />
           </span>
         </div>
@@ -106,11 +122,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <main
             ref={mainRef}
             data-print="root"
-            // `pr` for the same reason as `pb`: below 2xl the advisor is an overlay, and a
-            // 46px rail pinned to the right edge was sitting on top of the last 36px of
-            // every page's column — measured at 1440px, where a panel's right border ran
-            // under it. The rail's width, so the content stops exactly where it starts.
-            className="flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] max-2xl:pr-[46px] max-md:pr-0 2xl:pb-0"
+            // `pr` for the same reason as `pb`: the advisor is an overlay pinned to the
+            // right edge at every width now, and a 46px rail was sitting on top of the
+            // last 36px of every page's column — measured at 1440px, where a panel's
+            // right border ran under it. The rail's width, so the content stops exactly
+            // where it starts; below md there is no rail, so the padding goes too.
+            className={`flex-1 overflow-y-auto [scrollbar-gutter:stable] max-2xl:pb-[76px] md:pr-[46px] 2xl:pb-0 transition-[padding] duration-300 ${
+              advisorOpen ? '2xl:pr-[300px]' : ''
+            }`}
           >{children}</main>
           {/* Its own column rather than an overlay: a panel that sits on top of the page
               competes with it, and every page caps its width well short of the viewport. */}
