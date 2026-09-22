@@ -59,6 +59,9 @@ export function FlowsPage() {
   const openNew = () => { setEditing(null); setEditorOpen(true); };
   const openEdit = (flow: FlowDefinition) => { setEditing(flow); setEditorOpen(true); };
 
+  /** The flow the run section below the list is about. */
+  const selectedFlow = flows.find(f => f.id === historyOf) ?? null;
+
   return (
     <Page>
       <PageHeader
@@ -83,19 +86,23 @@ export function FlowsPage() {
         />
       )}
 
-      <div
-        className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-[18px] max-lg:grid-cols-1 ${
-          !isPending && !isError && flows.length === 0 ? 'hidden' : ''
-        }`}
-      >
-        {/* ─── The flows ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-[12px]">
+      {/* The flows, then what the last run of one said — down the page, not across it.
+          The report used to live in a 1.3fr column beside the list, which squeezed a
+          journey track and three panels of measurements into roughly four hundred pixels
+          while the list beside it had nothing to fill its own. A report is the subject
+          when there is one; it gets the width of the page. */}
+      <div className={!isPending && !isError && flows.length === 0 ? 'hidden' : 'flex flex-col gap-[12px]'}>
           {isPending && [0, 1].map(i => <Skeleton key={i} className="h-[104px] rounded-[16px]" />)}
 
           {isError && <QueryErrorPanel what="your flows" />}
 
           {flows.map(flow => (
-            <Panel key={flow.id}>
+            <Panel
+              key={flow.id}
+              // Which flow the report below belongs to. Without it the page has a list and
+              // a report and no stated relationship between them.
+              className={flow.id === historyOf ? 'border-ld-accent-line' : undefined}
+            >
               <PanelHeader
                 icon={<Footprints />}
                 title={flow.name}
@@ -114,7 +121,11 @@ export function FlowsPage() {
                 />
                 <p className="sr-only">{describeSteps(flow.steps)}</p>
 
-                <div className="flex items-center gap-[8px] flex-wrap mt-[8px]">
+                {/* One row at the width a full-page list gives it: what the flow last did
+                    on the left, what you can do about it on the right. Stacked, they left
+                    the right half of every card empty. */}
+                <div className="flex items-end justify-between gap-[14px] flex-wrap mt-[10px]">
+                <div className="flex items-center gap-[8px] flex-wrap">
                   {/* The verdict first: a card whose flow is over its interaction target is
                       the one worth opening, and "3 steps with findings" does not say that. */}
                   {flow.lastRun && flow.lastRun.missedTargets > 0 && (
@@ -144,7 +155,7 @@ export function FlowsPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-[8px] mt-[12px] flex-wrap">
+                <div className="flex items-center gap-[8px] flex-wrap shrink-0">
                   <Button
                     size="sm"
                     onClick={() => { setHistoryOf(flow.id); run.run({ flowId: flow.id }); }}
@@ -162,13 +173,22 @@ export function FlowsPage() {
                     <Trash2 className="w-[14px] h-[14px]" />
                   </Button>
                 </div>
+                </div>
               </PanelBody>
             </Panel>
           ))}
-        </div>
+      </div>
 
-        {/* ─── What the last run said ────────────────────────────────────── */}
-        <div className="flex flex-col gap-[12px]">
+      {/* ─── What the last run said, at the width it deserves ─────────────── */}
+      {(run.status !== 'idle' || (historyOf && runs.length > 0)) && (
+        <section className="flex flex-col gap-[12px] mt-[26px]">
+          <div className="flex items-center gap-[10px]">
+            <h2 className="font-mono text-[11px] tracking-[.14em] uppercase text-ld-text-3">
+              {run.status === 'running' ? 'Running' : run.status === 'done' ? 'Last run' : 'This flow'}
+              {selectedFlow ? ` · ${selectedFlow.name}` : ''}
+            </h2>
+            <span aria-hidden className="flex-1 h-px bg-ld-border" />
+          </div>
           {run.status === 'running' && (
             <Panel>
               <PanelHeader icon={<Play />} title="Running" meta={`${run.progress?.percent ?? 0}%`} />
@@ -240,16 +260,8 @@ export function FlowsPage() {
             </Panel>
           )}
 
-          {run.status === 'idle' && !historyOf && flows.length > 0 && (
-            <StatePanel
-              compact
-              icon={<Play />}
-              title="Run a flow to see its report"
-              description="Every step gets its own card — the load, each interaction, and the state it left behind."
-            />
-          )}
-        </div>
-      </div>
+        </section>
+      )}
 
       <FlowEditorModal
         open={editorOpen}

@@ -306,7 +306,9 @@ export function FlowRunReport({ run }: { run: FlowRunResult }) {
             role="tablist"
             aria-label="Steps in this run"
             onKeyDown={onKeyDown}
-            className="flex items-stretch min-w-max"
+            // `mx-auto` with `min-w-max`: a three-step flow is centred in the field, and a
+            // nine-step one simply overflows and scrolls from its start.
+            className="flex items-stretch min-w-max mx-auto"
           >
             {run.steps.map((step, i) => (
               <TrackNode
