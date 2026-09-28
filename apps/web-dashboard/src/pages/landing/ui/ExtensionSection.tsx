@@ -97,7 +97,7 @@ export function ExtensionSection() {
                         <circle cx="28" cy="28" r="23" fill="none" stroke="var(--ld-border)" strokeWidth="6"/>
                         <circle cx="28" cy="28" r="23" fill="none" stroke="var(--ld-accent)" strokeWidth="6" strokeLinecap="round" strokeDasharray="144.5" strokeDashoffset="24.5" transform="rotate(-90 28 28)"/>
                       </svg>
-                      <b className="absolute inset-0 grid place-items-center font-mono text-[18px] font-semibold text-[var(--ld-accent-2)]">83</b>
+                      <b className="absolute inset-0 grid place-items-center font-mono text-[19px] font-bold text-[var(--ld-accent-2)]">83</b>
                     </div>
                     <div className="flex flex-wrap gap-[6px]">
                       {METRIC_BADGES.map(({ t, good }) => (
@@ -105,7 +105,7 @@ export function ExtensionSection() {
                           key={t}
                           className={`font-mono text-[10.5px] px-2 py-1 rounded-[7px] font-semibold ${
                             good
-                              ? 'text-[var(--ld-accent-2)] border border-[rgba(20,192,138,.25)] bg-[var(--ld-accent-soft)]'
+                              ? 'text-[var(--ld-accent-2)] [[data-theme=light]_&]:text-ld-text border border-ld-accent-line bg-[var(--ld-accent-soft)]'
                               : 'text-[var(--ld-amber)] border border-ld-amber-line bg-ld-amber-soft'
                           }`}
                         >
@@ -134,8 +134,8 @@ export function ExtensionSection() {
                     </div>
                     <span className="font-mono text-[11px] text-[var(--ld-text-3)]">vs</span>
                     <div className="grid gap-[2px] text-center px-[6px] py-[10px] rounded-[10px] border border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]">
-                      <b className="font-mono text-[22px] font-semibold text-[var(--ld-accent-2)]">95</b>
-                      <span className="text-[10px] text-[var(--ld-text-3)]">my-store.com</span>
+                      <b className="font-mono text-[22px] font-bold text-[var(--ld-accent-2)]">95</b>
+                      <span className="text-[10px] text-[var(--ld-text-2)]">my-store.com</span>
                     </div>
                   </div>
                 </div>

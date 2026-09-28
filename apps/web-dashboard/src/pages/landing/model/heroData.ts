@@ -1,9 +1,10 @@
 export const CIRC = 326.7;
 
+/** Three things that are true of every install — nothing here depends on a plan. */
 export const TRUST_ITEMS = [
-  'No card required',
   'Open source, MIT licensed',
-  'First result in ~60s',
+  'Self-host with one Docker command',
+  'First scores in about ten seconds',
 ] as const;
 
 export const METRICS_DATA = [

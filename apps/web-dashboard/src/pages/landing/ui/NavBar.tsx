@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { BrandMark } from './BrandMark';
 
 const NAV_LINKS = [
   { href: '#how',      label: 'How it works' },
   { href: '#features', label: 'Features'     },
-  { href: '#proof',    label: 'Results'      },
+  { href: '#measure',  label: 'Measurement'  },
   { href: '#faq',      label: 'FAQ'          },
 ] as const;
 
+/**
+ * The signed-out header. Two actions, not one: everything behind the fold needs an
+ * account, so "Start audit" landing on a login form was the first thing a visitor hit.
+ * Sign in is for the person who has one; the primary action makes one.
+ */
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -23,46 +28,38 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-[60] border-b backdrop-blur-[14px] transition-colors duration-300 ${
-        scrolled ? 'border-[var(--ld-border)]' : 'border-transparent'
+      className={`fixed inset-x-0 top-0 z-[60] border-b backdrop-blur-[14px] bg-[color-mix(in_oklab,var(--ld-bg)_72%,transparent)] transition-colors duration-300 ${
+        scrolled ? 'border-ld-border' : 'border-transparent'
       }`}
-      style={{ background: 'color-mix(in oklab, var(--ld-bg) 72%, transparent)' }}
     >
       <div className="ld-wrap flex items-center justify-between h-16 gap-6">
-        {/* Brand */}
-        <a
-          href="#top"
-          className="flex items-center gap-[10px] font-bold text-[17px] tracking-[-0.02em] text-[var(--ld-text)] no-underline"
-        >
-          <span
-            className="w-[30px] h-[30px] rounded-[9px] grid place-items-center shrink-0"
-            style={{ background: 'var(--ld-grad)', boxShadow: 'var(--ld-glow)' }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-[17px] h-[17px]">
-              <path d="M3 12h3l2.5-7 4 14 3-9 2 2H21" stroke="#04130d" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
-          <span>Perf<b className="text-[var(--ld-accent-2)] font-extrabold">Scope</b></span>
+        <a href="#top" className="no-underline">
+          <BrandMark />
         </a>
 
-        {/* Nav links */}
         <nav className="hidden min-[760px]:flex gap-1 items-center">
           {NAV_LINKS.map(({ href, label }) => (
             <a
               key={href}
               href={href}
-              className="text-[14.5px] text-[var(--ld-text-2)] px-[13px] py-2 rounded-[9px] font-medium no-underline transition-all duration-200 hover:text-[var(--ld-text)] hover:bg-[var(--ld-surface-hover)]"
+              className="text-[14.5px] text-ld-text-2 px-[13px] py-2 rounded-[9px] font-medium no-underline transition-all duration-200 hover:text-ld-text hover:bg-ld-surface-hover"
             >
               {label}
             </a>
           ))}
         </nav>
 
-        {/* CTA */}
-        <Button onClick={() => navigate('/app')}>
-          Start audit
-          <ArrowRight className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" className="max-[480px]:hidden">
+            <Link to="/login">Sign in</Link>
+          </Button>
+          <Button asChild>
+            <Link to="/register">
+              Get started
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </header>
   );

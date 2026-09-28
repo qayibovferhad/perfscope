@@ -1,187 +1,151 @@
 import { useState } from 'react';
-import { Button } from '@/shared/ui/button';
 import { Segmented } from '@/shared/ui/segmented';
 import { Toggle } from '@/shared/ui/toggle';
+import type { AutomationScheduleMode } from '@perfscope/shared';
 
-type Freq = 'Daily' | 'Weekdays' | 'Weekly';
+/**
+ * The schedule, in the product's own terms.
+ *
+ * The three modes are the ones `Website.automation.scheduleMode` accepts and the cron
+ * expands; the alert card is the payload a webhook receives. The section used to offer
+ * daily/weekdays/weekly and a "daily report email" — neither exists.
+ */
+const MODES: { value: AutomationScheduleMode; label: string; line: string }[] = [
+  { value: 'single', label: 'One time',  line: 'Every route, once, at the time you pick.' },
+  { value: 'slots',  label: 'Slots',     line: 'Fixed times through the day — a morning and an evening reading.' },
+  { value: 'spread', label: 'Spread',    line: 'Spread across a window, so thirty routes are not audited at once.' },
+];
 
 const BULLET_ITEMS = [
   {
-    b: 'Your time, your timezone.',
-    txt: 'Daily, weekdays, or weekly — whatever rhythm fits your team.',
-    icon: <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    b: 'Three runs, the median kept.',
+    txt: 'A scheduled audit is always precise: three isolated loads, the middle one stored — so a nightly regression is a regression.',
+    icon: <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M4 18V9M12 18V5M20 18v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   },
   {
-    b: 'Always a comparison.',
-    txt: 'Each report diffs against yesterday, so a regression jumps out instead of hiding in a number.',
-    icon: <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 7l-3 5 3 3M19 7l3 5-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    b: 'Always against yesterday.',
+    txt: 'Each stored run is compared with the previous run of the same URL on the same device. Small moves stay quiet; real ones do not.',
+    icon: <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v18M5 7l-3 5 3 3M19 7l3 5-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   },
   {
-    b: 'Email, Slack or both.',
-    txt: 'Send it to a person or a channel. Quiet on good days, loud when a score drops.',
-    icon: <svg viewBox="0 0 24 24" fill="none"><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.7"/></svg>,
+    b: 'Slack, Discord, a webhook, or email.',
+    txt: 'A budget breach is delivered the moment it is recorded, in the shape the target expects. A later clean run clears it on its own.',
+    icon: <svg viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.7"/></svg>,
   },
 ] as const;
 
-const EMAIL_METRICS = [
-  { k: 'LCP', v: '1.1s',  d: '−0.1s', good: true  },
-  { k: 'CLS', v: '0.03',  d: 'steady', good: true  },
-  { k: 'TBT', v: '180ms', d: '+20ms',  good: false },
+const BREACH = [
+  { k: 'Performance', v: '71',    limit: 'min 80',    over: true  },
+  { k: 'LCP',         v: '3.1 s', limit: 'max 2.5 s', over: true  },
+  { k: 'CLS',         v: '0.04',  limit: 'max 0.1',   over: false },
 ] as const;
-
-const FREQS: Freq[] = ['Daily', 'Weekdays', 'Weekly'];
 
 function fmtTime(mins: number) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
-}
-
-function nextWord(freq: Freq) {
-  if (freq === 'Weekly')   return 'Monday';
-  if (freq === 'Weekdays') return 'the next weekday';
-  return 'tomorrow';
+  return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}`;
 }
 
 export function ScheduledSection() {
-  const [schedOn, setSchedOn] = useState(true);
-  const [freq, setFreq]       = useState<Freq>('Daily');
-  const [mins, setMins]       = useState(7 * 60);
+  const [enabled, setEnabled] = useState(true);
+  const [mode, setMode]       = useState<AutomationScheduleMode>('single');
+  const [mins, setMins]       = useState(3 * 60);
 
-  function stepTime(delta: number) {
-    setMins(prev => (prev + delta + 1440) % 1440);
-  }
-
-  const summaryText = schedOn
-    ? `Next report — ${nextWord(freq)} at ${fmtTime(mins)}`
-    : 'Daily report is paused';
+  const stepTime = (delta: number) => setMins(prev => (prev + delta + 1440) % 1440);
+  const current  = MODES.find(m => m.value === mode)!;
+  const summary  = !enabled
+    ? 'Schedule paused — manual audits still run'
+    : mode === 'single' ? `Next run — tomorrow at ${fmtTime(mins)}, 3 runs per route`
+    : mode === 'slots'  ? `Next run — ${fmtTime(mins)}, then again this evening`
+    :                     `Next window — opens ${fmtTime(mins)}, routes spread over an hour`;
 
   return (
-    <section className="py-[clamp(72px,11vw,140px)]" id="reports">
+    <section className="py-[clamp(72px,11vw,140px)] border-y border-ld-border bg-ld-bg-2" id="schedule">
       <div className="ld-wrap">
         <div className="grid grid-cols-1 min-[980px]:grid-cols-2 gap-[clamp(36px,6vw,76px)] items-center">
 
-          {/* Left */}
           <div className="reveal">
-            <span className="ld-eyebrow block mb-4">Set it and forget it</span>
-            <h2 className="ld-h-section text-[var(--ld-text)]">Wake up to a report.<br />Without opening a tab.</h2>
+            <span className="ld-eyebrow block mb-4">Schedule</span>
+            <h2 className="ld-h-section text-ld-text">Audited overnight.<br />Told in the morning.</h2>
             <p className="ld-lead mt-5">
-              Pick a time once. Every day, PerfScope audits your pages on its own and drops a clean summary in your inbox — what changed, what slipped, what to fix.
+              Pick the routes and a time once. PerfScope audits them on its own, files every
+              result in history, and only speaks up when a budget is missed.
             </p>
             <ul className="grid gap-[18px] mt-[30px] list-none p-0">
               {BULLET_ITEMS.map(({ icon, b, txt }) => (
                 <li key={b} className="flex gap-[14px] items-start">
-                  <span className="w-[38px] h-[38px] shrink-0 rounded-[10px] grid place-items-center border border-[var(--ld-border-strong)] bg-[var(--ld-surface-2)] text-[var(--ld-accent)]">
+                  <span className="w-[38px] h-[38px] shrink-0 rounded-[10px] grid place-items-center border border-ld-border-strong bg-ld-surface-2 text-ld-accent [&>svg]:w-[18px] [&>svg]:h-[18px]">
                     {icon}
                   </span>
-                  <div className="text-[14.5px] text-[var(--ld-text-2)] leading-[1.5]">
-                    <b className="text-[var(--ld-text)] font-semibold">{b}</b> {txt}
+                  <div className="text-[14.5px] text-ld-text-2 leading-[1.5]">
+                    <b className="text-ld-text font-semibold">{b}</b> {txt}
                   </div>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Right */}
           <div className="reveal grid gap-4">
-
-            {/* Scheduler card */}
-            <div className="rounded-[18px] border border-[var(--ld-border-strong)] bg-[var(--ld-surface)] p-[22px]" style={{ boxShadow: 'var(--ld-shadow-card)' }}>
-
-              {/* Header */}
+            {/* The schedule editor, as the automation page draws it */}
+            <div className="rounded-[18px] border border-ld-border-strong bg-ld-surface p-[22px] shadow-ld-shadow-card">
               <div className="flex items-center justify-between mb-5">
-                <span className="font-mono text-[13px] text-[var(--ld-text-2)] tracking-[.04em]">Daily report</span>
-                <Toggle enabled={schedOn} onChange={setSchedOn} label="Nightly audits (demo)" />
+                <span className="font-mono text-[13px] text-ld-text-2 tracking-[.04em]">Audit schedule · 4 routes</span>
+                <Toggle enabled={enabled} onChange={setEnabled} label="Scheduled audits (demo)" />
               </div>
 
-              {/* Frequency */}
-              <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-[var(--ld-border)]">
-                <span className="font-mono text-[11px] tracking-[.1em] text-[var(--ld-text-3)]">FREQUENCY</span>
+              <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-ld-border">
+                <span className="font-mono text-[11px] tracking-[.1em] text-ld-text-3">MODE</span>
                 <Segmented
-                  ariaLabel="Report frequency"
-                  value={freq}
-                  onChange={setFreq}
-                  options={FREQS.map(f => ({ value: f, label: f }))}
+                  ariaLabel="Schedule mode"
+                  value={mode}
+                  onChange={setMode}
+                  options={MODES.map(m => ({ value: m.value, label: m.label }))}
                 />
               </div>
+              <p className="text-[12.5px] text-ld-text-3 m-0 -mt-1 pb-3">{current.line}</p>
 
-              {/* Time */}
-              <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-[var(--ld-border)]">
-                <span className="font-mono text-[11px] tracking-[.1em] text-[var(--ld-text-3)]">TIME</span>
+              <div className="flex items-center justify-between gap-[14px] py-[13px] border-t border-ld-border">
+                <span className="font-mono text-[11px] tracking-[.1em] text-ld-text-3">{mode === 'spread' ? 'WINDOW OPENS' : 'TIME'}</span>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon-sm" onClick={() => stepTime(-30)} aria-label="Earlier" className="text-[18px] font-normal text-[var(--ld-text-2)] bg-[var(--ld-surface-2)]">−</Button>
-                  <span className="font-mono text-[17px] font-semibold text-[var(--ld-text)] min-w-[56px] text-center">{fmtTime(mins)}</span>
-                  <Button variant="outline" size="icon-sm" onClick={() => stepTime(30)}  aria-label="Later"   className="text-[18px] font-normal text-[var(--ld-text-2)] bg-[var(--ld-surface-2)]">+</Button>
-                  <span className="font-mono text-[11px] text-[var(--ld-text-3)] px-[7px] py-[3px] rounded-md border border-[var(--ld-border)]">GMT+4</span>
+                  <button type="button" onClick={() => stepTime(-30)} aria-label="Earlier" className="w-8 h-8 rounded-[8px] border border-ld-border bg-ld-surface-2 text-ld-text-2 text-[18px] leading-none hover:border-ld-accent-line">−</button>
+                  <span className="font-mono text-[17px] font-semibold text-ld-text min-w-[56px] text-center tabular-nums">{fmtTime(mins)}</span>
+                  <button type="button" onClick={() => stepTime(30)} aria-label="Later" className="w-8 h-8 rounded-[8px] border border-ld-border bg-ld-surface-2 text-ld-text-2 text-[18px] leading-none hover:border-ld-accent-line">+</button>
+                  <span className="font-mono text-[11px] text-ld-text-3 px-[7px] py-[3px] rounded-md border border-ld-border">local</span>
                 </div>
               </div>
 
-              {/* Summary */}
-              <div
-                className={`flex items-center gap-[9px] mt-[18px] px-[13px] py-[11px] rounded-[11px] font-mono text-[12.5px] font-medium transition-[background,border-color,color] duration-[250ms] ${
-                  schedOn
-                    ? 'bg-[var(--ld-accent-soft)] border border-[var(--ld-accent-line)] text-[var(--ld-accent-2)]'
-                    : 'bg-[var(--ld-surface-2)] border border-[var(--ld-border)] text-[var(--ld-text-3)]'
-                }`}
-              >
-                <span
-                  className="w-[7px] h-[7px] rounded-full shrink-0"
-                  style={{
-                    background: schedOn ? 'var(--ld-accent)' : 'var(--ld-text-3)',
-                    boxShadow:  schedOn ? '0 0 0 3px var(--ld-accent-soft)' : 'none',
-                  }}
-                />
-                {summaryText}
+              <div className={`mt-2 px-[14px] py-[11px] rounded-[10px] border font-mono text-[12.5px] ${enabled ? 'border-ld-accent-line bg-ld-accent-wash text-ld-accent-2' : 'border-ld-border bg-ld-surface-2 text-ld-text-3'}`}>
+                <span className={`inline-block w-[7px] h-[7px] rounded-full mr-2 align-middle ${enabled ? 'bg-ld-accent ld-pulse' : 'bg-ld-border-strong'}`} />
+                {summary}
               </div>
             </div>
 
-            {/* Email preview */}
-            <div className="rounded-[18px] border border-[var(--ld-border)] bg-[var(--ld-surface-2)] p-5">
-
-              {/* Email header */}
-              <div className="flex items-center justify-between pb-[14px] border-b border-[var(--ld-border)]">
-                <span className="flex items-center gap-[10px] font-semibold text-[14px] text-[var(--ld-text)]">
-                  <span className="w-[26px] h-[26px] rounded-[7px] grid place-items-center text-[#04130d] font-extrabold text-[14px]" style={{ background: 'var(--ld-grad)' }}>P</span>
-                  PerfScope
+            {/* The breach, as a webhook receives it */}
+            <div className="rounded-[18px] border border-ld-border bg-ld-surface overflow-hidden">
+              <div className="flex items-center justify-between px-[18px] py-[12px] border-b border-ld-border bg-ld-surface-2">
+                <span className="inline-flex items-center gap-2 text-[13.5px] font-semibold text-ld-text">
+                  <span className="w-[22px] h-[22px] rounded-[6px] grid place-items-center bg-ld-grad text-ld-grad-text font-mono text-[11px] font-bold">P</span>
+                  Budget breach · example.com
                 </span>
-                <span className="font-mono text-[12px] text-[var(--ld-text-3)]">07:00</span>
+                <span className="font-mono text-[11px] text-ld-text-3">03:04</span>
               </div>
-
-              <div className="text-[15px] font-semibold text-[var(--ld-text)] mt-[14px] mb-4">Daily report · example.com</div>
-
-              {/* Score row */}
-              <div className="flex items-center gap-4 p-[14px] rounded-xl bg-[var(--ld-surface)] border border-[var(--ld-border)]">
-                <div className="relative w-[56px] h-[56px] shrink-0">
-                  <svg viewBox="0 0 56 56" className="w-[56px] h-[56px]">
-                    <circle cx="28" cy="28" r="23" fill="none" stroke="var(--ld-border)" strokeWidth="6"/>
-                    <circle cx="28" cy="28" r="23" fill="none" stroke="var(--ld-accent)" strokeWidth="6" strokeLinecap="round" strokeDasharray="144.5" strokeDashoffset="11.6" transform="rotate(-90 28 28)"/>
-                  </svg>
-                  <b className="absolute inset-0 grid place-items-center font-mono text-[18px] font-semibold text-[var(--ld-accent-2)]">92</b>
-                </div>
-                <div className="grid gap-[3px]">
-                  <span className="inline-flex items-center gap-[6px] font-mono text-[13px] font-semibold text-[var(--ld-accent-2)]">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-[14px] h-[14px]"><path d="M3 17l6-6 4 4 8-8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    +3 since yesterday
-                  </span>
-                  <span className="text-[13px] text-[var(--ld-text-2)]">Performance holding strong</span>
-                </div>
-              </div>
-
-              {/* Metric rows */}
-              <div className="grid gap-[2px] mt-[14px] mb-4">
-                {EMAIL_METRICS.map(({ k, v, d, good }) => (
-                  <div key={k} className="grid grid-cols-[1fr_auto_auto] gap-[14px] items-center py-[9px] px-[2px] border-b border-[var(--ld-border)] text-[13.5px]">
-                    <span className="text-[var(--ld-text-2)]">{k}</span>
-                    <b className={`font-mono text-[14px] font-semibold justify-self-end min-w-[56px] text-right ${good ? 'text-[var(--ld-accent-2)]' : 'text-[var(--ld-amber)]'}`}>{v}</b>
-                    <span className={`font-mono text-[11.5px] min-w-[52px] text-right ${good ? 'text-[var(--ld-text-3)]' : 'text-[var(--ld-amber)]'}`}>{d}</span>
+              <div className="px-[18px] py-[6px]">
+                {BREACH.map(({ k, v, limit, over }) => (
+                  <div key={k} className="flex items-center justify-between py-[9px] border-b border-ld-border last:border-b-0 text-[13.5px]">
+                    <span className="text-ld-text-2">{k}</span>
+                    <span className="flex items-baseline gap-[10px]">
+                      <b className={`font-mono font-semibold ${over ? 'text-ld-rose' : 'text-ld-accent-2'}`}>{v}</b>
+                      <span className="font-mono text-[11.5px] text-ld-text-3">{limit}</span>
+                    </span>
                   </div>
                 ))}
               </div>
-
-              <span className="font-mono text-[13px] font-semibold text-[var(--ld-accent)]">Open full report →</span>
+              <p className="px-[18px] py-[10px] border-t border-ld-border font-mono text-[11.5px] text-ld-text-3 m-0">
+                Sent to hooks.slack.com · cleared when the next run passes
+              </p>
             </div>
-
           </div>
+
         </div>
       </div>
     </section>

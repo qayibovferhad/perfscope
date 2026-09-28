@@ -5,22 +5,22 @@ const STEPS = [
   {
     n: '01',
     title: 'Paste a URL',
-    desc: 'Give us the address of a live page. PerfScope loads it in a real mobile and desktop environment — exactly as your visitors see it.',
+    desc: 'Any page a Chrome on the server can reach, as a phone or a desktop. Pages behind a login too, once you have signed in for it.',
   },
   {
     n: '02',
     title: 'Watch the audit run',
-    desc: 'Lighthouse score, Core Web Vitals and the network waterfall stream in live. A frame-by-frame CLS filmstrip sits right alongside them.',
+    desc: 'Each category lands as it finishes. The waterfall, the filmstrip and the layout shifts arrive with the score, from the same load.',
   },
   {
     n: '03',
-    title: 'Get a fix plan',
-    desc: 'Each weak metric comes with a root-cause explanation and a copy-paste-ready code suggestion — prioritized, with the highest-impact fix on top.',
+    title: 'Read the evidence',
+    desc: 'Every failing check shows the element it found and what moved since the last run of this page. With a Gemini key, a suggested fix beside it.',
   },
 ] as const;
 
 const BAR_HEIGHTS = ['38%', '64%', '46%', '82%', '58%', '90%'] as const;
-const FIX_ITEMS   = ['Defer offscreen images', 'Set width & height on hero', 'Preconnect to font host'] as const;
+const FIX_ITEMS   = ['LCP element: hero.jpg, 1.8 MB', 'Shift at 1.2s: cookie banner', 'TBT +140ms since last run'] as const;
 
 export function HowItWorksSection() {
   const [active, setActive]   = useState(0);
@@ -94,7 +94,7 @@ export function HowItWorksSection() {
         <div className="sec-head reveal text-center max-w-[720px] mx-auto mb-[clamp(44px,6vw,70px)]">
           <span className="ld-eyebrow block mb-4">How it works</span>
           <h2 className="ld-h-section text-[var(--ld-text)]">Three steps. Nothing to install.</h2>
-          <p className="ld-lead mt-[18px] mx-auto">No downloads, no agents to maintain. Paste a link — we handle the rest.</p>
+          <p className="ld-lead mt-[18px] mx-auto">Nothing on your site changes. A Chrome on the server loads the page; you read what it saw.</p>
         </div>
 
         {/* Progress rail + steps */}

@@ -42,9 +42,9 @@ export function WhySection() {
             <Button
               variant="ghost"
               className="mt-[26px] px-0 text-[var(--ld-accent)] hover:bg-transparent hover:text-[var(--ld-accent-2)] gap-2 group"
-              onClick={() => document.getElementById('proof')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('measure')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              See a real before &amp; after
+              See how it measures
               <ArrowRight className="w-[17px] h-[17px] transition-transform duration-200 group-hover:translate-x-1" />
             </Button>
           </div>

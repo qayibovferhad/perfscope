@@ -101,7 +101,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
           'inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[.08em] font-semibold px-[9px] py-[3px] rounded-md border',
           state === 'running'
             ? 'text-[var(--ld-amber)] border-ld-amber-line bg-ld-amber-soft'
-            : 'text-[var(--ld-accent-2)] border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
+            : 'text-[var(--ld-accent-2)] [[data-theme=light]_&]:text-ld-text border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)]',
         ].join(' ')}>
           <span className={`w-1.5 h-1.5 rounded-full bg-current inline-block${state === 'running' ? ' ld-pulse' : ''}`} />
           {statusLabel}
@@ -132,7 +132,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
             variant="secondary"
             onClick={runAudit}
             disabled={state === 'running'}
-            className="font-mono text-[12px] text-[var(--ld-accent-2)] border border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)] hover:bg-[var(--ld-accent-soft)] px-[11px] py-[5px] h-auto rounded-lg"
+            className="font-mono text-[12px] text-[var(--ld-accent-2)] [[data-theme=light]_&]:text-ld-text border border-[var(--ld-accent-line)] bg-[var(--ld-accent-soft)] hover:bg-[var(--ld-accent-soft)] px-[11px] py-[5px] h-auto rounded-lg"
           >
             {state === 'running' ? '···' : 'RUN'}
           </Button>
@@ -168,7 +168,7 @@ export function DemoCard({ onTrigger }: DemoCardProps) {
                 }`}
               >
                 <div className="font-mono text-[10px] tracking-[.1em] text-[var(--ld-text-3)] uppercase">{label}</div>
-                <div className={`font-mono text-[17px] font-semibold mt-[3px] ${
+                <div className={`font-mono text-[19px] font-bold mt-[3px] ${
                   status === 'good' ? 'text-[var(--ld-accent-2)]' : 'text-[var(--ld-amber)]'
                 }`}>
                   {metrics[key as keyof typeof metrics]}

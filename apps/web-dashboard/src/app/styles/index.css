@@ -64,12 +64,13 @@
 .step-active .vz-bars i:nth-child(6) { animation-delay: .28s; }
 @keyframes vzGrow { to { height: var(--h); background: var(--ld-accent); } }
 
-.vz-fix-row { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ld-text-2); white-space: nowrap; opacity: 0; transform: translateX(-6px); }
-.step-active .vz-fix-row { animation: vzRow .28s ease forwards; }
+.vz-fix-row { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ld-text-2); white-space: nowrap; }
+/* The rows are always drawn — an inactive step used to show an empty box — and only *enter* when the step activates. */
+.step-active .vz-fix-row { animation: vzRow .28s ease both; }
 .step-active .vz-fix-row:nth-child(1) { animation-delay: .06s; }
 .step-active .vz-fix-row:nth-child(2) { animation-delay: .2s; }
 .step-active .vz-fix-row:nth-child(3) { animation-delay: .34s; }
-@keyframes vzRow { to { opacity: 1; transform: none; } }
+@keyframes vzRow { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .vz-typed { max-width: 100%; }
@@ -125,7 +126,9 @@
     --ps-subtle-border: rgba(10, 158, 111, 0.10);
 
     /* ── Emerald — primary accent ─────────────────────────────────────────── */
-    --ps-accent:          #0a9e6f;
+    /* The older palette's text tones follow tokens.css's light values (2026-09-28): the
+       signed-out pages still read these, and they were the same 3.4:1 accent. */
+    --ps-accent:          #077a56;
     --ps-accent-muted:    rgba(10, 158, 111, 0.12);
     --ps-accent-hover:    rgba(10, 158, 111, 0.18);
     --ps-accent-border:   rgba(10, 158, 111, 0.28);
@@ -134,19 +137,19 @@
     --ps-accent-glow-lg:  rgba(10, 158, 111, 0.55);
 
     /* ── Amber ────────────────────────────────────────────────────────────── */
-    --ps-amber:           #b9791a;
+    --ps-amber:           #8f5e0e;
     --ps-amber-muted:     rgba(185, 121, 26, 0.10);
     --ps-amber-border:    rgba(185, 121, 26, 0.25);
     --ps-amber-glow:      rgba(185, 121, 26, 0.38);
 
     /* ── Regression ──────────────────────────────────────────────────────── */
-    --ps-regression:      #d63a57;
+    --ps-regression:      #b8283f;
     --ps-reg-muted:       rgba(214, 58, 87, 0.09);
     --ps-reg-border:      rgba(214, 58, 87, 0.28);
     --ps-reg-glow:        rgba(214, 58, 87, 0.40);
 
     /* ── Healthy green ────────────────────────────────────────────────────── */
-    --ps-healthy:         #07875e;
+    --ps-healthy:         #067252;
     --ps-healthy-muted:   rgba(7, 135, 94, 0.09);
     --ps-healthy-border:  rgba(7, 135, 94, 0.28);
     --ps-healthy-glow:    rgba(7, 135, 94, 0.38);
