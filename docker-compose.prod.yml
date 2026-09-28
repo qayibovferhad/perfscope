@@ -176,7 +176,10 @@ services:
       - "${WEB_PORT:-8080}:80"
     depends_on:
       backend:
-        condition: service_started
+        # Healthy, not started: the image's HEALTHCHECK answers once /health does, and
+        # nginx coming up first served 502s for the seconds the backend took to boot —
+        # which is exactly the window CI's smoke test landed in.
+        condition: service_healthy
 
 volumes:
   mongo-data:

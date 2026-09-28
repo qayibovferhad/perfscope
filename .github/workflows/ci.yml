@@ -205,8 +205,10 @@ jobs:
         # the bundle, proxying /health to the backend, and a registration that only answers
         # if the backend reached the container's Mongo.
         run: |
+          # Wait on the backend through nginx, not on nginx alone: `_healthz` answers the
+          # moment nginx is up, and the backend was still booting behind it.
           for i in $(seq 1 60); do
-            curl -sf -o /dev/null http://localhost:8080/_healthz && break
+            curl -sf http://localhost:8080/health 2>/dev/null | grep -q '"database":"up"' && break
             sleep 2
           done
           set -x
