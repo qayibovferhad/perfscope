@@ -39,6 +39,17 @@ export const config = {
   jwtSecret:   optionalEnv('JWT_SECRET', 'perfscope-dev-secret-change-in-prod'),
 
   /**
+   * Whether the teams feature is served at all.
+   *
+   * Off by default: the first deployment ships without teams, and "off" has to mean the
+   * routes are not mounted, the scope middleware never runs and a stale `X-Team-Id` is
+   * ignored — not that the page is hidden. The code stays, the tests stay, and
+   * `TEAMS_ENABLED=true` (with `TEAMS_ENABLED=true` on the web container too) turns it on
+   * without a build.
+   */
+  teamsEnabled: optionalEnv('TEAMS_ENABLED', 'false') === 'true',
+
+  /**
    * Audits running at once. Each owns a Chrome instance, and Lighthouse numbers
    * degrade when runs compete for CPU — so this is a measurement-accuracy knob,
    * not just a resource limit.

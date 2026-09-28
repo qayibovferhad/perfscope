@@ -4,13 +4,16 @@ vi.mock('../middleware/auth.middleware.js', () => ({
   userIdFromToken: (token: string | undefined) => (token === 'good' ? 'actor-1' : undefined),
 }));
 vi.mock('../config/database.js', () => ({ isDbReady: () => true }));
+// Teams ship off; these tests describe the switched-on behaviour, plus one for off.
+const teamsEnabled = { value: true };
+vi.mock('../config/index.js', () => ({ config: { get teamsEnabled() { return teamsEnabled.value; } } }));
 
 const resolveTeamScope = vi.fn();
 vi.mock('../services/team.service.js', () => ({ resolveTeamScope: (...a: unknown[]) => resolveTeamScope(...a) }));
 
 const { socketScope } = await import('./scope.js');
 
-beforeEach(() => resolveTeamScope.mockReset());
+beforeEach(() => { resolveTeamScope.mockReset(); teamsEnabled.value = true; });
 
 describe('socketScope', () => {
   it('resolves an audit onto the team owner, so it is stored in that account', async () => {
@@ -26,6 +29,13 @@ describe('socketScope', () => {
   it('falls back to the person when they are no longer in that team', async () => {
     resolveTeamScope.mockResolvedValue(null);
     expect(await socketScope({ token: 'good', teamId: 'team-1' })()).toBe('actor-1');
+  });
+
+  it('ignores the team on the handshake while teams are off — a persisted id from before the switch', async () => {
+    teamsEnabled.value = false;
+    resolveTeamScope.mockResolvedValue({ scopeId: 'owner-9' });
+    expect(await socketScope({ token: 'good', teamId: 'team-1' })()).toBe('actor-1');
+    expect(resolveTeamScope).not.toHaveBeenCalled();
   });
 
   it('is undefined without a token — a socket may connect signed out', async () => {

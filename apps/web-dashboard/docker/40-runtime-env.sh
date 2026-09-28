@@ -25,8 +25,9 @@ cat > "$ENV_FILE" <<JS
 // Generated at container start by docker/40-runtime-env.sh — do not edit.
 window.__PERFSCOPE_ENV__ = {
   BACKEND_URL: "$(escape "${BACKEND_URL:-}")",
-  GOOGLE_CLIENT_ID: "$(escape "${GOOGLE_CLIENT_ID:-}")"
+  GOOGLE_CLIENT_ID: "$(escape "${GOOGLE_CLIENT_ID:-}")",
+  TEAMS_ENABLED: "$(escape "${TEAMS_ENABLED:-}")"
 };
 JS
 
-echo "[entrypoint] env.js written (BACKEND_URL='${BACKEND_URL:-same-origin}', google sign-in $([ -n "${GOOGLE_CLIENT_ID:-}" ] && echo enabled || echo disabled))"
+echo "[entrypoint] env.js written (BACKEND_URL='${BACKEND_URL:-same-origin}', google sign-in $([ -n "${GOOGLE_CLIENT_ID:-}" ] && echo enabled || echo disabled), teams ${TEAMS_ENABLED:-false})"

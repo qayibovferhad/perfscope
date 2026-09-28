@@ -219,7 +219,9 @@ try {
   }
 
   // ─── Every other route ─────────────────────────────────────────────────────
-  for (const route of ['/websites', '/history', '/compare', '/flows', '/team', '/automation', '/settings', '/scheduled']) {
+  // /team only exists with TEAMS_ENABLED=true on both servers (see runtimeEnv.ts).
+  const TEAMS = process.env['TEAMS_ENABLED'] === 'true';
+  for (const route of ['/websites', '/history', '/compare', '/flows', ...(TEAMS ? ['/team'] : []), '/automation', '/settings', '/scheduled']) {
     await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle0' });
     await sleep(1200);
     const bad = await settle(page, () => bleeding(page));

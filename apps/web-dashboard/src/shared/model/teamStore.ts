@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TeamRole, TeamSummary } from '@perfscope/shared';
+import { teamsEnabled } from '@/shared/config/runtimeEnv';
 
 /**
  * Which account the app is looking at.
@@ -40,8 +41,8 @@ export const useTeamStore = create<TeamStore>()(
 
 /** The header value for a request made right now — read outside React, so the api client
  *  and the socket factory do not have to be components. */
-export const activeTeamId = () => useTeamStore.getState().teamId;
+export const activeTeamId = () => (teamsEnabled ? useTeamStore.getState().teamId : null);
 
 /** Whether the current view may change anything. Read by pages to disable what a viewer
  *  cannot use, so a read-only member is told *before* the server answers 403. */
-export const useCanEdit = () => useTeamStore(s => s.role !== 'viewer');
+export const useCanEdit = () => useTeamStore(s => !teamsEnabled || s.role !== 'viewer');

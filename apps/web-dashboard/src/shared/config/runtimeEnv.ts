@@ -47,3 +47,13 @@ export const backendUrl = (
 /** Empty means Google sign-in is hidden — see features/auth/lib/googleAuth.ts. */
 export const googleClientId =
   fromWindow('GOOGLE_CLIENT_ID') ?? fromBuild(import.meta.env.VITE_GOOGLE_CLIENT_ID) ?? '';
+
+/**
+ * Whether the teams feature is on. Off by default — the first release ships without it —
+ * and "off" removes the nav entry, the routes, the sidebar switcher and the `X-Team-Id`
+ * header, so the backend (which has the same switch) never sees a team. Both sides must
+ * agree: the server refuses team routes while off, and this is what stops the client
+ * from asking.
+ */
+export const teamsEnabled =
+  (fromWindow('TEAMS_ENABLED') ?? fromBuild(import.meta.env.VITE_TEAMS_ENABLED) ?? 'false') === 'true';

@@ -36,7 +36,7 @@ const ROUTES = process.argv.slice(2).length
   ? process.argv.slice(2)
   : [
       '/dashboard', '/app', '/compare', '/flows', '/websites', '/history',
-      '/automation', '/scheduled', '/extension', '/team', '/settings',
+      '/automation', '/scheduled', '/extension', ...(config.teamsEnabled ? ['/team'] : []), '/settings',
     ];
 
 function signToken(payload: Record<string, unknown>): string {

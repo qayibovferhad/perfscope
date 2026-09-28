@@ -104,7 +104,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use(cors({
     origin: config.clientUrl,
     exposedHeaders: [STORAGE_HEADER],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', TEAM_HEADER],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', ...(config.teamsEnabled ? [TEAM_HEADER] : [])],
   }));
   app.use(express.json());
   app.use(markStorageState);
@@ -159,11 +159,14 @@ export function createApp(): { app: Application; httpServer: Server } {
    * Above the routers rather than inside one: they all share the bare `/api` mount, so a
    * `router.use()` here would leak into every router registered after it — the trap that
    * once broke CLI login. It runs before `requireAuth` and hands it `scopeUserId`.
+   *
+   * Both the middleware and the router exist only with `TEAMS_ENABLED=true`: with the
+   * feature off, every request is the person's own and `/api/teams` is a 404.
    */
-  app.use('/api', attachTeamScope);
+  if (config.teamsEnabled) app.use('/api', attachTeamScope);
 
   app.use('/api', authRouter);
-  app.use('/api', teamRouter);
+  if (config.teamsEnabled) app.use('/api', teamRouter);
   app.use('/api', websiteRouter);
   app.use('/api', deployRouter);
   app.use('/api', flowRouter);

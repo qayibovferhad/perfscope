@@ -10,6 +10,7 @@ import { RunningAudits } from './RunningAudits';
 import { TeamSwitcher } from '@/features/teams';
 import { useAllHistory } from '@/entities/history';
 import { NAV } from '@/shared/config/nav';
+import { teamsEnabled } from '@/shared/config/runtimeEnv';
 import { usePaletteStore } from '@/shared/model/paletteStore';
 
 interface SidebarProps {
@@ -86,7 +87,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Directly under the brand, because it re-labels everything below it: which account's
           sites, history and flows this sidebar is listing. Renders nothing for someone who
           is in no team — most people never see it. */}
-      <TeamSwitcher />
+      {teamsEnabled && <TeamSwitcher />}
 
       {/* Above the primary action and the nav: an audit in flight is the most
           time-sensitive thing on the screen, and it is why someone came back. */}

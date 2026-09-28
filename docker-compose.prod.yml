@@ -142,6 +142,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       CRUX_API_KEY: ${CRUX_API_KEY:-}
       ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      # Teams are off in this release; the same value goes to the web container below.
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
@@ -169,6 +171,7 @@ services:
       # /rum.js to the backend. Set it only when the API is served from another host.
       BACKEND_URL: ${BACKEND_URL:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:

@@ -138,6 +138,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       CRUX_API_KEY: ${CRUX_API_KEY:-}
       ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+      # Teams are off in this release; the same value goes to the web container below.
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
@@ -156,6 +158,7 @@ services:
       # to the backend. Written into /env.js at start-up, so no rebuild to change it.
       BACKEND_URL: ${BACKEND_URL:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      TEAMS_ENABLED: ${TEAMS_ENABLED:-false}
     # Bound to localhost when a reverse proxy on the host terminates TLS, which is the
     # normal arrangement: set WEB_BIND=127.0.0.1 and point nginx/Caddy/Traefik at it.
     # Leave it empty to publish on every interface (plain HTTP, no certificate).

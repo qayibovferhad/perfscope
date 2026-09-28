@@ -33,6 +33,16 @@ const text = (page) => page.evaluate(() => document.body.innerText);
 
 await waitForServers();
 
+// Teams ship behind TEAMS_ENABLED (off by default). Both servers need it on for this probe,
+// and a 404 here is that switch, not a broken feature.
+{
+  const r = await fetch(`${BACKEND_URL}/api/teams`);
+  if (r.status === 404) {
+    console.error('TEAMS_ENABLED is off — start the backend with TEAMS_ENABLED=true and the dashboard with VITE_TEAMS_ENABLED=true.');
+    process.exit(2);
+  }
+}
+
 const owner  = await registerUser();
 const viewer = await registerUser();
 let browser;

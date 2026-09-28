@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { CalendarClock, Footprints, Gauge, GitCompareArrows, History, LayoutDashboard, LayoutGrid, Moon, Puzzle, Settings, Users } from 'lucide-react';
+import { teamsEnabled } from '@/shared/config/runtimeEnv';
 
 /**
  * The workspace's navigation, in one place.
@@ -34,7 +35,8 @@ export const NAV: NavItem[] = [
   { to: '/automation', icon: Moon,             label: 'Audit schedule'    },
   { to: '/scheduled',  icon: CalendarClock,    label: 'Scheduled reports' },
   { to: '/extension',  icon: Puzzle,           label: 'Extension'   },
-  // Account
-  { to: '/team',       icon: Users,            label: 'Teams'       },
+  // Account. Teams is behind a deployment switch (runtimeEnv.ts); filtered here so the
+  // sidebar, the palette and the page numbering all lose it together.
+  ...(teamsEnabled ? [{ to: '/team', icon: Users, label: 'Teams' }] : []),
   { to: '/settings',   icon: Settings,         label: 'Settings'    },
 ];

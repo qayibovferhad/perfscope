@@ -79,7 +79,10 @@ try {
   // ── Seed ──
   const site = await check('POST', '/api/websites', '/api/websites', { token, body: { url: 'https://example.com', name: 'Example' } });
   await check('POST', '/api/websites/{id}/deploys', `/api/websites/${site._id}/deploys`, { token, body: { label: 'v1' } });
-  const team = await check('POST', '/api/teams', '/api/teams', { token, body: { name: 'Conformance' } });
+  // The team routes are mounted only with TEAMS_ENABLED=true; off, they are a 404 and
+  // the spec still lists them — so they are exercised only when the switch is on.
+  const TEAMS = process.env['TEAMS_ENABLED'] === 'true';
+  const team = TEAMS ? await check('POST', '/api/teams', '/api/teams', { token, body: { name: 'Conformance' } }) : null;
   teamId = team?.id;
   await check('POST', '/api/flows', '/api/flows', {
     token,
@@ -115,7 +118,7 @@ try {
   await check('GET', '/api/compare-history', '/api/compare-history', { token });
   await check('GET', '/api/competitor-sessions', '/api/competitor-sessions', { token });
   await check('GET', '/api/flows', '/api/flows', { token });
-  await check('GET', '/api/teams', '/api/teams', { token });
+  if (TEAMS) await check('GET', '/api/teams', '/api/teams', { token });
   if (teamId) {
     await check('GET', '/api/teams/{id}', `/api/teams/${teamId}`, { token });
     await check('POST', '/api/teams/{id}/invites', `/api/teams/${teamId}/invites`, { token, body: { role: 'viewer' } });

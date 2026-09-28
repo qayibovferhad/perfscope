@@ -1,6 +1,7 @@
 import { userIdFromToken } from '../middleware/auth.middleware.js';
 import { resolveTeamScope } from '../services/team.service.js';
 import { isDbReady } from '../config/database.js';
+import { config } from '../config/index.js';
 
 /**
  * Which account a socket's work belongs to.
@@ -23,7 +24,9 @@ export function socketScope(auth: unknown): () => Promise<string | undefined> {
   return () => {
     if (!pending) {
       pending = (async () => {
-        if (!actorId || !teamId || !isDbReady()) return actorId;
+        // With teams off, a team id a client still holds (a persisted store from before
+        // the switch) names nobody else's account.
+        if (!config.teamsEnabled || !actorId || !teamId || !isDbReady()) return actorId;
         // Not a member (any more): their own data, exactly as the REST path falls back.
         const scope = await resolveTeamScope(actorId, teamId);
         return scope?.scopeId ?? actorId;

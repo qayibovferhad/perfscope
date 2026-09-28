@@ -6,6 +6,7 @@ import { useAuthStore }    from '@/features/auth';
 import { DashboardLayout } from '@/widgets/dashboard-layout';
 import { CommandPalette }  from '@/widgets/command-palette';
 import { StatePanel }      from '@/shared/ui/state-panel';
+import { teamsEnabled }    from '@/shared/config/runtimeEnv';
 
 // Each page is its own chunk — visiting the landing no longer downloads the dashboard.
 const LandingPage           = lazy(() => import('@/pages/landing').then(m => ({ default: m.LandingPage })));
@@ -110,10 +111,16 @@ export default function App() {
         <Route path="/scheduled"       element={<DashboardRoute><ScheduledPage /></DashboardRoute>} />
         <Route path="/extension"       element={<DashboardRoute><ExtensionSettingsPage /></DashboardRoute>} />
         <Route path="/settings"        element={<DashboardRoute><SettingsPage /></DashboardRoute>} />
-        <Route path="/team"            element={<DashboardRoute><TeamPage /></DashboardRoute>} />
-        {/* Outside the guard: whoever follows an invitation may not have an account yet,
-            and a login screen with no idea what it is for is how an invitation dies. */}
-        <Route path="/invite/:token"   element={<InvitePage />} />
+        {/* Teams ship behind a switch (runtimeEnv.ts). Off, both routes fall through to
+            the not-found route rather than rendering a page the API would answer 404 to. */}
+        {teamsEnabled && (
+          <>
+            <Route path="/team"          element={<DashboardRoute><TeamPage /></DashboardRoute>} />
+            {/* Outside the guard: whoever follows an invitation may not have an account yet,
+                and a login screen with no idea what it is for is how an invitation dies. */}
+            <Route path="/invite/:token" element={<InvitePage />} />
+          </>
+        )}
         <Route path="/cli-auth"        element={<CliAuthPage />} />
         <Route path="/report/:token"   element={<PublicReportPage />} />
 

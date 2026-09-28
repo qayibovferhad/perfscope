@@ -291,6 +291,12 @@ Backend: `services/flow.service.ts` (runner), `flow-transform.ts`, `flowInput.ts
 
 ### Teams — one account, more than one person
 
+**Shipped off.** `TEAMS_ENABLED=true` on the backend *and* `VITE_TEAMS_ENABLED=true` /
+`TEAMS_ENABLED` on the web container turn it on; the default is off on both. Off means the
+router and `attachTeamScope` are not mounted, a stale `X-Team-Id` or socket `teamId` is
+ignored, and the dashboard drops the nav entry, the sidebar switcher and both routes
+(`shared/config/runtimeEnv.ts`). The probes that visit `/team` skip it unless the flag is set.
+
 `/team` shares an account rather than moving data into a container: a team has an **owner**,
 and a member's request is resolved to the owner's `userId` before any query runs
 (`middleware/teamScope.ts`, mounted **above** the routers because they share the bare `/api`

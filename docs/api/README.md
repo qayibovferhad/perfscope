@@ -21,7 +21,9 @@ talking to an older backend.
 **Auth.** `Authorization: Bearer <access token>` from `/api/auth/login` or `/register`.
 Access tokens last 30 minutes; `/api/auth/refresh` rotates the pair. A member acting inside
 a team sends `X-Team-Id` and every query below is resolved to the team owner's account
-(`middleware/teamScope.ts`).
+(`middleware/teamScope.ts`). **Teams are behind `TEAMS_ENABLED=true`** (off in the first
+release): while off the header is ignored and the `/api/teams` and `/api/invites` routes
+below answer 404.
 
 **Storage.** With MongoDB unavailable, read routes answer empty shapes and set
 `X-Storage-State: unavailable` rather than failing; writes are refused.
