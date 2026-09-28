@@ -340,7 +340,15 @@ export function buildFullResult(
   }
   if (flameChartData)  result.flameChartData  = flameChartData;
   if (heapMemoryData)  result.heapMemoryData  = heapMemoryData;
-  if (interactionData) result.interactionData = interactionData;
+  if (interactionData) {
+    // One TBT per report. The parser sums every long task on the main thread; Lighthouse
+    // counts only the blocking portions between FCP and TTI, which is what the vitals
+    // strip above the panel prints. A report saying 0ms and 590ms for the same metric
+    // is a report nobody trusts, so the panel reads the metric the score was built from.
+    result.interactionData = performanceLhr
+      ? { ...interactionData, totalBlockingTimeMs: Math.round(metrics.tbt) }
+      : interactionData;
+  }
 
   // Detect auth redirect: check all LHRs for a redirect to a login/auth page
   for (const lhr of lhrs) {

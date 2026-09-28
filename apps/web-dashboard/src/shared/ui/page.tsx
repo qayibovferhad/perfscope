@@ -163,7 +163,14 @@ export function PageHeader({
         {/* Level with the title, not with the bottom of a block that now carries a
             ruler and a caption under it — `items-end` on the row dropped the primary
             action to the foot of the header, a button's height away from what it acts on. */}
-        {actions && <div className="flex items-center gap-2 shrink-0 mt-[26px] max-sm:mt-0">{actions}</div>}
+        {/* On a phone the actions take a row of their own under the title. Beside it,
+            Share / Export / Compare left the analyzer's title a 170px column and printed
+            its description one word per line. */}
+        {actions && (
+          <div className="flex items-center gap-2 shrink-0 mt-[26px] max-sm:mt-0 max-sm:basis-full max-sm:flex-wrap">
+            {actions}
+          </div>
+        )}
       </div>
 
       {meta && <div className="flex items-center gap-2 flex-wrap mt-4">{meta}</div>}

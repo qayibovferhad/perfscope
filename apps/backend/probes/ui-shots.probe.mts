@@ -97,14 +97,35 @@ await page.evaluateOnNewDocument(
 try {
   for (const route of ROUTES) {
     const target = route === '/app' ? `/history?open=${newestAnalysisId}` : route;
-    await page.goto(`${WEB_URL}${target}`, { waitUntil: 'networkidle0' });
+    // `networkidle2`, not idle0: the advisor's Gemini call and the socket can hold two
+    // connections open for longer than the navigation timeout, and neither is a page load.
+    await page.goto(`${WEB_URL}${target}`, { waitUntil: 'networkidle2' });
     // Routes are lazy chunks behind a Suspense spinner, and the report renders a dozen
     // panels after its data lands — a shot taken too early is a picture of a spinner.
     await new Promise((resolve) => setTimeout(resolve, route === '/app' ? 6000 : 2500));
 
-    const name = `${route.replace(/\//g, '') || 'root'}${MOBILE ? '.mobile' : WIDTH === 1350 ? '' : `.${WIDTH}`}.png`;
-    await page.screenshot({ path: join(OUT, name) as `${string}.png`, fullPage: FULL });
-    console.log(`  ${route.padEnd(14)} → ${name}`);
+    const base = `${route.replace(/\//g, '') || 'root'}${MOBILE ? '.mobile' : WIDTH === 1350 ? '' : `.${WIDTH}`}`;
+    if (!FULL) {
+      await page.screenshot({ path: join(OUT, `${base}.png`) as `${string}.png` });
+      console.log(`  ${route.padEnd(14)} → ${base}.png`);
+      continue;
+    }
+    // The shell scrolls `<main>`, not the document, so puppeteer's `fullPage` captures one
+    // viewport and calls it the page. Walk the scroller a viewport at a time instead.
+    const stops = await page.evaluate(() => {
+      const m = document.querySelector('main');
+      if (!m) return 1;
+      return Math.max(1, Math.ceil(m.scrollHeight / m.clientHeight));
+    });
+    for (let i = 0; i < stops; i++) {
+      await page.evaluate((idx) => {
+        const m = document.querySelector('main');
+        if (m) m.scrollTop = idx * m.clientHeight;
+      }, i);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      await page.screenshot({ path: join(OUT, `${base}-${i}.png`) as `${string}.png` });
+    }
+    console.log(`  ${route.padEnd(14)} → ${base}-0…${stops - 1}.png`);
   }
 } finally {
   await browser.close();

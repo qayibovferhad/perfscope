@@ -91,7 +91,9 @@ await page.setViewport(PHONE);
 
 try {
   // ─── The shell ─────────────────────────────────────────────────────────────
-  await page.goto(`${WEB_URL}/dashboard`, { waitUntil: 'networkidle0' });
+  // `networkidle2` throughout: the advisor's Gemini call and the socket hold connections
+  // open for longer than a navigation timeout, and idle0 waited on both.
+  await page.goto(`${WEB_URL}/dashboard`, { waitUntil: 'networkidle2' });
   await sleep(1500);
 
   const topbar = await page.evaluate(() => {
@@ -124,7 +126,7 @@ try {
   await page.screenshot({ path: `${OUT}/dashboard.png` });
 
   // ─── The analyzer form ─────────────────────────────────────────────────────
-  await page.goto(`${WEB_URL}/app`, { waitUntil: 'networkidle0' });
+  await page.goto(`${WEB_URL}/app`, { waitUntil: 'networkidle2' });
   await sleep(1200);
 
   const form = await page.evaluate(() => {
@@ -162,7 +164,7 @@ try {
   await page.screenshot({ path: `${OUT}/analyzer-form.png` });
 
   // ─── A real report ─────────────────────────────────────────────────────────
-  await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle0' });
+  await page.goto(`${WEB_URL}/app?url=${encodeURIComponent(TARGET)}`, { waitUntil: 'networkidle2' });
   // The report's own marker, not its prose: while a run is in flight the page names the
   // sections it is still measuring, and a text poll matched that and went on to measure
   // skeletons.
@@ -218,11 +220,31 @@ try {
     await page.screenshot({ path: `${OUT}/report-${i}.png` });
   }
 
+  // ─── Page headers ──────────────────────────────────────────────────────────
+  // A header's actions used to sit beside the title on a phone too, and the analyzer's
+  // three buttons left "New audit" a column narrow enough to print its description one
+  // word per line. The title has to get most of the column, whatever the actions.
+  for (const route of ['/app', '/websites', '/dashboard']) {
+    await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle2' });
+    await sleep(1200);
+    const header = await page.evaluate(() => {
+      const h1 = document.querySelector('main h1');
+      const main = document.querySelector('main');
+      if (!h1 || !main) return null;
+      const title = h1.getBoundingClientRect();
+      const column = main.getBoundingClientRect();
+      return { title: Math.round(title.width), column: Math.round(column.width), lines: Math.round(title.height / parseFloat(getComputedStyle(h1).lineHeight)) };
+    });
+    check(header !== null && header.title >= header.column * 0.7,
+      `${route} title gets the column (${header?.title}px of ${header?.column}px)`);
+    check(header !== null && header.lines <= 2, `and wraps onto at most two lines (${header?.lines})`);
+  }
+
   // ─── Every other route ─────────────────────────────────────────────────────
   // /team only exists with TEAMS_ENABLED=true on both servers (see runtimeEnv.ts).
   const TEAMS = process.env['TEAMS_ENABLED'] === 'true';
   for (const route of ['/websites', '/history', '/compare', '/flows', ...(TEAMS ? ['/team'] : []), '/automation', '/settings', '/scheduled']) {
-    await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle0' });
+    await page.goto(`${WEB_URL}${route}`, { waitUntil: 'networkidle2' });
     await sleep(1200);
     const bad = await settle(page, () => bleeding(page));
     check(bad.length === 0, `${route} fits the screen (${bad.join(', ') || 'clean'})`);

@@ -295,6 +295,16 @@ describe('buildFullResult', () => {
     expect(result.audits.map(a => a.category)).toEqual(['accessibility', 'performance']);
   });
 
+  it('gives the interaction panel the TBT the score was built from, not its own sum', () => {
+    // The interaction parser adds up every long task on the main thread; Lighthouse only
+    // counts the blocking portions between FCP and TTI. Both numbers used to reach the
+    // report, and a page could read "TBT 0ms" in one panel and "590ms" in the next.
+    const interactionData = { events: [], longTasks: [], inpMs: 5, avgInputDelayMs: 0, totalBlockingTimeMs: 590 };
+    const result = buildFullResult('id-1', 'https://a.test/', [perfLhr, staticLhr], undefined, undefined, interactionData);
+    expect(result.interactionData?.totalBlockingTimeMs).toBe(310);
+    expect(result.interactionData?.inpMs).toBe(5);
+  });
+
   it('reports an audit found in both runs once', () => {
     const result = buildFullResult('id-1', 'https://a.test/', [perfLhr, perfLhr]);
     expect(result.audits.filter(a => a.id === 'render-blocking-resources')).toHaveLength(1);
