@@ -89,32 +89,42 @@
 
   --ld-text:          #08160f;
   --ld-text-2:        #41544b;
-  /* 4.03:1 on the light background before; 4.62 now. See the dark theme's note. */
-  --ld-text-3:        #64736b;
+  /* Tuned against --ld-bg-2 and a tinted cell, not only --ld-bg: #64736b was 4.62:1 on the
+     page but 4.45 on the sidebar's surface and 3.92 on an accent wash, and the light sweep
+     (THEME=light in app-a11y) found it on every route. #576660 clears 4.5 on all three. */
+  --ld-text-3:        #576660;
 
+  /* Text colours first. #0a9e6f measured 3.42:1 on white — under AA for anything smaller
+     than 24px, which is every eyebrow, badge and numeral the accent is used on. #077a56 is
+     5.35:1 on white and 4.76:1 on --ld-bg-2; accent-2 sits a step darker so a value beside
+     a label still reads as the stronger of the two. The washes keep the lighter hue: they
+     are fields, not text, and the deeper green under a tint went muddy. */
   --ld-accent-rgb:    10, 158, 111;
-  --ld-accent:        #0a9e6f;
-  --ld-accent-2:      #07875e;
-  --ld-accent-deep:   #066b4a;
+  --ld-accent:        #077a56;
+  --ld-accent-2:      #067252;
+  --ld-accent-deep:   #055a41;
   --ld-accent-wash:   rgba(var(--ld-accent-rgb), 0.07);
   --ld-accent-soft:   rgba(10, 158, 111, 0.12);
   --ld-accent-line:   rgba(var(--ld-accent-rgb), 0.28);
   --ld-accent-strong: rgba(var(--ld-accent-rgb), 0.42);
 
   --ld-teal-rgb:      14, 156, 156;
-  --ld-teal:          #0e9c9c;
+  /* Same reason: #0e9c9c was 3.3:1 on white. */
+  --ld-teal:          #0b7a7a;
   --ld-teal-wash:     rgba(var(--ld-teal-rgb), 0.06);
   --ld-teal-soft:     rgba(var(--ld-teal-rgb), 0.12);
   --ld-teal-line:     rgba(var(--ld-teal-rgb), 0.28);
   --ld-teal-strong:   rgba(var(--ld-teal-rgb), 0.42);
-  --ld-amber:         #b9791a;
+  /* Text tones clear 4.5:1 on white, on --ld-bg-2 and on their own soft tint; the rgb
+     channels the washes are built from keep the brighter hue. #b9791a was 3.6:1 on white. */
+  --ld-amber:         #8f5e0e;
   --ld-amber-rgb:     185, 121, 26;
   --ld-amber-wash:    rgba(var(--ld-amber-rgb), 0.06);
   --ld-amber-soft:    rgba(var(--ld-amber-rgb), 0.12);
   --ld-amber-fill:    rgba(var(--ld-amber-rgb), 0.20);
   --ld-amber-line:    rgba(var(--ld-amber-rgb), 0.28);
   --ld-amber-strong:  rgba(var(--ld-amber-rgb), 0.42);
-  --ld-rose:          #d63a57;
+  --ld-rose:          #b8283f;
   --ld-rose-rgb:      214, 58, 87;
   --ld-rose-wash:     rgba(var(--ld-rose-rgb), 0.06);
   --ld-rose-soft:     rgba(var(--ld-rose-rgb), 0.12);

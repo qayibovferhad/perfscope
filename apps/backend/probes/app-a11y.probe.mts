@@ -37,6 +37,9 @@ const WEB_URL = process.env['WEB_URL'] ?? 'http://localhost:5173';
 /** `MOBILE=1` runs the same sweep at a phone's width — the layout work landed there first
  *  and its accessibility never followed. */
 const MOBILE = process.env['MOBILE'] === '1';
+/** `THEME=light` measures the other palette. The sweep ran dark only for a month, and the
+ *  light theme's accent sat under AA the whole time — nothing measured it. */
+const THEME = process.env['THEME'] === 'light' ? 'light' : 'dark';
 
 const ROUTES = process.argv.slice(2).length
   ? process.argv.slice(2)
@@ -95,10 +98,14 @@ await page.setViewport(MOBILE
 // Seeded before any app code runs, exactly as the e2e helper does it — the account has no
 // data, which is fine: empty states are screens too, and nobody has audited those either.
 await page.evaluateOnNewDocument(
-  (state) => {
-    try { localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 })); } catch { /* opaque origin */ }
+  (state, theme) => {
+    try {
+      localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 }));
+      localStorage.setItem('perfscope-theme', theme);
+    } catch { /* opaque origin */ }
   },
   { user, token, refreshToken: null },
+  THEME,
 );
 
 interface Failure { id: string; title: string; items: number; nodes: string[] }
@@ -112,7 +119,7 @@ try {
     // extension's own deep link does the loading, so this takes the door that already
     // exists rather than reaching into a store.
     const target = route === '/app' ? `/history?open=${newestAnalysisId}` : route;
-    await page.goto(`${WEB_URL}${target}`, { waitUntil: 'networkidle0' });
+    await page.goto(`${WEB_URL}${target}`, { waitUntil: 'networkidle2' });
     // Routes are lazy chunks behind a Suspense spinner; auditing during that measures the
     // spinner's accessibility, which is not the question.
     await new Promise((resolve) => setTimeout(resolve, route === '/app' ? 5000 : 2500));
@@ -134,7 +141,7 @@ try {
           items: items.length,
           // The selector is the whole point of running this: "one element fails" is a
           // number, and the element is the fix.
-          nodes: items.slice(0, 3).map(item => `${item.node?.selector ?? '?'}  ${String(item.node?.snippet ?? '').slice(0, 120)}`),
+          nodes: items.slice(0, 12).map(item => `${item.node?.selector ?? '?'}  ${String(item.node?.snippet ?? '').slice(0, 120)}`),
         };
       });
 

@@ -433,7 +433,8 @@ connection sends the access token in `handshake.auth.token`; `analysis.handler.t
 ### Accessibility
 
 `apps/backend/probes/app-a11y.probe.mts` audits the nine signed-in routes (`MOBILE=1` for
-412px). It seeds a throwaway account with data first — empty states hide everything — and
+412px, **`THEME=light` for the other palette** — it ran dark only until 2026-09-28, and the
+light theme's accent, amber, rose and tertiary text were all under AA that whole time). It seeds a throwaway account with data first — empty states hide everything — and
 opens `/app` through `/history?open=<id>` so the *report* is measured, not an empty form. All
 nine are at 100; when adding UI, run it rather than guessing.
 
@@ -445,6 +446,13 @@ layer renders, turns the comparison switch on (it is off by default) and reports
 at 1350px and 412px: **how many of the 14 panels drew** (a 100 over four panels is not a
 result), the accessibility snapshot, and what bleeds past the right edge. 13/14 locally —
 field data needs `CRUX_API_KEY`. It found the report at 95, now 100.
+
+`apps/backend/probes/landing-a11y.probe.mts` measures the signed-out page (`/`) in **both
+themes** at both widths — the two sweeps above run dark only, which is how the light theme's
+accent sat at 3.4:1 for months. All four at 100 since 2026-09-28, when the light text tokens were
+darkened to clear AA: `--ld-accent`/`-2`, `--ld-teal`, `--ld-amber`, `--ld-rose` and
+`--ld-text-3` (the last tuned against `--ld-bg-2` and a tinted cell, not only the page). The
+`*-rgb` channels the washes are built from kept the brighter hue on purpose.
 
 Four rules these enforce: **never put `opacity` on a `--ld-*` text token** (they are
 tuned to clear 4.5:1 exactly, so dimming drops them below AA — icons and hover-reveals are

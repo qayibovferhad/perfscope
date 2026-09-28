@@ -307,7 +307,9 @@ export function Readout({
       )}
       <div className="flex items-baseline gap-[6px] min-w-0">
         <b className={cn(
-          'font-mono text-[26px] max-sm:text-[22px] font-semibold tracking-[-0.03em] leading-none tabular-nums',
+          // 24px on a phone, not 22: it is the size at which WCAG counts a numeral as large
+          // text, and the amber tone in the light theme only clears the 3:1 that large text needs.
+          'font-mono text-[26px] max-sm:text-[24px] font-semibold tracking-[-0.03em] leading-none tabular-nums',
           TONE_TEXT[tone],
         )}>
           {value}
