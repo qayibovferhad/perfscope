@@ -42,6 +42,8 @@ import { attachPreviousRun } from '../src/services/auditPipeline.js';
 import type { AnalysisResult } from '@perfscope/shared';
 
 const WEB_URL = process.env['WEB_URL'] ?? 'http://localhost:5173';
+/** `THEME=light` measures the other palette — the route sweep does, this one did not. */
+const THEME = process.env['THEME'] === 'light' ? 'light' : 'dark';
 const TARGET  = process.argv[2] ?? `${WEB_URL}/`;
 
 const VIEWPORTS = [
@@ -182,9 +184,10 @@ const token = signToken({ ...user, exp: Math.floor(Date.now() / 1000) + 3600 });
 const browser = await puppeteer.launch({ headless: true, args: CHROME_ARGS });
 const page = await browser.newPage();
 await page.evaluateOnNewDocument(
-  (state) => {
+  (state, theme) => {
     try {
       localStorage.setItem('perfscope-auth', JSON.stringify({ state, version: 0 }));
+      localStorage.setItem('perfscope-theme', theme);
       // The comparison layer is off by default, at the user's request — so the delta
       // arrows, the Since-last-run panel, the waterfall's change tags and the new/fixed
       // audit lists are a whole feature that nobody has ever audited. Turned on here.
@@ -194,6 +197,7 @@ await page.evaluateOnNewDocument(
     } catch { /* opaque origin */ }
   },
   { user, token, refreshToken: null },
+  THEME,
 );
 
 interface Failure { id: string; title: string; items: number; nodes: string[] }
@@ -207,7 +211,7 @@ try {
     await page.setViewport(vp);
     // The extension's own deep link — the door that already exists — rather than reaching
     // into a store to load the result.
-    await page.goto(`${WEB_URL}/history?open=${analysisId}`, { waitUntil: 'networkidle0' });
+    await page.goto(`${WEB_URL}/history?open=${analysisId}`, { waitUntil: 'networkidle2' });
     await new Promise((resolve) => setTimeout(resolve, 6000));
 
     // Case-insensitively: several of these headings are uppercased in CSS, and `innerText`

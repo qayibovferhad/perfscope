@@ -57,6 +57,10 @@
       "description": "AI advice routes."
     },
     {
+      "name": "Reference",
+      "description": "The API describing itself. Neither route is enveloped: the spec is the document."
+    },
+    {
       "name": "Operational",
       "description": "Not part of the `/api` surface and not proxied to the public origin by the dashboard's nginx."
     }
@@ -5294,6 +5298,73 @@
             "$ref": "#/components/responses/Error"
           }
         }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "This reference as OpenAPI 3.1 — the checked-in openapi.json, served",
+        "description": "This reference as OpenAPI 3.1 — the checked-in `openapi.json`, served.",
+        "operationId": "getOpenapiJson",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "openapi": {
+                      "type": "string",
+                      "const": "3.1.0"
+                    }
+                  },
+                  "required": [
+                    "openapi"
+                  ]
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": [
+          "Reference"
+        ],
+        "summary": "Swagger UI over it (loads swagger-ui-dist from jsdelivr",
+        "description": "Swagger UI over it (loads swagger-ui-dist from jsdelivr; the one page with a third-party script).",
+        "operationId": "getDocs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": []
       }
     },
     "/health": {

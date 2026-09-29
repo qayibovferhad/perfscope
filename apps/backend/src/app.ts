@@ -8,6 +8,7 @@ import { config } from './config/index.js';
 import { authRouter } from './routes/auth.routes.js';
 import { websiteRouter } from './routes/website.routes.js';
 import { analyzerRouter } from './routes/analyzer.routes.js';
+import { openapiRouter } from './routes/openapi.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { compareHistoryRouter } from './routes/compareHistory.routes.js';
 import { adviceRouter }         from './routes/advice.routes.js';
@@ -171,6 +172,7 @@ export function createApp(): { app: Application; httpServer: Server } {
   app.use('/api', deployRouter);
   app.use('/api', flowRouter);
   app.use('/api', analyzerRouter);
+  app.use('/api', openapiRouter);
   app.use('/api', historyRouter);
   app.use('/api', compareHistoryRouter);
   app.use('/api', adviceRouter);

@@ -246,6 +246,10 @@ export const OPERATIONS: Record<string, OperationTypes> = {
     response: null,
   },
 
+  // ── Reference ──
+  'GET /api/openapi.json': { raw: true, response: obj({ openapi: { type: 'string', const: '3.1.0' } }) },
+  'GET /api/docs':         { contentType: 'text/html', response: null },
+
   // ── Operational ──
   'GET /health': {
     raw: true,

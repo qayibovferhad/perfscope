@@ -216,7 +216,10 @@ adding a field must not read as a broken contract. `openapi.contract.test.ts` ho
 operation list to the README, CI runs `openapi --check` for the schemas, and
 `e2e/openapi-conformance.probe.mjs` validates live responses against it and renders the
 public report page, which crashed on every shared link while it read `{ result, sharedAt }`
-as the result.
+as the result. **The API serves the spec**: `GET /api/openapi.json` (the checked-in file,
+copied into the image by the Dockerfile) and `GET /api/docs` (Swagger UI from jsdelivr — the
+one page with a third-party script, so it carries its own CSP; a CSP path source needs a
+trailing slash or it matches nothing but itself).
 
 **Indexes are built by `connectDatabase`, not by Mongoose.** With `bufferCommands` off,
 Mongoose's automatic index build runs at model compile — before `connect()` — and fails
@@ -438,7 +441,7 @@ light theme's accent, amber, rose and tertiary text were all under AA that whole
 opens `/app` through `/history?open=<id>` so the *report* is measured, not an empty form. All
 nine are at 100; when adding UI, run it rather than guessing.
 
-`apps/backend/probes/report-a11y.probe.mts` audits the *deep* report — the sweep above seeds
+`apps/backend/probes/report-a11y.probe.mts` (`THEME=light` too) audits the *deep* report — the sweep above seeds
 `/app` from an AI fixture, and `trimForAi` drops `timelineData`/`dependencyGraph`/`bundles`,
 so the waterfall, flame chart, dependency chain, treemap and layout-shift visualiser were
 never in the DOM it measured. This one runs a real audit, stores an older copy so the delta

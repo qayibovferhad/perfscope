@@ -173,6 +173,15 @@ A team is permission to act as its **owner**; there is no `teamId` on any other 
 | 🔑 | `GET /api/advice` | Stored recommendations for the account. |
 | 🔑 | `POST /api/advice/acted` | Mark one as acted on, so the next audit can say whether it helped. |
 
+## Reference
+
+The API describing itself. Neither route is enveloped: the spec is the document.
+
+| | Route | What it does |
+|---|---|---|
+| 🔓 | `GET /api/openapi.json` | This reference as OpenAPI 3.1 — the checked-in `openapi.json`, served. |
+| 🔓 | `GET /api/docs` | Swagger UI over it (loads swagger-ui-dist from jsdelivr; the one page with a third-party script). |
+
 ## Operational
 
 Not part of the `/api` surface and not proxied to the public origin by the dashboard's nginx.

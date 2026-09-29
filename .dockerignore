@@ -28,7 +28,12 @@ build
 .github
 .turbo
 **/.turbo
+# docs/ stays out except the generated API reference, which the backend serves at
+# /api/openapi.json — a negation must name the directory back in before the file.
 docs
+!docs/api
+docs/api/*
+!docs/api/openapi.json
 scripts
 *.md
 

@@ -43,6 +43,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 FROM deps AS build
 COPY packages/shared packages/shared
 COPY apps/backend    apps/backend
+# The generated API reference, served at /api/openapi.json and /api/docs.
+COPY docs/api/openapi.json docs/api/openapi.json
 # `--filter pkg...` includes the dependencies, and `pnpm run -r` is topological, so shared
 # is built (tsup) before the backend's `tsc` needs its .d.ts files.
 RUN pnpm --filter @perfscope/backend... run build
